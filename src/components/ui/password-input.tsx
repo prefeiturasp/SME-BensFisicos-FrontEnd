@@ -8,13 +8,18 @@ type PasswordInputProps = React.ComponentProps<typeof Input> & {
 };
 
 export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, showToggle = true, ...props }) => {
+  ({ className, showToggle = true, ...props }, ref) => {
     const [visible, setVisible] = React.useState(false);
 
     return (
       <div className='relative'>
         {/* Spread props first so our computed `type` overrides any incoming `type` prop */}
-        <Input {...props} type={visible ? 'text' : 'password'} className={cn('pr-10', className)} />
+        <Input
+          ref={ref}
+          {...props}
+          type={visible ? 'text' : 'password'}
+          className={cn('pr-10', className)}
+        />
 
         {showToggle && (
           <button
