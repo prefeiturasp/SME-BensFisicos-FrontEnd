@@ -85,7 +85,6 @@ export default function ResetPasswordPage() {
       const errorMessage =
         err instanceof Error ? err.message : 'Erro ao redefinir senha. O link pode ter expirado.';
       setError(errorMessage);
-    } finally {
       setIsSubmitting(false);
     }
   };
