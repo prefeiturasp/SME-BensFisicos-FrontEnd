@@ -51,7 +51,7 @@ export const passwordService = {
           throw new Error('Erro de conexão com o servidor.');
         }
         throw new Error(
-          error.response.data?.detail || 'Erro ao redefinir senha. O token pode ter expirado.',
+          error.response.data?.detail || 'Erro ao redefinir senha. O link pode ter expirado.',
         );
       }
       throw error;
