@@ -6,17 +6,20 @@ import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
 import ChangePasswordPage from '@/modules/auth/pages/ChangePasswordPage';
 import HomePage from '../pages/HomePage';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { PublicRoute } from '../auth/PublicRoute';
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Rotas de Autenticação */}
-      <Route path='/' element={<LoginPage />} />
-      <Route path='/esqueceu-senha' element={<ForgotPasswordPage />} />
-      <Route path='/verifique-email' element={<VerifyEmailPage />} />
-      <Route path='/recuperar-senha/:uidb64/:token' element={<ResetPasswordPage />} />
+      {/* Rotas Públicas (acessíveis apenas se NÃO logado) */}
+      <Route element={<PublicRoute />}>
+        <Route path='/' element={<LoginPage />} />
+        <Route path='/esqueceu-senha' element={<ForgotPasswordPage />} />
+        <Route path='/verifique-email' element={<VerifyEmailPage />} />
+        <Route path='/recuperar-senha/:uidb64/:token' element={<ResetPasswordPage />} />
+      </Route>
 
-      {/* Rotas Protegidas */}
+      {/* Rotas Protegidas (acessíveis apenas se logado) */}
       <Route element={<ProtectedRoute />}>
         <Route path='/home' element={<HomePage />} />
         <Route path='/trocar-senha' element={<ChangePasswordPage />} />

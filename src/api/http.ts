@@ -1,5 +1,18 @@
 import axios from 'axios';
 
+let memoryToken: string | null = null;
+
+export const getAuthToken = () => memoryToken;
+
+export const setAuthToken = (token: string | null) => {
+  memoryToken = token;
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+};
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: {
@@ -21,9 +34,8 @@ function onTokenRefreshed(token: string) {
 }
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (memoryToken) {
+    config.headers.Authorization = `Bearer ${memoryToken}`;
   }
   return config;
 });
@@ -34,15 +46,15 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Não tentar refresh ou redirecionar para requisições de login/refresh
       const url = originalRequest.url || '';
       if (
         url.includes('/auth/login') ||
-        url.includes('/auth/token') ||
-        url.includes('/auth/token/refresh')
+        url.includes('/token/refresh/') ||
+        url.includes('/logout/')
       ) {
         return Promise.reject(error);
       }
+
       if (isRefreshing) {
         return new Promise((resolve) => {
           subscribeTokenRefresh((token: string) => {
@@ -56,32 +68,21 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
+        const { data } = await api.post('/auth/token/refresh/');
 
-        const { data } = await api.post('/auth/token/refresh/', {
-          refresh: refreshToken,
-        });
+        const newToken = data.access;
 
-        if (data.access) {
-          localStorage.setItem('access_token', data.access);
-          api.defaults.headers.Authorization = `Bearer ${data.access}`;
-        }
-        if (data.refresh) {
-          localStorage.setItem('refresh_token', data.refresh);
-        }
-        onTokenRefreshed(data.access);
+        setAuthToken(newToken);
+        onTokenRefreshed(newToken);
+
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
         isRefreshing = false;
-
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
         isRefreshing = false;
-        // Melhorar segurança através de cookies HttpOnly
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        return Promise.reject(error);
+        setAuthToken(null);
+        return Promise.reject(refreshError);
       }
     }
 
