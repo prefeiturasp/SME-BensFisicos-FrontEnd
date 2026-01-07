@@ -7,7 +7,6 @@ export interface LoginCredentials {
 
 export interface AuthTokens {
   access: string;
-  refresh: string;
 }
 
 export interface UnidadeAdministrativa {
@@ -29,39 +28,29 @@ export interface User {
 
 export interface LoginResponse {
   access: string;
-  refresh: string;
   user: User;
 }
 
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     const { data } = await api.post<LoginResponse>('/auth/login/', credentials);
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
     return data;
   },
 
-  logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+  logout: async () => {
+    try {
+      await api.post('/auth/logout/');
+    } catch (error) {
+      console.warn('Erro ao notificar logout', error);
+    }
   },
 
   getCurrentUser: async () => {
     return api.get<User>('/auth/me/');
   },
 
-  refreshToken: async (refreshToken: string): Promise<AuthTokens> => {
-    const { data } = await api.post<AuthTokens>('/auth/token/refresh/', {
-      refresh: refreshToken,
-    });
+  refreshToken: async (): Promise<AuthTokens> => {
+    const { data } = await api.post<AuthTokens>('/auth/token/refresh/');
     return data;
-  },
-
-  verifyToken: async (token: string): Promise<void> => {
-    await api.post('/auth/token/verify/', { token });
-  },
-
-  isAuthenticated: () => {
-    return !!localStorage.getItem('access_token');
   },
 };
