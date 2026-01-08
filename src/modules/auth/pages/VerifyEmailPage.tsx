@@ -24,7 +24,7 @@ export default function VerifyEmailPage() {
 
         <div className='pl-20 pr-20 text-left space-y-2'>
           <p className='text-sm text-[#606060] leading-relaxed'>
-            Verifique sua caixa de entrada e também a pasta de spam. O link expira em 24 horas.
+            Verifique sua caixa de entrada e também a pasta de spam. O link expira em 1 hora.
           </p>
         </div>
 
