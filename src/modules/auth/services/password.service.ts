@@ -25,9 +25,7 @@ export const passwordService = {
     } catch (error) {
       if (error instanceof AxiosError) {
         if (!error.response) {
-          throw new Error(
-            'Erro de conexão com o servidor. Verifique se o backend está rodando e configurado para CORS.',
-          );
+          throw new Error('Erro de conexão com o servidor.');
         }
         throw new Error(error.response.data?.detail || 'Erro ao solicitar reset de senha');
       }
@@ -66,7 +64,25 @@ export const passwordService = {
         if (!error.response) {
           throw new Error('Erro de conexão com o servidor.');
         }
-        throw new Error(error.response.data?.detail || 'Erro ao trocar senha');
+        const responseData = error.response.data;
+
+        if (responseData?.old_password) {
+          throw new Error(
+            Array.isArray(responseData.old_password)
+              ? responseData.old_password[0]
+              : responseData.old_password,
+          );
+        }
+
+        if (responseData?.new_password) {
+          throw new Error(
+            Array.isArray(responseData.new_password)
+              ? responseData.new_password[0]
+              : responseData.new_password,
+          );
+        }
+
+        throw new Error(responseData?.detail || 'Erro ao trocar senha');
       }
       throw error;
     }
