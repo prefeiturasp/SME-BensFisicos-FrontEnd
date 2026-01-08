@@ -59,7 +59,7 @@ describe('VerifyEmailPage', () => {
       expect(
         screen.getByText(/Verifique sua caixa de entrada e também a pasta de spam/i),
       ).toBeInTheDocument();
-      expect(screen.getByText(/O link expira em 24 horas/i)).toBeInTheDocument();
+      expect(screen.getByText(/O link expira em 1 hora/i)).toBeInTheDocument();
     });
 
     it('renderiza o botão de voltar ao login', () => {
