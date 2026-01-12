@@ -19,19 +19,7 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ['./tsconfig.app.json'],
-  },
-    },
-  },
-
-  // Node (Vite config)
-  {
-    files: ['vite.config.ts'],
-    languageOptions: {
-      ecmaVersion: 2023,
-      globals: globals.node,
-      parserOptions: {
-        project: ['./tsconfig.node.json'],
+        project: ['./tsconfig.app.json', './tsconfig.node.json'],
       },
     },
   },
