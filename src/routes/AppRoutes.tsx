@@ -8,6 +8,8 @@ import HomePage from '../pages/HomePage';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { PublicRoute } from '../auth/PublicRoute';
 
+import MainLayout from '@/components/layout/MainLayout';
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -21,8 +23,10 @@ export default function AppRoutes() {
 
       {/* Rotas Protegidas (acessíveis apenas se logado) */}
       <Route element={<ProtectedRoute />}>
-        <Route path='/home' element={<HomePage />} />
-        <Route path='/trocar-senha' element={<ChangePasswordPage />} />
+        <Route element={<MainLayout />}>
+          <Route path='/home' element={<HomePage />} />
+          <Route path='/trocar-senha' element={<ChangePasswordPage />} />
+        </Route>
       </Route>
 
       {/* Rota de fallback */}
