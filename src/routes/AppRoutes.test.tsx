@@ -1,0 +1,189 @@
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import AppRoutes from './AppRoutes';
+import { useAuth } from '../auth/useAuth';
+import { Outlet } from 'react-router-dom';
+
+vi.mock('../auth/useAuth');
+
+vi.mock('@/modules/auth/pages/LoginPage', () => ({
+  default: () => <div data-testid='login-page'>Login Page</div>,
+}));
+vi.mock('@/modules/auth/pages/ForgotPasswordPage', () => ({
+  default: () => <div data-testid='forgot-password'>Forgot Password</div>,
+}));
+vi.mock('@/modules/auth/pages/VerifyEmailPage', () => ({ default: () => <div>Verify Email</div> }));
+vi.mock('@/modules/auth/pages/ResetPasswordPage', () => ({
+  default: () => <div>Reset Password</div>,
+}));
+vi.mock('@/modules/auth/pages/ChangePasswordPage', () => ({
+  default: () => <div>Change Password</div>,
+}));
+vi.mock('../pages/HomePage', () => ({
+  default: () => <div data-testid='home-page'>Home Page</div>,
+}));
+
+vi.mock('@/components/layout/MainLayout', () => ({
+  default: () => (
+    <div data-testid='main-layout'>
+      Main Layout Wrapper <Outlet />
+    </div>
+  ),
+}));
+
+describe('AppRoutes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deve renderizar a página de login para a rota raiz se não autenticado', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+  });
+
+  it('deve redirecionar para /home se tentar acessar login e já estiver autenticado', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      user: {
+        id: 1,
+        username: 'test',
+        nome: 'Test User',
+        email: 'test@example.com',
+        rf: '1234567',
+        is_gestor_patrimonio: false,
+        is_operador_inventario: true,
+        must_change_password: false,
+        unidade_administrativa: { id: 1, nome: 'Exemplo' },
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
+    expect(screen.getByTestId('home-page')).toBeInTheDocument();
+  });
+
+  it('deve permitir acesso a rotas protegidas se autenticado', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      user: {
+        id: 1,
+        username: 'test',
+        nome: 'Test User',
+        email: 'test@example.com',
+        rf: '1234567',
+        is_gestor_patrimonio: false,
+        is_operador_inventario: true,
+        must_change_password: false,
+        unidade_administrativa: { id: 1, nome: 'Exemplo' },
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('main-layout')).toBeInTheDocument();
+    expect(screen.getByTestId('home-page')).toBeInTheDocument();
+  });
+
+  it('deve redirecionar para login se tentar acessar rota protegida sem autenticação', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument();
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+  });
+
+  it('deve renderizar loading quando estiver verificando autenticação', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true,
+      user: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
+  });
+
+  it('deve redirecionar para rota inexistente para login ou home', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/rota-que-nao-existe']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+  });
+});
