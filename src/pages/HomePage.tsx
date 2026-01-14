@@ -1,11 +1,18 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Package, Network, Reply, ListChecks, Home as HomeIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
+import { Boxes, Network, ListEnd, ListOrdered, Home as HomeIcon } from 'lucide-react';
+import { ShortcutCard } from '@/components/ShortcutCard';
 
-const dashboardItems = [
+interface DashboardItem {
+  title: string;
+  icon: LucideIcon;
+  href: string;
+  iconClassName?: string;
+}
+
+const dashboardItems: DashboardItem[] = [
   {
     title: 'Bens Patrimoniais',
-    icon: Package,
+    icon: Boxes,
     href: '/bens',
   },
   {
@@ -15,13 +22,12 @@ const dashboardItems = [
   },
   {
     title: 'Baixas Físicas de Bens Patrimoniais',
-    icon: Reply,
-    className: 'rotate-180',
+    icon: ListEnd,
     href: '/baixas',
   },
   {
     title: 'Inventários Cadastrados',
-    icon: ListChecks,
+    icon: ListOrdered,
     href: '/inventario',
   },
 ];
@@ -36,18 +42,13 @@ export default function HomePage() {
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10'>
         {dashboardItems.map((item) => (
-          <Link key={item.title} to={item.href} className='block group'>
-            <Card className='h-40 flex flex-col items-center justify-center text-center hover:border-green-500 hover:shadow-md transition-all cursor-pointer'>
-              <CardContent className='pt-6 flex flex-col items-center gap-4'>
-                <item.icon
-                  className={`h-10 w-10 text-green-700 group-hover:text-green-600 transition-colors ${item.className || ''}`}
-                />
-                <span className='font-medium text-gray-700 group-hover:text-green-700 transition-colors'>
-                  {item.title}
-                </span>
-              </CardContent>
-            </Card>
-          </Link>
+          <ShortcutCard
+            key={item.title}
+            title={item.title}
+            icon={item.icon}
+            href={item.href}
+            iconClassName={item.iconClassName}
+          />
         ))}
       </div>
     </div>

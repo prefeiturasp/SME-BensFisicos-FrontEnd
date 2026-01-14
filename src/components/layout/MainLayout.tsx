@@ -9,7 +9,7 @@ export default function MainLayout() {
       <AppSidebar />
       <SidebarInset>
         <Header />
-        <main className='flex-1 overflow-auto bg-muted/10 px-6 md:px-10 py-3 md:py-6'>
+        <main className='flex-1 overflow-auto bg-gray-100 px-6 md:px-10 py-3 md:py-6'>
           <Outlet />
         </main>
       </SidebarInset>
