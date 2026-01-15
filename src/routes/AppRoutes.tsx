@@ -35,9 +35,10 @@ export default function AppRoutes() {
 
       {/* Rotas Protegidas (acessíveis apenas se logado) */}
       <Route element={<ProtectedRoute />}>
+        <Route path='/trocar-senha' element={<ChangePasswordPage />} />
+
         <Route element={<MainLayout />}>
           <Route path='/home' element={<HomePage />} />
-          <Route path='/trocar-senha' element={<ChangePasswordPage />} />
 
           {/* Módulo: Bem Patrimonial */}
           <Route path='/bens-patrimoniais' element={<BensListPage />} />
