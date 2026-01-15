@@ -32,6 +32,22 @@ vi.mock('@/components/layout/MainLayout', () => ({
   ),
 }));
 
+vi.mock('@/modules/bem-patrimonial/bem/pages/BensListPage', () => ({
+  default: () => <div data-testid='bens-list'>Bens List</div>,
+}));
+vi.mock('@/modules/bem-patrimonial/bem/pages/BemCreatePage', () => ({
+  default: () => <div data-testid='bem-create'>Bem Create</div>,
+}));
+vi.mock('@/modules/bem-patrimonial/movimentacao/pages/MovimentacoesListPage', () => ({
+  default: () => <div data-testid='movimentacoes-list'>Movimentacoes List</div>,
+}));
+vi.mock('@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage', () => ({
+  default: () => <div data-testid='baixas-list'>Baixas List</div>,
+}));
+vi.mock('@/modules/inventario/pages/InventarioListPage', () => ({
+  default: () => <div data-testid='inventario-list'>Inventario List</div>,
+}));
+
 describe('AppRoutes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -185,5 +201,75 @@ describe('AppRoutes', () => {
     );
 
     expect(screen.getByTestId('login-page')).toBeInTheDocument();
+  });
+
+  describe('Rotas de Módulos (Protegidas)', () => {
+    beforeEach(() => {
+      vi.mocked(useAuth).mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        user: {
+          id: 1,
+          username: 'test',
+          nome: 'Test',
+          email: 'test@example.com',
+          rf: '123',
+          is_gestor_patrimonio: true,
+          is_operador_inventario: true,
+          must_change_password: false,
+          unidade_administrativa: { id: 1, nome: 'Adm' },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoggingIn: false,
+        loginError: null,
+        loginAsync: vi.fn(),
+      });
+    });
+
+    it('deve navegar para lista de bens', () => {
+      render(
+        <MemoryRouter initialEntries={['/bens-patrimoniais']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('bens-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para criação de bem', () => {
+      render(
+        <MemoryRouter initialEntries={['/bens-patrimoniais/novo']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('bem-create')).toBeInTheDocument();
+    });
+
+    it('deve navegar para movimentações', () => {
+      render(
+        <MemoryRouter initialEntries={['/movimentacoes']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('movimentacoes-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para baixas', () => {
+      render(
+        <MemoryRouter initialEntries={['/baixas-fisicas']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('baixas-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para inventários', () => {
+      render(
+        <MemoryRouter initialEntries={['/inventarios']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('inventario-list')).toBeInTheDocument();
+    });
   });
 });
