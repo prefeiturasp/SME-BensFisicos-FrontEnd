@@ -5,10 +5,10 @@ import HomePage from './HomePage';
 
 describe('HomePage', () => {
   const expectedCards = [
-    { title: 'Bens Patrimoniais', href: '/bens' },
+    { title: 'Bens Patrimoniais', href: '/bens-patrimoniais' },
     { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
-    { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas' },
-    { title: 'Inventários Cadastrados', href: '/inventario' },
+    { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
+    { title: 'Inventários Cadastrados', href: '/inventarios' },
   ];
 
   const renderComponent = () => {
