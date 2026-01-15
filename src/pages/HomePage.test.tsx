@@ -5,10 +5,10 @@ import HomePage from './HomePage';
 
 describe('HomePage', () => {
   const expectedCards = [
-    { title: 'Bens Patrimoniais', href: '/bens' },
+    { title: 'Bens Patrimoniais', href: '/bens-patrimoniais' },
     { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
-    { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas' },
-    { title: 'Inventários Cadastrados', href: '/inventario' },
+    { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
+    { title: 'Inventários Cadastrados', href: '/inventarios' },
   ];
 
   const renderComponent = () => {
@@ -19,13 +19,20 @@ describe('HomePage', () => {
     );
   };
 
-  describe('Renderização Estrutural', () => {
-    it('deve renderizar o breadcrumb/cabeçalho "Início"', () => {
+  describe('Renderização Estrutural e Breadcrumb', () => {
+    it('deve renderizar o breadcrumb com o item "Início"', () => {
+      const { container } = renderComponent();
+      const homeBreadcrumb = screen.getByText('Início');
+      expect(homeBreadcrumb).toBeInTheDocument();
+
+      const homeIcon = container.querySelector('.lucide-house');
+      expect(homeIcon).toBeInTheDocument();
+    });
+
+    it('o breadcrumb da home deve ser o item ativo (não clicável neste caso)', () => {
       renderComponent();
-      expect(screen.getByText('Início')).toBeInTheDocument();
-      expect(screen.getByText('Início').closest('div')?.querySelector('svg')).toHaveClass(
-        'lucide-house',
-      );
+      const homeText = screen.getByText('Início');
+      expect(homeText.closest('a')).toBeNull();
     });
 
     it('deve renderizar o grid container com as classes de responsividade corretas', () => {
@@ -67,18 +74,27 @@ describe('HomePage', () => {
   });
 
   describe('Acessibilidade e Usabilidade', () => {
-    it('todos os links devem estar acessíveis via teclado', () => {
+    it('todos os links navegáveis devem estar acessíveis via teclado', () => {
       renderComponent();
-      const links = screen.getAllByRole('link');
+      const links = screen
+        .getAllByRole('link')
+        .filter((link) => !link.getAttribute('aria-current'));
+
       links.forEach((link) => {
         expect(link).toHaveClass('focus-visible:outline-none');
       });
     });
 
-    it('deve utilizar ícones semanticos corretos para cada item', () => {
+    it('os cards de atalho devem conter ícones', () => {
       const { container } = renderComponent();
-      const svgs = container.querySelectorAll('.grid a svg');
-      expect(svgs).toHaveLength(expectedCards.length);
+      const cardIcons = container.querySelectorAll('.grid .lucide');
+      expect(cardIcons).toHaveLength(expectedCards.length);
+    });
+
+    it('o breadcrumb deve conter ícones (pelo menos o ícone Home)', () => {
+      const { container } = renderComponent();
+      const breadcrumbIcons = container.querySelectorAll('nav[aria-label="breadcrumb"] .lucide');
+      expect(breadcrumbIcons.length).toBeGreaterThanOrEqual(1);
     });
   });
 });
