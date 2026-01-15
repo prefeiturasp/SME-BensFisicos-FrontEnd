@@ -25,7 +25,7 @@ export function AppBreadcrumb({ items = [] }: AppBreadcrumbProps) {
   const allItems: BreadcrumbItemProps[] = [{ label: 'Início', icon: Home, to: '/home' }, ...items];
 
   return (
-    <Breadcrumb className='mb-6'>
+    <Breadcrumb className='mb-7'>
       <BreadcrumbList>
         {allItems.map((item, index) => {
           const isLast = index === allItems.length - 1;
