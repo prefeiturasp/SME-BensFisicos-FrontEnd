@@ -20,8 +20,8 @@ import { passwordService } from '../services/password.service';
 const TOAST_DURATION = 1500;
 const LOGIN_ROUTE = '/';
 
-const PASSWORD_INPUT_CLASSES =
-  'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-[#42474A]';
+const INPUT_STYLES =
+  'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-gray-700';
 
 const PASSWORD_REQUIREMENTS = [
   'Sua senha não deve conter informações pessoais.',
@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
                 <FormLabel className='text-gray-700'>Nova senha</FormLabel>
                 <FormControl>
                   <PasswordInput
-                    className={PASSWORD_INPUT_CLASSES}
+                    className={INPUT_STYLES}
                     autoComplete='new-password'
                     autoFocus
                     {...field}
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
                 <FormLabel className='text-gray-700'>Confirme a nova senha</FormLabel>
                 <FormControl>
                   <PasswordInput
-                    className={PASSWORD_INPUT_CLASSES}
+                    className={INPUT_STYLES}
                     autoComplete='new-password'
                     {...field}
                   />
