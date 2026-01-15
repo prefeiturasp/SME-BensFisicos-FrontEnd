@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { Header } from './Header';
 import { useAuth } from '@/auth/useAuth';
+import type { UnidadeAdministrativa } from '@/auth/auth.service';
 
 vi.mock('@/auth/useAuth');
 
@@ -137,5 +138,44 @@ describe('Header', () => {
     );
 
     expect(screen.getByText('Escola Municipal Teste')).toBeInTheDocument();
+  });
+
+  it('deve exibir valores padrão quando dados do usuário estão ausentes', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...defaultAuthContext,
+      user: {
+        ...mockUser,
+        rf: undefined as unknown as string,
+        nome: undefined as unknown as string,
+        unidade_administrativa: undefined as unknown as UnidadeAdministrativa,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('00000000')).toBeInTheDocument();
+    expect(screen.getByText('USUÁRIO DO SISTEMA')).toBeInTheDocument();
+  });
+
+  it('não deve exibir opção de unidade se usuário não tiver unidade vinculada', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...defaultAuthContext,
+      user: {
+        ...mockUser,
+        unidade_administrativa: null as unknown as UnidadeAdministrativa,
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('Escola Municipal Teste')).not.toBeInTheDocument();
   });
 });
