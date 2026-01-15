@@ -25,7 +25,7 @@ describe('BensListPage', () => {
 
   it('deve possuir um botão para adicionar novo bem', () => {
     renderComponent();
-    const addButton = screen.getByRole('link', { name: /adicionar bem/i });
+    const addButton = screen.getByRole('link', { name: /novo cadastro/i });
     expect(addButton).toBeInTheDocument();
     expect(addButton).toHaveAttribute('href', '/bens-patrimoniais/novo');
   });
