@@ -1,6 +1,7 @@
+import { Boxes, Network, ListEnd, ListOrdered } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Boxes, Network, ListEnd, ListOrdered, Home as HomeIcon } from 'lucide-react';
 import { ShortcutCard } from '@/components/ShortcutCard';
+import { AppBreadcrumb } from '@/components/AppBreadcrumb';
 
 interface DashboardItem {
   title: string;
@@ -35,10 +36,7 @@ const dashboardItems: DashboardItem[] = [
 export default function HomePage() {
   return (
     <div className='mx-auto'>
-      <div className='mb-6 flex items-center gap-2 text-muted-foreground'>
-        <HomeIcon className='h-4 w-4' />
-        <span className='text-sm'>Início</span>
-      </div>
+      <AppBreadcrumb />
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10'>
         {dashboardItems.map((item) => (
