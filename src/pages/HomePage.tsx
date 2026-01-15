@@ -14,7 +14,7 @@ const dashboardItems: DashboardItem[] = [
   {
     title: 'Bens Patrimoniais',
     icon: Boxes,
-    href: '/bens',
+    href: '/bens-patrimoniais',
   },
   {
     title: 'Movimentações de Bem Patrimonial',
@@ -24,12 +24,12 @@ const dashboardItems: DashboardItem[] = [
   {
     title: 'Baixas Físicas de Bens Patrimoniais',
     icon: ListEnd,
-    href: '/baixas',
+    href: '/baixas-fisicas',
   },
   {
     title: 'Inventários Cadastrados',
     icon: ListOrdered,
-    href: '/inventario',
+    href: '/inventarios',
   },
 ];
 
