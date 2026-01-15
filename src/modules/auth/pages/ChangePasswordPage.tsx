@@ -20,8 +20,7 @@ import { passwordService } from '../services/password.service';
 const TOAST_DURATION = 1500;
 const HOME_ROUTE = '/home';
 
-const INPUT_STYLES =
-  'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-gray-700';
+const INPUT_STYLES = 'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-gray-700';
 
 const PASSWORD_REQUIREMENTS = [
   'Sua nova senha não deve conter informações pessoais.',
@@ -36,7 +35,7 @@ const changePasswordSchema = z
       .string()
       .min(6, 'A senha deve ter no mínimo 6 caracteres')
       .regex(/[a-zA-Z]/, 'A senha deve conter letras')
-      .regex(/[0-9]/, 'A senha deve conter números')
+      .regex(/\d/, 'A senha deve conter números')
       .regex(/[^A-Za-z0-9]/, 'A senha deve conter caracteres especiais'),
     confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
   })
@@ -102,8 +101,8 @@ export default function ChangePasswordPage() {
       <div className='mb-6'>
         <p className='text-sm font-semibold text-black mb-2'>Atualize sua senha:</p>
         <ul className='text-xs text-black space-y-1 list-disc list-inside ml-2'>
-          {PASSWORD_REQUIREMENTS.map((req, index) => (
-            <li key={index}>{req}</li>
+          {PASSWORD_REQUIREMENTS.map((req) => (
+            <li key={req}>{req}</li>
           ))}
         </ul>
       </div>

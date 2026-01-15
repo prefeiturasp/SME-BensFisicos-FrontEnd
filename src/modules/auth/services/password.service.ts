@@ -27,7 +27,7 @@ export const passwordService = {
         if (!error.response) {
           throw new Error('Erro de conexão com o servidor.');
         }
-        throw new Error(error.response.data?.detail || 'Erro ao solicitar reset de senha');
+        throw new Error(error.response.data?.detail ?? 'Erro ao solicitar reset de senha');
       }
       throw error;
     }
@@ -49,7 +49,7 @@ export const passwordService = {
           throw new Error('Erro de conexão com o servidor.');
         }
         throw new Error(
-          error.response.data?.detail || 'Erro ao redefinir senha. O link pode ter expirado.',
+          error.response.data?.detail ?? 'Erro ao redefinir senha. O link pode ter expirado.',
         );
       }
       throw error;
@@ -66,25 +66,35 @@ export const passwordService = {
         }
         const responseData = error.response.data;
 
-        if (responseData?.old_password) {
-          throw new Error(
-            Array.isArray(responseData.old_password)
-              ? responseData.old_password[0]
-              : responseData.old_password,
-          );
-        }
-
-        if (responseData?.new_password) {
-          throw new Error(
-            Array.isArray(responseData.new_password)
-              ? responseData.new_password[0]
-              : responseData.new_password,
-          );
-        }
-
-        throw new Error(responseData?.detail || 'Erro ao trocar senha');
+        handlePasswordChangeError(responseData);
       }
       throw error;
     }
   },
 };
+
+interface ErrorResponseData {
+  old_password?: string | string[];
+  new_password?: string | string[];
+  detail?: string;
+}
+
+function handlePasswordChangeError(responseData: ErrorResponseData) {
+  if (responseData?.old_password) {
+    throw new Error(
+      Array.isArray(responseData.old_password)
+        ? responseData.old_password[0]
+        : responseData.old_password,
+    );
+  }
+
+  if (responseData?.new_password) {
+    throw new Error(
+      Array.isArray(responseData.new_password)
+        ? responseData.new_password[0]
+        : responseData.new_password,
+    );
+  }
+
+  throw new Error(responseData?.detail ?? 'Erro ao trocar senha');
+}
