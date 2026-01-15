@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+/* stylelint-disable at-rule-no-unknown */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 

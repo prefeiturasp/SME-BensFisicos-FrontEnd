@@ -122,7 +122,7 @@ describe('Header', () => {
     );
 
     const logoutButton = screen.getByText('Sair');
-    fireEvent.click(logoutButton.closest('div')!);
+    fireEvent.click(logoutButton.closest('button')!);
 
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });

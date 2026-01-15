@@ -47,11 +47,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const url = originalRequest.url || '';
-      if (
-        url.includes('auth/login') ||
-        url.includes('token/refresh') ||
-        url.includes('logout')
-      ) {
+      if (url.includes('auth/login') || url.includes('token/refresh') || url.includes('logout')) {
         return Promise.reject(error);
       }
 

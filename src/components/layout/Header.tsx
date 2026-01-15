@@ -75,19 +75,23 @@ export function Header() {
           </div>
         </div>
 
-        <div
-          className='flex flex-col items-center justify-center gap-1 group cursor-pointer ml-2'
+        <button
+          type='button'
+          className='flex flex-col items-center justify-center gap-1 group cursor-pointer ml-2 bg-transparent border-none p-0'
           onClick={logout}
         >
           <Button
+            asChild
             variant='ghost'
             size='icon'
             className='text-white hover:bg-green-600 hover:text-white h-8 w-8 border rounded-full shadow-sm cursor-pointer bg-green-700'
           >
-            <Power className='size-4 md:size-5' />
+            <div>
+              <Power className='size-4 md:size-5' />
+            </div>
           </Button>
           <span className='text-xs text-gray-500'>Sair</span>
-        </div>
+        </button>
       </div>
     </header>
   );
