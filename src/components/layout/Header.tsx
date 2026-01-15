@@ -57,13 +57,13 @@ export function Header() {
         <div className='hidden md:flex flex-col items-end justify-center border border-gray-200 px-2 py-1.5 rounded bg-gray-100 min-w-52'>
           <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>RF:</span>
-            <span className='text-gray-600'>{user?.rf || '00000000'}</span>
+            <span className='text-gray-600'>{user?.rf ?? '00000000'}</span>
           </div>
 
           <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>NOME:</span>
             <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
-              {user?.nome.toUpperCase() || 'USUÁRIO DO SISTEMA'}
+              {user?.nome?.toUpperCase() ?? 'USUÁRIO DO SISTEMA'}
             </span>
           </div>
 
