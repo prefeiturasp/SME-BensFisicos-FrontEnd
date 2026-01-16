@@ -15,5 +15,5 @@ services:
       # Evita que o node_modules do container seja sobrescrito pelo local
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000/api
+      - VITE_API_URL=${VITE_API_URL}
       
