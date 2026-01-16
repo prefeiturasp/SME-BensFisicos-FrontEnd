@@ -1,0 +1,19 @@
+services:
+  frontend-dev:
+    container_name: sme-frontend-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Sincroniza o código local com o container (Hot Reload)
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      # Evita que o node_modules do container seja sobrescrito pelo local
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+      
