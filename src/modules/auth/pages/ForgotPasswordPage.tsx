@@ -17,10 +17,7 @@ import { AuthLayout } from '../components/AuthLayout';
 import { passwordService } from '../services/password.service';
 
 const forgotPasswordSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'E-mail é obrigatório')
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'E-mail inválido'),
+  email: z.string().min(1, 'E-mail é obrigatório').email('E-mail inválido'),
 });
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
