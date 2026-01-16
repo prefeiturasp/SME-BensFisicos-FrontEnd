@@ -20,8 +20,7 @@ import { passwordService } from '../services/password.service';
 const TOAST_DURATION = 1500;
 const LOGIN_ROUTE = '/';
 
-const PASSWORD_INPUT_CLASSES =
-  'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-[#42474A]';
+const INPUT_STYLES = 'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-gray-700';
 
 const PASSWORD_REQUIREMENTS = [
   'Sua senha não deve conter informações pessoais.',
@@ -35,7 +34,7 @@ const resetPasswordSchema = z
       .string()
       .min(6, 'A senha deve ter no mínimo 6 caracteres')
       .regex(/[a-zA-Z]/, 'A senha deve conter letras')
-      .regex(/[0-9]/, 'A senha deve conter números')
+      .regex(/\d/, 'A senha deve conter números')
       .regex(/[^A-Za-z0-9]/, 'A senha deve conter caracteres especiais'),
     confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
   })
@@ -94,8 +93,8 @@ export default function ResetPasswordPage() {
       <div className='mb-10'>
         <p className='text-sm font-semibold text-black mb-2'>Crie uma nova senha:</p>
         <ul className='text-xs text-black space-y-1 list-disc list-inside ml-2'>
-          {PASSWORD_REQUIREMENTS.map((requirement, index) => (
-            <li key={index}>{requirement}</li>
+          {PASSWORD_REQUIREMENTS.map((requirement) => (
+            <li key={requirement}>{requirement}</li>
           ))}
         </ul>
       </div>
@@ -110,7 +109,7 @@ export default function ResetPasswordPage() {
                 <FormLabel className='text-gray-700'>Nova senha</FormLabel>
                 <FormControl>
                   <PasswordInput
-                    className={PASSWORD_INPUT_CLASSES}
+                    className={INPUT_STYLES}
                     autoComplete='new-password'
                     autoFocus
                     {...field}
@@ -128,11 +127,7 @@ export default function ResetPasswordPage() {
               <FormItem className='mt-8'>
                 <FormLabel className='text-gray-700'>Confirme a nova senha</FormLabel>
                 <FormControl>
-                  <PasswordInput
-                    className={PASSWORD_INPUT_CLASSES}
-                    autoComplete='new-password'
-                    {...field}
-                  />
+                  <PasswordInput className={INPUT_STYLES} autoComplete='new-password' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

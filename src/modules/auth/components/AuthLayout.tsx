@@ -4,7 +4,7 @@ interface AuthLayoutProps {
   subtitle?: React.ReactNode;
 }
 
-export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+export function AuthLayout({ children, title, subtitle }: Readonly<AuthLayoutProps>) {
   return (
     <div className='min-h-screen flex'>
       {/* Lado esquerdo - Imagem */}

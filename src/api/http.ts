@@ -46,13 +46,9 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      const url = originalRequest.url || '';
-      if (
-        url.includes('auth/login') ||
-        url.includes('token/refresh') ||
-        url.includes('logout')
-      ) {
-        return Promise.reject(error);
+      const url = originalRequest.url ?? '';
+      if (url.includes('auth/login') || url.includes('token/refresh') || url.includes('logout')) {
+        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
       }
 
       if (isRefreshing) {
@@ -82,10 +78,12 @@ api.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         setAuthToken(null);
-        return Promise.reject(refreshError);
+        return Promise.reject(
+          refreshError instanceof Error ? refreshError : new Error(String(refreshError)),
+        );
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
   },
 );

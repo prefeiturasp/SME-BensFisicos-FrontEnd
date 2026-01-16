@@ -17,7 +17,7 @@ export function ShortcutCard({
   href,
   className,
   iconClassName,
-}: ShortcutCardProps) {
+}: Readonly<ShortcutCardProps>) {
   return (
     <Link
       to={href}

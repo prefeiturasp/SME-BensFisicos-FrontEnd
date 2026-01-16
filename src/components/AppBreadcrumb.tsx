@@ -21,7 +21,7 @@ export interface BreadcrumbItemProps {
 interface AppBreadcrumbProps {
   items?: BreadcrumbItemProps[];
 }
-export function AppBreadcrumb({ items = [] }: AppBreadcrumbProps) {
+export function AppBreadcrumb({ items = [] }: Readonly<AppBreadcrumbProps>) {
   const allItems: BreadcrumbItemProps[] = [{ label: 'Início', icon: Home, to: '/home' }, ...items];
 
   return (
@@ -45,7 +45,7 @@ export function AppBreadcrumb({ items = [] }: AppBreadcrumbProps) {
                 ) : (
                   <BreadcrumbLink asChild>
                     <Link
-                      to={item.to || '#'}
+                      to={item.to ?? '#'}
                       className='flex items-center gap-2 transition-colors hover:text-foreground'
                     >
                       {Icon && <Icon className='h-4 w-4' />}
