@@ -13,7 +13,8 @@ services:
       - ./index.html:/app/index.html
       - ./vite.config.ts:/app/vite.config.ts
       # Evita que o node_modules do container seja sobrescrito pelo local
+      - ./.env:/app/.env
+      - ./.env.development:/app/.env.development
+      
       - /app/node_modules
-    environment:
-      - VITE_API_URL=${VITE_API_URL}
       
