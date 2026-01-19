@@ -49,7 +49,7 @@ const menuItems = [
       },
       {
         title: 'Parametrização de Inventário',
-        url: '/inventarios',
+        url: '/parametrizacao-inventario',
       },
     ],
   },
@@ -59,19 +59,19 @@ const menuItems = [
     items: [
       {
         title: 'Grupo e Permissionamentos',
-        url: '/test',
+        url: '/grupo-permissionamentos',
       },
       {
         title: 'Unidades Administrativas',
-        url: '/test',
+        url: '/unidades-administrativas',
       },
       {
         title: 'Unidades Orçamentárias',
-        url: '/test',
+        url: '/unidades-orcamentarias',
       },
       {
         title: 'Usuários',
-        url: '/test',
+        url: '/usuarios',
       },
       {
         title: 'Trocar Senha',
