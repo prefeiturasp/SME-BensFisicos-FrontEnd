@@ -83,8 +83,16 @@ const menuItems = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar();
   const isCollapsed = state === 'collapsed';
+
+  const handleSubItemClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    } else {
+      setOpen(false);
+    }
+  };
 
   return (
     <Sidebar collapsible='icon' className='border-r-0'>
@@ -168,7 +176,7 @@ export function AppSidebar() {
                                 isActive={location.pathname === subItem.url}
                                 className='text-[#595959] font-bold text-sm hover:text-[#267A55] hover:bg-gray-50 data-[active=true]:bg-gray-100 data-[active=true]:text-[#595959] min-h-[50px] py-2 px-3 border-t last:border-x-1 rounded-none !overflow-visible [&>span]:!overflow-visible [&>span]:!truncate-none [&>span]:!whitespace-normal [&>span]:!break-words [&>span]:leading-snug'
                               >
-                                <Link to={subItem.url}>
+                                <Link to={subItem.url} onClick={handleSubItemClick}>
                                   <span>{subItem.title}</span>
                                 </Link>
                               </SidebarMenuSubButton>
