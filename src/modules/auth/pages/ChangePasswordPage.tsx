@@ -183,6 +183,16 @@ export default function ChangePasswordPage() {
             {isSubmitting ? 'Salvando...' : 'Salvar'}
           </Button>
         </form>
+
+        <div className='mt-6 text-center'>
+          <button
+            type='button'
+            onClick={() => navigate(HOME_ROUTE)}
+            className='text-sm text-gray-600 hover:text-[#00703C] underline hover:no-underline transition-colors'
+          >
+            Voltar para a página inicial
+          </button>
+        </div>
       </Form>
     </AuthLayout>
   );

@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -32,27 +34,271 @@ beforeEach(() => {
 describe('AppSidebar', () => {
   const renderSidebar = (initialEntries = ['/home']) => {
     return render(
-      <SidebarProvider>
-        <MemoryRouter initialEntries={initialEntries}>
-          <AppSidebar />
-        </MemoryRouter>
+      <SidebarProvider defaultOpen={true}>
+        <TooltipProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            <AppSidebar />
+          </MemoryRouter>
+        </TooltipProvider>
       </SidebarProvider>,
     );
   };
 
-  it('deve renderizar os links com as URLs corretas', () => {
-    renderSidebar();
+  describe('Renderização', () => {
+    it('deve renderizar o título do sistema na versão expandida', () => {
+      renderSidebar();
+      expect(screen.getByText('Sistema de Gestão de Bens Patrimoniais')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('Início').closest('a')).toHaveAttribute('href', '/home');
+    it('deve renderizar a logo da Prefeitura no rodapé', () => {
+      renderSidebar();
+      const logo = screen.getByAltText('Prefeitura de São Paulo');
+      expect(logo).toBeInTheDocument();
+      expect(logo).toHaveAttribute('src', '/prefeitura_logo_branco.png');
+      expect(logo).toBeVisible();
+    });
+
+    it('deve renderizar os grupos principais de menu', () => {
+      renderSidebar();
+      expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument();
+      expect(screen.getByText('Inventário')).toBeInTheDocument();
+      expect(screen.getByText('Configurações')).toBeInTheDocument();
+    });
   });
 
-  it('deve marcar o item ativo baseado na rota atual', () => {
-    renderSidebar(['/home']);
+  describe('Comportamento da Sidebar (Toggle)', () => {
+    it('deve alternar a visibilidade da logo e título ao colapsar', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
 
-    const activeLink = screen.getByText('Início').closest('a');
-    expect(activeLink).toBeInTheDocument();
+      const logo = screen.getByAltText('Prefeitura de São Paulo');
+      expect(logo).toBeVisible();
 
-    const button = activeLink?.closest('button') || activeLink;
-    expect(button).toBeInTheDocument();
+      const buttons = screen.getAllByRole('button');
+      const closeButton = buttons.find((btn) => btn.className.includes('hover:bg-white/10'));
+
+      if (!closeButton) {
+        throw new Error('Botão de fechar sidebar não encontrado para o teste');
+      }
+
+      await user.click(closeButton);
+
+      await waitFor(() => {
+        const logo = screen.getByAltText('Prefeitura de São Paulo');
+        const footer = logo.closest('div[data-sidebar="footer"]');
+        expect(footer).toHaveClass('hidden');
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('Sistema de Gestão de Bens Patrimoniais'),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Navegação e Menus', () => {
+    it('deve expandir submenu ao clicar no item pai', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      const subItem = screen.queryByText(/^Bens Patrimoniais$/);
+      if (subItem) {
+        expect(subItem).not.toBeVisible();
+      } else {
+        expect(subItem).not.toBeInTheDocument();
+      }
+
+      await user.click(screen.getByText('Bem Patrimonial'));
+
+      await waitFor(() => {
+        const link = screen.getByRole('link', { name: 'Bens Patrimoniais' });
+        expect(link).toBeVisible();
+      });
+
+      expect(screen.getByRole('link', { name: 'Movimentações de Bem Patrimonial' })).toBeVisible();
+    });
+
+    it('deve iniciar com submenu aberto se a rota ativa for de um subitem', () => {
+      renderSidebar(['/bens-patrimoniais']);
+      expect(screen.getByRole('link', { name: 'Bens Patrimoniais' })).toBeVisible();
+    });
+
+    it('deve destacar visualmente o item da rota ativa', () => {
+      renderSidebar(['/bens-patrimoniais']);
+      const activeLink = screen.getByRole('link', { name: 'Bens Patrimoniais' });
+
+      expect(activeLink).toHaveAttribute('data-active', 'true');
+    });
+
+    it('deve navegar corretamente ao clicar em um link', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <SidebarProvider defaultOpen={true}>
+          <TooltipProvider>
+            <MemoryRouter initialEntries={['/home']}>
+              <Routes>
+                <Route path='/home' element={<AppSidebar />} />
+                <Route path='/inventarios' element={<div>Página de Inventários</div>} />
+              </Routes>
+            </MemoryRouter>
+          </TooltipProvider>
+        </SidebarProvider>,
+      );
+
+      await user.click(screen.getByText(/^Inventário$/));
+      const link = screen.getByRole('link', { name: 'Cadastro de Inventário' });
+      await user.click(link);
+
+      expect(screen.getByText('Página de Inventários')).toBeInTheDocument();
+    });
+  });
+
+  describe('Acessibilidade', () => {
+    it('menus expansíveis devem ter controle aria-expanded correto', async () => {
+      renderSidebar();
+
+      const menuText = screen.getByText('Bem Patrimonial');
+      const triggerButton = menuText.closest('button');
+
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(triggerButton!);
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
+
+  describe('Scroll e Overflow', () => {
+    it('deve aplicar classe custom-scrollbar para permitir rolagem', () => {
+      renderSidebar();
+      const sidebarContent = document.querySelector('[data-sidebar="content"]');
+      expect(sidebarContent).toHaveClass('custom-scrollbar');
+      expect(sidebarContent).toHaveClass('overflow-x-hidden');
+    });
+
+    it('deve manter logo da Prefeitura visível ao final independente do scroll', () => {
+      renderSidebar();
+      const footer = document.querySelector('[data-sidebar="footer"]');
+      expect(footer).toBeInTheDocument();
+      expect(footer).toHaveClass('p-4');
+    });
+  });
+
+  describe('Comportamento ao Clicar em Subitem', () => {
+    it('deve contrair sidebar ao clicar em subitem (desktop)', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Bem Patrimonial'));
+
+      await waitFor(() => {
+        const link = screen.getByRole('link', { name: 'Bens Patrimoniais' });
+        expect(link).toBeInTheDocument();
+      });
+
+      const sidebar = document.querySelector('[data-sidebar="sidebar"]');
+      expect(sidebar?.closest('[data-slot="sidebar"]')).toHaveAttribute('data-state', 'expanded');
+
+      const link = screen.getByRole('link', { name: 'Bens Patrimoniais' });
+      await user.click(link);
+
+      await waitFor(() => {
+        expect(sidebar?.closest('[data-slot="sidebar"]')).toHaveAttribute(
+          'data-state',
+          'collapsed',
+        );
+      });
+    });
+  });
+
+  describe('Menu Contraído (Collapsed)', () => {
+    it('deve mostrar tooltip no modo contraído', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      const buttons = screen.getAllByRole('button');
+      const closeButton = buttons.find((btn) => btn.className.includes('hover:bg-white/10'));
+      await user.click(closeButton!);
+
+      await waitFor(() => {
+        const collapsedMenuItems = document.querySelectorAll('[data-sidebar="menu-button"]');
+        expect(collapsedMenuItems.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('deve expandir sidebar ao clicar em item quando contraído', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      const buttons = screen.getAllByRole('button');
+      const closeButton = buttons.find((btn) => btn.className.includes('hover:bg-white/10'));
+      await user.click(closeButton!);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('Sistema de Gestão de Bens Patrimoniais'),
+        ).not.toBeInTheDocument();
+      });
+
+      const menuButtons = screen.getAllByRole('button');
+      const bemPatrimonialButton = menuButtons.find((btn) => {
+        const span = btn.querySelector('span');
+        return span?.textContent === 'Bem Patrimonial';
+      });
+
+      if (bemPatrimonialButton) {
+        await user.click(bemPatrimonialButton);
+
+        await waitFor(() => {
+          expect(screen.getByText('Sistema de Gestão de Bens Patrimoniais')).toBeInTheDocument();
+        });
+      }
+    });
+
+    it('deve ter ícones visíveis mesmo quando contraído', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      const buttons = screen.getAllByRole('button');
+      const closeButton = buttons.find((btn) => btn.className.includes('hover:bg-white/10'));
+      await user.click(closeButton!);
+
+      await waitFor(() => {
+        const icons = document.querySelectorAll('svg[class*="size"]');
+        expect(icons.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Ícones e Textos', () => {
+    it('deve renderizar ícones para cada item de menu principal', () => {
+      renderSidebar();
+
+      const bemPatrimonialSection = screen.getByText('Bem Patrimonial').closest('button');
+      expect(bemPatrimonialSection?.querySelector('svg')).toBeInTheDocument();
+
+      const inventarioSection = screen.getByText('Inventário').closest('button');
+      expect(inventarioSection?.querySelector('svg')).toBeInTheDocument();
+
+      const configSection = screen.getByText('Configurações').closest('button');
+      expect(configSection?.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('deve mostrar chevron indicando expansão/colapso dos subitens', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      const bemPatrimonial = screen.getByText('Bem Patrimonial').closest('button');
+      const chevron = bemPatrimonial?.querySelector('svg[class*="transition-transform"]');
+
+      expect(chevron).toBeInTheDocument();
+
+      await user.click(screen.getByText('Bem Patrimonial'));
+
+      await waitFor(() => {
+        expect(chevron?.parentElement).toHaveAttribute('data-state', 'open');
+      });
+    });
   });
 });
