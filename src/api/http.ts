@@ -13,8 +13,15 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
+function getBaseUrl() {
+  const runtimeUrl = (window as any).__APP_CONFIG__?.VITE_API_URL
+  const buildUrl = import.meta.env.VITE_API_URL
+  if (runtimeUrl && runtimeUrl !== '__VITE_API_URL__') return runtimeUrl
+  return buildUrl
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
