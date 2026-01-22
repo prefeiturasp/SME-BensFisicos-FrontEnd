@@ -11,6 +11,7 @@ describe('PublicRoute', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: false,
       isLoading: false,
+      mustChangePassword: false,
     } as unknown as ReturnType<typeof useAuth>);
 
     render(
@@ -30,6 +31,7 @@ describe('PublicRoute', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: false,
       isLoading: true,
+      mustChangePassword: false,
     } as unknown as ReturnType<typeof useAuth>);
 
     const { container } = render(
@@ -45,6 +47,7 @@ describe('PublicRoute', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
+      mustChangePassword: false,
     } as unknown as ReturnType<typeof useAuth>);
 
     render(
@@ -59,6 +62,28 @@ describe('PublicRoute', () => {
     );
 
     expect(screen.getByText('Home Page')).toBeInTheDocument();
+    expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
+  });
+
+  it('deve redirecionar para /primeiro-acesso se autenticado e precisa trocar senha', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      mustChangePassword: true,
+    } as unknown as ReturnType<typeof useAuth>);
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route element={<PublicRoute />}>
+            <Route path='/login' element={<div>Login Page</div>} />
+          </Route>
+          <Route path='/primeiro-acesso' element={<div>Primeiro Acesso</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Primeiro Acesso')).toBeInTheDocument();
     expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
   });
 });
