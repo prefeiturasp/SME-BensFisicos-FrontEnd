@@ -16,33 +16,12 @@ import {
 import PasswordInput from '@/components/ui/password-input';
 import { AuthLayout } from '../components/AuthLayout';
 import { passwordService } from '../services/password.service';
+import { PASSWORD_REQUIREMENTS, changePasswordSchema } from '../validators/password';
 
 const TOAST_DURATION = 1500;
 const HOME_ROUTE = '/home';
 
 const INPUT_STYLES = 'h-11 border-gray-300 rounded-xs font-normal text-sm p-5 text-gray-700';
-
-const PASSWORD_REQUIREMENTS = [
-  'Sua nova senha não deve conter informações pessoais.',
-  'Sua senha deve ter ao menos 6 caracteres.',
-  'Sua senha deve conter letras, números e caracteres especiais.',
-] as const;
-
-const changePasswordSchema = z
-  .object({
-    oldPassword: z.string().min(1, 'Senha atual é obrigatória'),
-    password: z
-      .string()
-      .min(6, 'A senha deve ter no mínimo 6 caracteres')
-      .regex(/[a-zA-Z]/, 'A senha deve conter letras')
-      .regex(/\d/, 'A senha deve conter números')
-      .regex(/[^A-Za-z0-9]/, 'A senha deve conter caracteres especiais'),
-    confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'As senhas não coincidem',
-    path: ['confirmPassword'],
-  });
 
 type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
