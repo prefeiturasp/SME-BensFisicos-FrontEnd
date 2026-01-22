@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ResetPasswordPage from './ResetPasswordPage';
 import { passwordService } from '../services/password.service';
@@ -16,6 +17,15 @@ vi.mock('sonner', () => ({
     success: vi.fn(),
   },
 }));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 describe('ResetPasswordPage', () => {
   const defaultParams = { uidb64: 'MQ', token: 'abc123-token-valid' };
@@ -210,15 +220,17 @@ describe('ResetPasswordPage', () => {
       setupServiceMock();
       const { container } = renderComponent();
 
+      const user = userEvent.setup();
+
       const passwordInput = container.querySelector('input[name="password"]')!;
       const confirmInput = container.querySelector('input[name="confirmPassword"]')!;
       const btn = screen.getByRole('button', { name: /Salvar/i });
 
       const PASSWORD = 'NovaSenha123!';
 
-      fireEvent.change(passwordInput, { target: { value: PASSWORD } });
-      fireEvent.change(confirmInput, { target: { value: PASSWORD } });
-      fireEvent.click(btn);
+      await user.type(passwordInput, PASSWORD);
+      await user.type(confirmInput, PASSWORD);
+      await user.click(btn);
 
       await waitFor(() => expect(passwordService.confirmReset).toHaveBeenCalled());
 
@@ -226,9 +238,10 @@ describe('ResetPasswordPage', () => {
         description: 'Você será redirecionado para a tela de login.',
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-
-      await waitFor(() => expect(screen.getByText('Login Page')).toBeInTheDocument());
+      await waitFor(
+        () => expect(mockNavigate).toHaveBeenCalledWith('/', { state: { passwordReset: true } }),
+        { timeout: 2000 },
+      );
     });
   });
 

@@ -334,7 +334,7 @@ describe('ChangePasswordPage', () => {
       await user.type(newPasswordInput, validPass);
       await user.type(confirmInput, validPass);
 
-      newPasswordInput.focus();
+      await user.click(newPasswordInput);
 
       await user.click(btn);
 
