@@ -7,6 +7,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('./auth.service');
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 vi.mock('@/api/http', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/http')>();
   return {
@@ -49,12 +57,16 @@ describe('useAuth', () => {
     vi.mocked(getAuthToken).mockReturnValue(null);
     vi.mocked(authService.refreshToken).mockResolvedValue({ access: 'restored-token' });
     vi.mocked(authService.getCurrentUser).mockResolvedValue({
-      data: { id: 1, nome: 'User' } as unknown as User,
+      data: { id: 1, nome: 'User', must_change_password: false } as unknown as User,
     } as Awaited<ReturnType<typeof authService.getCurrentUser>>);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(result.current.user).toEqual({ id: 1, nome: 'User' }));
+    await waitFor(() =>
+      expect(result.current.user).toEqual(
+        expect.objectContaining({ id: 1, nome: 'User', must_change_password: false }),
+      ),
+    );
 
     expect(setAuthToken).toHaveBeenCalledWith('restored-token');
     expect(result.current.isAuthenticated).toBe(true);
@@ -63,7 +75,7 @@ describe('useAuth', () => {
   it('deve carregar usuário se token já existir', async () => {
     vi.mocked(getAuthToken).mockReturnValue('existing-token');
     vi.mocked(authService.getCurrentUser).mockResolvedValue({
-      data: { id: 2, nome: 'Logged' } as unknown as User,
+      data: { id: 2, nome: 'Logged', must_change_password: false } as unknown as User,
     } as Awaited<ReturnType<typeof authService.getCurrentUser>>);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
@@ -79,7 +91,7 @@ describe('useAuth', () => {
 
     const mockLoginResponse = {
       access: 'new-login-token',
-      user: { id: 10, nome: 'New User' } as unknown as User,
+      user: { id: 10, nome: 'New User', must_change_password: false } as unknown as User,
     };
     vi.mocked(authService.login).mockResolvedValue(mockLoginResponse);
 
@@ -89,12 +101,32 @@ describe('useAuth', () => {
 
     await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
     expect(setAuthToken).toHaveBeenCalledWith('new-login-token');
+    expect(mockNavigate).toHaveBeenCalledWith('/home');
+  });
+
+  it('deve redirecionar para primeiro acesso quando must_change_password for true', async () => {
+    const mockWrapper = createWrapper();
+    const { result } = renderHook(() => useAuth(), { wrapper: mockWrapper });
+
+    const mockLoginResponse = {
+      access: 'new-login-token',
+      user: { id: 10, nome: 'New User', must_change_password: true } as unknown as User,
+    };
+    vi.mocked(authService.login).mockResolvedValue(mockLoginResponse);
+
+    await act(async () => {
+      result.current.login({ username: 'u', password: 'p' });
+    });
+
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+    expect(setAuthToken).toHaveBeenCalledWith('new-login-token');
+    expect(mockNavigate).toHaveBeenCalledWith('/primeiro-acesso');
   });
 
   it('deve realizar logout', async () => {
     vi.mocked(getAuthToken).mockReturnValue('token');
     vi.mocked(authService.getCurrentUser).mockResolvedValue({
-      data: { id: 1 } as unknown as User,
+      data: { id: 1, must_change_password: false } as unknown as User,
     } as Awaited<ReturnType<typeof authService.getCurrentUser>>);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
