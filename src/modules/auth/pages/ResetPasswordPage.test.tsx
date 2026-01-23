@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ResetPasswordPage from './ResetPasswordPage';
 import { passwordService } from '../services/password.service';
 import { toast } from 'sonner';
+import { PASSWORD_REQUIREMENTS } from '../validators/password';
 
 vi.mock('../services/password.service', () => ({
   passwordService: {
@@ -64,9 +65,7 @@ describe('ResetPasswordPage', () => {
 
       expect(screen.getByText('Recuperar senha')).toBeInTheDocument();
       expect(screen.getByText('Crie uma nova senha:')).toBeInTheDocument();
-      expect(
-        screen.getByText('Sua senha não deve conter informações pessoais.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText(PASSWORD_REQUIREMENTS[0])).toBeInTheDocument();
 
       const passwordInput = container.querySelector('input[name="password"]');
       const confirmInput = container.querySelector('input[name="confirmPassword"]');
