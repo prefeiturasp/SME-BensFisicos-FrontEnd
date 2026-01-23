@@ -63,7 +63,7 @@ type PasswordRequirementsProps = {
   className?: string;
 };
 
-export function PasswordRequirements({ title, className }: PasswordRequirementsProps) {
+export function PasswordRequirements({ title, className }: Readonly<PasswordRequirementsProps>) {
   return (
     <div className={cn('mb-6', className)}>
       <p className='text-sm font-semibold text-black mb-2'>{title}</p>
@@ -90,7 +90,7 @@ export function NewPasswordFields<T extends FieldValues>({
   showPlaceholders = true,
   confirmItemClassName,
   autoFocus = false,
-}: NewPasswordFieldsProps<T>) {
+}: Readonly<NewPasswordFieldsProps<T>>) {
   return (
     <>
       <FormField
@@ -147,7 +147,7 @@ export function PasswordFormActions({
   isSubmitting,
   submitLabel = 'Salvar',
   submittingLabel = 'Salvando...',
-}: PasswordFormActionsProps) {
+}: Readonly<PasswordFormActionsProps>) {
   return (
     <>
       {error && (
