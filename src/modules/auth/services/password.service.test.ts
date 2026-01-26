@@ -154,4 +154,44 @@ describe('passwordService', () => {
       await expect(passwordService.changePassword(data)).rejects.toThrow('Erro ao trocar senha');
     });
   });
+
+  describe('firstAccessChangePassword', () => {
+    const data = {
+      new_password: 'new',
+      new_password_confirm: 'new',
+    };
+
+    it('deve chamar a API corretamente no primeiro acesso', async () => {
+      mockApiPost.mockResolvedValueOnce({});
+      await passwordService.firstAccessChangePassword(data);
+      expect(mockApiPost).toHaveBeenCalledWith('/auth/first-access-password-change/', data);
+    });
+
+    it('deve tratar erro de conexão', async () => {
+      const axiosError = new AxiosError();
+      mockApiPost.mockRejectedValueOnce(axiosError);
+      await expect(passwordService.firstAccessChangePassword(data)).rejects.toThrow(
+        'Erro de conexão com o servidor.',
+      );
+    });
+
+    it('deve tratar erro de new_password (array)', async () => {
+      mockApiPost.mockRejectedValueOnce(createAxiosError({ new_password: ['Senha fraca'] }));
+      await expect(passwordService.firstAccessChangePassword(data)).rejects.toThrow('Senha fraca');
+    });
+
+    it('deve lançar erro genérico ou detail se nenhum específico presente', async () => {
+      mockApiPost.mockRejectedValueOnce(createAxiosError({ detail: 'Erro genérico' }));
+      await expect(passwordService.firstAccessChangePassword(data)).rejects.toThrow(
+        'Erro genérico',
+      );
+    });
+
+    it('deve lançar mensagem de erro padrão se detail também ausente', async () => {
+      mockApiPost.mockRejectedValueOnce(createAxiosError({}));
+      await expect(passwordService.firstAccessChangePassword(data)).rejects.toThrow(
+        'Erro ao trocar senha',
+      );
+    });
+  });
 });

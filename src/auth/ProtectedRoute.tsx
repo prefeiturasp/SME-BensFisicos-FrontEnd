@@ -1,8 +1,11 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 
+const FIRST_ACCESS_ROUTE = '/primeiro-acesso';
+
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -17,6 +20,10 @@ export function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to='/' replace />;
+  }
+
+  if (mustChangePassword && location.pathname !== FIRST_ACCESS_ROUTE) {
+    return <Navigate to={FIRST_ACCESS_ROUTE} replace />;
   }
 
   return <Outlet />;

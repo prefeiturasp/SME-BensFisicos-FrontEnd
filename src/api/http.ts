@@ -1,5 +1,15 @@
 import axios from 'axios';
 
+interface AppConfig {
+  VITE_API_URL?: string;
+}
+
+declare global {
+  interface Window {
+    __APP_CONFIG__?: AppConfig;
+  }
+}
+
 let memoryToken: string | null = null;
 
 export const getAuthToken = () => memoryToken;
@@ -14,10 +24,10 @@ export const setAuthToken = (token: string | null) => {
 };
 
 function getBaseUrl() {
-  const runtimeUrl = (window as any).__APP_CONFIG__?.VITE_API_URL
-  const buildUrl = import.meta.env.VITE_API_URL
-  if (runtimeUrl && runtimeUrl !== '__VITE_API_URL__') return runtimeUrl
-  return buildUrl
+  const runtimeUrl = window.__APP_CONFIG__?.VITE_API_URL;
+  const buildUrl = import.meta.env.VITE_API_URL;
+  if (runtimeUrl && runtimeUrl !== '__VITE_API_URL__') return runtimeUrl;
+  return buildUrl;
 }
 
 export const api = axios.create({
