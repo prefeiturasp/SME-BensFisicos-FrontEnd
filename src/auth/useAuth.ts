@@ -35,6 +35,10 @@ export function useAuth() {
       setAuthToken(data.access);
       queryClient.setQueryData(['user'], data.user);
       await queryClient.refetchQueries({ queryKey: ['user'] });
+      if (data.user.must_change_password) {
+        navigate('/primeiro-acesso');
+        return;
+      }
       navigate('/home');
     },
   });
@@ -50,6 +54,7 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
+    mustChangePassword: !!user?.must_change_password,
     login: (credentials: LoginCredentials) => loginMutation.mutate(credentials),
     loginAsync: (credentials: LoginCredentials) => loginMutation.mutateAsync(credentials),
     isLoggingIn: loginMutation.isPending,

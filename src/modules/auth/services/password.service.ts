@@ -18,6 +18,11 @@ export interface PasswordChange {
   new_password_confirm: string;
 }
 
+export interface FirstAccessPasswordChange {
+  new_password: string;
+  new_password_confirm: string;
+}
+
 export const passwordService = {
   requestReset: async (data: PasswordResetRequest): Promise<void> => {
     try {
@@ -59,6 +64,22 @@ export const passwordService = {
   changePassword: async (data: PasswordChange): Promise<void> => {
     try {
       await api.post('/auth/password-change/', data);
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (!error.response) {
+          throw new Error('Erro de conexão com o servidor.');
+        }
+        const responseData = error.response.data;
+
+        handlePasswordChangeError(responseData);
+      }
+      throw error;
+    }
+  },
+
+  firstAccessChangePassword: async (data: FirstAccessPasswordChange): Promise<void> => {
+    try {
+      await api.post('/auth/first-access-password-change/', data);
     } catch (error) {
       if (error instanceof AxiosError) {
         if (!error.response) {

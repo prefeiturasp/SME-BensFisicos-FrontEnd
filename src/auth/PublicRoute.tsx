@@ -1,8 +1,10 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 
+const FIRST_ACCESS_ROUTE = '/primeiro-acesso';
+
 export function PublicRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAuth();
 
   if (isLoading) {
     return (
@@ -13,6 +15,9 @@ export function PublicRoute() {
   }
 
   if (isAuthenticated) {
+    if (mustChangePassword) {
+      return <Navigate to={FIRST_ACCESS_ROUTE} replace />;
+    }
     return <Navigate to='/home' replace />;
   }
 

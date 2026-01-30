@@ -20,6 +20,9 @@ vi.mock('@/modules/auth/pages/ResetPasswordPage', () => ({
 vi.mock('@/modules/auth/pages/ChangePasswordPage', () => ({
   default: () => <div>Change Password</div>,
 }));
+vi.mock('@/modules/auth/pages/FirstAccessChangePasswordPage', () => ({
+  default: () => <div data-testid='first-access'>First Access</div>,
+}));
 vi.mock('../pages/HomePage', () => ({
   default: () => <div data-testid='home-page'>Home Page</div>,
 }));
@@ -58,6 +61,7 @@ describe('AppRoutes', () => {
       isAuthenticated: false,
       isLoading: false,
       user: null,
+      mustChangePassword: false,
       login: vi.fn(),
       logout: vi.fn(),
       isLoggingIn: false,
@@ -78,6 +82,7 @@ describe('AppRoutes', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
+      mustChangePassword: false,
       user: {
         id: 1,
         username: 'test',
@@ -110,6 +115,7 @@ describe('AppRoutes', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
+      mustChangePassword: false,
       user: {
         id: 1,
         username: 'test',
@@ -143,6 +149,7 @@ describe('AppRoutes', () => {
       isAuthenticated: false,
       isLoading: false,
       user: null,
+      mustChangePassword: false,
       login: vi.fn(),
       logout: vi.fn(),
       isLoggingIn: false,
@@ -165,6 +172,7 @@ describe('AppRoutes', () => {
       isAuthenticated: false,
       isLoading: true,
       user: null,
+      mustChangePassword: false,
       login: vi.fn(),
       logout: vi.fn(),
       isLoggingIn: false,
@@ -187,6 +195,7 @@ describe('AppRoutes', () => {
       isAuthenticated: false,
       isLoading: false,
       user: null,
+      mustChangePassword: false,
       login: vi.fn(),
       logout: vi.fn(),
       isLoggingIn: false,
@@ -208,6 +217,7 @@ describe('AppRoutes', () => {
       vi.mocked(useAuth).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
+        mustChangePassword: false,
         user: {
           id: 1,
           username: 'test',
@@ -271,5 +281,37 @@ describe('AppRoutes', () => {
       );
       expect(screen.getByTestId('inventario-list')).toBeInTheDocument();
     });
+  });
+
+  it('deve redirecionar para primeiro acesso quando must_change_password for true', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      mustChangePassword: true,
+      user: {
+        id: 1,
+        username: 'test',
+        nome: 'Test User',
+        email: 'test@example.com',
+        rf: '1234567',
+        is_gestor_patrimonio: false,
+        is_operador_inventario: true,
+        must_change_password: true,
+        unidade_administrativa: { id: 1, nome: 'Exemplo' },
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoggingIn: false,
+      loginError: null,
+      loginAsync: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('first-access')).toBeInTheDocument();
   });
 });
