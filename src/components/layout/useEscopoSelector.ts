@@ -19,11 +19,12 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
     [user?.opcoes_escopo?.grupos],
   );
 
-  const selectedValue = user?.ua_ativa
-    ? `ua:${user.ua_ativa.id}`
-    : user?.uo_ativa
-      ? `uo:${user.uo_ativa.id}`
-      : '';
+  let selectedValue = '';
+  if (user?.ua_ativa) {
+    selectedValue = `ua:${user.ua_ativa.id}`;
+  } else if (user?.uo_ativa) {
+    selectedValue = `uo:${user.uo_ativa.id}`;
+  }
 
   const selectedLabel = user?.ua_ativa?.label ?? user?.uo_ativa?.label ?? 'Selecione a unidade';
 
@@ -58,8 +59,8 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
         unidade_orcamentaria_id: grupo.uo.unidade_orcamentaria_id,
       },
       {
-        onSuccess: async () => {
-          await handleEscopoSuccess({ uoId: grupo.uo.id, uaId: null }, grupo.uo.label);
+        onSuccess: () => {
+          void handleEscopoSuccess({ uoId: grupo.uo.id, uaId: null }, grupo.uo.label);
         },
       },
     );
@@ -71,8 +72,8 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
         unidade_administrativa_id: ua.unidade_administrativa_id,
       },
       {
-        onSuccess: async () => {
-          await handleEscopoSuccess(
+        onSuccess: () => {
+          void handleEscopoSuccess(
             {
               uoId: ua.unidade_orcamentaria_id,
               uaId: ua.unidade_administrativa_id,
@@ -112,21 +113,21 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
     const normalizedFilter = filter.trim().toLowerCase();
     if (!normalizedFilter) return grupos;
 
+    const matchesFilter = (values: Array<string | undefined>) => {
+      return values
+        .filter(Boolean)
+        .some((value) => (value as string).toLowerCase().includes(normalizedFilter));
+    };
+
     return grupos
       .map((grupo) => {
-        const uoMatches = [grupo.uo.label, grupo.uo.nome, grupo.uo.codigo]
-          .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(normalizedFilter));
+        const uoMatches = matchesFilter([grupo.uo.label, grupo.uo.nome, grupo.uo.codigo]);
 
         if (uoMatches) {
           return grupo;
         }
 
-        const uas = grupo.uas.filter((ua) =>
-          [ua.label, ua.nome, ua.codigo]
-            .filter(Boolean)
-            .some((value) => value.toLowerCase().includes(normalizedFilter)),
-        );
+        const uas = grupo.uas.filter((ua) => matchesFilter([ua.label, ua.nome, ua.codigo]));
 
         if (uas.length === 0) return null;
 

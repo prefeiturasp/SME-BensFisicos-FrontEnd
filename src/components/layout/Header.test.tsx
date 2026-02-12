@@ -4,8 +4,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { Header } from './Header';
 import { useAuth } from '@/auth/useAuth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEscopoSelector } from './useEscopoSelector';
 
 vi.mock('@/auth/useAuth');
+vi.mock('./useEscopoSelector');
 
 vi.mock('@/components/ui/sidebar', () => ({
   SidebarTrigger: ({ className }: { className: string }) => (
@@ -16,7 +18,12 @@ vi.mock('@/components/ui/sidebar', () => ({
 }));
 
 describe('Header', () => {
+  const asEscopoState = (state: unknown) =>
+    state as unknown as ReturnType<typeof useEscopoSelector>;
+
   const mockLogout = vi.fn();
+  const mockSetFilter = vi.fn();
+  const mockSelectEscopoByValue = vi.fn();
   const mockUser = {
     id: 1,
     username: 'test',
@@ -89,8 +96,26 @@ describe('Header', () => {
     );
   };
 
-  it('deve renderizar o logo com link para home', () => {
+  const mockEscopoState = {
+    grupos: mockUser.opcoes_escopo.grupos,
+    filter: '',
+    setFilter: mockSetFilter,
+    selectedValue: 'ua:10',
+    selectedLabel: '00.00.00.002 - Escola Municipal Teste',
+    filteredGroups: mockUser.opcoes_escopo.grupos,
+    isGroupExpanded: () => true,
+    updateGroupExpanded: vi.fn(),
+    selectEscopoByValue: mockSelectEscopoByValue,
+    selecionarEscopoMutation: { isPending: false } as unknown,
+  };
+
+  const setupMocks = () => {
     vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
+    vi.mocked(useEscopoSelector).mockReturnValue(asEscopoState(mockEscopoState));
+  };
+
+  it('deve renderizar o logo com link para home', () => {
+    setupMocks();
 
     renderWithProviders(<Header />);
 
@@ -100,7 +125,7 @@ describe('Header', () => {
   });
 
   it('deve exibir as informações do usuário logado', () => {
-    vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
+    setupMocks();
 
     renderWithProviders(<Header />);
 
@@ -113,6 +138,7 @@ describe('Header', () => {
       ...defaultAuthContext,
       user: { ...mockUser, is_gestor_patrimonio: true },
     });
+    vi.mocked(useEscopoSelector).mockReturnValue(asEscopoState(mockEscopoState));
 
     renderWithProviders(<Header />);
 
@@ -124,6 +150,7 @@ describe('Header', () => {
       ...defaultAuthContext,
       user: { ...mockUser, is_gestor_patrimonio: false },
     });
+    vi.mocked(useEscopoSelector).mockReturnValue(asEscopoState(mockEscopoState));
 
     renderWithProviders(<Header />);
 
@@ -131,7 +158,7 @@ describe('Header', () => {
   });
 
   it('deve chamar a função de logout ao clicar no botão sair', () => {
-    vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
+    setupMocks();
 
     renderWithProviders(<Header />);
 
@@ -142,7 +169,7 @@ describe('Header', () => {
   });
 
   it('deve exibir a unidade administrativa do usuário no select', () => {
-    vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
+    setupMocks();
 
     renderWithProviders(<Header />);
 
@@ -161,6 +188,14 @@ describe('Header', () => {
         ua_ativa: null,
       },
     });
+    vi.mocked(useEscopoSelector).mockReturnValue(
+      asEscopoState({
+        ...mockEscopoState,
+        grupos: [],
+        filteredGroups: [],
+        selectedLabel: 'Selecione a unidade',
+      }),
+    );
 
     renderWithProviders(<Header />);
 
@@ -178,9 +213,57 @@ describe('Header', () => {
         ua_ativa: null,
       },
     });
+    vi.mocked(useEscopoSelector).mockReturnValue(
+      asEscopoState({
+        ...mockEscopoState,
+        grupos: [],
+        filteredGroups: [],
+        selectedLabel: 'Selecione a unidade',
+      }),
+    );
 
     renderWithProviders(<Header />);
 
     expect(screen.queryByText('00.00.00.002 - Escola Municipal Teste')).not.toBeInTheDocument();
+  });
+
+  it('deve abrir e fechar dropdown ao clicar no toggle e pressionar Escape', () => {
+    setupMocks();
+    mockSelectEscopoByValue.mockReturnValue(false);
+
+    renderWithProviders(<Header />);
+
+    const toggle = screen.getByTestId('escopo-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('escopo-dropdown')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('escopo-dropdown')).not.toBeInTheDocument();
+  });
+
+  it('deve fechar dropdown ao clicar fora', () => {
+    setupMocks();
+
+    renderWithProviders(<Header />);
+
+    const toggle = screen.getByTestId('escopo-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('escopo-dropdown')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('escopo-dropdown')).not.toBeInTheDocument();
+  });
+
+  it('deve chamar seleção e limpar filtro ao selecionar item', () => {
+    setupMocks();
+    mockSelectEscopoByValue.mockReturnValue(true);
+
+    renderWithProviders(<Header />);
+
+    fireEvent.click(screen.getByTestId('escopo-toggle'));
+    fireEvent.click(screen.getByText('01.16.10 - SECRETARIA MUNICIPAL DE EDUCACAO'));
+
+    expect(mockSelectEscopoByValue).toHaveBeenCalledWith('uo:1');
+    expect(mockSetFilter).toHaveBeenCalledWith('');
   });
 });

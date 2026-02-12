@@ -107,7 +107,6 @@ export function Header() {
 
           {isOpen && (
             <div
-              role='listbox'
               data-testid='escopo-dropdown'
               className='absolute left-0 right-0 top-full z-80 mt-2 w-full min-w-full rounded-md border border-gray-200 bg-white shadow-2xl'
             >
