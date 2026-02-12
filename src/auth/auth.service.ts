@@ -9,9 +9,31 @@ export interface AuthTokens {
   access: string;
 }
 
-export interface UnidadeAdministrativa {
+export interface EscopoBase {
   id: number;
+  codigo: string;
   nome: string;
+  label: string;
+}
+
+export interface EscopoUo extends EscopoBase {
+  selecionavel: boolean;
+  unidade_administrativa_id: null;
+  unidade_orcamentaria_id: number;
+}
+
+export interface EscopoUa extends EscopoBase {
+  unidade_administrativa_id: number;
+  unidade_orcamentaria_id: number;
+}
+
+export interface EscopoGrupo {
+  uo: EscopoUo;
+  uas: EscopoUa[];
+}
+
+export interface OpcoesEscopo {
+  grupos: EscopoGrupo[];
 }
 
 export interface User {
@@ -23,12 +45,19 @@ export interface User {
   is_gestor_patrimonio: boolean;
   is_operador_inventario: boolean;
   must_change_password: boolean;
-  unidade_administrativa: UnidadeAdministrativa;
+  uo_ativa: EscopoBase | null;
+  ua_ativa: EscopoBase | null;
+  opcoes_escopo: OpcoesEscopo | null;
 }
 
 export interface LoginResponse {
   access: string;
   user: User;
+}
+
+export interface SelecionarEscopoPayload {
+  unidade_administrativa_id?: number | null;
+  unidade_orcamentaria_id?: number;
 }
 
 export const authService = {
@@ -47,6 +76,10 @@ export const authService = {
 
   getCurrentUser: async () => {
     return api.get<User>('/auth/me/');
+  },
+
+  selecionarEscopo: async (payload: SelecionarEscopoPayload) => {
+    return api.post('/auth/me/selecionar-ua/', payload);
   },
 
   refreshToken: async (): Promise<AuthTokens> => {
