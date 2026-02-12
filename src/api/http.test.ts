@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
 import { api, setAuthToken, getAuthToken } from './http';
+import { getEscopoStorage } from '@/lib/escopo-storage';
+
+vi.mock('@/lib/escopo-storage', () => ({
+  getEscopoStorage: vi.fn(),
+}));
 
 describe('http api', () => {
   let mock: MockAdapter;
@@ -8,6 +13,7 @@ describe('http api', () => {
   beforeEach(() => {
     mock = new MockAdapter(api);
     setAuthToken(null);
+    vi.mocked(getEscopoStorage).mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -32,6 +38,26 @@ describe('http api', () => {
     await api.get('/test');
 
     expect(mock.history.get[0].headers?.Authorization).toBe('Bearer test-token');
+  });
+
+  it('deve enviar headers de escopo em rotas não auth', async () => {
+    vi.mocked(getEscopoStorage).mockReturnValue({ uoId: 1, uaId: 2 });
+    mock.onGet('/bens').reply(200);
+
+    await api.get('/bens');
+
+    expect(mock.history.get[0].headers?.['X-UO-Id']).toBe('1');
+    expect(mock.history.get[0].headers?.['X-UA-Id']).toBe('2');
+  });
+
+  it('nao deve enviar headers de escopo para /auth/*', async () => {
+    vi.mocked(getEscopoStorage).mockReturnValue({ uoId: 1, uaId: 2 });
+    mock.onPost('/auth/me/selecionar-ua/').reply(200);
+
+    await api.post('/auth/me/selecionar-ua/', { unidade_administrativa_id: 10 });
+
+    expect(mock.history.post[0].headers?.['X-UO-Id']).toBeUndefined();
+    expect(mock.history.post[0].headers?.['X-UA-Id']).toBeUndefined();
   });
 
   it('deve rejeitar erros response != 401 normalmente', async () => {
