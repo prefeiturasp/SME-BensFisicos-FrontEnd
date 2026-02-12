@@ -3,25 +3,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { Header } from './Header';
 import { useAuth } from '@/auth/useAuth';
-import type { UnidadeAdministrativa } from '@/auth/auth.service';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('@/auth/useAuth');
-
-vi.mock('@/components/ui/select', () => ({
-  Select: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid='select'>{children}</div>
-  ),
-  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
-    <button data-testid='select-trigger'>{children}</button>
-  ),
-  SelectValue: ({ placeholder }: { placeholder: string }) => <span>{placeholder}</span>,
-  SelectContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid='select-content'>{children}</div>
-  ),
-  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
-    <div data-testid={`select-item-${value}`}>{children}</div>
-  ),
-}));
 
 vi.mock('@/components/ui/sidebar', () => ({
   SidebarTrigger: ({ className }: { className: string }) => (
@@ -42,7 +26,43 @@ describe('Header', () => {
     is_gestor_patrimonio: true,
     is_operador_inventario: false,
     must_change_password: false,
-    unidade_administrativa: { id: 10, nome: 'Escola Municipal Teste' },
+    uo_ativa: {
+      id: 1,
+      codigo: '01.16.10',
+      nome: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+      label: '01.16.10 - SECRETARIA MUNICIPAL DE EDUCACAO',
+    },
+    ua_ativa: {
+      id: 10,
+      codigo: '00.00.00.002',
+      nome: 'Escola Municipal Teste',
+      label: '00.00.00.002 - Escola Municipal Teste',
+    },
+    opcoes_escopo: {
+      grupos: [
+        {
+          uo: {
+            id: 1,
+            codigo: '01.16.10',
+            nome: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+            label: '01.16.10 - SECRETARIA MUNICIPAL DE EDUCACAO',
+            selecionavel: true,
+            unidade_administrativa_id: null,
+            unidade_orcamentaria_id: 1,
+          },
+          uas: [
+            {
+              id: 10,
+              codigo: '00.00.00.002',
+              nome: 'Escola Municipal Teste',
+              label: '00.00.00.002 - Escola Municipal Teste',
+              unidade_administrativa_id: 10,
+              unidade_orcamentaria_id: 1,
+            },
+          ],
+        },
+      ],
+    },
   };
 
   const defaultAuthContext = {
@@ -50,20 +70,29 @@ describe('Header', () => {
     logout: mockLogout,
     isAuthenticated: true,
     isLoading: false,
+    mustChangePassword: false,
     login: vi.fn(),
     isLoggingIn: false,
     loginError: null,
     loginAsync: vi.fn(),
   };
 
+  const renderWithProviders = (ui: React.ReactNode) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>{ui}</MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
   it('deve renderizar o logo com link para home', () => {
     vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     const logo = screen.getByAltText('Logo Bens Físicos');
     expect(logo).toBeInTheDocument();
@@ -73,11 +102,7 @@ describe('Header', () => {
   it('deve exibir as informações do usuário logado', () => {
     vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     expect(screen.getByText('1234567')).toBeInTheDocument();
     expect(screen.getByText('JOÃO DA SILVA')).toBeInTheDocument();
@@ -89,11 +114,7 @@ describe('Header', () => {
       user: { ...mockUser, is_gestor_patrimonio: true },
     });
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     expect(screen.getByText('GESTOR')).toBeInTheDocument();
   });
@@ -104,11 +125,7 @@ describe('Header', () => {
       user: { ...mockUser, is_gestor_patrimonio: false },
     });
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     expect(screen.getByText('OPERADOR')).toBeInTheDocument();
   });
@@ -116,11 +133,7 @@ describe('Header', () => {
   it('deve chamar a função de logout ao clicar no botão sair', () => {
     vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     const logoutButton = screen.getByText('Sair');
     fireEvent.click(logoutButton.closest('button')!);
@@ -131,13 +144,9 @@ describe('Header', () => {
   it('deve exibir a unidade administrativa do usuário no select', () => {
     vi.mocked(useAuth).mockReturnValue(defaultAuthContext);
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
-    expect(screen.getByText('Escola Municipal Teste')).toBeInTheDocument();
+    expect(screen.getByText('00.00.00.002 - Escola Municipal Teste')).toBeInTheDocument();
   });
 
   it('deve exibir valores padrão quando dados do usuário estão ausentes', () => {
@@ -147,15 +156,13 @@ describe('Header', () => {
         ...mockUser,
         rf: undefined as unknown as string,
         nome: undefined as unknown as string,
-        unidade_administrativa: undefined as unknown as UnidadeAdministrativa,
+        opcoes_escopo: { grupos: [] },
+        uo_ativa: null,
+        ua_ativa: null,
       },
     });
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
     expect(screen.getByText('00000000')).toBeInTheDocument();
     expect(screen.getByText('USUÁRIO DO SISTEMA')).toBeInTheDocument();
@@ -166,16 +173,14 @@ describe('Header', () => {
       ...defaultAuthContext,
       user: {
         ...mockUser,
-        unidade_administrativa: null as unknown as UnidadeAdministrativa,
+        opcoes_escopo: null,
+        uo_ativa: null,
+        ua_ativa: null,
       },
     });
 
-    render(
-      <MemoryRouter>
-        <Header />
-      </MemoryRouter>,
-    );
+    renderWithProviders(<Header />);
 
-    expect(screen.queryByText('Escola Municipal Teste')).not.toBeInTheDocument();
+    expect(screen.queryByText('00.00.00.002 - Escola Municipal Teste')).not.toBeInTheDocument();
   });
 });
