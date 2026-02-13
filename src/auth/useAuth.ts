@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService, type LoginCredentials } from './auth.service';
 import { setAuthToken, getAuthToken } from '@/api/http';
+import { clearEscopoStorage, setEscopoStorage } from '@/lib/escopo-storage';
 
 export function useAuth() {
   const navigate = useNavigate();
@@ -25,9 +27,22 @@ export function useAuth() {
         return null;
       }
     },
+
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (!user) {
+      clearEscopoStorage();
+      return;
+    }
+
+    setEscopoStorage({
+      uoId: user.uo_ativa?.id ?? null,
+      uaId: user.ua_ativa?.id ?? null,
+    });
+  }, [user]);
 
   const loginMutation = useMutation({
     mutationFn: authService.login,
@@ -46,6 +61,7 @@ export function useAuth() {
   const logout = async () => {
     await authService.logout();
     setAuthToken(null);
+    clearEscopoStorage();
     queryClient.clear();
     navigate('/');
   };

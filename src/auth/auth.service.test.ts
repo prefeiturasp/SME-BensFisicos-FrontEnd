@@ -70,4 +70,17 @@ describe('authService', () => {
       expect(result).toEqual(mockTokens);
     });
   });
+
+  describe('selecionarEscopo', () => {
+    it('deve fazer post para /auth/me/selecionar-ua/ com payload', async () => {
+      const payload = { unidade_administrativa_id: 129 };
+      const mockResponse = { ok: true };
+      mockApiPost.mockResolvedValueOnce({ data: mockResponse });
+
+      const result = await authService.selecionarEscopo(payload);
+
+      expect(mockApiPost).toHaveBeenCalledWith('/auth/me/selecionar-ua/', payload);
+      expect(result).toEqual({ data: mockResponse });
+    });
+  });
 });
