@@ -2,6 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAuth } from './useAuth';
 import { authService, type User } from './auth.service';
 import { getAuthToken, setAuthToken } from '@/api/http';
+import { clearEscopoStorage, setEscopoStorage } from '@/lib/escopo-storage';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,6 +24,10 @@ vi.mock('@/api/http', async (importOriginal) => {
     setAuthToken: vi.fn(),
   };
 });
+vi.mock('@/lib/escopo-storage', () => ({
+  clearEscopoStorage: vi.fn(),
+  setEscopoStorage: vi.fn(),
+}));
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -57,7 +62,13 @@ describe('useAuth', () => {
     vi.mocked(getAuthToken).mockReturnValue(null);
     vi.mocked(authService.refreshToken).mockResolvedValue({ access: 'restored-token' });
     vi.mocked(authService.getCurrentUser).mockResolvedValue({
-      data: { id: 1, nome: 'User', must_change_password: false } as unknown as User,
+      data: {
+        id: 1,
+        nome: 'User',
+        must_change_password: false,
+        uo_ativa: { id: 10 } as User['uo_ativa'],
+        ua_ativa: { id: 20 } as User['ua_ativa'],
+      } as unknown as User,
     } as Awaited<ReturnType<typeof authService.getCurrentUser>>);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
@@ -69,13 +80,20 @@ describe('useAuth', () => {
     );
 
     expect(setAuthToken).toHaveBeenCalledWith('restored-token');
+    expect(setEscopoStorage).toHaveBeenCalledWith({ uoId: 10, uaId: 20 });
     expect(result.current.isAuthenticated).toBe(true);
   });
 
   it('deve carregar usuário se token já existir', async () => {
     vi.mocked(getAuthToken).mockReturnValue('existing-token');
     vi.mocked(authService.getCurrentUser).mockResolvedValue({
-      data: { id: 2, nome: 'Logged', must_change_password: false } as unknown as User,
+      data: {
+        id: 2,
+        nome: 'Logged',
+        must_change_password: false,
+        uo_ativa: { id: 30 } as User['uo_ativa'],
+        ua_ativa: { id: 40 } as User['ua_ativa'],
+      } as unknown as User,
     } as Awaited<ReturnType<typeof authService.getCurrentUser>>);
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
@@ -83,6 +101,7 @@ describe('useAuth', () => {
     await waitFor(() => expect(result.current.user).toBeDefined());
     expect(result.current.user?.nome).toBe('Logged');
     expect(authService.refreshToken).not.toHaveBeenCalled();
+    expect(setEscopoStorage).toHaveBeenCalledWith({ uoId: 30, uaId: 40 });
   });
 
   it('deve realizar login com sucesso', async () => {
@@ -139,5 +158,6 @@ describe('useAuth', () => {
 
     expect(authService.logout).toHaveBeenCalled();
     expect(setAuthToken).toHaveBeenCalledWith(null);
+    expect(clearEscopoStorage).toHaveBeenCalled();
   });
 });
