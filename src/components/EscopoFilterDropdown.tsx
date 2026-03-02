@@ -29,10 +29,14 @@ export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
           ua.label.toLowerCase().includes(filter.toLowerCase())
         )
       }))
-      .filter(grupo =>
-        grupo.uo.label.toLowerCase().includes(filter.toLowerCase()) ||
-        grupo.uas.length > 0
-      )
+      .filter(grupo => {
+            const matchUO =
+                (grupo.uo?.label ?? '')
+                .toLowerCase()
+                .includes(filter.toLowerCase())
+            const matchUA = grupo.uas.length > 0
+            return matchUO || matchUA
+        })
   }, [filter, grupos])
 
   React.useEffect(() => {
