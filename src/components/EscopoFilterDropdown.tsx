@@ -35,7 +35,9 @@ export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
                 .toLowerCase()
                 .includes(filter.toLowerCase())
             const matchUA = grupo.uas.length > 0
-            return matchUO || matchUA
+            if (matchUO) return true
+            if (matchUA) return true
+            return false
         })
   }, [filter, grupos])
 
