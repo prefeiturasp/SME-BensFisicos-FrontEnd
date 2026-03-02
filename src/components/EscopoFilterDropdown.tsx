@@ -1,13 +1,13 @@
 import * as React from 'react'
-import { CheckCircle2, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
-interface Props {
+type Props = Readonly<{
   grupos: any[]
   value: string
   onChange: (value: string) => void
-}
+}>
 
 export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
   const [open, setOpen] = React.useState(false)
@@ -29,10 +29,16 @@ export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
           ua.label.toLowerCase().includes(filter.toLowerCase())
         )
       }))
-      .filter(grupo =>
-        grupo.uo.label.toLowerCase().includes(filter.toLowerCase()) ||
-        grupo.uas.length > 0
-      )
+      .filter(grupo => {
+            const matchUO =
+                (grupo.uo?.label ?? '')
+                .toLowerCase()
+                .includes(filter.toLowerCase())
+            const matchUA = grupo.uas.length > 0
+            if (matchUO) return true
+            if (matchUA) return true
+            return false
+        })
   }, [filter, grupos])
 
   React.useEffect(() => {
