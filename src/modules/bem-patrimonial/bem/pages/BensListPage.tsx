@@ -1,31 +1,356 @@
-import { Boxes } from 'lucide-react';
-import { AppBreadcrumb } from '@/components/AppBreadcrumb';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Eye, Network, ArrowLeft, FileText, ArrowUpDown } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/auth/useAuth'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { EscopoFilterDropdown } from '@/components/EscopoFilterDropdown'
+import { useBensList } from '../hooks/useBensList'
+import { usePagination } from '../hooks/usePagination'
+
+const PAGE_SIZE = 10
+
+const INPUT_CLASS =
+  'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center'
+
+const INPUT_SEARCH_CLASS =
+  'h-9 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-white'
+
+const ACTION_BUTTON_CLASS = `
+  h-10 px-6 bg-white border border-[#2F7D57]
+  text-[#2F7D57] hover:bg-[#2F7D57]
+  hover:text-white font-semibold rounded-md transition-colors
+`
+const ORDERING_MAP: Record<string, string> = {
+  numero_patrimonial: 'numero_patrimonial',
+  nome: 'nome',
+  unidade_administrativa: 'unidade_administrativa__nome', 
+  status: 'status',
+}
 
 export default function BensListPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const {
+    bens,
+    selectedIds,
+    page,
+    count,
+    loading,
+    searchInput,
+    statusFilter,
+    escopoFilter,
+    baixadosAntigos,
+    ordering,
+    setPage,
+    setSearchInput,
+    setStatusFilter,
+    setEscopoFilter,
+    setBaixadosAntigos,
+    setOrdering,
+    toggleSelect,
+    atualizarStatusSelecionados,
+  } = useBensList({ pageSize: PAGE_SIZE })
+
+  const { pages, totalPages } = usePagination({
+    page,
+    totalItems: count,
+    pageSize: PAGE_SIZE,
+  })
+
+  const isGestor = user?.is_gestor_patrimonio ?? false
+  const possuiSelecionados = isGestor && selectedIds.length > 0
+
+  const handleSort = (field: string) => {
+    const backendField = ORDERING_MAP[field] ?? field
+
+    setPage(1)
+
+    setOrdering(prev => {
+      if (prev === backendField) return `-${backendField}`
+      if (prev === `-${backendField}`) return ''
+      return backendField
+    })
+  }
+
+  const handleNovoCadastro = () => {
+    navigate('/bens-patrimoniais/novo')
+  }
+
+  const handleDetalhar = (id: number) => {
+    navigate(`/bens-patrimoniais/${id}`)
+  }
+
   return (
-    <div className='space-y-4'>
+    <div className='p-8 space-y-4'>
       <AppBreadcrumb
         items={[
-          { label: 'Bem Patrimonial', icon: Boxes },
+          { label: 'Bem Patrimonial', icon: Network },
           { label: 'Bens Patrimoniais', isActive: true },
         ]}
       />
 
-      <div className='flex justify-between items-center'>
-        <h1 className='text-xl font-bold tracking-tight text-gray-700'>Bens Patrimoniais</h1>
-        <Button
-          className='bg-white hover:bg-green-800 text-sm text-green-800 hover:text-white border-green-800 border rounded-sm p-5'
-          asChild
-        >
-          <Link to='/bens-patrimoniais/novo'>Novo Cadastro</Link>
-        </Button>
+      {/* HEADER */}
+      <div className='flex items-center justify-between'>
+        <h1 className='text-xl font-bold tracking-tight text-gray-700'>
+          Bens Patrimoniais
+        </h1>
+
+        <div className='flex items-center gap-3'>
+          <Button
+            type='button'
+            onClick={() => navigate(-1)}
+            className={ACTION_BUTTON_CLASS}
+          >
+            <ArrowLeft size={18} />
+          </Button>
+
+          {possuiSelecionados && (
+            <>
+              <Button
+                onClick={() =>
+                  atualizarStatusSelecionados(
+                    'aprovar',
+                    'Bens aprovados com sucesso',
+                    'Erro ao aprovar bens'
+                  )
+                }
+                className='h-10 px-4 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
+              >
+                Aprovar ({selectedIds.length})
+              </Button>
+
+              <Button
+                onClick={() =>
+                  atualizarStatusSelecionados(
+                    'reprovar',
+                    'Bens reprovados com sucesso',
+                    'Erro ao reprovar bens'
+                  )
+                }
+                className='h-10 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md'
+              >
+                Reprovar ({selectedIds.length})
+              </Button>
+            </>
+          )}
+
+          <Button type='button' className={ACTION_BUTTON_CLASS}>
+            <FileText size={16} />
+            Relatório
+          </Button>
+
+          <Button onClick={handleNovoCadastro} className={ACTION_BUTTON_CLASS}>
+            Novo Cadastro
+          </Button>
+        </div>
       </div>
 
-      <div className='border rounded-lg p-8 border-dashed flex justify-center items-center text-muted-foreground bg-muted/20 h-64'>
-        Lista de Bens Patrimoniais (DataTable)
-      </div>
+      {/* CARD */}
+      <Card className='p-6 space-y-6'>
+        {/* FILTROS */}
+        <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-semibold text-gray-700'>
+              Filtrar por Número Patrimonial ou Nome do Bem
+            </label>
+            <input
+              type='text'
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              className={INPUT_SEARCH_CLASS}
+              placeholder='Digite o número patrimonial ou Nome do Bem'
+            />
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-semibold text-gray-700'>
+              Filtrar por Unidade
+            </label>
+            <EscopoFilterDropdown
+              grupos={user?.opcoes_escopo?.grupos || []}
+              value={escopoFilter}
+              onChange={(val: string) => {
+                setEscopoFilter(val)
+                setPage(1)
+              }}
+            />
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <label className='text-sm font-semibold text-gray-700'>
+              Filtrar por Status
+            </label>
+            <Select
+              value={statusFilter}
+              onValueChange={(v: string) => {
+                setStatusFilter(v)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className={INPUT_CLASS}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='todos'>Todos</SelectItem>
+                <SelectItem value='aguardando_aprovacao'>
+                  Aguardando aprovação
+                </SelectItem>
+                <SelectItem value='aprovado'>Aprovado</SelectItem>
+                <SelectItem value='nao_aprovado'>Não aprovado</SelectItem>
+                <SelectItem value='baixa_fisica'>Baixa Física</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className='flex items-end pb-1'>
+            <label className='flex items-center gap-3 text-sm text-gray-700 cursor-pointer'>
+              <input
+                type='checkbox'
+                checked={baixadosAntigos}
+                onChange={e => {
+                  setBaixadosAntigos(e.target.checked)
+                  setPage(1)
+                }}
+                className='h-4 w-4 accent-[#00703C]'
+              />
+              Baixados há mais de um período
+            </label>
+          </div>
+        </div>
+
+        {/* TABELA */}
+        <div className='overflow-x-auto'>
+          <table className='w-full text-sm'>
+            <thead className='bg-[#F5F5F5] border-b'>
+              <tr className='text-left text-gray-600 font-semibold'>
+                <th className='p-3 w-10' />
+                {[
+                  { label: 'Número Patrimonial', field: 'numero_patrimonial' },
+                  { label: 'Nome do Bem', field: 'nome' },
+                  { label: 'Unidade Administrativa', field: 'unidade_administrativa' },
+                  { label: 'Situação', field: 'status' },
+                ].map(col => (
+                  <th
+                    key={col.field}
+                    className='p-3 cursor-pointer select-none'
+                    onClick={() => handleSort(col.field)}
+                  >
+                    <div className='flex items-center gap-2'>
+                      {col.label}
+                      <ArrowUpDown
+                        size={14}
+                        className={
+                          ordering.includes(col.field)
+                            ? 'text-[#00703C]'
+                            : 'text-gray-400'
+                        }
+                      />
+                    </div>
+                  </th>
+                ))}
+                <th className='p-3 text-center'>Ações</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td role="status" aria-live="polite" colSpan={6} className='text-center py-10'>
+                    Carregando...
+                  </td>
+                </tr>
+              ) : (
+                bens.map(bem => (
+                  <tr key={bem.id} className='border-b hover:bg-gray-50'>
+                    <td className='p-3'>
+                      <input
+                        type='checkbox'
+                        disabled={bem.status !== 'aguardando_aprovacao'}
+                        checked={selectedIds.includes(bem.id)}
+                        onChange={() => toggleSelect(bem)}
+                      />
+                    </td>
+
+                    <td className='p-3 font-medium'>
+                      {bem.numero_patrimonial ?? '-'}
+                    </td>
+                    <td className='p-3'>{bem.nome}</td>
+                    <td className='p-3'>
+                      {bem.unidade_administrativa_codigo} -{' '}
+                      {bem.unidade_administrativa_nome}
+                    </td>
+                    <td className='p-3'>{bem.status_display}</td>
+                    <td className='p-3 text-center'>
+                      <Button
+                        aria-label="Visualizar bem"
+                        size='icon'
+                        variant='ghost'
+                        onClick={() => handleDetalhar(bem.id)}
+                      >
+                        <Eye size={18} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* PAGINAÇÃO */}
+        <div className='flex justify-center mt-8'>
+          <div className='flex items-center gap-1'>
+            <Button
+              size='icon'
+              variant='ghost'
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              ‹
+            </Button>
+
+            {pages.map((item, index) =>
+              item === '...' ? (
+                <span key={index} className='px-2 text-gray-500 text-sm'>
+                  ...
+                </span>
+              ) : (
+                <Button
+                  key={item}
+                  size='sm'
+                  variant='outline'
+                  onClick={() => setPage(Number(item))}
+                  className={
+                    page === item
+                      ? 'bg-[#00703C] text-white border-[#00703C]'
+                      : ''
+                  }
+                >
+                  {item}
+                </Button>
+              )
+            )}
+
+            <Button
+              size='icon'
+              variant='ghost'
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              ›
+            </Button>
+          </div>
+        </div>
+      </Card>
     </div>
-  );
+  )
 }
