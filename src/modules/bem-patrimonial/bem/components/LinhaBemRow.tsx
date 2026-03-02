@@ -10,7 +10,7 @@ export type LinhaBem = {
   localizacao: string
 }
 
-export type LinhaBemRowProps = {
+export type LinhaBemRowProps = Readonly<{
   linha: LinhaBem
   index: number
   linhas: LinhaBem[]
@@ -18,7 +18,7 @@ export type LinhaBemRowProps = {
   removeLinha: (index: number) => void
   addLinha: () => void
   isLast: boolean
-}
+}>
 
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
@@ -67,7 +67,7 @@ export function LinhaBemRow({
             numeroHook.handleFormatoAntigoChange(e.target.checked)
           }}
         />
-        Formato anterior
+          <span>Formato anterior</span>
       </label>
 
       <label className="flex items-center gap-2 text-sm">
@@ -77,16 +77,16 @@ export function LinhaBemRow({
           onChange={(e) => {
             const newLinhas = [...linhas]
             newLinhas[index].sem_numeracao = e.target.checked
-            setLinhas(newLinhas)
+
             if (e.target.checked) {
-                const newLinhas = [...linhas]
                 newLinhas[index].numero_patrimonial = ''
                 newLinhas[index].numero_formato_antigo = false
-                setLinhas(newLinhas)
-                }
-          }}
+            }
+
+            setLinhas(newLinhas)
+         }}
         />
-        Sem número patrimonial
+        <span>Sem número patrimonial</span>
       </label>
 
       <Input
