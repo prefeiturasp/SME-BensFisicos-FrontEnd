@@ -1,13 +1,13 @@
 import * as React from 'react'
-import { CheckCircle2, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
-interface Props {
+type Props = Readonly<{
   grupos: any[]
   value: string
   onChange: (value: string) => void
-}
+}>
 
 export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
   const [open, setOpen] = React.useState(false)

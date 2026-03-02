@@ -183,7 +183,7 @@ export default function BensListPage() {
 
             <EscopoFilterDropdown
               id="filtro-unidade"
-              grupos={user?.opcoes_escopo?.grupos || []}
+              grupos={user?.opcoes_escopo?.grupos ?? []}
               value={escopoFilter}
               onChange={(val: string) => {
                 setEscopoFilter(val)
@@ -339,7 +339,7 @@ export default function BensListPage() {
             {pages.map((item, index) =>
               item === '...' ? (
                 <span
-                  key={`ellipsis-${index}`}
+                  key={`${item}-${index}-${pages.length}`}
                   className="px-2 text-gray-500 text-sm"
                 >
                   ...
