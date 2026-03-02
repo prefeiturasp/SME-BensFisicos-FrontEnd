@@ -85,37 +85,39 @@ describe('useNumeroPatrimonial', () => {
   // ===============================
 
   it('deve ativar formatoAntigo e desativar semNumeracao', () => {
-    const { result } = renderHook(() =>
-      useNumeroPatrimonial({
-        valor: '',
-        formatoAntigoInicial: false,
-        semNumeracaoInicial: true,
-      })
-    )
-
-    act(() => {
-      result.current.handleFormatoAntigoChange(true)
+  const { result } = renderHook(() =>
+    useNumeroPatrimonial({
+      valor: '',
+      formatoAntigoInicial: false,
+      semNumeracaoInicial: true,
     })
+  )
 
-    expect(result.current.formatoAntigo).toBe(true)
-    expect(result.current.semNumeracao).toBe(false)
+  act(() => {
+    result.current.ativarFormatoAntigo()
   })
 
-  it('deve desativar formatoAntigo quando false', () => {
+  expect(result.current.formatoAntigo).toBe(true)
+  expect(result.current.semNumeracao).toBe(false)
+    })
+
+  it('deve desativar formatoAntigo', () => {
     const { result } = renderHook(() =>
-      useNumeroPatrimonial({
+        useNumeroPatrimonial({
         valor: '',
         formatoAntigoInicial: true,
         semNumeracaoInicial: false,
-      })
+        })
     )
 
     act(() => {
-      result.current.handleFormatoAntigoChange(false)
+        result.current.desativarFormatoAntigo()
     })
 
     expect(result.current.formatoAntigo).toBe(false)
-  })
+    })
+
+  
 
   // ===============================
   // DISABLED

@@ -7,7 +7,9 @@ vi.mock('../../hooks/useNumeroPatrimonial', () => ({
   useNumeroPatrimonial: () => ({
     disabled: false,
     applyMask: (value: string) => `masked-${value}`,
-    handleFormatoAntigoChange: vi.fn(),
+    ativarFormatoAntigo: vi.fn(),
+    desativarFormatoAntigo: vi.fn(),
+    handleSemNumeracaoChange: vi.fn(),
   }),
 }))
 
