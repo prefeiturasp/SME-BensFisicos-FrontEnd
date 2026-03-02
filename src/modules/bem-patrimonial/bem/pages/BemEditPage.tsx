@@ -41,9 +41,9 @@ export default function BemEditPage() {
   const semNumeracao = form.watch('sem_numeracao')
 
   const numeroHook = useNumeroPatrimonial({
-    valor: numeroPatrimonial || '',
-    formatoAntigoInicial: formatoAntigo || false,
-    semNumeracaoInicial: semNumeracao || false,
+    valor: numeroPatrimonial ?? '',
+    formatoAntigoInicial: formatoAntigo ?? false,
+    semNumeracaoInicial: semNumeracao ?? false,
   })
 
   useEffect(() => {
@@ -133,10 +133,14 @@ export default function BemEditPage() {
 
               {/* UNIDADE */}
               <div className="space-y-1">
-                <label className="text-sm font-semibold text-gray-700">
+                <label
+                  htmlFor="unidade_administrativa"
+                  className="text-sm font-semibold text-gray-700"
+                >
                   Unidade Administrativa
                 </label>
                 <Input
+                  id="unidade_administrativa"
                   value={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
                   disabled
                   className={INPUT_CLASS}
@@ -177,23 +181,34 @@ export default function BemEditPage() {
                 control={form.control}
                 name="numero_formato_antigo"
                 render={({ field }) => (
-                  <div className="pt-9">
-                    <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={(e) => {
-                          field.onChange(e.target.checked)
-                          if (e.target.checked) {
-                            numeroHook.ativarFormatoAntigo()
-                          } else {
-                            numeroHook.desativarFormatoAntigo()
-                          }
-                        }}
-                      />
-                      Formato anterior
-                    </label>
-                  </div>
+                  <FormItem className="pt-9">
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <input
+                          id="numero_formato_antigo"
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => {
+                            field.onChange(e.target.checked)
+
+                            if (e.target.checked) {
+                              numeroHook.ativarFormatoAntigo()
+                            } else {
+                              numeroHook.desativarFormatoAntigo()
+                            }
+                          }}
+                          disabled={!podeEditar}
+                        />
+                      </FormControl>
+
+                      <FormLabel
+                        htmlFor="numero_formato_antigo"
+                        className="text-sm text-gray-700 whitespace-nowrap"
+                      >
+                        Formato anterior
+                      </FormLabel>
+                    </div>
+                  </FormItem>
                 )}
               />
 
@@ -202,20 +217,29 @@ export default function BemEditPage() {
                 control={form.control}
                 name="sem_numeracao"
                 render={({ field }) => (
-                  <div className="pt-9">
-                    <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={(e) => {
-                          field.onChange(e.target.checked)
-                          numeroHook.handleSemNumeracaoChange(e)
-                        }}
-                        disabled={!numeroHook.semNumeracao}
-                      />
-                      Sem número patrimonial
-                    </label>
-                  </div>
+                  <FormItem className="pt-9">
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <input
+                          id="sem_numeracao"
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => {
+                            field.onChange(e.target.checked)
+                            numeroHook.handleSemNumeracaoChange(e)
+                          }}
+                          disabled={!podeEditar}
+                        />
+                      </FormControl>
+
+                      <FormLabel
+                        htmlFor="sem_numeracao"
+                        className="text-sm text-gray-700 whitespace-nowrap"
+                      >
+                        Sem número patrimonial
+                      </FormLabel>
+                    </div>
+                  </FormItem>
                 )}
               />
 
