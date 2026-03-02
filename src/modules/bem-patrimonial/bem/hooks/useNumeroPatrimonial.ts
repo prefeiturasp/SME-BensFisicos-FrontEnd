@@ -49,13 +49,13 @@ export function useNumeroPatrimonial({
     return formatNovoPadrao(onlyDigits(input))
   }
 
-  function handleFormatoAntigoChange(checked: boolean) {
-    if (checked) {
-      setFormatoAntigo(true)
-      setSemNumeracao(false)
-    } else {
-      setFormatoAntigo(false)
-    }
+  function ativarFormatoAntigo() {
+    setFormatoAntigo(true)
+    setSemNumeracao(false)
+  }
+
+  function desativarFormatoAntigo() {
+    setFormatoAntigo(false)
   }
 
   const disabled =
@@ -66,6 +66,7 @@ export function useNumeroPatrimonial({
     semNumeracao,
     disabled,
     applyMask,
-    handleFormatoAntigoChange,
+    ativarFormatoAntigo,
+    desativarFormatoAntigo
   }
 }

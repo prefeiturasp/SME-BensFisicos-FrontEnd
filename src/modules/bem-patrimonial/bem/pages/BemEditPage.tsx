@@ -184,7 +184,11 @@ export default function BemEditPage() {
                         checked={field.value}
                         onChange={(e) => {
                           field.onChange(e.target.checked)
-                          numeroHook.handleFormatoAntigoChange(e.target.checked)
+                          if (e.target.checked) {
+                            numeroHook.ativarFormatoAntigo()
+                          } else {
+                            numeroHook.desativarFormatoAntigo()
+                          }
                         }}
                       />
                       Formato anterior

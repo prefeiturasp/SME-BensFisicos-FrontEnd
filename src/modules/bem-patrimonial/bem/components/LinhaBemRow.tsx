@@ -64,7 +64,11 @@ export function LinhaBemRow({
             const newLinhas = [...linhas]
             newLinhas[index].numero_formato_antigo = e.target.checked
             setLinhas(newLinhas)
-            numeroHook.handleFormatoAntigoChange(e.target.checked)
+            if (e.target.checked) {
+                numeroHook.ativarFormatoAntigo()
+            } else {
+                numeroHook.desativarFormatoAntigo()
+            }
           }}
         />
           <span>Formato anterior</span>
