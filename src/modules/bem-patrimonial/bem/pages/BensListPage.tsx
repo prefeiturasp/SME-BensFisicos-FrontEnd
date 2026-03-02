@@ -338,7 +338,10 @@ export default function BensListPage() {
 
             {pages.map((item, index) =>
               item === '...' ? (
-                <span key={index} className='px-2 text-gray-500 text-sm'>
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 text-gray-500 text-sm"
+                >
                   ...
                 </span>
               ) : (
