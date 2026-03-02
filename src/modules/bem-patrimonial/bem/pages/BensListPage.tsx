@@ -159,7 +159,9 @@ export default function BensListPage() {
         {/* FILTROS */}
         <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
           <div className='flex flex-col gap-2'>
-            <label className='text-sm font-semibold text-gray-700'>
+            <label 
+                htmlFor='search-bem'
+                className='text-sm font-semibold text-gray-700'>
               Filtrar por Número Patrimonial ou Nome do Bem
             </label>
             <input
@@ -172,11 +174,16 @@ export default function BensListPage() {
           </div>
 
           <div className='flex flex-col gap-2'>
-            <label className='text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor="filtro-unidade"
+              className="text-sm font-semibold text-gray-700"
+            >
               Filtrar por Unidade
             </label>
+
             <EscopoFilterDropdown
-              grupos={user?.opcoes_escopo?.grupos || []}
+              id="filtro-unidade"
+              grupos={user?.opcoes_escopo?.grupos ?? []}
               value={escopoFilter}
               onChange={(val: string) => {
                 setEscopoFilter(val)
@@ -186,10 +193,15 @@ export default function BensListPage() {
           </div>
 
           <div className='flex flex-col gap-2'>
-            <label className='text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor="filtro-status"
+              className="text-sm font-semibold text-gray-700"
+            >
               Filtrar por Status
             </label>
+
             <Select
+              id="filtro-status"
               value={statusFilter}
               onValueChange={(v: string) => {
                 setStatusFilter(v)
@@ -212,18 +224,24 @@ export default function BensListPage() {
           </div>
 
           <div className='flex items-end pb-1'>
-            <label className='flex items-center gap-3 text-sm text-gray-700 cursor-pointer'>
+            <div className="flex items-center gap-2">
               <input
-                type='checkbox'
+                id="baixados-antigos"
+                type="checkbox"
                 checked={baixadosAntigos}
                 onChange={e => {
                   setBaixadosAntigos(e.target.checked)
                   setPage(1)
                 }}
-                className='h-4 w-4 accent-[#00703C]'
+                className="h-4 w-4 accent-[#00703C]"
               />
-              Baixados há mais de um período
-            </label>
+              <label
+                htmlFor="baixados-antigos"
+                className="text-sm text-gray-700"
+              >
+                Baixados há mais de um período
+              </label>
+            </div>
           </div>
         </div>
 
@@ -264,8 +282,8 @@ export default function BensListPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td role="status" aria-live="polite" colSpan={6} className='text-center py-10'>
-                    Carregando...
+                  <td colSpan={6} className="text-center py-10">
+                    <span aria-live="polite">Carregando...</span>
                   </td>
                 </tr>
               ) : (
@@ -320,7 +338,10 @@ export default function BensListPage() {
 
             {pages.map((item, index) =>
               item === '...' ? (
-                <span key={index} className='px-2 text-gray-500 text-sm'>
+                <span
+                  key={`${item}-${index}-${pages.length}`}
+                  className="px-2 text-gray-500 text-sm"
+                >
                   ...
                 </span>
               ) : (
