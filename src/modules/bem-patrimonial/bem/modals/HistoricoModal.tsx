@@ -2,11 +2,11 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { bemService } from "../services/bem.service"
 
-interface Props {
+type Props = Readonly<{
     bemId: number
     open: boolean
     onClose: () => void
-}
+}>
 
 const FIELD_LABELS: Record<string, string> = {
     status: "Status",
@@ -102,10 +102,11 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                             {historico.map((item, index) => {
                                 const ativo = selecionado === index
                                 return (
-                                    <div
-                                        key={index}
+                                    <button
+                                        type="button"
+                                        key={`${item.alterado_em}-${item.alterado_por_nome}`}
                                         onClick={() => setSelecionado(index)}
-                                        className={`cursor-pointer rounded-xl p-4 transition-all border
+                                        className={`w-full text-left rounded-xl p-4 transition-all border
                                             ${ativo
                                                 ? "bg-[#1F2937] text-white border-[#1F2937]"
                                                 : "bg-gray-100 hover:bg-gray-200 border-transparent"
@@ -114,12 +115,12 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                                         <div className="flex items-center gap-3">
 
                                             <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold">
-                                                {item.alterado_por_nome?.charAt(0) || "S"}
+                                                {item.alterado_por_nome?.charAt(0) ?? "S"}
                                             </div>
 
                                             <div className="flex-1">
                                                 <div className="font-semibold text-sm">
-                                                    {item.alterado_por_nome || "Sistema"}
+                                                    {item.alterado_por_nome ?? "Sistema"}
                                                 </div>
                                                 <div className={`text-xs ${ativo ? "text-gray-300" : "text-gray-500"}`}>
                                                     {new Date(item.alterado_em).toLocaleString()}
@@ -127,7 +128,7 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                                             </div>
 
                                         </div>
-                                    </div>
+                                    </button>
                                 )
                             })}
 
@@ -154,7 +155,7 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                                     <div className="flex items-center gap-3">
 
                                         <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold">
-                                            {historico[selecionado].alterado_por_nome?.charAt(0) || "S"}
+                                            {historico[selecionado].alterado_por_nome?.charAt(0) ?? "S"}
                                         </div>
 
                                         <div>
@@ -171,8 +172,8 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                                 </div>
 
                                 <div className="space-y-5">
-                                    {historico[selecionado].acoes.map((acao: any, i: number) => (
-                                        <div key={i} className="text-sm">
+                                    {historico[selecionado].acoes.map((acao: any) => (
+                                        <div key={`${acao.campo}-${acao.valor_novo}`} className="text-sm">
 
                                             <div className="font-semibold text-gray-800 mb-1">
                                                 {formatFieldName(acao.campo)}
