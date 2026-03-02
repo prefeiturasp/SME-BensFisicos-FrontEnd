@@ -4,14 +4,14 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Boxes, Plus, Trash2 } from 'lucide-react'
+import { Boxes} from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService } from '../services/bem.service'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
-import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { LinhaBemRow } from '../components/LinhaBemRow'
 
 type LinhaBem = {
+  id: string
   numero_patrimonial: string
   numero_formato_antigo: boolean
   sem_numeracao: boolean
@@ -37,6 +37,7 @@ export default function BemCreatePage() {
 
   const [linhas, setLinhas] = useState<LinhaBem[]>([
     {
+      id: crypto.randomUUID(),
       numero_patrimonial: '',
       numero_formato_antigo: false,
       sem_numeracao: false,
@@ -45,9 +46,10 @@ export default function BemCreatePage() {
   ])
 
   const addLinha = () => {
-    setLinhas([
-      ...linhas,
+    setLinhas(prev => [
+      ...prev,
       {
+        id: crypto.randomUUID(),
         numero_patrimonial: '',
         numero_formato_antigo: false,
         sem_numeracao: false,
@@ -205,7 +207,7 @@ export default function BemCreatePage() {
           
           {linhas.map((linha, index) => (
             <LinhaBemRow
-              key={index}
+              key={linha.id}
               linha={linha}
               index={index}
               linhas={linhas}
