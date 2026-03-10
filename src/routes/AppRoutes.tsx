@@ -24,6 +24,7 @@ import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { PublicRoute } from '../auth/PublicRoute';
 
 import MainLayout from '@/components/layout/MainLayout';
+import UsuariosListPage from '@/modules/configuracoes/usuarios/pages/UsuariosListPage';
 
 
 export default function AppRoutes() {
@@ -59,6 +60,9 @@ export default function AppRoutes() {
 
           {/* Módulo: Inventário */}
           <Route path='/inventarios' element={<InventarioListPage />} />
+
+          {/* Módulo: Configurações */}
+          <Route path='/usuarios' element={<UsuariosListPage />} />
         </Route>
       </Route>
 
