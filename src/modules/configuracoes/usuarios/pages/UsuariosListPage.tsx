@@ -1,4 +1,4 @@
-import { Eye, ArrowLeft, ArrowUpDown, Users, Settings } from "lucide-react"
+import { Eye, ArrowLeft, ArrowUpDown, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -50,7 +50,6 @@ export default function UsuariosListPage() {
         unidadeFilter,
         grupoFilter,
         statusFilter,
-        ordering,
         setPage,
         setSearchInput,
         setUnidadeFilter,
@@ -128,98 +127,100 @@ export default function UsuariosListPage() {
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Nome do Usuário
+                            {/*  */}
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                className={INPUT_SEARCH_CLASS}
+                                placeholder="Digite o nome do usuário"
+                            />
                         </label>
-
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            className={INPUT_SEARCH_CLASS}
-                            placeholder="Digite o nome do usuário"
-                        />
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Unidade Administrativa
-                        </label>
 
-                        <Select
-                            value={unidadeFilter}
-                            onValueChange={(v) => {
-                                setUnidadeFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
+                            <Select
+                                value={unidadeFilter}
+                                onValueChange={(v) => {
+                                    setUnidadeFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
 
-                            <SelectContent>
+                                <SelectContent>
 
-                                <SelectItem value="todas">
-                                    Todas
-                                </SelectItem>
-
-                                {unidades.map(unidade => (
-                                    <SelectItem
-                                        key={unidade.id}
-                                        value={String(unidade.codigo)}
-                                    >
-                                        {unidade.codigo} - {unidade.nome}
+                                    <SelectItem value="todas">
+                                        Todas
                                     </SelectItem>
-                                ))}
 
-                            </SelectContent>
-                        </Select>
+                                    {unidades.map(unidade => (
+                                        <SelectItem
+                                            key={unidade.id}
+                                            value={String(unidade.codigo)}
+                                        >
+                                            {unidade.codigo} - {unidade.nome}
+                                        </SelectItem>
+                                    ))}
+
+                                </SelectContent>
+                            </Select>
+                        </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Grupo de Permissionamento
+
+
+                            <Select
+                                value={grupoFilter}
+                                onValueChange={(v) => {
+                                    setGrupoFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem>
+                                    <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </label>
-
-                        <Select
-                            value={grupoFilter}
-                            onValueChange={(v) => {
-                                setGrupoFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
-
-                            <SelectContent>
-                                <SelectItem value="todos">Todos</SelectItem>
-                                <SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem>
-                                <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Status
+
+
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(v) => {
+                                    setStatusFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                    <SelectItem value="ativo">Ativo</SelectItem>
+                                    <SelectItem value="inativo">Inativo</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </label>
-
-                        <Select
-                            value={statusFilter}
-                            onValueChange={(v) => {
-                                setStatusFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
-
-                            <SelectContent>
-                                <SelectItem value="todos">Todos</SelectItem>
-                                <SelectItem value="ativo">Ativo</SelectItem>
-                                <SelectItem value="inativo">Inativo</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
                 </div>
 
@@ -320,24 +321,27 @@ export default function UsuariosListPage() {
                             ‹
                         </Button>
 
-                        {pages.map((item, index) =>
-                            item === "..." ? (
-                                <span key={index} className="px-2 text-gray-500">
+                        {pages.map((item) =>
+                            item.type === "ellipsis" ? (
+                                <span
+                                    key={item.id}
+                                    className="px-2 text-gray-500"
+                                >
                                     ...
                                 </span>
                             ) : (
                                 <Button
-                                    key={item}
+                                    key={item.value}
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => setPage(Number(item))}
+                                    onClick={() => setPage(item.value)}
                                     className={
-                                        page === item
+                                        page === item.value
                                             ? "bg-[#00703C] text-white border-[#00703C]"
                                             : ""
                                     }
                                 >
-                                    {item}
+                                    {item.value}
                                 </Button>
                             )
                         )}
