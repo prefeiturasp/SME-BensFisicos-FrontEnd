@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 
-interface UsePaginationProps {
+type PaginationItem =
+  | { type: "page"; value: number }
+  | { type: "ellipsis"; id: string }
+
+type UsePaginationProps = {
   page: number
   totalItems: number
   pageSize: number
@@ -11,35 +15,44 @@ export function usePagination({
   totalItems,
   pageSize,
 }: UsePaginationProps) {
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalItems / pageSize)),
     [totalItems, pageSize]
   )
 
-  const pages = useMemo<(number | string)[]>(() => {
-    const result: (number | string)[] = []
+  const pages = useMemo<PaginationItem[]>(() => {
+
+    const result: PaginationItem[] = []
 
     if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) result.push(i)
+      for (let i = 1; i <= totalPages; i++) {
+        result.push({ type: "page", value: i })
+      }
       return result
     }
 
-    result.push(1)
+    result.push({ type: "page", value: 1 })
 
-    if (page > 4) result.push('...')
+    if (page > 4) {
+      result.push({ type: "ellipsis", id: "start" })
+    }
 
     const start = Math.max(2, page - 1)
     const end = Math.min(totalPages - 1, page + 1)
 
     for (let i = start; i <= end; i++) {
-      result.push(i)
+      result.push({ type: "page", value: i })
     }
 
-    if (page < totalPages - 3) result.push('...')
+    if (page < totalPages - 3) {
+      result.push({ type: "ellipsis", id: "end" })
+    }
 
-    result.push(totalPages)
+    result.push({ type: "page", value: totalPages })
 
     return result
+
   }, [page, totalPages])
 
   return {

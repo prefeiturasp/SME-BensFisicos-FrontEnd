@@ -127,50 +127,47 @@ export default function UsuariosListPage() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
-                            Filtrar por Nome do Usuário{''}
-                        
-
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            className={INPUT_SEARCH_CLASS}
-                            placeholder="Digite o nome do usuário"
-                        />
-
+                            Filtrar por Nome do Usuário
+                            {/*  */}
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                className={INPUT_SEARCH_CLASS}
+                                placeholder="Digite o nome do usuário"
+                            />
                         </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Unidade Administrativa
-                        
 
-                        <Select
-                            value={unidadeFilter}
-                            onValueChange={(v) => {
-                                setUnidadeFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
+                            <Select
+                                value={unidadeFilter}
+                                onValueChange={(v) => {
+                                    setUnidadeFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
 
-                            <SelectContent>
+                                <SelectContent>
 
-                                <SelectItem value="todas">
-                                    Todas
-                                </SelectItem>
-
-                                {unidades.map(unidade => (
-                                    <SelectItem
-                                        key={unidade.id}
-                                        value={String(unidade.codigo)}
-                                    >
-                                        {unidade.codigo} - {unidade.nome}
+                                    <SelectItem value="todas">
+                                        Todas
                                     </SelectItem>
-                                ))}
+
+                                    {unidades.map(unidade => (
+                                        <SelectItem
+                                            key={unidade.id}
+                                            value={String(unidade.codigo)}
+                                        >
+                                            {unidade.codigo} - {unidade.nome}
+                                        </SelectItem>
+                                    ))}
 
                             </SelectContent>
                         </Select>
@@ -182,16 +179,16 @@ export default function UsuariosListPage() {
                             Filtrar por Grupo de Permissionamento
                         
 
-                        <Select
-                            value={grupoFilter}
-                            onValueChange={(v) => {
-                                setGrupoFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
+                            <Select
+                                value={grupoFilter}
+                                onValueChange={(v) => {
+                                    setGrupoFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
 
                             <SelectContent>
                                 <SelectItem value="todos">Todos</SelectItem>
@@ -207,16 +204,16 @@ export default function UsuariosListPage() {
                             Filtrar por Status
                         
 
-                        <Select
-                            value={statusFilter}
-                            onValueChange={(v) => {
-                                setStatusFilter(v)
-                                setPage(1)
-                            }}
-                        >
-                            <SelectTrigger className={INPUT_CLASS}>
-                                <SelectValue />
-                            </SelectTrigger>
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(v) => {
+                                    setStatusFilter(v)
+                                    setPage(1)
+                                }}
+                            >
+                                <SelectTrigger className={INPUT_CLASS}>
+                                    <SelectValue />
+                                </SelectTrigger>
 
                             <SelectContent>
                                 <SelectItem value="todos">Todos</SelectItem>
@@ -325,24 +322,27 @@ export default function UsuariosListPage() {
                             ‹
                         </Button>
 
-                        {pages.map((item, index) =>
-                            item === "..." ? (
-                                <span key={index} className="px-2 text-gray-500">
+                        {pages.map((item) =>
+                            item.type === "ellipsis" ? (
+                                <span
+                                    key={item.id}
+                                    className="px-2 text-gray-500"
+                                >
                                     ...
                                 </span>
                             ) : (
                                 <Button
-                                    key={item}
+                                    key={item.value}
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => setPage(Number(item))}
+                                    onClick={() => setPage(item.value)}
                                     className={
-                                        page === item
+                                        page === item.value
                                             ? "bg-[#00703C] text-white border-[#00703C]"
                                             : ""
                                     }
                                 >
-                                    {item}
+                                    {item.value}
                                 </Button>
                             )
                         )}
