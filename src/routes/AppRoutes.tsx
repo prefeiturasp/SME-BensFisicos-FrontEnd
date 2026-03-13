@@ -25,6 +25,7 @@ import { PublicRoute } from '../auth/PublicRoute';
 
 import MainLayout from '@/components/layout/MainLayout';
 import UsuariosListPage from '@/modules/configuracoes/usuarios/pages/UsuariosListPage';
+import AdicionarUsuarioPage from '@/modules/configuracoes/usuarios/pages/AdicionarUsuarioPage';
 
 
 export default function AppRoutes() {
@@ -63,6 +64,7 @@ export default function AppRoutes() {
 
           {/* Módulo: Configurações */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
+          <Route path='/usuarios/novo' element={<AdicionarUsuarioPage />} />
         </Route>
       </Route>
 

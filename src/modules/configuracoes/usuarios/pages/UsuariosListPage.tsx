@@ -1,4 +1,4 @@
-import { Eye, ArrowLeft, ArrowUpDown, Users, Settings } from "lucide-react"
+import { Eye, ArrowLeft, ArrowUpDown, Settings, FileText } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -50,7 +50,6 @@ export default function UsuariosListPage() {
         unidadeFilter,
         grupoFilter,
         statusFilter,
-        ordering,
         setPage,
         setSearchInput,
         setUnidadeFilter,
@@ -109,7 +108,8 @@ export default function UsuariosListPage() {
                         <ArrowLeft size={18} />
                     </Button>
 
-                    <Button className={ACTION_BUTTON_CLASS}>
+                    <Button className={ACTION_BUTTON_CLASS} disabled>
+                        <FileText size={16} />
                         Relatório
                     </Button>
 
@@ -127,8 +127,8 @@ export default function UsuariosListPage() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
-                            Filtrar por Nome do Usuário
-                        </label>
+                            Filtrar por Nome do Usuário{''}
+                        
 
                         <input
                             type="text"
@@ -137,12 +137,14 @@ export default function UsuariosListPage() {
                             className={INPUT_SEARCH_CLASS}
                             placeholder="Digite o nome do usuário"
                         />
+
+                        </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Unidade Administrativa
-                        </label>
+                        
 
                         <Select
                             value={unidadeFilter}
@@ -172,12 +174,13 @@ export default function UsuariosListPage() {
 
                             </SelectContent>
                         </Select>
+                        </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Grupo de Permissionamento
-                        </label>
+                        
 
                         <Select
                             value={grupoFilter}
@@ -196,12 +199,13 @@ export default function UsuariosListPage() {
                                 <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
                             </SelectContent>
                         </Select>
+                        </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Status
-                        </label>
+                        
 
                         <Select
                             value={statusFilter}
@@ -220,6 +224,7 @@ export default function UsuariosListPage() {
                                 <SelectItem value="inativo">Inativo</SelectItem>
                             </SelectContent>
                         </Select>
+                        </label>
                     </div>
                 </div>
 
