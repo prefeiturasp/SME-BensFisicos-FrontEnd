@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { LinhaBemRow, LinhaBem } from '../LinhaBemRow'
+import { LinhaBemRow } from '../LinhaBemRow'
+import type { LinhaBem } from '../LinhaBemRow'
 
 // Mock do hook
 vi.mock('../../hooks/useNumeroPatrimonial', () => ({
@@ -127,5 +128,68 @@ describe('LinhaBemRow', () => {
 
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBe(1) // só lixeira
+  })
+
+  it('deve exibir erro de numero_patrimonial quando errors é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{ numero_patrimonial: 'Número inválido' }}
+      />
+    )
+
+    expect(screen.getByText('Número inválido')).toBeInTheDocument()
+  })
+
+  it('não deve exibir mensagem de erro quando errors é undefined', () => {
+    renderComponent()
+
+    expect(screen.queryByText('Número inválido')).not.toBeInTheDocument()
+  })
+
+  it('não deve exibir mensagem de erro quando errors está vazio', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{}}
+      />
+    )
+
+    expect(screen.queryByText('Número inválido')).not.toBeInTheDocument()
+    expect(screen.queryByText('Localização é obrigatória.')).not.toBeInTheDocument()
+  })
+
+  it('deve exibir erro de localizacao quando errors.localizacao é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+      />
+    )
+
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+  })
+
+  it('deve exibir label de Localização com asterisco obrigatório', () => {
+    renderComponent()
+    expect(screen.getByText('*')).toBeInTheDocument()
   })
 })
