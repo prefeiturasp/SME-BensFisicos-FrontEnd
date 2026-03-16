@@ -52,12 +52,14 @@ function UASearchSelect({
   onChange,
   uas,
   error,
-}: {
+  id,
+}: Readonly<{
   value: string
   onChange: (id: string) => void
   uas: any[]
   error?: string
-}) {
+  id?: string
+}>) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [displayValue, setDisplayValue] = useState('')
@@ -87,6 +89,7 @@ function UASearchSelect({
   return (
     <div ref={ref} className="relative">
       <input
+        id={id}
         className={INPUT_CLASS}
         placeholder="Buscar Unidade Administrativa..."
         value={open ? search : displayValue}
@@ -306,10 +309,11 @@ export default function BemCreatePage() {
 
           {/* UNIDADE ADMINISTRATIVA */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
               Unidade Administrativa <span className="text-red-500">*</span>
             </label>
             <UASearchSelect
+              id="unidade_administrativa"
               value={formBase.unidade_administrativa}
               onChange={id => setField('unidade_administrativa', id)}
               uas={todasUAs}
@@ -319,10 +323,11 @@ export default function BemCreatePage() {
 
           {/* NOME */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
               Nome do Bem <span className="text-red-500">*</span>
             </label>
             <Input
+              id="nome"
               className={INPUT_CLASS}
               placeholder="Nome do Bem"
               value={formBase.nome}
@@ -336,10 +341,11 @@ export default function BemCreatePage() {
 
         {/* DESCRIÇÃO */}
         <div className="space-y-1">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
             Descrição <span className="text-red-500">*</span>
           </label>
           <Textarea
+            id="descricao"
             className="min-h-25"
             placeholder="Descrição do Bem"
             value={formBase.descricao}
@@ -354,10 +360,11 @@ export default function BemCreatePage() {
 
           {/* VALOR UNITÁRIO */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
               Valor Unitário <span className="text-red-500">*</span>
             </label>
             <Input
+              id="valor_unitario"
               className={INPUT_CLASS}
               placeholder="0,00"
               value={formBase.valor_unitario}
@@ -370,10 +377,11 @@ export default function BemCreatePage() {
 
           {/* MARCA */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="marca" className="text-sm font-semibold text-gray-700">
               Marca <span className="text-red-500">*</span>
             </label>
             <Input
+              id="marca"
               className={INPUT_CLASS}
               placeholder="Marca"
               value={formBase.marca}
@@ -386,10 +394,11 @@ export default function BemCreatePage() {
 
           {/* MODELO */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
+            <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
               Modelo <span className="text-red-500">*</span>
             </label>
             <Input
+              id="modelo"
               className={INPUT_CLASS}
               placeholder="Modelo"
               value={formBase.modelo}
@@ -403,10 +412,11 @@ export default function BemCreatePage() {
 
         {/* NÚMERO DO PROCESSO */}
         <div className="space-y-1">
-          <label className="text-sm font-semibold text-gray-700">
+          <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
             Número do processo de incorporação
           </label>
           <Input
+            id="numero_processo"
             className={INPUT_CLASS}
             placeholder="Número do processo de incorporação"
             value={formBase.numero_processo}

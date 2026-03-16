@@ -46,10 +46,11 @@ export function LinhaBemRow({
 
       {/* NÚMERO PATRIMONIAL */}
       <div className="space-y-1">
-        <label className="text-sm font-semibold text-gray-700">
+        <label htmlFor={`numero_patrimonial_${index}`} className="text-sm font-semibold text-gray-700">
           Número Patrimonial
         </label>
         <Input
+          id={`numero_patrimonial_${index}`}
           className={INPUT_CLASS}
           placeholder="000.000000000-0"
           value={linha.numero_patrimonial}
@@ -120,10 +121,11 @@ export function LinhaBemRow({
 
       {/* LOCALIZAÇÃO */}
       <div className="space-y-1">
-        <label className="text-sm font-semibold text-gray-700">
+        <label htmlFor={`localizacao_${index}`} className="text-sm font-semibold text-gray-700">
           Localização <span className="text-red-500">*</span>
         </label>
         <Input
+          id={`localizacao_${index}`}
           className={INPUT_CLASS}
           placeholder="Localização"
           value={linha.localizacao}
