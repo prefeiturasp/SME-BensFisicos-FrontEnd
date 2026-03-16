@@ -45,9 +45,9 @@ export function usePagination({
       result.push({ type: "page", value: i })
     }
 
-    if (page < totalPages - 3) {
+    if (page < totalPages - 3)
       result.push({ type: "ellipsis", id: "end" })
-    }
+    
 
     result.push({ type: "page", value: totalPages })
 
