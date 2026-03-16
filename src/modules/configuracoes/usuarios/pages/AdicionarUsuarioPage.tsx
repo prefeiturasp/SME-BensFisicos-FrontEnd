@@ -1,6 +1,6 @@
 import { ArrowLeft, Settings, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -21,6 +21,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 
+import { usuarioService } from "../service/usuario.service"
+import { unidadeAdministrativaService } from "../../unidades-administrativas/service/unidadeAdministrativa.service"
+
 type FormData = z.infer<typeof adicionarUsuarioSchema>
 
 const INPUT_CLASS =
@@ -36,11 +39,15 @@ const ACTION_BUTTON_CLASS = `
 `
 
 export default function AdicionarUsuarioPage() {
-
   const navigate = useNavigate()
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<any[]>([])
 
   const {
     register,
@@ -54,18 +61,60 @@ export default function AdicionarUsuarioPage() {
     },
   })
 
-  const onSubmit = (data: FormData) => {
-    console.log("dados validados", data)
+  useEffect(() => {
+    const carregarUnidades = async () => {
+      try {
+        const response = await unidadeAdministrativaService.list()
+
+        // dependendo da API pode ser response.results
+        setUnidadesAdministrativas(response.results ?? response)
+      } catch (error) {
+        console.error("Erro ao carregar unidades administrativas", error)
+      }
+    }
+
+    carregarUnidades()
+  }, [])
+
+  const onSubmit = async (data: FormData) => {
+    try {
+      setLoading(true)
+      setErrorMessage(null)
+
+      const payload = {
+        username: data.username,
+        nome: data.nome,
+        email: data.email,
+        rf: data.rf,
+        unidade_codigo: data.unidade,
+        grupo_nome: data.grupo,
+        password: data.password,
+        password_confirm: data.confirmPassword,
+        is_active: data.status === "ativo",
+      }
+
+      await usuarioService.create(payload)
+
+      navigate("/usuarios")
+
+    } catch (error: any) {
+
+      if (error?.response?.data) {
+        setErrorMessage("Erro de validação ao criar usuário")
+      } else {
+        setErrorMessage(error.message || "Erro ao criar usuário")
+      }
+
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const REQUIRED = (
-    <span className="text-red-500 ml-1">*</span>
-  )
+  const REQUIRED = <span className="text-red-500 ml-1">*</span>
 
   return (
     <div className="p-8 space-y-4">
 
-      {/* Breadcrumb */}
       <AppBreadcrumb
         items={[
           { label: "Configurações", icon: Settings },
@@ -74,7 +123,6 @@ export default function AdicionarUsuarioPage() {
         ]}
       />
 
-      {/* Header */}
       <div className="flex items-center justify-between">
 
         <h1 className="text-xl font-bold tracking-tight text-gray-700">
@@ -93,9 +141,10 @@ export default function AdicionarUsuarioPage() {
 
           <Button
             onClick={handleSubmit(onSubmit)}
+            disabled={loading}
             className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md"
           >
-            Salvar
+            {loading ? "Salvando..." : "Salvar"}
           </Button>
 
           <Button
@@ -108,12 +157,16 @@ export default function AdicionarUsuarioPage() {
         </div>
       </div>
 
-      {/* Card */}
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">
+          {errorMessage}
+        </div>
+      )}
+
       <Card className="p-6 space-y-6 h-[calc(70vh-75px)]">
 
         <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          {/* Nome */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Nome Completo{REQUIRED}
@@ -133,7 +186,6 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* RF */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               RF{REQUIRED}
@@ -153,22 +205,26 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* Unidade Administrativa */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Unidade Administrativa{REQUIRED}
             </label>
 
-            <Select onValueChange={(value) => setValue("unidade", value)}>
+            <Select onValueChange={(value) => setValue("unidade", value, { shouldValidate: true })}>
 
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Selecione uma UA" />
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="1">
-                  01 - Secretaria de Educação
-                </SelectItem>
+                {unidadesAdministrativas.map(unidade => (
+                  <SelectItem
+                    key={unidade.id}
+                    value={String(unidade.codigo)}
+                  >
+                    {unidade.codigo} - {unidade.nome}
+                  </SelectItem>
+                ))}
               </SelectContent>
 
             </Select>
@@ -180,18 +236,18 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* Username */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Nome de Usuário de Acesso
-            </label>
 
-            <input
-              type="text"
-              placeholder="Digite o nome de usuário de acesso"
-              className={INPUT_TEXT_CLASS}
-              {...register("username")}
-            />
+              {/*  */}
+              <input
+                type="text"
+                placeholder="Digite o nome de usuário de acesso"
+                className={INPUT_TEXT_CLASS}
+                {...register("username")}
+              />
+            </label>
 
             {errors.username && (
               <span className="text-red-600 text-sm">
@@ -200,7 +256,6 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* Email */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               E-mail do Usuário{REQUIRED}
@@ -220,19 +275,19 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* Grupo */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Grupo de Permissionamento{REQUIRED}
             </label>
 
-            <Select onValueChange={(value) => setValue("grupo", value)}>
+            <Select onValueChange={(value) => setValue("grupo", value, { shouldValidate: true })}>
 
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Selecione os grupos" />
               </SelectTrigger>
 
               <SelectContent>
+
                 <SelectItem value="GESTOR_PATRIMONIO">
                   Gestor
                 </SelectItem>
@@ -240,6 +295,7 @@ export default function AdicionarUsuarioPage() {
                 <SelectItem value="OPERADOR_INVENTARIO">
                   Operador
                 </SelectItem>
+
               </SelectContent>
 
             </Select>
@@ -251,97 +307,102 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* Senha */}
           <div className="flex flex-col gap-2">
+
             <label className="text-sm font-semibold text-gray-700">
               Cadastre uma Senha
+
+
+              <div className="relative">
+
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Cadastre uma senha"
+                  className={INPUT_TEXT_CLASS}
+                  {...register("password")}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-500"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+
+              </div>
             </label>
-
-            <div className="relative">
-
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Cadastre uma senha"
-                className={INPUT_TEXT_CLASS}
-                {...register("password")}
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-500"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-
-            </div>
 
             {errors.password && (
               <span className="text-red-600 text-sm">
                 {errors.password.message}
               </span>
             )}
+
           </div>
 
-          {/* Confirmar senha */}
           <div className="flex flex-col gap-2">
+
             <label className="text-sm font-semibold text-gray-700">
               Confirme a Senha
+
+
+              <div className="relative">
+
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirme a senha"
+                  className={INPUT_TEXT_CLASS}
+                  {...register("confirmPassword")}
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirmPassword(!showConfirmPassword)
+                  }
+                  className="absolute right-3 top-3 text-gray-500"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+
+              </div>
             </label>
-
-            <div className="relative">
-
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirme a senha"
-                className={INPUT_TEXT_CLASS}
-                {...register("confirmPassword")}
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
-                className="absolute right-3 top-3 text-gray-500"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff size={18} />
-                ) : (
-                  <Eye size={18} />
-                )}
-              </button>
-
-            </div>
 
             {errors.confirmPassword && (
               <span className="text-red-600 text-sm">
                 {errors.confirmPassword.message}
               </span>
             )}
+
           </div>
 
-          {/* Status */}
           <div className="flex flex-col gap-2">
+
             <label className="text-sm font-semibold text-gray-700">
               Status
+
+
+              <Select
+                defaultValue="ativo"
+                onValueChange={(value) => setValue("status", value)}
+              >
+
+                <SelectTrigger className={INPUT_CLASS}>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                </SelectContent>
+
+              </Select>
             </label>
-
-            <Select
-              defaultValue="ativo"
-              onValueChange={(value) => setValue("status", value)}
-            >
-
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="ativo">Ativo</SelectItem>
-                <SelectItem value="inativo">Inativo</SelectItem>
-              </SelectContent>
-
-            </Select>
 
           </div>
 
