@@ -162,7 +162,7 @@ export default function BensListPage() {
             <label 
                 htmlFor='search-bem'
                 className='text-sm font-semibold text-gray-700'>
-              Filtrar por Número Patrimonial ou Nome do Bem
+              Filtrar por Número, Nome do Bem
             </label>
             <input
               type='text'
