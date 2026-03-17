@@ -1,5 +1,6 @@
 import { Eye, ArrowLeft, ArrowUpDown, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -13,6 +14,7 @@ import {
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { useUsuariosList } from "../hooks/useUsuariosList"
 import { usePagination } from "../hooks/usePagination"
+import { authService, type EscopoUa } from "../../../../auth/auth.service"
 
 const PAGE_SIZE = 10
 
@@ -40,9 +42,11 @@ const ORDERING_MAP: Record<string, string> = {
 export default function UsuariosListPage() {
     const navigate = useNavigate()
 
+    // UAs do escopo do usuário logado — fonte: auth/me
+    const [unidades, setUnidades] = useState<EscopoUa[]>([])
+
     const {
         usuarios,
-        unidades,
         page,
         count,
         loading,
@@ -63,6 +67,21 @@ export default function UsuariosListPage() {
         totalItems: count,
         pageSize: PAGE_SIZE,
     })
+
+    useEffect(() => {
+        const carregarUnidadesDoEscopo = async () => {
+            try {
+                const { data: me } = await authService.getCurrentUser()
+                const uas: EscopoUa[] =
+                    me.opcoes_escopo?.grupos.flatMap(grupo => grupo.uas) ?? []
+                setUnidades(uas)
+            } catch (error) {
+                console.error("Erro ao carregar unidades do escopo", error)
+            }
+        }
+
+        carregarUnidadesDoEscopo()
+    }, [])
 
     const handleSort = (field: string) => {
         const backendField = ORDERING_MAP[field] ?? field
@@ -154,20 +173,18 @@ export default function UsuariosListPage() {
                                 </SelectTrigger>
 
                                 <SelectContent>
-
                                     <SelectItem value="todas">
                                         Todas
                                     </SelectItem>
 
-                                    {unidades.map(unidade => (
+                                    {unidades.map(ua => (
                                         <SelectItem
-                                            key={unidade.id}
-                                            value={String(unidade.codigo)}
+                                            key={ua.unidade_administrativa_id}
+                                            value={ua.codigo}
                                         >
-                                            {unidade.codigo} - {unidade.nome}
+                                            {ua.codigo} - {ua.nome}
                                         </SelectItem>
                                     ))}
-
                                 </SelectContent>
                             </Select>
                         </label>
@@ -176,7 +193,6 @@ export default function UsuariosListPage() {
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Grupo de Permissionamento
-
 
                             <Select
                                 value={grupoFilter}
@@ -201,7 +217,6 @@ export default function UsuariosListPage() {
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Filtrar por Status
-
 
                             <Select
                                 value={statusFilter}
