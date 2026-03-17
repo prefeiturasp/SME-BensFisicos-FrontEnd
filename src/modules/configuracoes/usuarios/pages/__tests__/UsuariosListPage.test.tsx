@@ -1,19 +1,12 @@
-import { render, screen, fireEvent, within } from "@testing-library/react"
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import React from "react"
 
 import UsuariosListPage from "../UsuariosListPage"
 import type { Usuario } from "../../service/usuario.service"
-import type { UnidadeAdministrativa } from "../../../unidades-administrativas/service/unidadeAdministrativa.service"
-
 
 // ─── Mock do Select do Radix UI ───────────────────────────────────────────────
-//
-// O jsdom não implementa a Pointer Events API (hasPointerCapture, etc.)
-// que o Radix UI Select usa para abrir o dropdown. A solução padrão é
-// substituir pelos equivalentes HTML nativos, que funcionam corretamente
-// no ambiente de testes.
 
 vi.mock("@/components/ui/select", () => ({
     Select: ({
@@ -53,7 +46,7 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => navigateMock }
 })
 
-// ─── Mocks dos hooks ──────────────────────────────────────────────────────────
+// ─── Mocks dos hooks e serviços ───────────────────────────────────────────────
 
 const setPageMock = vi.fn()
 const setSearchInputMock = vi.fn()
@@ -61,10 +54,10 @@ const setUnidadeFilterMock = vi.fn()
 const setGrupoFilterMock = vi.fn()
 const setStatusFilterMock = vi.fn()
 const setOrderingMock = vi.fn()
+const mockGetCurrentUser = vi.fn()
 
 const DEFAULT_HOOK_VALUES = {
     usuarios: [] as Usuario[],
-    unidades: [] as UnidadeAdministrativa[],
     page: 1,
     count: 0,
     loading: false,
@@ -93,9 +86,15 @@ vi.mock("../../hooks/usePagination", () => ({
     })),
 }))
 
+vi.mock("../../../../../auth/auth.service", () => ({
+    authService: {
+        getCurrentUser: () => mockGetCurrentUser(),
+    },
+}))
+
 // ─── Dados de fixture ─────────────────────────────────────────────────────────
 
-const USUARIO_FIXTURE = {
+const USUARIO_FIXTURE: Usuario = {
     id: 1,
     username: "joao",
     nome: "João da Silva",
@@ -107,7 +106,53 @@ const USUARIO_FIXTURE = {
     status_display: "Ativo",
 }
 
-const UNIDADE_FIXTURE = { id: 1, codigo: "001", nome: "Secretaria Teste", sigla: "ST" }
+const ME_RESPONSE = {
+    data: {
+        id: 1,
+        username: "admin",
+        nome: "Admin",
+        email: "admin@email.com",
+        rf: "F00001",
+        is_gestor_patrimonio: true,
+        is_operador_inventario: false,
+        must_change_password: false,
+        uo_ativa: null,
+        ua_ativa: null,
+        opcoes_escopo: {
+            grupos: [
+                {
+                    uo: {
+                        id: 2,
+                        codigo: "02.17.20",
+                        nome: "UO Teste",
+                        label: "02.17.20 - UO Teste",
+                        selecionavel: true,
+                        unidade_administrativa_id: null,
+                        unidade_orcamentaria_id: 2,
+                    },
+                    uas: [
+                        {
+                            id: 1,
+                            codigo: "001",
+                            nome: "Secretaria Teste",
+                            label: "001 - Secretaria Teste",
+                            unidade_administrativa_id: 1,
+                            unidade_orcamentaria_id: 2,
+                        },
+                        {
+                            id: 2,
+                            codigo: "002",
+                            nome: "Secretaria de Educação",
+                            label: "002 - Secretaria de Educação",
+                            unidade_administrativa_id: 2,
+                            unidade_orcamentaria_id: 2,
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -139,6 +184,7 @@ describe("UsuariosListPage", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         hookOverrides = {}
+        mockGetCurrentUser.mockResolvedValue(ME_RESPONSE)
     })
 
     // ── Estrutura da página ───────────────────────────────────────────────────
@@ -250,6 +296,13 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("GESTOR_PATRIMONIO")).toBeInTheDocument()
         })
 
+        it("renderiza o status_display do usuário", () => {
+            renderComponent()
+
+            const rows = screen.getAllByRole("row")
+            expect(within(rows[1]).getByText("Ativo")).toBeInTheDocument()
+        })
+
         it("renderiza o botão de detalhar para cada usuário", () => {
             renderComponent()
 
@@ -277,6 +330,16 @@ describe("UsuariosListPage", () => {
 
             expect(screen.getByText("joao")).toBeInTheDocument()
             expect(screen.getByText("maria")).toBeInTheDocument()
+        })
+
+        it("navega para /usuarios/:id ao clicar no botão de detalhar", () => {
+            renderComponent()
+
+            const rows = screen.getAllByRole("row")
+            const actionButton = within(rows[1]).getByRole("button")
+            fireEvent.click(actionButton)
+
+            expect(navigateMock).toHaveBeenCalledWith("/usuarios/1")
         })
     })
 
@@ -319,32 +382,65 @@ describe("UsuariosListPage", () => {
             hookOverrides = { searchInput: "teste" }
             renderComponent()
 
-            const input = screen.getByPlaceholderText("Digite o nome do usuário")
-            expect(input).toHaveValue("teste")
+            expect(
+                screen.getByPlaceholderText("Digite o nome do usuário")
+            ).toHaveValue("teste")
         })
     })
 
     // ── Filtros via Select ────────────────────────────────────────────────────
-    //
-    // Como o Radix UI Select depende da Pointer Events API (não suportada
-    // pelo jsdom), mockamos @/components/ui/select com <select>/<option>
-    // nativos. Os testes usam fireEvent.change no <select> diretamente.
 
     describe("filtros", () => {
 
-        it("renderiza opções de unidade com base nas unidades do hook", () => {
-            hookOverrides = { unidades: [UNIDADE_FIXTURE] }
+        it("carrega e exibe as unidades do escopo no select", async () => {
             renderComponent()
 
-            const selects = screen.getAllByRole("combobox")
-            expect(
-                within(selects[0]).getByRole("option", { name: "001 - Secretaria Teste" })
-            ).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getByRole("option", { name: "001 - Secretaria Teste" })
+                ).toBeInTheDocument()
+            })
         })
 
-        it("chama setUnidadeFilter e setPage ao selecionar unidade", () => {
-            hookOverrides = { unidades: [UNIDADE_FIXTURE] }
+        it("exibe todas as UAs do escopo como opções", async () => {
             renderComponent()
+
+            await waitFor(() => {
+                expect(
+                    screen.getByRole("option", { name: "001 - Secretaria Teste" })
+                ).toBeInTheDocument()
+                expect(
+                    screen.getByRole("option", { name: "002 - Secretaria de Educação" })
+                ).toBeInTheDocument()
+            })
+        })
+
+        it("exibe apenas a opção 'Todas' quando escopo não tem UAs", async () => {
+            mockGetCurrentUser.mockResolvedValue({
+                data: { ...ME_RESPONSE.data, opcoes_escopo: { grupos: [] } },
+            })
+
+            renderComponent()
+
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            const selects = screen.getAllByRole("combobox")
+            const options = selects[0].querySelectorAll("option")
+            // Apenas "Todas" deve existir
+            expect(options).toHaveLength(1)
+            expect(options[0]).toHaveValue("todas")
+        })
+
+        it("não lança erro quando o carregamento do escopo falha", async () => {
+            mockGetCurrentUser.mockRejectedValue(new Error("Falha na API"))
+
+            expect(() => renderComponent()).not.toThrow()
+        })
+
+        it("chama setUnidadeFilter e setPage ao selecionar unidade", async () => {
+            renderComponent()
+
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             const selects = screen.getAllByRole("combobox")
             fireEvent.change(selects[0], { target: { value: "001" } })
