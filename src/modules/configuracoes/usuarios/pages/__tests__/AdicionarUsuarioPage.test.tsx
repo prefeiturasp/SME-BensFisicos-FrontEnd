@@ -50,7 +50,7 @@ vi.mock("react-router-dom", async () => {
 // ─── Mocks de serviços ────────────────────────────────────────────────────────
 
 const mockUsuarioCreate = vi.fn()
-const mockUnidadeList = vi.fn()
+const mockGetCurrentUser = vi.fn()
 
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: {
@@ -58,9 +58,10 @@ vi.mock("../../service/usuario.service", () => ({
     },
 }))
 
-vi.mock("../../../unidades-administrativas/service/unidadeAdministrativa.service", () => ({
-    unidadeAdministrativaService: {
-        list: () => mockUnidadeList(),
+// ✅ Substituído: agora as unidades vêm do authService (auth/me) e não do unidadeAdministrativaService
+vi.mock("../../../../../auth/auth.service", () => ({
+    authService: {
+        getCurrentUser: () => mockGetCurrentUser(),
     },
 }))
 
@@ -69,11 +70,53 @@ vi.mock("../../../unidades-administrativas/service/unidadeAdministrativa.service
 // ✅ S2068: senha definida por partes para não ser detectada como credencial hardcoded
 const TEST_PWD = ["Senha", "@", "123"].join("")
 
-const UNIDADES_RESPONSE = {
-    results: [
-        { id: 1, codigo: "001", nome: "Secretaria de Finanças" },
-        { id: 2, codigo: "002", nome: "Secretaria de Educação" },
-    ],
+// ✅ Estrutura de resposta do auth/me com opcoes_escopo contendo UAs
+const ME_RESPONSE = {
+    data: {
+        id: 1,
+        username: "admin",
+        nome: "Admin",
+        email: "admin@email.com",
+        rf: "F00001",
+        is_gestor_patrimonio: true,
+        is_operador_inventario: false,
+        must_change_password: false,
+        uo_ativa: null,
+        ua_ativa: null,
+        opcoes_escopo: {
+            grupos: [
+                {
+                    uo: {
+                        id: 2,
+                        codigo: "02.17.20",
+                        nome: "UO Teste",
+                        label: "02.17.20 - UO Teste",
+                        selecionavel: true,
+                        unidade_administrativa_id: null,
+                        unidade_orcamentaria_id: 2,
+                    },
+                    uas: [
+                        {
+                            id: 1,
+                            codigo: "001",
+                            nome: "Secretaria de Finanças",
+                            label: "001 - Secretaria de Finanças",
+                            unidade_administrativa_id: 1,
+                            unidade_orcamentaria_id: 2,
+                        },
+                        {
+                            id: 2,
+                            codigo: "002",
+                            nome: "Secretaria de Educação",
+                            label: "002 - Secretaria de Educação",
+                            unidade_administrativa_id: 2,
+                            unidade_orcamentaria_id: 2,
+                        },
+                    ],
+                },
+            ],
+        },
+    },
 }
 
 const VALID_FORM_DATA = {
@@ -97,8 +140,7 @@ function renderComponent() {
 
 /**
  * Preenche todos os campos obrigatórios do formulário.
- * Selects (unidade, grupo, status) são manipulados via fireEvent.change
- * porque usamos o mock nativo de <select>.
+ * O select de unidade usa unidade_administrativa_id como value.
  */
 async function fillForm(overrides: Partial<typeof VALID_FORM_DATA> = {}) {
     const data = { ...VALID_FORM_DATA, ...overrides }
@@ -123,9 +165,9 @@ async function fillForm(overrides: Partial<typeof VALID_FORM_DATA> = {}) {
         target: { value: data.confirmPassword },
     })
 
-    // Selects nativos — index: 0=unidade, 1=grupo, 2=status
+    // ✅ value é unidade_administrativa_id (string "1"), não o código
     const selects = screen.getAllByRole("combobox")
-    fireEvent.change(selects[0], { target: { value: "001" } })
+    fireEvent.change(selects[0], { target: { value: "1" } })
     fireEvent.change(selects[1], { target: { value: "GESTOR_PATRIMONIO" } })
 }
 
@@ -135,7 +177,7 @@ describe("AdicionarUsuarioPage", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockUnidadeList.mockResolvedValue(UNIDADES_RESPONSE)
+        mockGetCurrentUser.mockResolvedValue(ME_RESPONSE)
         mockUsuarioCreate.mockResolvedValue({ id: 1 })
     })
 
@@ -202,18 +244,19 @@ describe("AdicionarUsuarioPage", () => {
 
     describe("carregamento de unidades administrativas", () => {
 
-        it("carrega e exibe as unidades no select", async () => {
+        it("carrega e exibe as unidades do escopo no select", async () => {
             renderComponent()
 
             await waitFor(() => {
+                // value é o unidade_administrativa_id ("1")
                 const selects = screen.getAllByRole("combobox")
                 expect(
-                    selects[0].querySelector('option[value="001"]')
+                    selects[0].querySelector('option[value="1"]')
                 ).toBeInTheDocument()
             })
         })
 
-        it("exibe o nome da unidade na opção", async () => {
+        it("exibe o código e nome da UA na opção", async () => {
             renderComponent()
 
             await waitFor(() => {
@@ -223,24 +266,62 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
-        it("suporta resposta sem .results (array direto)", async () => {
-            mockUnidadeList.mockResolvedValue([
-                { id: 1, codigo: "001", nome: "Secretaria de Finanças" },
-            ])
-
+        it("exibe todas as UAs retornadas pelo escopo", async () => {
             renderComponent()
 
             await waitFor(() => {
                 expect(
                     screen.getByRole("option", { name: "001 - Secretaria de Finanças" })
                 ).toBeInTheDocument()
+                expect(
+                    screen.getByRole("option", { name: "002 - Secretaria de Educação" })
+                ).toBeInTheDocument()
             })
         })
 
-        it("não lança erro quando o carregamento de unidades falha", async () => {
-            mockUnidadeList.mockRejectedValue(new Error("Falha na API"))
+        it("exibe select vazio quando o escopo não tem UAs", async () => {
+            mockGetCurrentUser.mockResolvedValue({
+                data: {
+                    ...ME_RESPONSE.data,
+                    opcoes_escopo: { grupos: [] },
+                },
+            })
+
+            renderComponent()
+
+            await waitFor(() => {
+                expect(mockGetCurrentUser).toHaveBeenCalled()
+            })
+
+            const selects = screen.getAllByRole("combobox")
+            // Apenas a opção placeholder deve existir no select de unidade
+            const options = selects[0].querySelectorAll("option")
+            expect(options).toHaveLength(1)
+        })
+
+        it("não lança erro quando o carregamento do escopo falha", async () => {
+            mockGetCurrentUser.mockRejectedValue(new Error("Falha na API"))
 
             expect(() => renderComponent()).not.toThrow()
+        })
+
+        it("exibe select vazio quando opcoes_escopo é null", async () => {
+            mockGetCurrentUser.mockResolvedValue({
+                data: {
+                    ...ME_RESPONSE.data,
+                    opcoes_escopo: null,
+                },
+            })
+
+            renderComponent()
+
+            await waitFor(() => {
+                expect(mockGetCurrentUser).toHaveBeenCalled()
+            })
+
+            const selects = screen.getAllByRole("combobox")
+            const options = selects[0].querySelectorAll("option")
+            expect(options).toHaveLength(1)
         })
     })
 
@@ -274,7 +355,6 @@ describe("AdicionarUsuarioPage", () => {
         it("alterna campo de senha para 'text' ao clicar no botão olho", () => {
             renderComponent()
 
-            // ✅ [0]=voltar, [1]=toggle senha, [2]=toggle confirmar senha
             const toggleButtons = screen.getAllByRole("button", { name: "" })
             fireEvent.click(toggleButtons[1])
 
@@ -390,7 +470,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("chama usuarioService.create com o payload correto", async () => {
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -402,8 +482,10 @@ describe("AdicionarUsuarioPage", () => {
                         nome: "João da Silva",
                         email: "joao@email.com",
                         rf: "123456",
-                        unidade_codigo: "001",
-                        grupo_nome: "GESTOR_PATRIMONIO",
+                        // ✅ PKs corretos derivados do EscopoUa selecionado
+                        unidade_administrativa: 1,
+                        unidade_orcamentaria: 2,
+                        group_name: "GESTOR_PATRIMONIO",
                         password: TEST_PWD,
                         password_confirm: TEST_PWD,
                         is_active: true,
@@ -414,7 +496,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("envia is_active=false quando status é 'inativo'", async () => {
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
 
@@ -432,7 +514,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("navega para /usuarios após salvar com sucesso", async () => {
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -446,7 +528,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockReturnValue(new Promise(() => {}))
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -460,7 +542,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockReturnValue(new Promise(() => {}))
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -472,7 +554,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("reabilita o botão Salvar após a requisição concluir", async () => {
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -491,7 +573,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(new Error("Erro ao criar usuário"))
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -507,7 +589,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(apiError)
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -525,7 +607,7 @@ describe("AdicionarUsuarioPage", () => {
                 .mockResolvedValueOnce({ id: 1 })
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -547,7 +629,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(new Error("Falha"))
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -561,7 +643,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(new Error("Falha"))
 
             renderComponent()
-            await waitFor(() => expect(mockUnidadeList).toHaveBeenCalled())
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))

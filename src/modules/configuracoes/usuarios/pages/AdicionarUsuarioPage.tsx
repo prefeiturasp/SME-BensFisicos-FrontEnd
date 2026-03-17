@@ -22,7 +22,7 @@ import { z } from "zod"
 import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 
 import { usuarioService } from "../service/usuario.service"
-import { unidadeAdministrativaService } from "../../unidades-administrativas/service/unidadeAdministrativa.service"
+import { authService, type EscopoUa } from "../../../../auth/auth.service"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
 
@@ -47,7 +47,11 @@ export default function AdicionarUsuarioPage() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<any[]>([])
+  // UAs extraídas do escopo do usuário logado (auth/me)
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
+
+  // Objeto completo da UA selecionada — necessário para montar o payload com os PKs corretos
+  const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
 
   const {
     register,
@@ -62,18 +66,21 @@ export default function AdicionarUsuarioPage() {
   })
 
   useEffect(() => {
-    const carregarUnidades = async () => {
+    const carregarUnidadesDoEscopo = async () => {
       try {
-        const response = await unidadeAdministrativaService.list()
+        const { data: me } = await authService.getCurrentUser()
 
-        // dependendo da API pode ser response.results
-        setUnidadesAdministrativas(response.results ?? response)
+        // Extrai todas as UAs de todos os grupos do escopo do usuário logado
+        const uas: EscopoUa[] =
+          me.opcoes_escopo?.grupos.flatMap(grupo => grupo.uas) ?? []
+
+        setUnidadesAdministrativas(uas)
       } catch (error) {
-        console.error("Erro ao carregar unidades administrativas", error)
+        console.error("Erro ao carregar unidades do escopo", error)
       }
     }
 
-    carregarUnidades()
+    carregarUnidadesDoEscopo()
   }, [])
 
   const onSubmit = async (data: FormData) => {
@@ -86,8 +93,10 @@ export default function AdicionarUsuarioPage() {
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        unidade_codigo: data.unidade,
-        grupo_nome: data.grupo,
+        // PKs vindos da UA selecionada (EscopoUa já contém os ids corretos)
+        unidade_administrativa: unidadeSelecionada?.unidade_administrativa_id ?? null,
+        unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? null,
+        group_name: data.grupo,
         password: data.password,
         password_confirm: data.confirmPassword,
         is_active: data.status === "ativo",
@@ -210,23 +219,30 @@ export default function AdicionarUsuarioPage() {
               Unidade Administrativa{REQUIRED}
             </label>
 
-            <Select onValueChange={(value) => setValue("unidade", value, { shouldValidate: true })}>
-
+            <Select
+              onValueChange={(value) => {
+                // Localiza a UA pelo unidade_administrativa_id para ter os PKs no submit
+                const ua = unidadesAdministrativas.find(
+                  u => String(u.unidade_administrativa_id) === value
+                )
+                setUnidadeSelecionada(ua ?? null)
+                setValue("unidade", value, { shouldValidate: true })
+              }}
+            >
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Selecione uma UA" />
               </SelectTrigger>
 
               <SelectContent>
-                {unidadesAdministrativas.map(unidade => (
+                {unidadesAdministrativas.map(ua => (
                   <SelectItem
-                    key={unidade.id}
-                    value={String(unidade.codigo)}
+                    key={ua.unidade_administrativa_id}
+                    value={String(ua.unidade_administrativa_id)}
                   >
-                    {unidade.codigo} - {unidade.nome}
+                    {ua.codigo} - {ua.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
-
             </Select>
 
             {errors.unidade && (
@@ -239,7 +255,6 @@ export default function AdicionarUsuarioPage() {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Nome de Usuário de Acesso
-
               {/*  */}
               <input
                 type="text"
@@ -287,15 +302,12 @@ export default function AdicionarUsuarioPage() {
               </SelectTrigger>
 
               <SelectContent>
-
                 <SelectItem value="GESTOR_PATRIMONIO">
                   Gestor
                 </SelectItem>
-
                 <SelectItem value="OPERADOR_INVENTARIO">
                   Operador
                 </SelectItem>
-
               </SelectContent>
 
             </Select>
@@ -311,7 +323,6 @@ export default function AdicionarUsuarioPage() {
 
             <label className="text-sm font-semibold text-gray-700">
               Cadastre uma Senha
-
 
               <div className="relative">
 
@@ -346,7 +357,6 @@ export default function AdicionarUsuarioPage() {
             <label className="text-sm font-semibold text-gray-700">
               Confirme a Senha
 
-
               <div className="relative">
 
                 <input
@@ -358,9 +368,7 @@ export default function AdicionarUsuarioPage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
-                  }
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-3 text-gray-500"
                 >
                   {showConfirmPassword ? (
@@ -386,12 +394,10 @@ export default function AdicionarUsuarioPage() {
             <label className="text-sm font-semibold text-gray-700">
               Status
 
-
               <Select
                 defaultValue="ativo"
                 onValueChange={(value) => setValue("status", value)}
               >
-
                 <SelectTrigger className={INPUT_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
