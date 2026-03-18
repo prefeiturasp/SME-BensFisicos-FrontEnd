@@ -111,7 +111,7 @@ export default function AdicionarUsuarioPage() {
       if (error?.response?.data) {
         setErrorMessage("Erro de validação ao criar usuário")
       } else {
-        setErrorMessage(error.message || "Erro ao criar usuário")
+        setErrorMessage(error.message ?? "Erro ao criar usuário")
       }
 
     } finally {

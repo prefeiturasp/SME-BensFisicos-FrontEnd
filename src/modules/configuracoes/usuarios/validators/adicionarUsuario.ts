@@ -6,7 +6,7 @@ export const adicionarUsuarioSchema = z
     nome: z.string().min(1, "Nome é obrigatório"),
     rf: z.string().min(1, "RF é obrigatório"),
     username: z.string().min(1, "Nome de usuário é obrigatório"),
-    email: z.string().email("E-mail inválido"),
+    email: z.email("E-mail inválido"),
     unidade: z.string().min(1, "Selecione uma unidade administrativa"),
     grupo: z.string().min(1, "Selecione um grupo"),
     password: newPasswordSchema,
