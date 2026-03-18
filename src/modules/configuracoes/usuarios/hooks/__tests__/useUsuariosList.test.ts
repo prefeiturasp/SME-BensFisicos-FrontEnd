@@ -59,7 +59,6 @@ describe("useUsuariosList", () => {
             const { result } = renderUsuariosList()
 
             expect(result.current.usuarios).toEqual([])
-            expect(result.current.unidades).toEqual([])
             expect(result.current.page).toBe(1)
             expect(result.current.count).toBe(0)
             expect(result.current.loading).toBe(true)
@@ -226,33 +225,6 @@ describe("useUsuariosList", () => {
             expect(mockUsuarioList).toHaveBeenCalledWith(
                 expect.objectContaining({ ordering: "nome" })
             )
-        })
-    })
-
-    // ── fetchUnidades ─────────────────────────────────────────────────────────
-
-    describe("fetchUnidades", () => {
-
-        it("popula unidades após sucesso", async () => {
-            setupSuccessfulMocks()
-            const { result } = renderUsuariosList()
-
-            await waitFor(() => {
-                expect(result.current.unidades).toEqual(UNIDADES_RESPONSE.results)
-            })
-        })
-
-        it("exibe toast de erro quando o serviço falha", async () => {
-            mockUsuarioList.mockResolvedValue(USUARIOS_RESPONSE)
-            mockUnidadeList.mockRejectedValue(new Error("Falha"))
-
-            renderUsuariosList()
-
-            await waitFor(() => {
-                expect(toast.error).toHaveBeenCalledWith(
-                    "Erro ao carregar unidades administrativas"
-                )
-            })
         })
     })
 
