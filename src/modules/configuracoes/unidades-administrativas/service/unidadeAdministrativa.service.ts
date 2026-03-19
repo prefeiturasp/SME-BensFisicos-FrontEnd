@@ -5,6 +5,7 @@ export interface UnidadeAdministrativa {
   codigo: string
   nome: string
   sigla: string
+  unidade_orcamentaria: number | null
 }
 
 export const unidadeAdministrativaService = {

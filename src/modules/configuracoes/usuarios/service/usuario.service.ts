@@ -13,6 +13,19 @@ export interface Usuario {
     status_display: string
 }
 
+export interface UsuarioCreatePayload {
+    username: string
+    nome: string
+    email: string
+    rf: string
+    unidade_administrativa: number | null
+    unidade_orcamentaria: number | null
+    group_name: string
+    password: string
+    password_confirm: string
+    is_active: boolean
+}
+
 export interface PaginatedResponse<T> {
     count: number
     next: string | null
@@ -27,15 +40,6 @@ export const usuarioService = {
 
             const query = new URLSearchParams()
 
-            console.log(`Search Query Before: ${query.toString()}`)
-            console.log("Params")
-            console.log(`Params Page: ${params.page}`)
-            console.log(`Params Search: ${params.search}`)
-            console.log(`Params Unidade: ${params.unidade}`)
-            console.log(`Params Grupo: ${params.grupo}`)
-            console.log(`Params Status: ${params.status}`)
-            console.log(`Params Ordering: ${params.oredring}`)
-
             if (params.page)
                 query.append('page', String(params.page))
 
@@ -49,13 +53,10 @@ export const usuarioService = {
                 query.append('group_name', params.grupo)
 
             if (params.status && params.status !== 'todos')
-
                 query.append('is_active', params.status === "ativo" ? "true" : "false")
 
             if (params.ordering)
                 query.append('ordering', params.ordering)
-
-            console.log(`Search Query After: ${query.toString()}`)
 
             const { data } = await api.get(`/user/?${query.toString()}`)
             return data
@@ -76,7 +77,7 @@ export const usuarioService = {
         }
     },
 
-    create: async (payload: Partial<Usuario>): Promise<Usuario> => {
+    create: async (payload: UsuarioCreatePayload): Promise<Usuario> => {
         try {
 
             const { data } = await api.post(`/user/`, payload)
