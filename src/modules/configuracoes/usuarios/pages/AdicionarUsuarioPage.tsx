@@ -303,7 +303,7 @@ export default function AdicionarUsuarioPage() {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Nome de Usuário de Acesso
-
+              {/*  */}
               <input
                 type="text"
                 placeholder="Digite o nome de usuário de acesso"
