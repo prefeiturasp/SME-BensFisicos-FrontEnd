@@ -58,7 +58,6 @@ vi.mock("../../service/usuario.service", () => ({
     },
 }))
 
-// ✅ Substituído: agora as unidades vêm do authService (auth/me) e não do unidadeAdministrativaService
 vi.mock("../../../../../auth/auth.service", () => ({
     authService: {
         getCurrentUser: () => mockGetCurrentUser(),
@@ -67,10 +66,8 @@ vi.mock("../../../../../auth/auth.service", () => ({
 
 // ─── Dados de fixture ─────────────────────────────────────────────────────────
 
-// ✅ S2068: senha definida por partes para não ser detectada como credencial hardcoded
 const TEST_PWD = ["Senha", "@", "123"].join("")
 
-// ✅ Estrutura de resposta do auth/me com opcoes_escopo contendo UAs
 const ME_RESPONSE = {
     data: {
         id: 1,
@@ -139,10 +136,16 @@ function renderComponent() {
 }
 
 /**
- * Preenche todos os campos obrigatórios do formulário.
- * O select de unidade usa unidade_administrativa_id como value.
+ * Ordem dos selects no DOM após refatoração do layout:
+ *   [0] Grupo de Permissionamento
+ *   [1] Unidade Administrativa
+ *   [2] Status
  */
-async function fillForm(overrides: Partial<typeof VALID_FORM_DATA> = {}) {
+async function fillForm(
+    overrides: Partial<typeof VALID_FORM_DATA> = {},
+    grupo = "GESTOR_PATRIMONIO",
+    unidadeId = "1"
+) {
     const data = { ...VALID_FORM_DATA, ...overrides }
 
     fireEvent.change(screen.getByPlaceholderText("Digite o nome completo"), {
@@ -165,10 +168,9 @@ async function fillForm(overrides: Partial<typeof VALID_FORM_DATA> = {}) {
         target: { value: data.confirmPassword },
     })
 
-    // ✅ value é unidade_administrativa_id (string "1"), não o código
     const selects = screen.getAllByRole("combobox")
-    fireEvent.change(selects[0], { target: { value: "1" } })
-    fireEvent.change(selects[1], { target: { value: "GESTOR_PATRIMONIO" } })
+    fireEvent.change(selects[0], { target: { value: grupo } })       // Grupo
+    fireEvent.change(selects[1], { target: { value: unidadeId } })   // Unidade
 }
 
 // ─── Testes ───────────────────────────────────────────────────────────────────
@@ -228,6 +230,7 @@ describe("AdicionarUsuarioPage", () => {
             expect(screen.getByText("RF")).toBeInTheDocument()
             expect(screen.getByText("E-mail do Usuário")).toBeInTheDocument()
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
+            expect(screen.getByText("Unidade Administrativa")).toBeInTheDocument()
             expect(screen.getByText("Cadastre uma Senha")).toBeInTheDocument()
             expect(screen.getByText("Confirme a Senha")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
@@ -240,6 +243,79 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
+    // ── Obrigatoriedade condicional da Unidade Administrativa ─────────────────
+
+    describe("unidade administrativa — obrigatoriedade condicional", () => {
+
+        it("exibe asterisco na unidade quando grupo é Operador", () => {
+            renderComponent()
+
+            const selects = screen.getAllByRole("combobox")
+            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
+
+            // O asterisco (*) deve aparecer após o label da unidade
+            const unidadeLabel = screen.getByText("Unidade Administrativa")
+            expect(unidadeLabel.nextSibling).not.toBeNull()
+        })
+
+        it("Gestor: aceita formulário sem unidade selecionada", async () => {
+            renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            await fillForm({}, "GESTOR_PATRIMONIO", "")
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(mockUsuarioCreate).toHaveBeenCalled()
+            })
+        })
+
+        it("Operador: exibe erro quando unidade não é selecionada", async () => {
+            renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            await fillForm({}, "OPERADOR_INVENTARIO", "")
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(
+                    screen.getByText("Unidade Administrativa é obrigatória para Operadores")
+                ).toBeInTheDocument()
+            })
+
+            expect(mockUsuarioCreate).not.toHaveBeenCalled()
+        })
+
+        it("Operador: aceita formulário com unidade selecionada", async () => {
+            renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            await fillForm({}, "OPERADOR_INVENTARIO", "1")
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(mockUsuarioCreate).toHaveBeenCalledWith(
+                    expect.objectContaining({ group_name: "OPERADOR_INVENTARIO" })
+                )
+            })
+        })
+
+        it("limpa a unidade selecionada ao trocar o grupo", () => {
+            renderComponent()
+
+            const selects = screen.getAllByRole("combobox")
+
+            // Seleciona operador e uma unidade
+            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
+            fireEvent.change(selects[1], { target: { value: "1" } })
+
+            // Troca para gestor — unidade deve ser limpa
+            fireEvent.change(selects[0], { target: { value: "GESTOR_PATRIMONIO" } })
+
+            expect((selects[1] as HTMLSelectElement).value).toBe("")
+        })
+    })
+
     // ── Carregamento de unidades ──────────────────────────────────────────────
 
     describe("carregamento de unidades administrativas", () => {
@@ -248,10 +324,9 @@ describe("AdicionarUsuarioPage", () => {
             renderComponent()
 
             await waitFor(() => {
-                // value é o unidade_administrativa_id ("1")
                 const selects = screen.getAllByRole("combobox")
                 expect(
-                    selects[0].querySelector('option[value="1"]')
+                    selects[1].querySelector('option[value="1"]')
                 ).toBeInTheDocument()
             })
         })
@@ -281,21 +356,15 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe select vazio quando o escopo não tem UAs", async () => {
             mockGetCurrentUser.mockResolvedValue({
-                data: {
-                    ...ME_RESPONSE.data,
-                    opcoes_escopo: { grupos: [] },
-                },
+                data: { ...ME_RESPONSE.data, opcoes_escopo: { grupos: [] } },
             })
 
             renderComponent()
 
-            await waitFor(() => {
-                expect(mockGetCurrentUser).toHaveBeenCalled()
-            })
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             const selects = screen.getAllByRole("combobox")
-            // Apenas a opção placeholder deve existir no select de unidade
-            const options = selects[0].querySelectorAll("option")
+            const options = selects[1].querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
 
@@ -307,30 +376,20 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe select vazio quando opcoes_escopo é null", async () => {
             mockGetCurrentUser.mockResolvedValue({
-                data: {
-                    ...ME_RESPONSE.data,
-                    opcoes_escopo: null,
-                },
+                data: { ...ME_RESPONSE.data, opcoes_escopo: null },
             })
 
             renderComponent()
 
-            await waitFor(() => {
-                expect(mockGetCurrentUser).toHaveBeenCalled()
-            })
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             const selects = screen.getAllByRole("combobox")
-            const options = selects[0].querySelectorAll("option")
+            const options = selects[1].querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
     })
 
     // ── Visibilidade da senha ─────────────────────────────────────────────────
-    //
-    // Ordem dos botões sem nome acessível no DOM:
-    //   [0] ← Voltar (ArrowLeft)
-    //   [1] 👁 Toggle senha
-    //   [2] 👁 Toggle confirmação de senha
 
     describe("toggle de visibilidade da senha", () => {
 
@@ -468,11 +527,11 @@ describe("AdicionarUsuarioPage", () => {
 
     describe("submissão do formulário", () => {
 
-        it("chama usuarioService.create com o payload correto", async () => {
+        it("chama usuarioService.create com o payload correto (Gestor)", async () => {
             renderComponent()
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            await fillForm()
+            await fillForm({}, "GESTOR_PATRIMONIO", "1")
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
@@ -482,7 +541,6 @@ describe("AdicionarUsuarioPage", () => {
                         nome: "João da Silva",
                         email: "joao@email.com",
                         rf: "123456",
-                        // ✅ PKs corretos derivados do EscopoUa selecionado
                         unidade_administrativa: 1,
                         unidade_orcamentaria: 2,
                         group_name: "GESTOR_PATRIMONIO",
@@ -494,11 +552,28 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
+        it("chama usuarioService.create com o payload correto (Operador)", async () => {
+            renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            await fillForm({}, "OPERADOR_INVENTARIO", "1")
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(mockUsuarioCreate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        group_name: "OPERADOR_INVENTARIO",
+                        unidade_administrativa: 1,
+                    })
+                )
+            })
+        })
+
         it("envia is_active=false quando status é 'inativo'", async () => {
             renderComponent()
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            await fillForm()
+            await fillForm({}, "GESTOR_PATRIMONIO", "1")
 
             const selects = screen.getAllByRole("combobox")
             fireEvent.change(selects[2], { target: { value: "inativo" } })
