@@ -52,6 +52,9 @@ export default function AdicionarUsuarioPage() {
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
 
+  // UO do próprio gestor logado — usada quando Gestor não seleciona UA
+  const [gestorUoId, setGestorUoId] = useState<number | null>(null)
+
   const {
     register,
     handleSubmit,
@@ -67,7 +70,6 @@ export default function AdicionarUsuarioPage() {
     },
   })
 
-  // Observa o grupo para controlar a obrigatoriedade da unidade
   const grupoSelecionado = watch("grupo")
   const unidadeObrigatoria = grupoSelecionado === "OPERADOR_INVENTARIO"
 
@@ -80,6 +82,12 @@ export default function AdicionarUsuarioPage() {
           me.opcoes_escopo?.grupos.flatMap(grupo => grupo.uas) ?? []
 
         setUnidadesAdministrativas(uas)
+
+        // Guarda a UO do usuário logado para usar quando Gestor não selecionar UA
+        if (me.uo_ativa) {
+          setGestorUoId(me.uo_ativa.id)
+        }
+
       } catch (error) {
         console.error("Erro ao carregar unidades do escopo", error)
       }
@@ -98,8 +106,10 @@ export default function AdicionarUsuarioPage() {
         nome: data.nome,
         email: data.email,
         rf: data.rf,
+        // UA: apenas se selecionada (obrigatória para Operador, opcional para Gestor)
         unidade_administrativa: unidadeSelecionada?.unidade_administrativa_id ?? null,
-        unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? null,
+        // UO: vem da UA se selecionada, senão usa a UO do próprio gestor logado
+        unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? gestorUoId,
         group_name: data.grupo,
         password: data.password,
         password_confirm: data.confirmPassword,
@@ -216,7 +226,7 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* ── Grupo — vem antes de Unidade para que o asterisco reflita a escolha ── */}
+          {/* Grupo — vem antes de Unidade para que o asterisco reflita a escolha */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Grupo de Permissionamento{REQUIRED}
@@ -251,7 +261,7 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
-          {/* ── Unidade — asterisco condicional baseado no grupo ── */}
+          {/* Unidade — asterisco condicional: obrigatória apenas para Operador */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Unidade Administrativa
@@ -293,7 +303,7 @@ export default function AdicionarUsuarioPage() {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Nome de Usuário de Acesso
-              {/*  */}
+
               <input
                 type="text"
                 placeholder="Digite o nome de usuário de acesso"
