@@ -38,6 +38,8 @@ const ACTION_BUTTON_CLASS = `
   hover:text-white font-semibold rounded-md transition-colors
 `
 
+const REQUIRED = <span className="text-red-500 ml-1">*</span>
+
 export default function AdicionarUsuarioPage() {
   const navigate = useNavigate()
 
@@ -47,30 +49,33 @@ export default function AdicionarUsuarioPage() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // UAs extraídas do escopo do usuário logado (auth/me)
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
-
-  // Objeto completo da UA selecionada — necessário para montar o payload com os PKs corretos
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(adicionarUsuarioSchema),
     defaultValues: {
       status: "ativo",
+      unidade: "",
+      grupo: "",
     },
   })
+
+  // Observa o grupo para controlar a obrigatoriedade da unidade
+  const grupoSelecionado = watch("grupo")
+  const unidadeObrigatoria = grupoSelecionado === "OPERADOR_INVENTARIO"
 
   useEffect(() => {
     const carregarUnidadesDoEscopo = async () => {
       try {
         const { data: me } = await authService.getCurrentUser()
 
-        // Extrai todas as UAs de todos os grupos do escopo do usuário logado
         const uas: EscopoUa[] =
           me.opcoes_escopo?.grupos.flatMap(grupo => grupo.uas) ?? []
 
@@ -93,7 +98,6 @@ export default function AdicionarUsuarioPage() {
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        // PKs vindos da UA selecionada (EscopoUa já contém os ids corretos)
         unidade_administrativa: unidadeSelecionada?.unidade_administrativa_id ?? null,
         unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? null,
         group_name: data.grupo,
@@ -118,8 +122,6 @@ export default function AdicionarUsuarioPage() {
       setLoading(false)
     }
   }
-
-  const REQUIRED = <span className="text-red-500 ml-1">*</span>
 
   return (
     <div className="p-8 space-y-4">
@@ -214,14 +216,50 @@ export default function AdicionarUsuarioPage() {
             )}
           </div>
 
+          {/* ── Grupo — vem antes de Unidade para que o asterisco reflita a escolha ── */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Unidade Administrativa{REQUIRED}
+              Grupo de Permissionamento{REQUIRED}
             </label>
 
             <Select
               onValueChange={(value) => {
-                // Localiza a UA pelo unidade_administrativa_id para ter os PKs no submit
+                setValue("grupo", value, { shouldValidate: true })
+                // Limpa a unidade ao trocar o grupo para forçar nova seleção
+                setValue("unidade", "", { shouldValidate: false })
+                setUnidadeSelecionada(null)
+              }}
+            >
+              <SelectTrigger className={INPUT_CLASS}>
+                <SelectValue placeholder="Selecione os grupos" />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="GESTOR_PATRIMONIO">
+                  Gestor
+                </SelectItem>
+                <SelectItem value="OPERADOR_INVENTARIO">
+                  Operador
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {errors.grupo && (
+              <span className="text-red-600 text-sm">
+                {errors.grupo.message}
+              </span>
+            )}
+          </div>
+
+          {/* ── Unidade — asterisco condicional baseado no grupo ── */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Unidade Administrativa
+              {unidadeObrigatoria ? REQUIRED : null}
+            </label>
+
+            <Select
+              onValueChange={(value) => {
                 const ua = unidadesAdministrativas.find(
                   u => String(u.unidade_administrativa_id) === value
                 )
@@ -286,35 +324,6 @@ export default function AdicionarUsuarioPage() {
             {errors.email && (
               <span className="text-red-600 text-sm">
                 {errors.email.message}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              Grupo de Permissionamento{REQUIRED}
-            </label>
-
-            <Select onValueChange={(value) => setValue("grupo", value, { shouldValidate: true })}>
-
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder="Selecione os grupos" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="GESTOR_PATRIMONIO">
-                  Gestor
-                </SelectItem>
-                <SelectItem value="OPERADOR_INVENTARIO">
-                  Operador
-                </SelectItem>
-              </SelectContent>
-
-            </Select>
-
-            {errors.grupo && (
-              <span className="text-red-600 text-sm">
-                {errors.grupo.message}
               </span>
             )}
           </div>
