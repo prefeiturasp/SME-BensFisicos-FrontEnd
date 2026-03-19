@@ -1,4 +1,4 @@
-import { Eye, ArrowLeft, ArrowUpDown, Settings } from "lucide-react"
+import { Eye, ArrowLeft, ArrowUpDown, Settings, FileText } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -127,7 +127,8 @@ export default function UsuariosListPage() {
                         <ArrowLeft size={18} />
                     </Button>
 
-                    <Button className={ACTION_BUTTON_CLASS}>
+                    <Button className={ACTION_BUTTON_CLASS} disabled>
+                        <FileText size={16} />
                         Relatório
                     </Button>
 
@@ -205,12 +206,12 @@ export default function UsuariosListPage() {
                                     <SelectValue />
                                 </SelectTrigger>
 
-                                <SelectContent>
-                                    <SelectItem value="todos">Todos</SelectItem>
-                                    <SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem>
-                                    <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <SelectContent>
+                                <SelectItem value="todos">Todos</SelectItem>
+                                <SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem>
+                                <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
+                            </SelectContent>
+                        </Select>
                         </label>
                     </div>
 
@@ -229,12 +230,12 @@ export default function UsuariosListPage() {
                                     <SelectValue />
                                 </SelectTrigger>
 
-                                <SelectContent>
-                                    <SelectItem value="todos">Todos</SelectItem>
-                                    <SelectItem value="ativo">Ativo</SelectItem>
-                                    <SelectItem value="inativo">Inativo</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <SelectContent>
+                                <SelectItem value="todos">Todos</SelectItem>
+                                <SelectItem value="ativo">Ativo</SelectItem>
+                                <SelectItem value="inativo">Inativo</SelectItem>
+                            </SelectContent>
+                        </Select>
                         </label>
                     </div>
                 </div>
