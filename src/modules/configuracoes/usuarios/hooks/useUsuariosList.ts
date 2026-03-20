@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { usuarioService, type Usuario } from "../service/usuario.service"
-// import { unidadeAdministrativaService, type UnidadeAdministrativa } from "../../unidades-administrativas/service/unidadeAdministrativa.service"
 
 interface UseUsuariosListProps {
     pageSize: number
@@ -9,10 +8,9 @@ interface UseUsuariosListProps {
 
 const SEARCH_DEBOUNCE_MS = 400
 
-export function useUsuariosList({ pageSize }: UseUsuariosListProps) {
+export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
 
     const [usuarios, setUsuarios] = useState<Usuario[]>([])
-    // const [unidades, setUnidades] = useState<UnidadeAdministrativa[]>([])
 
     const [page, setPage] = useState(1)
     const [count, setCount] = useState(0)
@@ -65,29 +63,9 @@ export function useUsuariosList({ pageSize }: UseUsuariosListProps) {
 
     }, [page, search, unidadeFilter, grupoFilter, statusFilter, ordering])
 
-    // =========================
-    // FETCH UNIDADES
-    // =========================
-    // const fetchUnidades = useCallback(async () => {
-
-    //     try {
-    //         const data = await unidadeAdministrativaService.list()
-
-    //         setUnidades(data.results)
-
-    //     } catch {
-    //         toast.error("Erro ao carregar unidades administrativas")
-    //     }
-
-    // }, [])
-
     useEffect(() => {
         fetchUsuarios()
     }, [fetchUsuarios])
-
-    // useEffect(() => {
-    //     fetchUnidades()
-    // }, [fetchUnidades])
 
     return {
         usuarios,

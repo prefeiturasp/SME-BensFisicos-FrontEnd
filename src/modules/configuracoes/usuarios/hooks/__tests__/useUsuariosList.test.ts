@@ -7,14 +7,9 @@ import { useUsuariosList } from "../useUsuariosList"
 // ─── Mocks de serviços ────────────────────────────────────────────────────────
 
 const mockUsuarioList = vi.fn()
-const mockUnidadeList = vi.fn()
 
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: { list: (...args: unknown[]) => mockUsuarioList(...args) },
-}))
-
-vi.mock("../../../unidades-administrativas/service/unidadeAdministrativa.service", () => ({
-    unidadeAdministrativaService: { list: (...args: unknown[]) => mockUnidadeList(...args) },
 }))
 
 vi.mock("sonner", () => ({
@@ -28,13 +23,8 @@ const USUARIOS_RESPONSE = {
     count: 1,
 }
 
-const UNIDADES_RESPONSE = {
-    results: [{ id: 1, codigo: "001", nome: "Secretaria" }],
-}
-
 function setupSuccessfulMocks() {
     mockUsuarioList.mockResolvedValue(USUARIOS_RESPONSE)
-    mockUnidadeList.mockResolvedValue(UNIDADES_RESPONSE)
 }
 
 function renderUsuariosList(pageSize = 10) {
@@ -98,7 +88,6 @@ describe("useUsuariosList", () => {
 
         it("exibe toast de erro quando o serviço falha", async () => {
             mockUsuarioList.mockRejectedValue(new Error("Falha"))
-            mockUnidadeList.mockResolvedValue(UNIDADES_RESPONSE)
 
             const { result } = renderUsuariosList()
 
@@ -109,7 +98,6 @@ describe("useUsuariosList", () => {
 
         it("garante loading=false mesmo após erro", async () => {
             mockUsuarioList.mockRejectedValue(new Error("Falha"))
-            mockUnidadeList.mockResolvedValue(UNIDADES_RESPONSE)
 
             const { result } = renderUsuariosList()
 
