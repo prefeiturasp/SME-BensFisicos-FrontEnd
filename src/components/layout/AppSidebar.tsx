@@ -58,10 +58,6 @@ const menuItems = [
     icon: Settings,
     items: [
       {
-        title: 'Grupo e Permissionamentos',
-        url: '/grupo-permissionamentos',
-      },
-      {
         title: 'Unidades Administrativas',
         url: '/unidades-administrativas',
       },
