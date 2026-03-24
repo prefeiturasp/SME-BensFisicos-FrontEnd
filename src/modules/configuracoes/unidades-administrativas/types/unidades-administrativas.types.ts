@@ -33,6 +33,14 @@ export interface UnidadesAdministrativasListParams {
   ordering?: string;
 }
 
+export interface CreateUnidadeAdministrativaPayload {
+  unidade_orcamentaria: number;
+  codigo: string;
+  sigla: string;
+  nome: string;
+  status: UAStatus;
+}
+
 export interface UnidadeAdministrativaExportResult {
   blob: Blob;
   fileName: string;
