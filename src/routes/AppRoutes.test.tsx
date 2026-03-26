@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Outlet } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AppRoutes from './AppRoutes';
 import { useAuth } from '../auth/useAuth';
-import { Outlet } from 'react-router-dom';
 
 vi.mock('../auth/useAuth');
 

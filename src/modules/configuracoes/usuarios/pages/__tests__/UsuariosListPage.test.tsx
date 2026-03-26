@@ -98,6 +98,7 @@ const USUARIO_FIXTURE: Usuario = {
     id: 1,
     username: "joao",
     nome: "João da Silva",
+    rf: "F123456",
     email: "joao@example.com",
     unidade_codigo: "001",
     unidade_nome: "Secretaria Teste",

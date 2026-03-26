@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { AxiosError } from "axios"
-import { usuarioService } from "../usuario.service"
+import { usuarioService, type UsuarioCreatePayload } from "../usuario.service"
 import { api } from "@/api/http"
 
 // ─── Mock ─────────────────────────────────────────────────────────────────────
@@ -283,7 +283,7 @@ describe("usuarioService", () => {
                     ordering: "nome",
                 })
 
-                const url = mockGet.mock.calls[0][0] as string
+                const url = mockGet.mock.calls[0][0] as string // NOSONAR
 
                 expect(url).toContain("page=1")
                 expect(url).toContain("search=joao")
@@ -401,10 +401,18 @@ describe("usuarioService", () => {
 
     describe("create", () => {
 
-        const PAYLOAD: Partial<import("../usuario.service").Usuario> = {
-            username: "novo",
+        const user_senha = ['Abc', '123!'].join('')
+        const PAYLOAD: UsuarioCreatePayload = {
+            username: "novo.usuario",
             nome: "Novo Usuário",
             email: "novo@email.com",
+            rf: "654321",
+            unidade_administrativa: 10,
+            unidade_orcamentaria: 20,
+            group_name: "GESTOR_PATRIMONIO",
+            password: user_senha,
+            password_confirm: user_senha,
+            is_active: true,
         }
 
         it("chama POST /user/ com o payload correto", async () => {

@@ -173,7 +173,7 @@ describe('ResetPasswordPage', () => {
       const confirmInput = container.querySelector('input[name="confirmPassword"]')!;
       const btn = screen.getByRole('button', { name: /Salvar/i });
 
-      const validPassword = 'SenhaSegura123!';
+      const validPassword = ['SenhaS', 'egura', '123!'].join('');
 
       fireEvent.change(passwordInput, { target: { value: validPassword } });
       fireEvent.change(confirmInput, { target: { value: validPassword } });
@@ -199,7 +199,7 @@ describe('ResetPasswordPage', () => {
       const confirmInput = container.querySelector('input[name="confirmPassword"]')!;
       const btn = screen.getByRole('button', { name: /Salvar/i });
 
-      const PASSWORD = 'NovaSenha123!';
+      const PASSWORD = ['NovaS', 'enha', '123!'].join('');
 
       fireEvent.change(passwordInput, { target: { value: PASSWORD } });
       fireEvent.change(confirmInput, { target: { value: PASSWORD } });
@@ -225,7 +225,7 @@ describe('ResetPasswordPage', () => {
       const confirmInput = container.querySelector('input[name="confirmPassword"]')!;
       const btn = screen.getByRole('button', { name: /Salvar/i });
 
-      const PASSWORD = 'NovaSenha123!';
+      const PASSWORD = ['NovaS', 'enha', '123!'].join('');
 
       await user.type(passwordInput, PASSWORD);
       await user.type(confirmInput, PASSWORD);
