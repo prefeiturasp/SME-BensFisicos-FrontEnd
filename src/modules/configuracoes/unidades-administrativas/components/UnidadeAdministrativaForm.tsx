@@ -118,11 +118,6 @@ export function UnidadeAdministrativaForm({
                     />
                   </div>
                 </FormControl>
-
-                <p id='codigo-final-helper' className='text-xs text-gray-500'>
-                  Digite apenas os 3 últimos dígitos. Exemplo: 286.
-                </p>
-
                 <FormMessage />
               </FormItem>
             )}
