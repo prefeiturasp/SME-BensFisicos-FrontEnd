@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
@@ -35,6 +35,72 @@ function extractErrorMessage(value: unknown): string | null {
   }
 
   return null;
+}
+
+function setBackendFieldErrors(
+  data: Record<string, unknown>,
+  form: UseFormReturn<UnidadeAdministrativaFormData>,
+): boolean {
+  let hasFieldErrors = false;
+
+  Object.entries(FIELD_MAP).forEach(([backendField, formField]) => {
+    const message = extractErrorMessage(data[backendField]);
+
+    if (message) {
+      form.setError(formField, { type: 'server', message });
+      hasFieldErrors = true;
+    }
+  });
+
+  return hasFieldErrors;
+}
+
+function handleBadRequestData(
+  data: Record<string, unknown>,
+  form: UseFormReturn<UnidadeAdministrativaFormData>,
+): boolean {
+  const hasFieldErrors = setBackendFieldErrors(data, form);
+
+  const unidadeOrcamentariaError = extractErrorMessage(data.unidade_orcamentaria);
+  if (unidadeOrcamentariaError) {
+    form.setError('root.serverError', {
+      type: 'server',
+      message: unidadeOrcamentariaError,
+    });
+    toast.error(unidadeOrcamentariaError);
+  }
+
+  const detailError = extractErrorMessage(data.detail);
+  if (detailError) {
+    toast.error(detailError);
+    if (!hasFieldErrors) {
+      form.setError('root.serverError', { type: 'server', message: detailError });
+    }
+    return true;
+  }
+
+  if (hasFieldErrors) {
+    toast.error('Corrija os campos destacados para continuar.');
+    return true;
+  }
+
+  return Boolean(unidadeOrcamentariaError);
+}
+
+function handleBadRequestError(
+  error: unknown,
+  form: UseFormReturn<UnidadeAdministrativaFormData>,
+): boolean {
+  if (!(error instanceof AxiosError) || error.response?.status !== 400) {
+    return false;
+  }
+
+  const rawData = error.response.data;
+  if (typeof rawData !== 'object' || rawData === null) {
+    return false;
+  }
+
+  return handleBadRequestData(rawData as Record<string, unknown>, form);
 }
 
 export default function UnidadesAdministrativasCreatePage() {
@@ -85,54 +151,8 @@ export default function UnidadesAdministrativasCreatePage() {
 
       navigate('/unidades-administrativas');
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 400) {
-        const data =
-          typeof error.response.data === 'object' && error.response.data !== null
-            ? (error.response.data as Record<string, unknown>)
-            : null;
-
-        if (data) {
-          let hasFieldErrors = false;
-          let hasRootError = false;
-
-          Object.entries(FIELD_MAP).forEach(([backendField, formField]) => {
-            const message = extractErrorMessage(data[backendField]);
-
-            if (message) {
-              form.setError(formField, { type: 'server', message });
-              hasFieldErrors = true;
-            }
-          });
-
-          const unidadeOrcamentariaError = extractErrorMessage(data.unidade_orcamentaria);
-          if (unidadeOrcamentariaError) {
-            form.setError('root.serverError', {
-              type: 'server',
-              message: unidadeOrcamentariaError,
-            });
-            toast.error(unidadeOrcamentariaError);
-            hasRootError = true;
-          }
-
-          const detailError = extractErrorMessage(data.detail);
-          if (detailError) {
-            toast.error(detailError);
-            if (!hasFieldErrors) {
-              form.setError('root.serverError', { type: 'server', message: detailError });
-              hasRootError = true;
-            }
-            return;
-          }
-
-          if (hasFieldErrors) {
-            toast.error('Corrija os campos destacados para continuar.');
-            return;
-          }
-
-          if (hasRootError) {
-            return;
-          }
-        }
+      if (handleBadRequestError(error, form)) {
+        return;
       }
 
       const message = error instanceof Error ? error.message : 'Erro ao cadastrar unidade administrativa.';
