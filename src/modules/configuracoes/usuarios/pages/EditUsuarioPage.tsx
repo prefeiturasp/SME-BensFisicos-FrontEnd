@@ -238,6 +238,15 @@ export default function EditarUsuarioPage() {
         )
     }
 
+    const handleUnidadeChange = (value: string) => {
+        const ua = unidadesAdministrativas.find(
+            (u) => String(u.unidade_administrativa_id) === value
+        )
+
+        setUnidadeSelecionada(ua ?? null)
+        setValue("unidade", value, { shouldValidate: true })
+    }
+
     // ── Render ─────────────────────────────────────────────────────────────────
 
     return (
@@ -382,13 +391,7 @@ export default function EditarUsuarioPage() {
                                 ? String(unidadeSelecionada.unidade_administrativa_id)
                                 : ""
                             }
-                            onValueChange={(value) => {
-                                const ua = unidadesAdministrativas.find(
-                                    u => String(u.unidade_administrativa_id) === value
-                                )
-                                setUnidadeSelecionada(ua ?? null)
-                                setValue("unidade", value, { shouldValidate: true })
-                            }}
+                            onValueChange={handleUnidadeChange}
                         >
                             <SelectTrigger className={INPUT_CLASS}>
                                 <SelectValue placeholder="Selecione uma UA" />
