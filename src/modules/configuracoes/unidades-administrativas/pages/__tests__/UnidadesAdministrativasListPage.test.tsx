@@ -168,7 +168,7 @@ describe('UnidadesAdministrativasListPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade' }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/unidades-administrativas/nova');
+    expect(navigateMock).toHaveBeenCalledWith('/unidades-administrativas/novo');
   });
 
   it('volta para rota anterior ao clicar em Voltar', () => {

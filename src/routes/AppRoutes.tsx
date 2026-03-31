@@ -29,6 +29,7 @@ import AdicionarUsuarioPage from '@/modules/configuracoes/usuarios/pages/Adicion
 import UnidadesAdministrativasListPage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasListPage';
 import ViewUsuarioPage from '@/modules/configuracoes/usuarios/pages/ViewUsuarioPage';
 import EditarUsuarioPage from '@/modules/configuracoes/usuarios/pages/EditUsuarioPage';
+import UnidadesAdministrativasCreatePage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage';
 
 export default function AppRoutes() {
   return (
@@ -64,6 +65,7 @@ export default function AppRoutes() {
           {/* Módulo: Configurações */}
           {/* Submódulo: Unidades Administrativas */}
           <Route path='/unidades-administrativas' element={<UnidadesAdministrativasListPage />} />
+          <Route path='/unidades-administrativas/novo' element={<UnidadesAdministrativasCreatePage />} />
           {/* Submódulo: Usuários */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
           <Route path='/usuarios/novo' element={<AdicionarUsuarioPage />} />
