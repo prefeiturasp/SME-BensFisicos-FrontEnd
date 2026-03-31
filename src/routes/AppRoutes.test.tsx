@@ -57,6 +57,14 @@ vi.mock(
     ),
   }),
 );
+vi.mock(
+  '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage',
+  () => ({
+    default: () => (
+      <div data-testid='unidades-administrativas-create'>Unidades Administrativas Create</div>
+    ),
+  }),
+);
 
 describe('AppRoutes', () => {
   beforeEach(() => {
@@ -302,6 +310,15 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('unidades-administrativas-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para cadastro de unidade administrativa', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-administrativas/novo']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-administrativas-create')).toBeInTheDocument();
     });
   });
 

@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios';
 import { api } from '@/api/http';
 import type {
+  CreateUnidadeAdministrativaPayload,
   PaginatedResponse,
   UnidadeAdministrativaExportFormat,
   UnidadeAdministrativaExportResult,
@@ -52,6 +53,33 @@ export const unidadesAdministrativasService = {
       };
     } catch (error) {
       handleApiError(error, 'Erro ao exportar unidades administrativas');
+    }
+  },
+
+  async create(payload: CreateUnidadeAdministrativaPayload): Promise<UnidadeAdministrativa> {
+    try {
+      const { data } = await api.post<UnidadeAdministrativa>('/unidades-administrativas/', payload);
+      return data;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (!error.response) {
+          throw new Error('Erro de conexão com o servidor.');
+        }
+
+        const { status, data } = error.response;
+
+        if (status === 400) {
+          throw error;
+        }
+
+        if (data?.detail) {
+          throw new Error(data.detail);
+        }
+
+        throw new Error('Erro ao criar unidade administrativa.');
+      }
+
+      throw error;
     }
   },
 };

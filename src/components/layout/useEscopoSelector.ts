@@ -42,6 +42,10 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
     toast.success('Unidade Atualizada', {
       description: label,
     });
+
+    if (import.meta.env.MODE !== 'test') {
+      window.location.reload();
+    }
   };
 
   const findUaById = (escopoGrupos: EscopoGrupo[], uaId: number): EscopoUa | undefined => {
