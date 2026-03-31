@@ -39,6 +39,7 @@ function Campo({ label, value, required }: CampoProps) {
     </div>
   )
 }
+
 export default function ViewUsuarioPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -124,18 +125,28 @@ export default function ViewUsuarioPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
+            {/* 1 */}
             <Campo
               label="Nome Completo"
               value={usuario.nome}
               required
             />
 
+            {/* 2 */}
             <Campo
               label="RF"
               value={usuario.rf}
               required
             />
 
+            {/* 3 */}
+            <Campo
+              label="Grupo de Permissionamento"
+              value={usuario.grupo_nome}
+              required
+            />
+
+            {/* 4 */}
             <Campo
               label="Unidade Administrativa"
               value={
@@ -145,23 +156,20 @@ export default function ViewUsuarioPage() {
               }
             />
 
+            {/* 5 */}
             <Campo
               label="Nome de Usuário de Acesso"
               value={usuario.username}
             />
 
+            {/* 6 */}
             <Campo
               label="E-mail do Usuário"
               value={usuario.email}
               required
             />
 
-            <Campo
-              label="Grupo de Permissionamento"
-              value={usuario.grupo_nome}
-              required
-            />
-
+            {/* 7 */}
             <Campo
               label="Status"
               value={usuario.status_display}

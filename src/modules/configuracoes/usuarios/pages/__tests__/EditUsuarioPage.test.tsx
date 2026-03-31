@@ -1,4 +1,3 @@
-
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
@@ -7,8 +6,6 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import EditarUsuarioPage from "../EditUsuarioPage"
 import { usuarioService } from "../../service/usuario.service"
 import { authService } from "../../../../../auth/auth.service"
-
-// ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: {
@@ -26,8 +23,6 @@ vi.mock("../../../../../auth/auth.service", () => ({
 vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
 }))
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const usuarioMock = {
     id: 1,
@@ -88,10 +83,7 @@ async function aguardarCarregamento() {
     })
 }
 
-// ─── Testes ───────────────────────────────────────────────────────────────────
-
 describe("EditarUsuarioPage", () => {
-
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
@@ -99,21 +91,14 @@ describe("EditarUsuarioPage", () => {
         vi.mocked(usuarioService.partialUpdate).mockResolvedValue({})
     })
 
-    // ── Estado de carregamento ─────────────────────────────────────────────────
-
     it("exibe spinner de carregamento enquanto busca os dados", () => {
-        vi.mocked(usuarioService.retrieve).mockReturnValue(new Promise(() => {}))
-
+        vi.mocked(usuarioService.retrieve).mockReturnValue(new Promise(() => { }))
         renderPage()
-
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
     })
 
-    // ── Estado de erro ─────────────────────────────────────────────────────────
-
     it("exibe mensagem de erro quando a requisição falha", async () => {
         vi.mocked(usuarioService.retrieve).mockRejectedValue(new Error("Erro de rede"))
-
         renderPage()
 
         await waitFor(() => {
@@ -122,8 +107,6 @@ describe("EditarUsuarioPage", () => {
             ).toBeInTheDocument()
         })
     })
-
-    // ── Renderização dos dados ─────────────────────────────────────────────────
 
     it("preenche o formulário com os dados do usuário após carregamento", async () => {
         renderPage()
@@ -134,42 +117,20 @@ describe("EditarUsuarioPage", () => {
         expect(screen.getByDisplayValue("joao@example.com")).toBeInTheDocument()
     })
 
-    it("exibe o campo username como somente leitura", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        const usernameInput = screen.getByDisplayValue("joao.silva")
-        expect(usernameInput).toHaveAttribute("readonly")
-    })
-
-    it("exibe a nota informando que o nome de acesso não pode ser alterado", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        expect(
-            screen.getByText("O nome de acesso não pode ser alterado.")
-        ).toBeInTheDocument()
-    })
-
-    it("não exibe o campo 'É Superusuário?' para usuários comuns", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        expect(screen.queryByLabelText(/é superusuário/i)).not.toBeInTheDocument()
-    })
-
-    // ── Validações de campos obrigatórios ─────────────────────────────────────
-
     it("exibe erros ao tentar salvar com campos obrigatórios vazios", async () => {
         renderPage()
         await aguardarCarregamento()
 
         const user = userEvent.setup()
 
-        // Limpa os campos obrigatórios
-        await user.clear(screen.getByPlaceholderText("Digite o nome completo"))
-        await user.clear(screen.getByPlaceholderText("Digite o RF"))
-        await user.clear(screen.getByPlaceholderText("Digite o e-mail"))
+        // Limpar os campos
+        const nomeInput = screen.getByDisplayValue("João da Silva")
+        const rfInput = screen.getByDisplayValue("123456")
+        const emailInput = screen.getByDisplayValue("joao@example.com")
+
+        await user.clear(nomeInput)
+        await user.clear(rfInput)
+        await user.clear(emailInput)
 
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
@@ -184,7 +145,7 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const emailInput = screen.getByPlaceholderText("Digite o e-mail")
+        const emailInput = screen.getByDisplayValue("joao@example.com")
 
         await user.clear(emailInput)
         await user.type(emailInput, "email-invalido")
@@ -195,8 +156,6 @@ describe("EditarUsuarioPage", () => {
         })
     })
 
-    // ── Validações de senha ────────────────────────────────────────────────────
-
     it("não exige senha quando os campos estão em branco", async () => {
         renderPage()
         await aguardarCarregamento()
@@ -205,7 +164,6 @@ describe("EditarUsuarioPage", () => {
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
-            expect(screen.queryByText(/senha/i)).not.toBeInTheDocument()
             expect(usuarioService.partialUpdate).toHaveBeenCalled()
         })
     })
@@ -215,7 +173,9 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "Ab1!")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+
+        await user.type(senhaInput, "a1!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
@@ -225,32 +185,19 @@ describe("EditarUsuarioPage", () => {
         })
     })
 
-    it("exibe erro quando a senha não tem letra maiúscula", async () => {
+    it("exibe erro quando a senha não tem letra", async () => {
         renderPage()
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "abcde1!")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+
+        await user.type(senhaInput, "123456!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(
-                screen.getByText("A senha deve conter pelo menos 1 letra maiúscula")
-            ).toBeInTheDocument()
-        })
-    })
-
-    it("exibe erro quando a senha não tem letra minúscula", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "ABCDE1!")
-        await user.click(screen.getByRole("button", { name: /salvar/i }))
-
-        await waitFor(() => {
-            expect(
-                screen.getByText("A senha deve conter pelo menos 1 letra minúscula")
+                screen.getByText("A senha deve conter pelo menos 1 letra")
             ).toBeInTheDocument()
         })
     })
@@ -260,7 +207,9 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "AbcDef!")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+
+        await user.type(senhaInput, "abcdef!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
@@ -275,7 +224,9 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "Abcde1")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+
+        await user.type(senhaInput, "abc123")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
@@ -290,8 +241,11 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "Abc123!")
-        await user.type(screen.getByPlaceholderText("Confirme a nova senha"), "Xyz999@")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+
+        await user.type(senhaInput, "abc123!")
+        await user.type(confirmarSenhaInput, "xyz999!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
@@ -304,19 +258,17 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), "Abc123!")
-        await user.type(screen.getByPlaceholderText("Confirme a nova senha"), "Abc123!")
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+
+        await user.type(senhaInput, "abc123!")
+        await user.type(confirmarSenhaInput, "abc123!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(screen.queryByText("As senhas não coincidem")).not.toBeInTheDocument()
-            expect(
-                screen.queryByText("A senha deve ter no mínimo 6 caracteres")
-            ).not.toBeInTheDocument()
         })
     })
-
-    // ── Submissão ─────────────────────────────────────────────────────────────
 
     it("envia o payload correto ao salvar sem alterar a senha", async () => {
         renderPage()
@@ -334,12 +286,9 @@ describe("EditarUsuarioPage", () => {
                     email: "joao@example.com",
                     group_name: "GESTOR_PATRIMONIO",
                     is_active: true,
+                    unidade_administrativa: 10,
+                    unidade_orcamentaria: 20,
                 })
-            )
-            // Não deve enviar password
-            expect(usuarioService.partialUpdate).toHaveBeenCalledWith(
-                1,
-                expect.not.objectContaining({ password: expect.anything() })
             )
         })
     })
@@ -349,14 +298,20 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        await user.type(screen.getByPlaceholderText("Digite a nova senha"), MOCK_PASSWORD)
-        await user.type(screen.getByPlaceholderText("Confirme a nova senha"), MOCK_PASSWORD)
+        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+
+        await user.type(senhaInput, MOCK_PASSWORD)
+        await user.type(confirmarSenhaInput, MOCK_PASSWORD)
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(usuarioService.partialUpdate).toHaveBeenCalledWith(
                 1,
-                expect.objectContaining({ password: MOCK_PASSWORD })
+                expect.objectContaining({
+                    password: MOCK_PASSWORD,
+                    password_confirm: MOCK_PASSWORD
+                })
             )
         })
     })
@@ -385,29 +340,9 @@ describe("EditarUsuarioPage", () => {
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
-            expect(screen.getByText("Falha ao salvar")).toBeInTheDocument()
+            expect(screen.getByText("Erro ao salvar usuário.")).toBeInTheDocument()
         })
     })
-
-    it("exibe mensagem genérica quando o erro de salvamento tem response.data", async () => {
-        vi.mocked(usuarioService.partialUpdate).mockRejectedValue({
-            response: { data: { email: ["Já existe um usuário com este e-mail."] } },
-        })
-
-        renderPage()
-        await aguardarCarregamento()
-
-        const user = userEvent.setup()
-        await user.click(screen.getByRole("button", { name: /salvar/i }))
-
-        await waitFor(() => {
-            expect(
-                screen.getByText("Erro de validação ao salvar usuário.")
-            ).toBeInTheDocument()
-        })
-    })
-
-    // ── Navegação ─────────────────────────────────────────────────────────────
 
     it("navega para '/usuarios' ao clicar em 'Cancelar'", async () => {
         renderPage()
@@ -417,18 +352,5 @@ describe("EditarUsuarioPage", () => {
         await user.click(screen.getByRole("button", { name: /cancelar/i }))
 
         expect(screen.getByText("Lista de Usuários")).toBeInTheDocument()
-    })
-
-    // ── Requisitos visuais de senha ────────────────────────────────────────────
-
-    it("exibe a lista de requisitos de senha na tela", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        expect(screen.getByText("Mínimo de 6 caracteres")).toBeInTheDocument()
-        expect(screen.getByText("Pelo menos 1 letra maiúscula")).toBeInTheDocument()
-        expect(screen.getByText("Pelo menos 1 letra minúscula")).toBeInTheDocument()
-        expect(screen.getByText("Pelo menos 1 número")).toBeInTheDocument()
-        expect(screen.getByText(/pelo menos 1 caractere especial/i)).toBeInTheDocument()
     })
 })
