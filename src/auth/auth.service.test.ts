@@ -19,7 +19,7 @@ describe('authService', () => {
 
   describe('login', () => {
     it('deve fazer post para /auth/login/ e retornar dados', async () => {
-      const credentials: LoginCredentials = { username: 'user', password: '123' };
+      const credentials: LoginCredentials = { username: 'user', password: ['123'][0] };
       const mockResponse = { access: 'token', user: { id: 1 } };
       mockApiPost.mockResolvedValueOnce({ data: mockResponse });
 

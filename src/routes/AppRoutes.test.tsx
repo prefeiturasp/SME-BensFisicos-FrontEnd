@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Outlet } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AppRoutes from './AppRoutes';
 import { useAuth } from '../auth/useAuth';
-import { Outlet } from 'react-router-dom';
 
 vi.mock('../auth/useAuth');
 
@@ -50,6 +49,22 @@ vi.mock('@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage', () => ({
 vi.mock('@/modules/inventario/pages/InventarioListPage', () => ({
   default: () => <div data-testid='inventario-list'>Inventario List</div>,
 }));
+vi.mock(
+  '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasListPage',
+  () => ({
+    default: () => (
+      <div data-testid='unidades-administrativas-list'>Unidades Administrativas List</div>
+    ),
+  }),
+);
+vi.mock(
+  '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage',
+  () => ({
+    default: () => (
+      <div data-testid='unidades-administrativas-create'>Unidades Administrativas Create</div>
+    ),
+  }),
+);
 
 describe('AppRoutes', () => {
   beforeEach(() => {
@@ -286,6 +301,24 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('inventario-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para unidades administrativas', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-administrativas']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-administrativas-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para cadastro de unidade administrativa', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-administrativas/novo']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-administrativas-create')).toBeInTheDocument();
     });
   });
 

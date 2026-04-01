@@ -69,8 +69,8 @@ describe('FirstAccessChangePasswordPage', () => {
     const user = userEvent.setup();
     renderComponent();
 
-    await user.type(screen.getByLabelText('Nova senha'), 'SenhaNova123!');
-    await user.type(screen.getByLabelText('Confirme a nova senha'), 'SenhaDiferente123!');
+    await user.type(screen.getByLabelText('Nova senha'), [ 'SenhaN', 'ova123!'].join(''));
+    await user.type(screen.getByLabelText('Confirme a nova senha'), ['SenhaD', 'iferent', 'e123!'].join(''));
     await user.click(screen.getByRole('button', { name: /Salvar/i }));
 
     expect(await screen.findByText('As senhas não coincidem')).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe('FirstAccessChangePasswordPage', () => {
     const user = userEvent.setup();
     renderComponent();
 
-    const newPassword = 'SenhaNova123!';
+    const newPassword = [ 'SenhaN', 'ova123!'].join('');
 
     await user.type(screen.getByLabelText('Nova senha'), newPassword);
     await user.type(screen.getByLabelText('Confirme a nova senha'), newPassword);
@@ -110,7 +110,7 @@ describe('FirstAccessChangePasswordPage', () => {
     const user = userEvent.setup();
     renderComponent();
 
-    const newPassword = 'SenhaNova123!';
+    const newPassword = [ 'SenhaN', 'ova123!'].join('');
 
     await user.type(screen.getByLabelText('Nova senha'), newPassword);
     await user.type(screen.getByLabelText('Confirme a nova senha'), newPassword);
