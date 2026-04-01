@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react"
+import { ArrowLeft, Settings, Eye, EyeOff } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
 
@@ -41,6 +41,20 @@ const ACTION_BUTTON_CLASS = `
 const REQUIRED = <span className="text-red-500 ml-1">*</span>
 
 //
+// ─── TIPOS ────────────────────────────────────────────────────────────────
+//
+
+interface ValoresOriginais {
+    nome: string
+    rf: string
+    email: string
+    grupo: string
+    status: string
+    unidade_administrativa_id: number | null
+    unidade_orcamentaria_id: number | null
+}
+
+//
 // ─── COMPONENT ─────────────────────────────────────────────────────────────
 //
 
@@ -54,6 +68,13 @@ export default function EditarUsuarioPage() {
     const [loadingDados, setLoadingDados] = useState(true)
     const [loadingSalvar, setLoadingSalvar] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+    // Guarda os valores originais carregados da API para comparação no PATCH
+    const [valoresOriginais, setValoresOriginais] = useState<ValoresOriginais | null>(null)
+
+    // Controle de visibilidade dos campos de senha
+    const [mostrarSenha, setMostrarSenha] = useState(false)
+    const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false)
 
     const {
         register,
@@ -106,15 +127,29 @@ export default function EditarUsuarioPage() {
 
                 setUnidadesAdministrativas(uas)
 
+                let uaSelecionada: EscopoUa | null = null
+
                 if (dadosUsuario.unidade_codigo) {
                     const uaAtual = uas.find(
                         u => u.codigo === dadosUsuario.unidade_codigo
                     )
                     if (uaAtual) {
+                        uaSelecionada = uaAtual
                         setUnidadeSelecionada(uaAtual)
                         setValue("unidade", String(uaAtual.unidade_administrativa_id))
                     }
                 }
+
+                // Salva snapshot dos valores originais para uso no PATCH
+                setValoresOriginais({
+                    nome: dadosUsuario.nome ?? "",
+                    rf: dadosUsuario.rf ?? "",
+                    email: dadosUsuario.email ?? "",
+                    grupo: dadosUsuario.grupo_nome ?? "",
+                    status: dadosUsuario.status ?? "ativo",
+                    unidade_administrativa_id: uaSelecionada?.unidade_administrativa_id ?? null,
+                    unidade_orcamentaria_id: uaSelecionada?.unidade_orcamentaria_id ?? null,
+                })
 
             } catch {
                 setErrorMessage("Erro ao carregar os dados do usuário.")
@@ -137,15 +172,34 @@ export default function EditarUsuarioPage() {
             setLoadingSalvar(true)
             setErrorMessage(null)
 
-            const payload: Record<string, unknown> = {
-                nome: data.nome,
-                rf: data.rf,
-                email: data.email,
-                group_name: data.grupo,
-                is_active: data.status === "ativo",
-                unidade_administrativa: unidadeSelecionada?.unidade_administrativa_id ?? null,
-                unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? null,
-            }
+            const uaAtualId = unidadeSelecionada?.unidade_administrativa_id ?? null
+            const uaAtualOrcId = unidadeSelecionada?.unidade_orcamentaria_id ?? null
+
+            // Monta o payload apenas com os campos que foram alterados
+            const payload: Record<string, unknown> = {}
+
+            if (data.nome !== valoresOriginais?.nome)
+                payload.nome = data.nome
+
+            if (data.rf !== valoresOriginais?.rf)
+                payload.rf = data.rf
+
+            if (data.email !== valoresOriginais?.email)
+                payload.email = data.email
+
+            if (data.grupo !== valoresOriginais?.grupo)
+                payload.group_name = data.grupo
+
+            const isActiveAtual = data.status === "ativo"
+            const isActiveOriginal = valoresOriginais?.status === "ativo"
+            if (isActiveAtual !== isActiveOriginal)
+                payload.is_active = isActiveAtual
+
+            if (uaAtualId !== valoresOriginais?.unidade_administrativa_id)
+                payload.unidade_administrativa = uaAtualId
+
+            if (uaAtualOrcId !== valoresOriginais?.unidade_orcamentaria_id)
+                payload.unidade_orcamentaria = uaAtualOrcId
 
             if (data.senha) {
                 payload.password = data.senha
@@ -351,34 +405,60 @@ export default function EditarUsuarioPage() {
 
                 </form>
 
-                {/* Senha - Seguindo o padrão da tela de adicionar */}
+                {/* Senha */}
                 <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Cadastre uma Senha
-                            {/*  */}
+                        
+                        <div className="relative">
                             <input
-                                type="password"
+                                type={mostrarSenha ? "text" : "password"}
                                 placeholder="Cadastre uma senha"
                                 {...register("senha")}
-                                className={INPUT_TEXT_CLASS}
+                                className={`${INPUT_TEXT_CLASS} pr-10`}
                             />
-                            {errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}
+                            <button
+                                type="button"
+                                onClick={() => setMostrarSenha(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                tabIndex={-1}
+                                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+                            >
+                                {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+                        {errors.senha && (
+                            <span className="text-red-600 text-sm">{errors.senha.message}</span>
+                        )}
                         </label>
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-semibold text-gray-700">
                             Confirme a Senha
-                            {/*  */}
+                        
+                        <div className="relative">
                             <input
-                                type="password"
+                                type={mostrarConfirmarSenha ? "text" : "password"}
                                 placeholder="Confirme a senha"
                                 {...register("confirmarSenha")}
-                                className={INPUT_TEXT_CLASS}
+                                className={`${INPUT_TEXT_CLASS} pr-10`}
                             />
-                            {errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}
+                            <button
+                                type="button"
+                                onClick={() => setMostrarConfirmarSenha(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                tabIndex={-1}
+                                aria-label={mostrarConfirmarSenha ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}
+                            >
+                                {mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
+                        {errors.confirmarSenha && (
+                            <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>
+                        )}
                         </label>
                     </div>
 

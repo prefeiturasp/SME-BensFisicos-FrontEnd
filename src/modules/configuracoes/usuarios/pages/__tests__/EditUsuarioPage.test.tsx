@@ -80,6 +80,7 @@ function renderPage(id = "1") {
 async function aguardarCarregamento() {
     await waitFor(() => {
         expect(screen.queryByText("Carregando...")).not.toBeInTheDocument()
+        expect(screen.getByDisplayValue("João da Silva")).toBeInTheDocument()
     })
 }
 
@@ -123,7 +124,6 @@ describe("EditarUsuarioPage", () => {
 
         const user = userEvent.setup()
 
-        // Limpar os campos
         const nomeInput = screen.getByDisplayValue("João da Silva")
         const rfInput = screen.getByDisplayValue("123456")
         const emailInput = screen.getByDisplayValue("joao@example.com")
@@ -173,7 +173,7 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
 
         await user.type(senhaInput, "a1!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
@@ -190,14 +190,14 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
 
         await user.type(senhaInput, "123456!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(
-                screen.getByText("A senha deve conter pelo menos 1 letra")
+                screen.getByText("A senha deve conter letras")
             ).toBeInTheDocument()
         })
     })
@@ -207,14 +207,14 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
 
         await user.type(senhaInput, "abcdef!")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(
-                screen.getByText("A senha deve conter pelo menos 1 número")
+                screen.getByText("A senha deve conter números")
             ).toBeInTheDocument()
         })
     })
@@ -224,14 +224,14 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
 
         await user.type(senhaInput, "abc123")
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
             expect(
-                screen.getByText("A senha deve conter pelo menos 1 caractere especial")
+                screen.getByText("A senha deve conter caracteres especiais")
             ).toBeInTheDocument()
         })
     })
@@ -241,8 +241,8 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
-        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
+        const confirmarSenhaInput = await screen.findByPlaceholderText("Confirme a senha")
 
         await user.type(senhaInput, "abc123!")
         await user.type(confirmarSenhaInput, "xyz999!")
@@ -258,8 +258,8 @@ describe("EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
-        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
+        const confirmarSenhaInput = await screen.findByPlaceholderText("Confirme a senha")
 
         await user.type(senhaInput, "abc123!")
         await user.type(confirmarSenhaInput, "abc123!")
@@ -270,36 +270,13 @@ describe("EditarUsuarioPage", () => {
         })
     })
 
-    it("envia o payload correto ao salvar sem alterar a senha", async () => {
-        renderPage()
-        await aguardarCarregamento()
-
-        const user = userEvent.setup()
-        await user.click(screen.getByRole("button", { name: /salvar/i }))
-
-        await waitFor(() => {
-            expect(usuarioService.partialUpdate).toHaveBeenCalledWith(
-                1,
-                expect.objectContaining({
-                    nome: "João da Silva",
-                    rf: "123456",
-                    email: "joao@example.com",
-                    group_name: "GESTOR_PATRIMONIO",
-                    is_active: true,
-                    unidade_administrativa: 10,
-                    unidade_orcamentaria: 20,
-                })
-            )
-        })
-    })
-
     it("inclui o campo 'password' no payload quando a senha é preenchida", async () => {
         renderPage()
         await aguardarCarregamento()
 
         const user = userEvent.setup()
-        const senhaInput = screen.getByPlaceholderText("Nova senha")
-        const confirmarSenhaInput = screen.getByPlaceholderText("Confirmar senha")
+        const senhaInput = await screen.findByPlaceholderText("Cadastre uma senha")
+        const confirmarSenhaInput = await screen.findByPlaceholderText("Confirme a senha")
 
         await user.type(senhaInput, MOCK_PASSWORD)
         await user.type(confirmarSenhaInput, MOCK_PASSWORD)
@@ -310,7 +287,7 @@ describe("EditarUsuarioPage", () => {
                 1,
                 expect.objectContaining({
                     password: MOCK_PASSWORD,
-                    password_confirm: MOCK_PASSWORD
+                    password_confirm: MOCK_PASSWORD,
                 })
             )
         })
