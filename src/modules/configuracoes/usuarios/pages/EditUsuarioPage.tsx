@@ -18,7 +18,7 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
-import { usuarioService} from "../service/usuario.service"
+import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoUa } from "../../../../auth/auth.service"
 import { type EditarUsuarioFormData, editarUsuarioSchema } from "../validators/editarUsuario"
 
@@ -48,7 +48,6 @@ export default function EditarUsuarioPage() {
     const navigate = useNavigate()
     const { id } = useParams<{ id: string }>()
 
-    // const [usuario, setUsuario] = useState<Usuario | null>(null)
     const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
     const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
 
@@ -77,6 +76,7 @@ export default function EditarUsuarioPage() {
     })
 
     const grupoSelecionado = watch("grupo")
+    const statusSelecionado = watch("status")
     const unidadeObrigatoria = grupoSelecionado === "OPERADOR_INVENTARIO"
 
     //
@@ -94,8 +94,6 @@ export default function EditarUsuarioPage() {
                     usuarioService.retrieve(Number(id)),
                     authService.getCurrentUser(),
                 ])
-
-                // setUsuario(dadosUsuario)
 
                 setValue("nome", dadosUsuario.nome ?? "")
                 setValue("rf", dadosUsuario.rf ?? "")
@@ -249,7 +247,11 @@ export default function EditarUsuarioPage() {
                         <label className="text-sm font-semibold text-gray-700">
                             Nome Completo{REQUIRED}
                         </label>
-                        <input {...register("nome")} className={INPUT_TEXT_CLASS} />
+                        <input
+                            {...register("nome")}
+                            className={INPUT_TEXT_CLASS}
+                            placeholder="Digite o nome completo"
+                        />
                         {errors.nome && <span className="text-red-600 text-sm">{errors.nome.message}</span>}
                     </div>
 
@@ -258,7 +260,11 @@ export default function EditarUsuarioPage() {
                         <label className="text-sm font-semibold text-gray-700">
                             RF{REQUIRED}
                         </label>
-                        <input {...register("rf")} className={INPUT_TEXT_CLASS} />
+                        <input
+                            {...register("rf")}
+                            className={INPUT_TEXT_CLASS}
+                            placeholder="Digite o rf"
+                        />
                         {errors.rf && <span className="text-red-600 text-sm">{errors.rf.message}</span>}
                     </div>
 
@@ -290,7 +296,10 @@ export default function EditarUsuarioPage() {
                         <label className="text-sm font-semibold text-gray-700">
                             Unidade {unidadeObrigatoria && REQUIRED}
                         </label>
-                        <Select onValueChange={handleUnidadeChange}>
+                        <Select
+                            value={unidadeSelecionada ? String(unidadeSelecionada.unidade_administrativa_id) : undefined}
+                            onValueChange={handleUnidadeChange}
+                        >
                             <SelectTrigger className={INPUT_CLASS}>
                                 <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
@@ -313,14 +322,23 @@ export default function EditarUsuarioPage() {
                         <label className="text-sm font-semibold text-gray-700">
                             E-mail{REQUIRED}
                         </label>
-                        <input {...register("email")} className={INPUT_TEXT_CLASS} />
+                        <input
+                            {...register("email")}
+                            className={INPUT_TEXT_CLASS}
+                            placeholder="Digite o e-mail"
+                        />
                         {errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}
                     </div>
 
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <label>Status{REQUIRED}</label>
-                        <Select onValueChange={(v) => setValue("status", v)}>
+                        <label className="text-sm font-semibold text-gray-700">
+                            Status{REQUIRED}
+                        </label>
+                        <Select
+                            value={statusSelecionado}
+                            onValueChange={(v) => setValue("status", v, { shouldValidate: true })}
+                        >
                             <SelectTrigger className={INPUT_CLASS}>
                                 <SelectValue />
                             </SelectTrigger>
@@ -333,27 +351,35 @@ export default function EditarUsuarioPage() {
 
                 </form>
 
-                {/* Senha */}
+                {/* Senha - Seguindo o padrão da tela de adicionar */}
                 <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <div>
-                        <input
-                            type="password"
-                            placeholder="Nova senha"
-                            {...register("senha")}
-                            className={INPUT_TEXT_CLASS}
-                        />
-                        {errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Cadastre uma Senha
+                            {/*  */}
+                            <input
+                                type="password"
+                                placeholder="Cadastre uma senha"
+                                {...register("senha")}
+                                className={INPUT_TEXT_CLASS}
+                            />
+                            {errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}
+                        </label>
                     </div>
 
-                    <div>
-                        <input
-                            type="password"
-                            placeholder="Confirmar senha"
-                            {...register("confirmarSenha")}
-                            className={INPUT_TEXT_CLASS}
-                        />
-                        {errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Confirme a Senha
+                            {/*  */}
+                            <input
+                                type="password"
+                                placeholder="Confirme a senha"
+                                {...register("confirmarSenha")}
+                                className={INPUT_TEXT_CLASS}
+                            />
+                            {errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}
+                        </label>
                     </div>
 
                 </div>

@@ -1,48 +1,43 @@
-import z from "zod"
+import { z } from "zod"
+import { newPasswordSchema } from "./password" // ajuste o caminho se necessário
 
-const senhaSchema = z
-    .string()
-    .optional()
-    .refine((val) => !val || val.length >= 6, {
-        message: "A senha deve ter no mínimo 6 caracteres",
-    })
-    .refine((val) => !val || /[a-z]/.test(val), {
-        message: "A senha deve conter pelo menos 1 letra",
-    })
-    .refine((val) => !val || /\d/.test(val), {
-        message: "A senha deve conter pelo menos 1 número",
-    })
-    .refine((val) => !val || /[^A-Za-z0-9]/.test(val), {
-        message: "A senha deve conter pelo menos 1 caractere especial",
-    })
-
-const editarUsuarioSchema = z
-    .object({
-        nome: z.string().min(1, "Nome é obrigatório"),
-        rf: z.string().min(1, "RF é obrigatório"),
-        email: z.email("E-mail inválido"),
-        unidade: z.string().optional(),
-        grupo: z.string().min(1, "Selecione um grupo"),
-        status: z.string().min(1, "Selecione um status"),
-        senha: senhaSchema,
-        confirmarSenha: z.string().optional(),
-    })
-    // senha confirm
-    .refine(
-        (data) => !data.senha || data.senha === data.confirmarSenha,
-        {
-            message: "As senhas não coincidem",
-            path: ["confirmarSenha"],
-        }
-    )
-    .refine(
-        (data) =>
-            data.grupo !== "OPERADOR_INVENTARIO" || !!data.unidade,
-        {
-            message: "Unidade Administrativa é obrigatória para Operador",
-            path: ["unidade"],
-        }
-    )
+export const editarUsuarioSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  rf: z.string().min(1, "RF é obrigatório"),
+  email: z.email("E-mail inválido"),
+  grupo: z.string().min(1, "Grupo é obrigatório"),
+  unidade: z.string().optional(),
+  status: z.enum(["ativo", "inativo"]),
+  // Senha opcional na edição, mas quando preenchida, usa as mesmas regras da criação
+  senha: z.union([
+    z.literal(""),
+    newPasswordSchema
+  ]).optional(),
+  confirmarSenha: z.string().optional(),
+}).refine(
+  (data) => {
+    // Se senha preenchida, confirmarSenha deve coincidir
+    if (data.senha && data.senha.length > 0) {
+      return data.senha === data.confirmarSenha
+    }
+    return true
+  },
+  {
+    message: "As senhas não coincidem",
+    path: ["confirmarSenha"],
+  }
+).refine(
+  (data) => {
+    // Se grupo é OPERADOR_INVENTARIO, unidade é obrigatória
+    if (data.grupo === "OPERADOR_INVENTARIO") {
+      return data.unidade && data.unidade.length > 0
+    }
+    return true
+  },
+  {
+    message: "Unidade Administrativa é obrigatória para Operador",
+    path: ["unidade"],
+  }
+)
 
 export type EditarUsuarioFormData = z.infer<typeof editarUsuarioSchema>
-export { editarUsuarioSchema }
