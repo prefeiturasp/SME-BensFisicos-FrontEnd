@@ -27,6 +27,8 @@ import MainLayout from '@/components/layout/MainLayout';
 import UsuariosListPage from '@/modules/configuracoes/usuarios/pages/UsuariosListPage';
 import AdicionarUsuarioPage from '@/modules/configuracoes/usuarios/pages/AdicionarUsuarioPage';
 import UnidadesAdministrativasListPage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasListPage';
+import ViewUsuarioPage from '@/modules/configuracoes/usuarios/pages/ViewUsuarioPage';
+import EditarUsuarioPage from '@/modules/configuracoes/usuarios/pages/EditUsuarioPage';
 import UnidadesAdministrativasCreatePage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage';
 
 export default function AppRoutes() {
@@ -61,10 +63,14 @@ export default function AppRoutes() {
           <Route path='/inventarios' element={<InventarioListPage />} />
 
           {/* Módulo: Configurações */}
+          {/* Submódulo: Unidades Administrativas */}
           <Route path='/unidades-administrativas' element={<UnidadesAdministrativasListPage />} />
           <Route path='/unidades-administrativas/novo' element={<UnidadesAdministrativasCreatePage />} />
+          {/* Submódulo: Usuários */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
           <Route path='/usuarios/novo' element={<AdicionarUsuarioPage />} />
+          <Route path='/usuarios/:id' element={<ViewUsuarioPage />} />
+          <Route path='/usuarios/:id/editar' element={<EditarUsuarioPage />} />
         </Route>
       </Route>
 

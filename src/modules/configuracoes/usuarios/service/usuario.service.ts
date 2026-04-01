@@ -11,6 +11,7 @@ export interface Usuario {
     grupo_nome: string
     status: string
     status_display: string
+    rf: string
 }
 
 export interface UsuarioCreatePayload {
