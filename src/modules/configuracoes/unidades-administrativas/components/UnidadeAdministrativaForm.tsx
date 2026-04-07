@@ -126,29 +126,34 @@ export function UnidadeAdministrativaForm({
           <FormField
             control={form.control}
             name='status'
-            render={({ field }) => (
-              <FormItem className='min-w-0 md:col-span-2 xl:col-span-1'>
-                <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700'>Status</FormLabel>
-                </div>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={disabled || submitting}
-                >
-                  <FormControl>
-                    <SelectTrigger className={`${INPUT_CLASS} w-full data-[size=default]:h-11`}>
-                      <SelectValue placeholder='Selecione o status' />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-                    <SelectItem value='ativa'>Ativa</SelectItem>
-                    <SelectItem value='inativa'>Inativa</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const statusKey = field.value || 'status-empty';
+
+              return (
+                <FormItem className='min-w-0 md:col-span-2 xl:col-span-1'>
+                  <div className='flex h-6 items-center'>
+                    <FormLabel className='text-sm font-semibold text-gray-700'>Status</FormLabel>
+                  </div>
+                  <Select
+                    key={statusKey}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={disabled || submitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger className={`${INPUT_CLASS} w-full data-[size=default]:h-11`}>
+                        <SelectValue placeholder='Selecione o status' />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
+                      <SelectItem value='ativa'>Ativa</SelectItem>
+                      <SelectItem value='inativa'>Inativa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         </div>
 
