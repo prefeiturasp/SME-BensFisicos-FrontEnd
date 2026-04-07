@@ -99,8 +99,8 @@ vi.mock('sonner', () => ({
   },
 }));
 
-vi.mock('../../hooks/useUnidadesAdministrativasList', () => ({
-  useUnidadesAdministrativasList: () => hookState,
+vi.mock('../../hooks/useUnidadeAdministrativaList', () => ({
+  useUnidadeAdministrativaList: () => hookState,
 }));
 
 vi.mock('../../hooks/usePagination', () => ({

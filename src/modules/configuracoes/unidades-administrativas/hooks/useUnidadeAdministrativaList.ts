@@ -4,14 +4,14 @@ import { toast } from 'sonner';
 import { unidadesAdministrativasService } from '../services/unidades-administrativas.service';
 import type { UAStatusFilter } from '../types/unidades-administrativas.types';
 
-interface UseUnidadesAdministrativasListProps {
+interface UseUnidadeAdministrativaListProps {
   pageSize: number;
 }
 
 const SEARCH_DEBOUNCE_MS = 500;
 const MIN_FILTER_CHARS = 2;
 
-export function useUnidadesAdministrativasList({ pageSize }: UseUnidadesAdministrativasListProps) {
+export function useUnidadeAdministrativaList({ pageSize }: UseUnidadeAdministrativaListProps) {
   const [page, setPage] = useState(1);
   const [ordering, setOrdering] = useState('codigo');
 
@@ -57,7 +57,14 @@ export function useUnidadesAdministrativasList({ pageSize }: UseUnidadesAdminist
   const queryKey = useMemo(
     () => [
       'unidades-administrativas',
-      { page, pageSize, codigoFiltro, nomeOuSiglaFiltro, statusFilter, ordering },
+      {
+        page,
+        pageSize,
+        codigoFiltro,
+        nomeOuSiglaFiltro,
+        statusFilter,
+        ordering,
+      },
     ],
     [page, pageSize, codigoFiltro, nomeOuSiglaFiltro, statusFilter, ordering],
   );
