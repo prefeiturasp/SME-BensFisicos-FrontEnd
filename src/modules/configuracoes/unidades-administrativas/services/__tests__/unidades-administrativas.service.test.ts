@@ -311,29 +311,6 @@ describe('unidadesAdministrativasService', () => {
     expect(result).toEqual(unidade);
   });
 
-  it('normaliza status no retrieve usando status_display quando status vem inválido', async () => {
-    const unidade = {
-      id: 11,
-      codigo: '01.16.10.093',
-      sigla: 'MA',
-      nome: 'MANUTENÇÃO',
-      status: '' as unknown as 'ativa',
-      status_display: 'Inativa',
-      unidade_orcamentaria: 1,
-      unidade_orcamentaria_codigo: '01.16.10',
-      unidade_orcamentaria_nome: 'SECRETARIA MUNICIPAL DE EDUCAÇÃO',
-      unidade_orcamentaria_sigla: 'SME',
-      created_at: '2026-03-18T10:00:00-03:00',
-      updated_at: '2026-03-18T10:00:00-03:00',
-    };
-
-    mockGet.mockResolvedValueOnce({ data: unidade });
-
-    const result = await unidadesAdministrativasService.retrieve(11);
-
-    expect(result.status).toBe('inativa');
-  });
-
   it('atualiza unidade administrativa com payload esperado', async () => {
     const payload = {
       codigo: '01.16.10.286',

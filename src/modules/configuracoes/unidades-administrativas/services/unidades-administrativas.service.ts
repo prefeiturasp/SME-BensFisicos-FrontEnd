@@ -3,7 +3,6 @@ import { api } from '@/api/http';
 import type {
   CreateUnidadeAdministrativaPayload,
   PaginatedResponse,
-  UAStatus,
   UpdateUnidadeAdministrativaPayload,
   UnidadeAdministrativaExportFormat,
   UnidadeAdministrativaExportResult,
@@ -22,10 +21,7 @@ export const unidadesAdministrativasService = {
         `/unidades-administrativas/?${query.toString()}`,
       );
 
-      return {
-        ...data,
-        results: data.results.map(normalizeUnidadeAdministrativa),
-      };
+      return data;
     } catch (error) {
       handleApiError(error, 'Erro ao listar unidades administrativas');
     }
@@ -64,7 +60,7 @@ export const unidadesAdministrativasService = {
   async create(payload: CreateUnidadeAdministrativaPayload): Promise<UnidadeAdministrativa> {
     try {
       const { data } = await api.post<UnidadeAdministrativa>('/unidades-administrativas/', payload);
-      return normalizeUnidadeAdministrativa(data);
+      return data;
     } catch (error) {
       if (error instanceof AxiosError) {
         if (!error.response) {
@@ -91,7 +87,7 @@ export const unidadesAdministrativasService = {
   async retrieve(id: number): Promise<UnidadeAdministrativa> {
     try {
       const { data } = await api.get<UnidadeAdministrativa>(`/unidades-administrativas/${id}/`);
-      return normalizeUnidadeAdministrativa(data);
+      return data;
     } catch (error) {
       handleApiError(error, 'Erro ao carregar unidade administrativa');
     }
@@ -106,7 +102,7 @@ export const unidadesAdministrativasService = {
         `/unidades-administrativas/${id}/`,
         payload,
       );
-      return normalizeUnidadeAdministrativa(data);
+      return data;
     } catch (error) {
       if (error instanceof AxiosError) {
         if (!error.response) {
@@ -181,35 +177,6 @@ function parseFileNameFromContentDisposition(contentDisposition?: string): strin
   }
 
   return null;
-}
-
-function normalizeUnidadeAdministrativa(unidade: UnidadeAdministrativa): UnidadeAdministrativa {
-  return {
-    ...unidade,
-    status: normalizeStatus(unidade.status, unidade.status_display),
-  };
-}
-
-function normalizeStatus(status: unknown, statusDisplay: unknown): UAStatus {
-  const normalizedStatus = normalizeToken(status);
-  if (normalizedStatus === 'inativa' || normalizedStatus === 'ativa') {
-    return normalizedStatus;
-  }
-
-  const normalizedStatusDisplay = normalizeToken(statusDisplay);
-  if (normalizedStatusDisplay === 'inativa' || normalizedStatusDisplay === 'ativa') {
-    return normalizedStatusDisplay;
-  }
-
-  return 'ativa';
-}
-
-function normalizeToken(value: unknown): string {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
 }
 
 function handleApiError(error: unknown, defaultMessage: string): never {
