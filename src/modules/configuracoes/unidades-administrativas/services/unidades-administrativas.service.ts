@@ -3,6 +3,8 @@ import { api } from '@/api/http';
 import type {
   CreateUnidadeAdministrativaPayload,
   PaginatedResponse,
+  UAStatus,
+  UpdateUnidadeAdministrativaPayload,
   UnidadeAdministrativaExportFormat,
   UnidadeAdministrativaExportResult,
   UnidadeAdministrativa,
@@ -20,7 +22,10 @@ export const unidadesAdministrativasService = {
         `/unidades-administrativas/?${query.toString()}`,
       );
 
-      return data;
+      return {
+        ...data,
+        results: data.results.map(normalizeUnidadeAdministrativa),
+      };
     } catch (error) {
       handleApiError(error, 'Erro ao listar unidades administrativas');
     }
@@ -59,7 +64,7 @@ export const unidadesAdministrativasService = {
   async create(payload: CreateUnidadeAdministrativaPayload): Promise<UnidadeAdministrativa> {
     try {
       const { data } = await api.post<UnidadeAdministrativa>('/unidades-administrativas/', payload);
-      return data;
+      return normalizeUnidadeAdministrativa(data);
     } catch (error) {
       if (error instanceof AxiosError) {
         if (!error.response) {
@@ -77,6 +82,48 @@ export const unidadesAdministrativasService = {
         }
 
         throw new Error('Erro ao criar unidade administrativa.');
+      }
+
+      throw error;
+    }
+  },
+
+  async retrieve(id: number): Promise<UnidadeAdministrativa> {
+    try {
+      const { data } = await api.get<UnidadeAdministrativa>(`/unidades-administrativas/${id}/`);
+      return normalizeUnidadeAdministrativa(data);
+    } catch (error) {
+      handleApiError(error, 'Erro ao carregar unidade administrativa');
+    }
+  },
+
+  async update(
+    id: number,
+    payload: UpdateUnidadeAdministrativaPayload,
+  ): Promise<UnidadeAdministrativa> {
+    try {
+      const { data } = await api.patch<UnidadeAdministrativa>(
+        `/unidades-administrativas/${id}/`,
+        payload,
+      );
+      return normalizeUnidadeAdministrativa(data);
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (!error.response) {
+          throw new Error('Erro de conexão com o servidor.');
+        }
+
+        const { status, data } = error.response;
+
+        if (status === 400) {
+          throw error;
+        }
+
+        if (data?.detail) {
+          throw new Error(data.detail);
+        }
+
+        throw new Error('Erro ao atualizar unidade administrativa.');
       }
 
       throw error;
@@ -134,6 +181,35 @@ function parseFileNameFromContentDisposition(contentDisposition?: string): strin
   }
 
   return null;
+}
+
+function normalizeUnidadeAdministrativa(unidade: UnidadeAdministrativa): UnidadeAdministrativa {
+  return {
+    ...unidade,
+    status: normalizeStatus(unidade.status, unidade.status_display),
+  };
+}
+
+function normalizeStatus(status: unknown, statusDisplay: unknown): UAStatus {
+  const normalizedStatus = normalizeToken(status);
+  if (normalizedStatus === 'inativa' || normalizedStatus === 'ativa') {
+    return normalizedStatus;
+  }
+
+  const normalizedStatusDisplay = normalizeToken(statusDisplay);
+  if (normalizedStatusDisplay === 'inativa' || normalizedStatusDisplay === 'ativa') {
+    return normalizedStatusDisplay;
+  }
+
+  return 'ativa';
+}
+
+function normalizeToken(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 function handleApiError(error: unknown, defaultMessage: string): never {
