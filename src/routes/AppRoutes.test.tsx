@@ -65,6 +65,12 @@ vi.mock(
     ),
   }),
 );
+vi.mock(
+  '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasViewPage',
+  () => ({
+    default: () => <div data-testid='unidades-administrativas-view'>Unidades Administrativas View</div>,
+  }),
+);
 
 describe('AppRoutes', () => {
   beforeEach(() => {
@@ -319,6 +325,15 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('unidades-administrativas-create')).toBeInTheDocument();
+    });
+
+    it('deve navegar para visualização de unidade administrativa', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-administrativas/10']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-administrativas-view')).toBeInTheDocument();
     });
   });
 
