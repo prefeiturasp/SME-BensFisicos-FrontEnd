@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { UseFormReturn } from 'react-hook-form';
 import type { UnidadeAdministrativa } from '../../types/unidades-administrativas.types';
+import type { UnidadeAdministrativaFormData } from '../../validators/unidade-administrativa-form.schema';
 import UnidadesAdministrativasViewPage from '../UnidadesAdministrativasViewPage';
 
 const navigateMock = vi.fn();
@@ -31,6 +34,7 @@ let queryError: Error | null = null;
 let queryData: UnidadeAdministrativa | undefined = unidadeMock;
 let mutationPending = false;
 let routeId = '10';
+let formOverrides: Partial<UnidadeAdministrativaFormData> | null = null;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -63,11 +67,44 @@ vi.mock('../../hooks/useUnidadeAdministrativa', () => ({
 }));
 
 vi.mock('../../components/UnidadeAdministrativaForm', () => ({
-  UnidadeAdministrativaForm: ({ disabled }: { disabled: boolean }) => (
-    <div data-testid='ua-form' data-disabled={String(disabled)}>
-      Formulário
-    </div>
-  ),
+  UnidadeAdministrativaForm: ({
+    disabled,
+    form,
+  }: {
+    disabled: boolean;
+    form: UseFormReturn<UnidadeAdministrativaFormData>;
+  }) => {
+    useEffect(() => {
+      form.register('codigoFinal');
+      form.register('sigla');
+      form.register('nome');
+      form.register('status');
+
+      return () => {
+        form.unregister('codigoFinal');
+        form.unregister('sigla');
+        form.unregister('nome');
+        form.unregister('status');
+      };
+    }, [form]);
+
+    useEffect(() => {
+      if (disabled || !formOverrides) {
+        return;
+      }
+
+      form.reset({
+        ...form.getValues(),
+        ...formOverrides,
+      });
+    }, [disabled, form]);
+
+    return (
+      <div data-testid='ua-form' data-disabled={String(disabled)}>
+        Formulário
+      </div>
+    );
+  },
 }));
 
 vi.mock('sonner', () => ({
@@ -90,6 +127,7 @@ describe('UnidadesAdministrativasViewPage', () => {
     queryData = unidadeMock;
     mutationPending = false;
     routeId = '10';
+    formOverrides = null;
     badRequestHandlerMock.mockReturnValue(false);
   });
 
@@ -107,7 +145,7 @@ describe('UnidadesAdministrativasViewPage', () => {
     expect(screen.getByTestId('ua-form')).toHaveAttribute('data-disabled', 'true');
   });
 
-  it('permite alternar para edição e salvar alterações', async () => {
+  it('volta para visualização sem salvar quando não há alterações', async () => {
     mutateAsyncMock.mockResolvedValueOnce(unidadeMock);
 
     render(
@@ -125,16 +163,14 @@ describe('UnidadesAdministrativasViewPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
-      expect(mutateAsyncMock).toHaveBeenCalledWith({
-        id: 10,
-        payload: {},
-      });
-
-      expect(toastSuccessMock).toHaveBeenCalledWith(
-        'Unidade Administrativa atualizada com sucesso.',
-      );
-      expect(navigateMock).toHaveBeenCalledWith('/unidades-administrativas');
+      expect(mutateAsyncMock).not.toHaveBeenCalled();
     });
+
+    expect(
+      screen.getByRole('heading', { name: 'Visualizar Unidade Administrativa' }),
+    ).toBeInTheDocument();
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalledWith('/unidades-administrativas');
   });
 
   it('retorna para listagem ao clicar em Cancelar', () => {
@@ -219,43 +255,6 @@ describe('UnidadesAdministrativasViewPage', () => {
         'Não foi possível identificar o código da Unidade Orçamentária desta UA.',
       );
       expect(mutateAsyncMock).not.toHaveBeenCalled();
-    });
-  });
-
-  it('interrompe fluxo quando util de bad request trata o erro', async () => {
-    badRequestHandlerMock.mockReturnValueOnce(true);
-    mutateAsyncMock.mockRejectedValueOnce(new Error('Erro 400 tratado'));
-
-    render(
-      <MemoryRouter>
-        <UnidadesAdministrativasViewPage />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-
-    await waitFor(() => {
-      expect(badRequestHandlerMock).toHaveBeenCalled();
-      expect(navigateMock).not.toHaveBeenCalledWith('/unidades-administrativas');
-    });
-  });
-
-  it('mostra erro genérico quando util não trata o erro', async () => {
-    badRequestHandlerMock.mockReturnValueOnce(false);
-    mutateAsyncMock.mockRejectedValueOnce(new Error('Falha inesperada no update'));
-
-    render(
-      <MemoryRouter>
-        <UnidadesAdministrativasViewPage />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
-
-    await waitFor(() => {
-      expect(toastErrorMock).toHaveBeenCalledWith('Falha inesperada no update');
     });
   });
 

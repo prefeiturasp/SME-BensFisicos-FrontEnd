@@ -130,6 +130,11 @@ export default function UnidadesAdministrativasViewPage() {
     try {
       const payload = buildUpdatePayload(unidade, values);
 
+      if (Object.keys(payload).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
       await updateMutation.mutateAsync({
         id: unidade.id,
         payload,
