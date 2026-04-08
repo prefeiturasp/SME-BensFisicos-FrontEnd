@@ -221,6 +221,12 @@ export default function UnidadesAdministrativasViewPage() {
     );
   }
 
+  let primaryActionLabel = 'Editar';
+
+  if (isEditing) {
+    primaryActionLabel = updateMutation.isPending ? 'Salvando...' : 'Salvar';
+  }
+
   return (
     <div className='space-y-4 p-8'>
       <UnidadesAdministrativasViewBreadcrumb isEditing={isEditing} />
@@ -238,7 +244,7 @@ export default function UnidadesAdministrativasViewPage() {
               disabled={updateMutation.isPending}
               onClick={handlePrimaryAction}
             >
-              {isEditing ? (updateMutation.isPending ? 'Salvando...' : 'Salvar') : 'Editar'}
+              {primaryActionLabel}
             </Button>
           )}
 
