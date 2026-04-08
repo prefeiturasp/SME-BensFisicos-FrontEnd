@@ -149,6 +149,28 @@ describe('unidadesAdministrativasService', () => {
     expect(result.fileName).toBe('unidades-administrativas.pdf');
   });
 
+  it('decodifica nome de arquivo utf-8 ao exportar', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: new Blob(['csv-content'], { type: 'text/csv' }),
+      headers: {
+        'content-disposition': "attachment; filename*=UTF-8''unidades%20administrativas.csv",
+        'content-type': 'text/csv',
+      },
+    });
+
+    const result = await unidadesAdministrativasService.exportar('csv');
+
+    expect(result.fileName).toBe('unidades administrativas.csv');
+  });
+
+  it('repropaga erro não Axios ao exportar', async () => {
+    mockGet.mockRejectedValueOnce(new Error('Falha inesperada na exportação'));
+
+    await expect(unidadesAdministrativasService.exportar('csv')).rejects.toThrow(
+      'Falha inesperada na exportação',
+    );
+  });
+
   it('cria unidade administrativa com payload esperado', async () => {
     const payload = {
       unidade_orcamentaria: 1,
@@ -386,5 +408,46 @@ describe('unidadesAdministrativasService', () => {
     await unidadesAdministrativasService.update(10, payload);
 
     expect(mockPatch).toHaveBeenCalledWith('/unidades-administrativas/10/', payload);
+  });
+
+  it.each([
+    [
+      'detail',
+      (() => {
+        const error = new AxiosError('Forbidden');
+        error.response = {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: {},
+          data: { detail: 'Sem permissão para atualizar UA.' },
+          config: { headers: new AxiosHeaders() },
+        };
+        return error;
+      })(),
+      'Sem permissão para atualizar UA.',
+    ],
+    [
+      'mensagem padrão',
+      (() => {
+        const error = new AxiosError('Server Error');
+        error.response = {
+          status: 500,
+          statusText: 'Server Error',
+          headers: {},
+          data: {},
+          config: { headers: new AxiosHeaders() },
+        };
+        return error;
+      })(),
+      'Erro ao atualizar unidade administrativa.',
+    ],
+    ['conexão', new AxiosError('Network Error'), 'Erro de conexão com o servidor.'],
+    ['erro inesperado', new Error('Falha inesperada no update'), 'Falha inesperada no update'],
+  ])('trata erro de update com %s', async (_scenario, error, message) => {
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(unidadesAdministrativasService.update(10, { status: 'inativa' })).rejects.toThrow(
+      message,
+    );
   });
 });

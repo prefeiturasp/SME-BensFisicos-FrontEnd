@@ -121,6 +121,11 @@ vi.mock('../../utils/form-error-handler', () => ({
 describe('UnidadesAdministrativasViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    navigateMock.mockReset();
+    mutateAsyncMock.mockReset();
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
+    badRequestHandlerMock.mockReset();
     canManage = true;
     queryLoading = false;
     queryError = null;
@@ -171,6 +176,41 @@ describe('UnidadesAdministrativasViewPage', () => {
     ).toBeInTheDocument();
     expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalledWith('/unidades-administrativas');
+  });
+
+  it('salva alterações com payload parcial e navega ao concluir', async () => {
+    formOverrides = {
+      codigoFinal: '999',
+      sigla: 'nova',
+      nome: '  Nova unidade  ',
+      status: 'inativa',
+    };
+
+    mutateAsyncMock.mockResolvedValueOnce(unidadeMock);
+
+    render(
+      <MemoryRouter>
+        <UnidadesAdministrativasViewPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledWith({
+        id: 10,
+        payload: {
+          codigo: '01.16.10.999',
+          sigla: 'NOVA',
+          nome: 'Nova unidade',
+          status: 'inativa',
+        },
+      });
+    });
+
+    expect(toastSuccessMock).toHaveBeenCalledWith('Unidade Administrativa atualizada com sucesso.');
+    expect(navigateMock).toHaveBeenCalledWith('/unidades-administrativas');
   });
 
   it('retorna para listagem ao clicar em Cancelar', () => {
@@ -235,6 +275,19 @@ describe('UnidadesAdministrativasViewPage', () => {
     expect(screen.getByText('Falha ao carregar')).toBeInTheDocument();
   });
 
+  it('usa mensagem padrão quando o erro da consulta não é uma instância de Error', () => {
+    queryError = 'erro inesperado' as unknown as Error;
+    queryData = undefined;
+
+    render(
+      <MemoryRouter>
+        <UnidadesAdministrativasViewPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Não foi possível carregar a unidade administrativa.')).toBeInTheDocument();
+  });
+
   it('impede salvamento quando código da UO está ausente', async () => {
     queryData = {
       ...unidadeMock,
@@ -275,5 +328,25 @@ describe('UnidadesAdministrativasViewPage', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeInTheDocument();
+  });
+
+  it('exibe erro genérico quando a atualização falha fora do fluxo 400', async () => {
+    formOverrides = { nome: 'Nova unidade' };
+    mutateAsyncMock.mockRejectedValueOnce(new Error('Falha ao atualizar unidade administrativa.'));
+
+    render(
+      <MemoryRouter>
+        <UnidadesAdministrativasViewPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('Falha ao atualizar unidade administrativa.');
+    });
+
+    expect(navigateMock).not.toHaveBeenCalledWith('/unidades-administrativas');
   });
 });
