@@ -8,7 +8,7 @@ import { UnidadesAdministrativasBreadcrumb } from '../components/UnidadesAdminis
 import { UnidadesAdministrativasFilters } from '../components/UnidadesAdministrativasFilters';
 import { UnidadesAdministrativasTable } from '../components/UnidadesAdministrativasTable';
 import { usePagination } from '../hooks/usePagination';
-import { useUnidadesAdministrativasList } from '../hooks/useUnidadesAdministrativasList';
+import { useUnidadeAdministrativaList } from '../hooks/useUnidadeAdministrativaList';
 import { unidadesAdministrativasService } from '../services/unidades-administrativas.service';
 import type { UnidadeAdministrativaExportFormat } from '../types/unidades-administrativas.types';
 
@@ -42,7 +42,7 @@ export default function UnidadesAdministrativasListPage() {
     setCodigoInput,
     setNomeOuSiglaInput,
     setStatusFilter,
-  } = useUnidadesAdministrativasList({ pageSize: PAGE_SIZE });
+  } = useUnidadeAdministrativaList({ pageSize: PAGE_SIZE });
   const [reportLoading, setReportLoading] = useState(false);
 
   const { pages, totalPages } = usePagination({
@@ -72,12 +72,14 @@ export default function UnidadesAdministrativasListPage() {
     try {
       setReportLoading(true);
 
-      const { blob, fileName } = await unidadesAdministrativasService.exportar(format, {
+      const reportParams = {
         codigo: codigoFiltro,
         nomeOuSigla: nomeOuSiglaFiltro,
         status: statusFilter,
         ordering,
-      });
+      };
+
+      const { blob, fileName } = await unidadesAdministrativasService.exportar(format, reportParams);
 
       const blobUrl = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');

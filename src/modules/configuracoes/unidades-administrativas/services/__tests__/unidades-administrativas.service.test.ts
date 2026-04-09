@@ -7,11 +7,13 @@ vi.mock('@/api/http', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
 const mockGet = vi.mocked(api.get);
 const mockPost = vi.mocked(api.post);
+const mockPatch = vi.mocked(api.patch);
 
 describe('unidadesAdministrativasService', () => {
   beforeEach(() => {
@@ -145,6 +147,28 @@ describe('unidadesAdministrativasService', () => {
     const result = await unidadesAdministrativasService.exportar('pdf');
 
     expect(result.fileName).toBe('unidades-administrativas.pdf');
+  });
+
+  it('decodifica nome de arquivo utf-8 ao exportar', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: new Blob(['csv-content'], { type: 'text/csv' }),
+      headers: {
+        'content-disposition': "attachment; filename*=UTF-8''unidades%20administrativas.csv",
+        'content-type': 'text/csv',
+      },
+    });
+
+    const result = await unidadesAdministrativasService.exportar('csv');
+
+    expect(result.fileName).toBe('unidades administrativas.csv');
+  });
+
+  it('repropaga erro não Axios ao exportar', async () => {
+    mockGet.mockRejectedValueOnce(new Error('Falha inesperada na exportação'));
+
+    await expect(unidadesAdministrativasService.exportar('csv')).rejects.toThrow(
+      'Falha inesperada na exportação',
+    );
   });
 
   it('cria unidade administrativa com payload esperado', async () => {
@@ -282,6 +306,148 @@ describe('unidadesAdministrativasService', () => {
 
     await expect(unidadesAdministrativasService.create(payload)).rejects.toThrow(
       'Falha inesperada',
+    );
+  });
+
+  it('busca detalhe de unidade administrativa por id', async () => {
+    const unidade = {
+      id: 10,
+      codigo: '01.16.10.286',
+      sigla: 'DIPAT',
+      nome: 'Divisão de Patrimônio',
+      status: 'ativa' as const,
+      status_display: 'Ativa',
+      unidade_orcamentaria: 1,
+      unidade_orcamentaria_codigo: '01.16.10',
+      unidade_orcamentaria_nome: 'SECRETARIA MUNICIPAL DE EDUCAÇÃO',
+      unidade_orcamentaria_sigla: 'SME',
+      created_at: '2026-03-18T10:00:00-03:00',
+      updated_at: '2026-03-18T10:00:00-03:00',
+    };
+
+    mockGet.mockResolvedValueOnce({ data: unidade });
+
+    const result = await unidadesAdministrativasService.retrieve(10);
+
+    expect(mockGet).toHaveBeenCalledWith('/unidades-administrativas/10/');
+    expect(result).toEqual(unidade);
+  });
+
+  it('atualiza unidade administrativa com payload esperado', async () => {
+    const payload = {
+      codigo: '01.16.10.286',
+      sigla: 'DIPAT',
+      nome: 'Divisão de Patrimônio',
+      status: 'ativa' as const,
+    };
+
+    const resposta = {
+      id: 10,
+      ...payload,
+      status_display: 'Ativa',
+      unidade_orcamentaria: 1,
+      unidade_orcamentaria_codigo: '01.16.10',
+      unidade_orcamentaria_nome: 'SECRETARIA MUNICIPAL DE EDUCAÇÃO',
+      unidade_orcamentaria_sigla: 'SME',
+      created_at: '2026-03-18T10:00:00-03:00',
+      updated_at: '2026-03-18T10:00:00-03:00',
+    };
+
+    mockPatch.mockResolvedValueOnce({ data: resposta });
+
+    const result = await unidadesAdministrativasService.update(10, payload);
+
+    expect(mockPatch).toHaveBeenCalledWith('/unidades-administrativas/10/', payload);
+    expect(result).toEqual(resposta);
+  });
+
+  it('repropaga erro 400 no update para permitir tratamento por campo', async () => {
+    const payload = {
+      codigo: '01.16.10.286',
+      sigla: 'DIPAT',
+      nome: 'Divisão de Patrimônio',
+      status: 'ativa' as const,
+    };
+
+    const error = new AxiosError('Bad Request');
+    error.response = {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      data: { codigo: ['Código inválido.'] },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(unidadesAdministrativasService.update(10, payload)).rejects.toBe(error);
+  });
+
+  it('aceita payload parcial no update (sem semântica de PUT)', async () => {
+    const payload = {
+      status: 'inativa' as const,
+    };
+
+    const resposta = {
+      id: 10,
+      codigo: '01.16.10.286',
+      sigla: 'DIPAT',
+      nome: 'Divisão de Patrimônio',
+      status: 'inativa' as const,
+      status_display: 'Inativa',
+      unidade_orcamentaria: 1,
+      unidade_orcamentaria_codigo: '01.16.10',
+      unidade_orcamentaria_nome: 'SECRETARIA MUNICIPAL DE EDUCAÇÃO',
+      unidade_orcamentaria_sigla: 'SME',
+      created_at: '2026-03-18T10:00:00-03:00',
+      updated_at: '2026-03-18T10:00:00-03:00',
+    };
+
+    mockPatch.mockResolvedValueOnce({ data: resposta });
+
+    await unidadesAdministrativasService.update(10, payload);
+
+    expect(mockPatch).toHaveBeenCalledWith('/unidades-administrativas/10/', payload);
+  });
+
+  it.each([
+    [
+      'detail',
+      (() => {
+        const error = new AxiosError('Forbidden');
+        error.response = {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: {},
+          data: { detail: 'Sem permissão para atualizar UA.' },
+          config: { headers: new AxiosHeaders() },
+        };
+        return error;
+      })(),
+      'Sem permissão para atualizar UA.',
+    ],
+    [
+      'mensagem padrão',
+      (() => {
+        const error = new AxiosError('Server Error');
+        error.response = {
+          status: 500,
+          statusText: 'Server Error',
+          headers: {},
+          data: {},
+          config: { headers: new AxiosHeaders() },
+        };
+        return error;
+      })(),
+      'Erro ao atualizar unidade administrativa.',
+    ],
+    ['conexão', new AxiosError('Network Error'), 'Erro de conexão com o servidor.'],
+    ['erro inesperado', new Error('Falha inesperada no update'), 'Falha inesperada no update'],
+  ])('trata erro de update com %s', async (_scenario, error, message) => {
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(unidadesAdministrativasService.update(10, { status: 'inativa' })).rejects.toThrow(
+      message,
     );
   });
 });

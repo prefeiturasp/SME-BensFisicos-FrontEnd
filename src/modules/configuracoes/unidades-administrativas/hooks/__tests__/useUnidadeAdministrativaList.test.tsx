@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useUnidadesAdministrativasList } from '../useUnidadesAdministrativasList';
+import { useUnidadeAdministrativaList } from '../useUnidadeAdministrativaList';
 
 const mockList = vi.fn();
 
@@ -32,7 +32,7 @@ function createWrapper() {
   };
 }
 
-describe('useUnidadesAdministrativasList', () => {
+describe('useUnidadeAdministrativaList', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
@@ -46,7 +46,7 @@ describe('useUnidadesAdministrativasList', () => {
       results: [],
     });
 
-    const { result } = renderHook(() => useUnidadesAdministrativasList({ pageSize: 10 }), {
+    const { result } = renderHook(() => useUnidadeAdministrativaList({ pageSize: 10 }), {
       wrapper: createWrapper(),
     });
 
@@ -70,7 +70,7 @@ describe('useUnidadesAdministrativasList', () => {
       results: [],
     });
 
-    const { result } = renderHook(() => useUnidadesAdministrativasList({ pageSize: 10 }), {
+    const { result } = renderHook(() => useUnidadeAdministrativaList({ pageSize: 10 }), {
       wrapper: createWrapper(),
     });
 
@@ -101,7 +101,7 @@ describe('useUnidadesAdministrativasList', () => {
       results: [],
     });
 
-    const { result } = renderHook(() => useUnidadesAdministrativasList({ pageSize: 10 }), {
+    const { result } = renderHook(() => useUnidadeAdministrativaList({ pageSize: 10 }), {
       wrapper: createWrapper(),
     });
 
@@ -144,7 +144,7 @@ describe('useUnidadesAdministrativasList', () => {
       results: [],
     });
 
-    const { result } = renderHook(() => useUnidadesAdministrativasList({ pageSize: 10 }), {
+    const { result } = renderHook(() => useUnidadeAdministrativaList({ pageSize: 10 }), {
       wrapper: createWrapper(),
     });
 
