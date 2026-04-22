@@ -41,6 +41,13 @@ export interface CreateUnidadeAdministrativaPayload {
   status: UAStatus;
 }
 
+export interface UpdateUnidadeAdministrativaPayload {
+  codigo?: string;
+  sigla?: string;
+  nome?: string;
+  status?: UAStatus;
+}
+
 export interface UnidadeAdministrativaExportResult {
   blob: Blob;
   fileName: string;
