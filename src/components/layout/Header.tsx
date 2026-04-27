@@ -211,7 +211,11 @@ export function Header() {
           <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>CARGO/FUNÇÃO:</span>
             <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
-              {user?.is_gestor_patrimonio ? 'GESTOR' : 'OPERADOR'}
+              {user?.is_superuser
+                ? 'SUPER-ADMIN'
+                : user?.is_gestor_patrimonio
+                  ? 'GESTOR'
+                  : 'OPERADOR'}
             </span>
           </div>
         </div>
