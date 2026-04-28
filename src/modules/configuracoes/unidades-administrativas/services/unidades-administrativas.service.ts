@@ -1,84 +1,34 @@
 import { AxiosError } from 'axios';
 import { api } from '@/api/http';
 import {
-  buildListQueryParams,
+  createUnidadesListService,
   handleApiError,
-  parseFileNameFromContentDisposition,
 } from '@/lib/unidades-list-service';
 import type {
   CreateUnidadeAdministrativaPayload,
-  PaginatedResponse,
+  UAStatusFilter,
   UpdateUnidadeAdministrativaPayload,
   UnidadeAdministrativaExportFormat,
-  UnidadeAdministrativaExportResult,
   UnidadeAdministrativa,
   UnidadesAdministrativasListParams,
 } from '../types/unidades-administrativas.types';
 
+const baseUnidadesAdministrativasService = createUnidadesListService<
+  UnidadeAdministrativa,
+  UnidadeAdministrativaExportFormat,
+  UAStatusFilter,
+  'status',
+  UnidadesAdministrativasListParams
+>({
+  basePath: '/unidades-administrativas',
+  fileNamePrefix: 'unidades-administrativas',
+  listErrorMessage: 'Erro ao listar unidades administrativas',
+  exportErrorMessage: 'Erro ao exportar unidades administrativas',
+  statusParamName: 'status',
+});
+
 export const unidadesAdministrativasService = {
-  async list(
-    params: UnidadesAdministrativasListParams = {},
-  ): Promise<PaginatedResponse<UnidadeAdministrativa>> {
-    try {
-      const query = buildListQueryParams(
-        {
-          page: params.page,
-          pageSize: params.pageSize,
-          codigo: params.codigo,
-          nomeOuSigla: params.nomeOuSigla,
-          statusValue: params.status,
-          ordering: params.ordering,
-        },
-        { includePagination: true, statusParamName: 'status' },
-      );
-
-      const { data } = await api.get<PaginatedResponse<UnidadeAdministrativa>>(
-        `/unidades-administrativas/?${query.toString()}`,
-      );
-
-      return data;
-    } catch (error) {
-      handleApiError(error, 'Erro ao listar unidades administrativas');
-    }
-  },
-
-  async exportar(
-    formato: UnidadeAdministrativaExportFormat,
-    params: Omit<UnidadesAdministrativasListParams, 'page' | 'pageSize'> = {},
-  ): Promise<UnidadeAdministrativaExportResult> {
-    try {
-      const query = buildListQueryParams(
-        {
-          codigo: params.codigo,
-          nomeOuSigla: params.nomeOuSigla,
-          statusValue: params.status,
-          ordering: params.ordering,
-        },
-        { includePagination: false, statusParamName: 'status' },
-      );
-      query.set('formato', formato);
-
-      const response = await api.get<Blob>(
-        `/unidades-administrativas/exportar/?${query.toString()}`,
-        {
-          responseType: 'blob',
-        },
-      );
-
-      const contentDisposition = response.headers['content-disposition'];
-      const contentType = response.headers['content-type'];
-
-      return {
-        blob: response.data,
-        fileName:
-          parseFileNameFromContentDisposition(contentDisposition) ??
-          `unidades-administrativas.${formato}`,
-        contentType,
-      };
-    } catch (error) {
-      handleApiError(error, 'Erro ao exportar unidades administrativas');
-    }
-  },
+  ...baseUnidadesAdministrativasService,
 
   async create(payload: CreateUnidadeAdministrativaPayload): Promise<UnidadeAdministrativa> {
     try {
