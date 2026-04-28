@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { api } from '@/api/http';
 
 interface BuildListQueryParamsParams<TStatus extends string = string> {
   page?: number;
@@ -13,6 +14,35 @@ interface BuildListQueryParamsOptions {
   includePagination: boolean;
   statusParamName: string;
   ignoredStatusValue?: string;
+}
+
+interface PaginatedListResponse<TItem> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: TItem[];
+}
+
+type UnidadesListParamsShape<TStatusParam extends string, TStatus extends string> = {
+  page?: number;
+  pageSize?: number;
+  codigo?: string;
+  nomeOuSigla?: string;
+  ordering?: string;
+} & Partial<Record<TStatusParam, TStatus>>;
+
+type UnidadesListExportParams<
+  TStatusParam extends string,
+  TStatus extends string,
+  TListParams,
+> = Omit<TListParams, 'page' | 'pageSize'> & Partial<Record<TStatusParam, TStatus>>;
+
+interface CreateUnidadesListServiceOptions<TStatusParam extends string> {
+  basePath: string;
+  fileNamePrefix: string;
+  listErrorMessage: string;
+  exportErrorMessage: string;
+  statusParamName: TStatusParam;
 }
 
 export function buildListQueryParams<TStatus extends string>(
@@ -84,4 +114,85 @@ export function handleApiError(error: unknown, defaultMessage: string): never {
   }
 
   throw error;
+}
+
+export function createUnidadesListService<
+  TItem,
+  TExportFormat extends string,
+  TStatus extends string,
+  TStatusParam extends string,
+  TListParams extends UnidadesListParamsShape<TStatusParam, TStatus>,
+>({
+  basePath,
+  fileNamePrefix,
+  listErrorMessage,
+  exportErrorMessage,
+  statusParamName,
+}: Readonly<
+  CreateUnidadesListServiceOptions<TStatusParam>
+>) {
+  return {
+    async list(params: TListParams = {} as TListParams): Promise<PaginatedListResponse<TItem>> {
+      try {
+        const query = buildListQueryParams(
+          {
+            page: params.page,
+            pageSize: params.pageSize,
+            codigo: params.codigo,
+            nomeOuSigla: params.nomeOuSigla,
+            statusValue: params[statusParamName],
+            ordering: params.ordering,
+          },
+          { includePagination: true, statusParamName },
+        );
+
+        const { data } = await api.get<PaginatedListResponse<TItem>>(
+          `${basePath}/?${query.toString()}`,
+        );
+
+        return data;
+      } catch (error) {
+        handleApiError(error, listErrorMessage);
+      }
+    },
+
+    async exportar(
+      formato: TExportFormat,
+      params: UnidadesListExportParams<TStatusParam, TStatus, TListParams> = {} as UnidadesListExportParams<
+        TStatusParam,
+        TStatus,
+        TListParams
+      >,
+    ) {
+      try {
+        const query = buildListQueryParams(
+          {
+            codigo: params.codigo,
+            nomeOuSigla: params.nomeOuSigla,
+            statusValue: params[statusParamName],
+            ordering: params.ordering,
+          },
+          { includePagination: false, statusParamName },
+        );
+        query.set('formato', formato);
+
+        const response = await api.get<Blob>(`${basePath}/exportar/?${query.toString()}`, {
+          responseType: 'blob',
+        });
+
+        const contentDisposition = response.headers['content-disposition'];
+        const contentType = response.headers['content-type'];
+
+        return {
+          blob: response.data,
+          fileName:
+            parseFileNameFromContentDisposition(contentDisposition) ??
+            `${fileNamePrefix}.${formato}`,
+          contentType,
+        };
+      } catch (error) {
+        handleApiError(error, exportErrorMessage);
+      }
+    },
+  };
 }
