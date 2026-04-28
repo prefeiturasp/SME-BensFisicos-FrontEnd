@@ -1,115 +1,50 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { useUnidadesListQuery } from '@/hooks/useUnidadesListQuery';
 import { unidadesAdministrativasService } from '../services/unidades-administrativas.service';
-import type { UAStatusFilter } from '../types/unidades-administrativas.types';
+import type {
+  UAStatusFilter,
+  UnidadesAdministrativasListParams,
+} from '../types/unidades-administrativas.types';
 
 interface UseUnidadeAdministrativaListProps {
   pageSize: number;
 }
 
-const SEARCH_DEBOUNCE_MS = 500;
-const MIN_FILTER_CHARS = 2;
-
 export function useUnidadeAdministrativaList({ pageSize }: UseUnidadeAdministrativaListProps) {
-  const [page, setPage] = useState(1);
-  const [ordering, setOrdering] = useState('codigo');
-
-  const [codigoInput, setCodigoInput] = useState('');
-  const [nomeOuSiglaInput, setNomeOuSiglaInput] = useState('');
-  const [statusFilter, setStatusFilter] = useState<UAStatusFilter>('todos');
-
-  const [codigoFiltro, setCodigoFiltro] = useState('');
-  const [nomeOuSiglaFiltro, setNomeOuSiglaFiltro] = useState('');
-
-  const normalizeTextFilter = (value: string) => {
-    const normalized = value.trim();
-
-    if (!normalized) {
-      return '';
-    }
-
-    if (normalized.length < MIN_FILTER_CHARS) {
-      return '';
-    }
-
-    return normalized;
-  };
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setCodigoFiltro(normalizeTextFilter(codigoInput));
-      setPage(1);
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timeout);
-  }, [codigoInput]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setNomeOuSiglaFiltro(normalizeTextFilter(nomeOuSiglaInput));
-      setPage(1);
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timeout);
-  }, [nomeOuSiglaInput]);
-
-  const queryKey = useMemo(
-    () => [
-      'unidades-administrativas',
-      {
-        page,
-        pageSize,
-        codigoFiltro,
-        nomeOuSiglaFiltro,
-        statusFilter,
-        ordering,
-      },
-    ],
-    [page, pageSize, codigoFiltro, nomeOuSiglaFiltro, statusFilter, ordering],
-  );
-
-  const query = useQuery({
-    queryKey,
-    queryFn: () =>
-      unidadesAdministrativasService.list({
-        page,
-        pageSize,
-        codigo: codigoFiltro,
-        nomeOuSigla: nomeOuSiglaFiltro,
-        status: statusFilter,
-        ordering,
-      }),
-    placeholderData: keepPreviousData,
+  const listState = useUnidadesListQuery<
+    Awaited<ReturnType<typeof unidadesAdministrativasService.list>>['results'][number],
+    UAStatusFilter,
+    UnidadesAdministrativasListParams
+  >({
+    queryKey: 'unidades-administrativas',
+    pageSize,
+    initialStatus: 'todos',
+    buildParams: ({ page, codigo, nomeOuSigla, ordering, statusFilter }) => ({
+      page,
+      pageSize,
+      codigo,
+      nomeOuSigla,
+      status: statusFilter,
+      ordering,
+    }),
+    queryFn: unidadesAdministrativasService.list,
   });
 
-  useEffect(() => {
-    if (query.error instanceof Error) {
-      toast.error(query.error.message);
-    }
-  }, [query.error]);
-
-  const handleStatusFilterChange = (status: UAStatusFilter) => {
-    setPage(1);
-    setStatusFilter(status);
-  };
-
   return {
-    unidades: query.data?.results ?? [],
-    count: query.data?.count ?? 0,
-    loading: query.isLoading,
-    fetching: query.isFetching,
-    page,
-    ordering,
-    codigoInput,
-    nomeOuSiglaInput,
-    codigoFiltro,
-    nomeOuSiglaFiltro,
-    statusFilter,
-    setPage,
-    setOrdering,
-    setCodigoInput,
-    setNomeOuSiglaInput,
-    setStatusFilter: handleStatusFilterChange,
+    unidades: listState.items,
+    count: listState.count,
+    loading: listState.loading,
+    fetching: listState.fetching,
+    page: listState.page,
+    ordering: listState.ordering,
+    codigoInput: listState.codigoInput,
+    nomeOuSiglaInput: listState.nomeOuSiglaInput,
+    codigoFiltro: listState.codigoFilter,
+    nomeOuSiglaFiltro: listState.nomeOuSiglaFilter,
+    statusFilter: listState.statusFilter,
+    setPage: listState.setPage,
+    setOrdering: listState.setOrdering,
+    setCodigoInput: listState.setCodigoInput,
+    setNomeOuSiglaInput: listState.setNomeOuSiglaInput,
+    setStatusFilter: listState.setStatusFilter,
   };
 }
