@@ -25,6 +25,30 @@ interface UseUnidadesListQueryOptions<TItem, TStatus extends string, TParams> {
   queryFn: (params: TParams) => Promise<PaginatedListResponse<TItem>>;
 }
 
+interface UseUnidadesListProps {
+  pageSize: number;
+}
+
+type UnidadesListParamsShape<TStatusParam extends string, TStatus extends string> = {
+  page?: number;
+  pageSize?: number;
+  codigo?: string;
+  nomeOuSigla?: string;
+  ordering?: string;
+} & Partial<Record<TStatusParam, TStatus>>;
+
+interface CreateUseUnidadesListOptions<
+  TItem,
+  TStatus extends string,
+  TStatusParam extends string,
+  TParams extends UnidadesListParamsShape<TStatusParam, TStatus>,
+> {
+  queryKey: string;
+  initialStatus: TStatus;
+  statusParamName: TStatusParam;
+  queryFn: (params: TParams) => Promise<PaginatedListResponse<TItem>>;
+}
+
 const SEARCH_DEBOUNCE_MS = 500;
 const MIN_FILTER_CHARS = 2;
 
@@ -121,5 +145,54 @@ export function useUnidadesListQuery<TItem, TStatus extends string, TParams>({
     setCodigoInput,
     setNomeOuSiglaInput,
     setStatusFilter: handleStatusFilterChange,
+  };
+}
+
+export function createUseUnidadesList<
+  TItem,
+  TStatus extends string,
+  TStatusParam extends string,
+  TParams extends UnidadesListParamsShape<TStatusParam, TStatus>,
+>({
+  queryKey,
+  initialStatus,
+  statusParamName,
+  queryFn,
+}: Readonly<CreateUseUnidadesListOptions<TItem, TStatus, TStatusParam, TParams>>) {
+  return function useUnidadesList({ pageSize }: Readonly<UseUnidadesListProps>) {
+    const listState = useUnidadesListQuery<TItem, TStatus, TParams>({
+      queryKey,
+      pageSize,
+      initialStatus,
+      buildParams: ({ page, codigo, nomeOuSigla, ordering, statusFilter }) =>
+        ({
+          page,
+          pageSize,
+          codigo,
+          nomeOuSigla,
+          ordering,
+          [statusParamName]: statusFilter,
+        }) as TParams,
+      queryFn,
+    });
+
+    return {
+      unidades: listState.items,
+      count: listState.count,
+      loading: listState.loading,
+      fetching: listState.fetching,
+      page: listState.page,
+      ordering: listState.ordering,
+      codigoInput: listState.codigoInput,
+      nomeOuSiglaInput: listState.nomeOuSiglaInput,
+      codigoFiltro: listState.codigoFilter,
+      nomeOuSiglaFiltro: listState.nomeOuSiglaFilter,
+      statusFilter: listState.statusFilter,
+      setPage: listState.setPage,
+      setOrdering: listState.setOrdering,
+      setCodigoInput: listState.setCodigoInput,
+      setNomeOuSiglaInput: listState.setNomeOuSiglaInput,
+      setStatusFilter: listState.setStatusFilter,
+    };
   };
 }
