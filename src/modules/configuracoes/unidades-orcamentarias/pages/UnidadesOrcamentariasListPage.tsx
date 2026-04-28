@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
+import { downloadBlobFile, getErrorMessage, toggleOrdering } from '@/lib/unidades-list-page';
 import { UnidadesOrcamentariasActions } from '../components/UnidadesOrcamentariasActions';
 import { UnidadesOrcamentariasBreadcrumb } from '../components/UnidadesOrcamentariasBreadcrumb';
 import { UnidadesOrcamentariasFilters } from '../components/UnidadesOrcamentariasFilters';
@@ -57,17 +58,7 @@ export default function UnidadesOrcamentariasListPage() {
     const backendField = ORDERING_MAP[field];
     setPage(1);
 
-    setOrdering((current) => {
-      if (current === backendField) {
-        return `-${backendField}`;
-      }
-
-      if (current === `-${backendField}`) {
-        return backendField;
-      }
-
-      return backendField;
-    });
+    setOrdering((current) => toggleOrdering(current, backendField));
   };
 
   const handleReport = async (format: UnidadeOrcamentariaExportFormat) => {
@@ -81,19 +72,11 @@ export default function UnidadesOrcamentariasListPage() {
         ordering,
       });
 
-      const blobUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      downloadBlobFile(blob, fileName);
 
       toast.success('Relatório exportado com sucesso.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao exportar relatório.';
-      toast.error(message);
+      toast.error(getErrorMessage(error, 'Erro ao exportar relatório.'));
     } finally {
       setReportLoading(false);
     }
