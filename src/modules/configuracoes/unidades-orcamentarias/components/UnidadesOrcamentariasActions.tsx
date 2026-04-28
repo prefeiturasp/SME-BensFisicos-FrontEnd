@@ -1,22 +1,22 @@
+import { Plus } from 'lucide-react';
 import {
   UnidadesListActions,
   type UnidadesListReportFormatOption,
 } from '@/components/UnidadesListActions';
-import type { UnidadeAdministrativaExportFormat } from '../types/unidades-administrativas.types';
+import type { UnidadeOrcamentariaExportFormat } from '../types/unidades-orcamentarias.types';
 
-interface UnidadesAdministrativasActionsProps {
-  canManage: boolean;
+interface UnidadesOrcamentariasActionsProps {
   reportLoading: boolean;
   onBack: () => void;
   onAdd: () => void;
-  onReport: (format: UnidadeAdministrativaExportFormat) => void;
+  onReport: (format: UnidadeOrcamentariaExportFormat) => void;
 }
 
 const ACTION_BUTTON_CLASS =
-  'h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors';
+  'h-10 px-4 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors';
 
 const REPORT_FORMATS: ReadonlyArray<
-  UnidadesListReportFormatOption<UnidadeAdministrativaExportFormat>
+  UnidadesListReportFormatOption<UnidadeOrcamentariaExportFormat>
 > = [
   { value: 'csv', label: 'Exportar CSV' },
   { value: 'xls', label: 'Exportar XLS' },
@@ -24,22 +24,22 @@ const REPORT_FORMATS: ReadonlyArray<
   { value: 'pdf', label: 'Exportar PDF' },
 ];
 
-export function UnidadesAdministrativasActions({
-  canManage,
+export function UnidadesOrcamentariasActions({
   reportLoading,
   onBack,
   onAdd,
   onReport,
-}: Readonly<UnidadesAdministrativasActionsProps>) {
+}: Readonly<UnidadesOrcamentariasActionsProps>) {
   return (
     <UnidadesListActions
-      canManage={canManage}
       reportLoading={reportLoading}
       onBack={onBack}
       onAdd={onAdd}
       onReport={onReport}
       reportFormats={REPORT_FORMATS}
       addLabel='Adicionar Unidade'
+      addIcon={<Plus size={16} />}
+      containerClassName='flex flex-wrap items-center justify-end gap-3'
       buttonClassName={ACTION_BUTTON_CLASS}
     />
   );

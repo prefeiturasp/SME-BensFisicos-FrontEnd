@@ -145,6 +145,18 @@ describe('Header', () => {
     expect(screen.getByText('GESTOR')).toBeInTheDocument();
   });
 
+  it('deve exibir o cargo correto (Superuser)', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...defaultAuthContext,
+      user: { ...mockUser, is_superuser: true, is_gestor_patrimonio: false },
+    });
+    vi.mocked(useEscopoSelector).mockReturnValue(asEscopoState(mockEscopoState));
+
+    renderWithProviders(<Header />);
+
+    expect(screen.getByText('SUPER-ADMIN')).toBeInTheDocument();
+  });
+
   it('deve exibir o cargo correto (Operador)', () => {
     vi.mocked(useAuth).mockReturnValue({
       ...defaultAuthContext,
