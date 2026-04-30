@@ -6,10 +6,12 @@ import { unidadesOrcamentariasService } from '../unidades-orcamentarias.service'
 vi.mock('@/api/http', () => ({
   api: {
     get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
 const mockGet = vi.mocked(api.get);
+const mockPost = vi.mocked(api.post);
 
 describe('unidadesOrcamentariasService', () => {
   beforeEach(() => {
@@ -102,6 +104,78 @@ describe('unidadesOrcamentariasService', () => {
     await expect(unidadesOrcamentariasService.list()).rejects.toThrow(
       'Erro de conexão com o servidor.',
     );
+  });
+
+  it('cria unidade orçamentária com payload correto', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+        ativa_display: 'Ativa',
+      },
+    });
+
+    const result = await unidadesOrcamentariasService.create({
+      codigo: '60.60.60',
+      sigla: 'UO60',
+      nome: 'UO 60',
+      ativa: true,
+    });
+
+    expect(mockPost).toHaveBeenCalledWith('/unidades-orcamentarias/', {
+      codigo: '60.60.60',
+      sigla: 'UO60',
+      nome: 'UO 60',
+      ativa: true,
+    });
+    expect(result.id).toBe(2);
+  });
+
+  it('repropaga erro 400 na criação para a UI tratar campos', async () => {
+    const error = new AxiosError('Bad Request');
+    error.response = {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      data: { codigo: ['Código já utilizado.'] },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPost.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.create({
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it('retorna mensagem padrao ao falhar na criação sem detail', async () => {
+    const error = new AxiosError('Internal Error');
+    error.response = {
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      data: {},
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPost.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.create({
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+      }),
+    ).rejects.toThrow('Erro ao criar unidade orçamentária.');
   });
 
   it('exporta relatório com blob e nome de arquivo vindo do header', async () => {

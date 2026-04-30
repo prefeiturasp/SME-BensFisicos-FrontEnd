@@ -10,6 +10,13 @@ export interface UnidadeOrcamentaria {
   ativa_display: string;
 }
 
+export interface CreateUnidadeOrcamentariaPayload {
+  codigo: string;
+  sigla: string;
+  nome: string;
+  ativa?: boolean;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
