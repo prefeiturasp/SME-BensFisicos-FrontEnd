@@ -8,6 +8,9 @@ const navigateMock = vi.fn();
 const createMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
+const hookState = {
+  isPending: false,
+};
 
 function buildAxiosError(status: number, data: unknown) {
   const error = new AxiosError('Request failed');
@@ -41,7 +44,7 @@ vi.mock('@/auth/useAuth', () => ({
 vi.mock('../../hooks/useUnidadeOrcamentaria', () => ({
   useUnidadeOrcamentariaCreate: () => ({
     mutateAsync: (...args: unknown[]) => createMock(...args),
-    isPending: false,
+    isPending: hookState.isPending,
   }),
 }));
 
@@ -55,6 +58,7 @@ vi.mock('sonner', () => ({
 describe('UnidadesOrcamentariasCreatePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hookState.isPending = false;
   });
 
   it('renderiza formulário de criação', () => {
@@ -150,5 +154,57 @@ describe('UnidadesOrcamentariasCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/unidades-orcamentarias');
+  });
+
+  it('exibe estado de carregamento enquanto o cadastro está em andamento', () => {
+    hookState.isPending = true;
+
+    render(
+      <MemoryRouter>
+        <UnidadesOrcamentariasCreatePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled();
+  });
+
+  it('exibe erro inesperado retornado como Error', async () => {
+    createMock.mockRejectedValueOnce(new Error('Erro inesperado ao cadastrar UO.'));
+
+    render(
+      <MemoryRouter>
+        <UnidadesOrcamentariasCreatePage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
+    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('Erro inesperado ao cadastrar UO.');
+      expect(screen.getByText('Erro inesperado ao cadastrar UO.')).toBeInTheDocument();
+    });
+  });
+
+  it('exibe mensagem padrão quando ocorre falha não tratável', async () => {
+    createMock.mockRejectedValueOnce({ status: 500 });
+
+    render(
+      <MemoryRouter>
+        <UnidadesOrcamentariasCreatePage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
+    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('Erro ao cadastrar unidade orçamentária.');
+      expect(screen.getByText('Erro ao cadastrar unidade orçamentária.')).toBeInTheDocument();
+    });
   });
 });

@@ -178,6 +178,54 @@ describe('unidadesOrcamentariasService', () => {
     ).rejects.toThrow('Erro ao criar unidade orçamentária.');
   });
 
+  it('retorna erro de conexão ao criar quando não há resposta', async () => {
+    mockPost.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(
+      unidadesOrcamentariasService.create({
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+      }),
+    ).rejects.toThrow('Erro de conexão com o servidor.');
+  });
+
+  it('propaga detail do backend ao falhar na criação', async () => {
+    const error = new AxiosError('Forbidden');
+    error.response = {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      data: { detail: 'Você não tem permissão para criar UOs.' },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPost.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.create({
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+      }),
+    ).rejects.toThrow('Você não tem permissão para criar UOs.');
+  });
+
+  it('repropaga erro não Axios na criação', async () => {
+    mockPost.mockRejectedValueOnce(new Error('Falha inesperada na criação'));
+
+    await expect(
+      unidadesOrcamentariasService.create({
+        codigo: '60.60.60',
+        sigla: 'UO60',
+        nome: 'UO 60',
+        ativa: true,
+      }),
+    ).rejects.toThrow('Falha inesperada na criação');
+  });
+
   it('exporta relatório com blob e nome de arquivo vindo do header', async () => {
     const blob = new Blob(['csv-content'], { type: 'text/csv' });
 
