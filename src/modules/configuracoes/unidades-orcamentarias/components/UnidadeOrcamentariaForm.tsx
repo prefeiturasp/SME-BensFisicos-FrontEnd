@@ -8,14 +8,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { StatusSelectField } from '@/components/form-fields/StatusSelectField';
+import { UppercaseTextField } from '@/components/form-fields/UppercaseTextField';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import type { UnidadeOrcamentariaFormData } from '../validators/unidade-orcamentaria-form.schema';
 
 interface UnidadeOrcamentariaFormProps {
@@ -87,89 +82,34 @@ export function UnidadeOrcamentariaForm({
             )}
           />
 
-          <FormField
+          <StatusSelectField
             control={form.control}
             name='status'
-            render={({ field }) => {
-              const statusKey = field.value || 'status-empty';
-
-              return (
-                <FormItem className='min-w-0'>
-                  <div className='flex h-6 items-center'>
-                    <FormLabel className='text-sm font-semibold text-gray-700'>Status</FormLabel>
-                  </div>
-                  <Select
-                    key={statusKey}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={disabled || submitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger className={`${INPUT_CLASS} w-full data-[size=default]:h-11`}>
-                        <SelectValue placeholder='Selecione o status' />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-                      <SelectItem value='ativa'>Ativa</SelectItem>
-                      <SelectItem value='inativa'>Inativa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
+            disabled={disabled || submitting}
+            containerClassName='min-w-0'
+            triggerClassName={`${INPUT_CLASS} w-full data-[size=default]:h-11`}
           />
         </div>
 
         <div className='grid grid-cols-1 items-start gap-6 md:grid-cols-2'>
-          <FormField
+          <UppercaseTextField
             control={form.control}
             name='sigla'
-            render={({ field }) => (
-              <FormItem>
-                <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='sigla'>
-                    Sigla
-                  </FormLabel>
-                </div>
-                <FormControl>
-                  <Input
-                    id='sigla'
-                    placeholder='Digite a sigla da unidade orçamentária'
-                    className={INPUT_CLASS}
-                    disabled={disabled || submitting}
-                    value={field.value}
-                    onChange={(event) => field.onChange(event.target.value.toUpperCase())}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label='Sigla'
+            id='sigla'
+            placeholder='Digite a sigla da unidade orçamentária'
+            inputClassName={INPUT_CLASS}
+            disabled={disabled || submitting}
           />
 
-          <FormField
+          <UppercaseTextField
             control={form.control}
             name='nome'
-            render={({ field }) => (
-              <FormItem>
-                <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='nome'>
-                    Nome
-                  </FormLabel>
-                </div>
-                <FormControl>
-                  <Input
-                    id='nome'
-                    placeholder='Digite o nome da unidade orçamentária'
-                    className={INPUT_CLASS}
-                    disabled={disabled || submitting}
-                    value={field.value}
-                    onChange={(event) => field.onChange(event.target.value.toUpperCase())}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label='Nome'
+            id='nome'
+            placeholder='Digite o nome da unidade orçamentária'
+            inputClassName={INPUT_CLASS}
+            disabled={disabled || submitting}
           />
         </div>
       </form>
