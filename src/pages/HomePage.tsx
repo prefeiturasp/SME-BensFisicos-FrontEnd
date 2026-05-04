@@ -31,6 +31,11 @@ const dashboardItems: DashboardItem[] = [
     icon: ListOrdered,
     href: '/inventarios',
   },
+  {
+    title: 'Parâmetros de Conciliação Anual',
+    icon: ListOrdered,
+    href: '/parametros-conciliacao-anual',
+  },
 ];
 
 export default function HomePage() {

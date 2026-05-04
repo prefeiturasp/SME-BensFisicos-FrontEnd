@@ -9,6 +9,7 @@ describe('HomePage', () => {
     { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
     { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
     { title: 'Inventários Cadastrados', href: '/inventarios' },
+    { title: 'Parâmetros de Conciliação Anual', href: '/parametros-conciliacao-anual' },
   ];
 
   const renderComponent = () => {

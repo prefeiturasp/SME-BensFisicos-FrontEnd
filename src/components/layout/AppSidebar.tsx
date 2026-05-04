@@ -49,8 +49,8 @@ const menuItems = [
         url: '/inventarios',
       },
       {
-        title: 'Parametrização de Inventário',
-        url: '/parametrizacao-inventario',
+        title: 'Parâmetros de Conciliação Anual',
+        url: '/parametros-conciliacao-anual',
       },
     ],
   },
