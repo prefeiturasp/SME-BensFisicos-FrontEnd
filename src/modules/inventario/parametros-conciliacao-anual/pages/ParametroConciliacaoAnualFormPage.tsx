@@ -60,9 +60,9 @@ function getPageMode(id: string | undefined, pathname: string): PageMode {
 
 function getPageTitle(mode: PageMode) {
   const titles = {
-    create: 'Adicionar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
-    edit: 'Editar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
-    view: 'Visualizar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
+    create: 'Adicionar Parâmetro de Conciliação Anual',
+    edit: 'Editar Parâmetro de Conciliação Anual',
+    view: 'Visualizar Parâmetro de Conciliação Anual',
   };
 
   return titles[mode];
@@ -346,7 +346,7 @@ export default function ParametroConciliacaoAnualFormPage() {
       <div className='space-y-4 p-8'>
         <ParametrosConciliacaoBreadcrumb current={pageTitle} />
         <Card className='p-6 text-sm text-red-700'>
-          {'Voc\u00ea n\u00e3o tem permiss\u00e3o para acessar Par\u00e2metros de Concilia\u00e7\u00e3o Anual.'}
+          Você não tem permissão para acessar Parâmetros de Conciliação Anual.
         </Card>
       </div>
     );
