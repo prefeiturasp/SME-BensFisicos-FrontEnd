@@ -31,6 +31,8 @@ import ViewUsuarioPage from '@/modules/configuracoes/usuarios/pages/ViewUsuarioP
 import EditarUsuarioPage from '@/modules/configuracoes/usuarios/pages/EditUsuarioPage';
 import UnidadesAdministrativasCreatePage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage';
 import UnidadesAdministrativasViewPage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasViewPage';
+import AdicionarBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/AdicionarBaixaPage';
+import VerBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/VerBaixaPage';
 
 export default function AppRoutes() {
   return (
@@ -57,8 +59,13 @@ export default function AppRoutes() {
           <Route path='/bens-patrimoniais/:id' element={<BemDetailPage />} />
           <Route path='/bens-patrimoniais/:id/editar' element={<BemEditPage />} />
 
+          {/* Submódulo: Movimentações */}
           <Route path='/movimentacoes' element={<MovimentacoesListPage />} />
+          
+          {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
+          <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
+          <Route path='/baixas-fisicas/:id' element={<VerBaixaPage />} />
 
           {/* Módulo: Inventário */}
           <Route path='/inventarios' element={<InventarioListPage />} />
