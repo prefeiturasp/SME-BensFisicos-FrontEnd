@@ -32,6 +32,101 @@ const OUTLINE_BUTTON_CLASS =
 const SAVE_BUTTON_CLASS = 'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
 const DANGER_BUTTON_CLASS = 'h-10 px-6 bg-[#C20F06] text-white hover:bg-[#A70C05] rounded-md';
 
+type PageMode = 'create' | 'view' | 'edit';
+
+interface FormActionsProps {
+  mode: PageMode;
+  submitting: boolean;
+  updating: boolean;
+  deleting: boolean;
+  isSaveDisabled: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function getPageMode(id: string | undefined, pathname: string): PageMode {
+  if (!id) {
+    return 'create';
+  }
+
+  if (pathname.endsWith('/editar')) {
+    return 'edit';
+  }
+
+  return 'view';
+}
+
+function getPageTitle(mode: PageMode) {
+  const titles = {
+    create: 'Adicionar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
+    edit: 'Editar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
+    view: 'Visualizar Par\u00e2metro de Concilia\u00e7\u00e3o Anual',
+  };
+
+  return titles[mode];
+}
+
+function getParametroQueryId(
+  mode: PageMode,
+  hasValidId: boolean,
+  canManage: boolean,
+  parametroId: number | null,
+) {
+  if (mode === 'create' || !hasValidId || !canManage) {
+    return null;
+  }
+
+  return parametroId;
+}
+
+function FormActions({
+  mode,
+  submitting,
+  updating,
+  deleting,
+  isSaveDisabled,
+  onEdit,
+  onDelete,
+  onSave,
+  onCancel,
+}: Readonly<FormActionsProps>) {
+  const isView = mode === 'view';
+  const isEdit = mode === 'edit';
+
+  return (
+    <div className='flex flex-wrap items-center justify-end gap-3'>
+      {isView && (
+        <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={onEdit}>
+          Editar
+        </Button>
+      )}
+
+      {isEdit && (
+        <Button
+          type='button'
+          className={DANGER_BUTTON_CLASS}
+          disabled={submitting || deleting}
+          onClick={onDelete}
+        >
+          Excluir
+        </Button>
+      )}
+
+      {!isView && (
+        <Button type='button' className={SAVE_BUTTON_CLASS} disabled={isSaveDisabled} onClick={onSave}>
+          {submitting || updating ? 'Salvando...' : 'Salvar'}
+        </Button>
+      )}
+
+      <Button type='button' onClick={onCancel} className={OUTLINE_BUTTON_CLASS}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
+
 function mapBadRequestToForm(
   error: unknown,
   form: UseFormReturn<ParametroConciliacaoAnualFormData>,
@@ -127,19 +222,17 @@ export default function ParametroConciliacaoAnualFormPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const parametroId = id ? Number(id) : null;
-  const isCreate = !id;
-  const isEdit = Boolean(id && location.pathname.endsWith('/editar'));
-  const isView = Boolean(id && !isEdit);
-  const hasValidId = isCreate || (Number.isInteger(parametroId) && Number(parametroId) > 0);
+  const pageMode = getPageMode(id, location.pathname);
+  const isCreate = pageMode === 'create';
+  const isEdit = pageMode === 'edit';
+  const isView = pageMode === 'view';
+  const hasValidId =
+    pageMode === 'create' || (Number.isInteger(parametroId) && Number(parametroId) > 0);
   const canManage = canAccessParametrosConciliacao(user);
-  const pageTitle = isCreate
-    ? 'Adicionar Par\u00e2metro de Concilia\u00e7\u00e3o Anual'
-    : isEdit
-      ? 'Editar Par\u00e2metro de Concilia\u00e7\u00e3o Anual'
-      : 'Visualizar Par\u00e2metro de Concilia\u00e7\u00e3o Anual';
+  const pageTitle = getPageTitle(pageMode);
 
   const parametroQuery = useParametroConciliacaoAnualById(
-    !isCreate && hasValidId && canManage ? Number(parametroId) : null,
+    getParametroQueryId(pageMode, hasValidId, canManage, parametroId),
   );
   const updateMutation = useParametroConciliacaoAnualUpdate();
   const deleteMutation = useParametroConciliacaoAnualDelete();
@@ -294,36 +387,17 @@ export default function ParametroConciliacaoAnualFormPage() {
           {pageTitle}
         </h1>
 
-        <div className='flex flex-wrap items-center justify-end gap-3'>
-          {isView && (
-            <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={handleEdit}>
-              Editar
-            </Button>
-          )}
-          {isEdit && (
-            <Button
-              type='button'
-              className={DANGER_BUTTON_CLASS}
-              disabled={submitting || deleteMutation.isPending}
-              onClick={() => setShowDeleteModal(true)}
-            >
-              Excluir
-            </Button>
-          )}
-          {!isView && (
-            <Button
-              type='button'
-              className={SAVE_BUTTON_CLASS}
-              disabled={isSaveDisabled}
-              onClick={form.handleSubmit(handleSubmit)}
-            >
-              {submitting || updateMutation.isPending ? 'Salvando...' : 'Salvar'}
-            </Button>
-          )}
-          <Button type='button' onClick={handleCancel} className={OUTLINE_BUTTON_CLASS}>
-            Cancelar
-          </Button>
-        </div>
+        <FormActions
+          mode={pageMode}
+          submitting={submitting}
+          updating={updateMutation.isPending}
+          deleting={deleteMutation.isPending}
+          isSaveDisabled={isSaveDisabled}
+          onEdit={handleEdit}
+          onDelete={() => setShowDeleteModal(true)}
+          onSave={form.handleSubmit(handleSubmit)}
+          onCancel={handleCancel}
+        />
       </div>
 
       <Card className='min-h-[520px] p-8'>
