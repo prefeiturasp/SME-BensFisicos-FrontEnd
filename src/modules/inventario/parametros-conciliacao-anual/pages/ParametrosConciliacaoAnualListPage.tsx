@@ -1,6 +1,7 @@
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useUnidadesPagination } from '@/hooks/useUnidadesPagination';
@@ -12,6 +13,7 @@ import {
   type ParametroConciliacaoSortableField,
 } from '../components/ParametrosConciliacaoTable';
 import { useParametrosConciliacaoAnualList } from '../hooks/useParametrosConciliacaoAnual';
+import { canAccessParametrosConciliacao } from '../utils/permissions';
 
 const PAGE_SIZE = 10;
 
@@ -19,6 +21,24 @@ const ACTION_BUTTON_CLASS =
   'h-10 px-4 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors';
 
 export default function ParametrosConciliacaoAnualListPage() {
+  const { user } = useAuth();
+  const canAccessParametros = canAccessParametrosConciliacao(user);
+
+  if (!canAccessParametros) {
+    return (
+      <div className='space-y-4 p-8'>
+        <ParametrosConciliacaoBreadcrumb />
+        <Card className='p-6 text-sm text-red-700'>
+          {'Voc\u00ea n\u00e3o tem permiss\u00e3o para acessar Par\u00e2metros de Concilia\u00e7\u00e3o Anual.'}
+        </Card>
+      </div>
+    );
+  }
+
+  return <ParametrosConciliacaoAnualListContent />;
+}
+
+function ParametrosConciliacaoAnualListContent() {
   const navigate = useNavigate();
   const {
     parametros,

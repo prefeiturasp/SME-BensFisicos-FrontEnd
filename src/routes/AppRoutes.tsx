@@ -70,6 +70,7 @@ export default function AppRoutes() {
           <Route path='/parametros-conciliacao-anual' element={<ParametrosConciliacaoAnualListPage />} />
           <Route path='/parametros-conciliacao-anual/novo' element={<ParametroConciliacaoAnualFormPage />} />
           <Route path='/parametros-conciliacao-anual/:id' element={<ParametroConciliacaoAnualFormPage />} />
+          <Route path='/parametros-conciliacao-anual/:id/editar' element={<ParametroConciliacaoAnualFormPage />} />
 
           {/* Módulo: Configurações */}
           {/* Submódulo: Unidades Administrativas */}

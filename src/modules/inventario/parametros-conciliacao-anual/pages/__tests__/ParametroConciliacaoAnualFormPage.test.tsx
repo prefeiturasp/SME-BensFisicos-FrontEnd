@@ -11,6 +11,23 @@ const deleteMutateAsyncMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const toastDismissMock = vi.fn();
+let authUser: {
+  is_superuser: boolean;
+  is_gestor_patrimonio: boolean;
+  uo_ativa: {
+    id: number;
+    codigo: string;
+    nome: string;
+  } | null;
+} = {
+  is_superuser: true,
+  is_gestor_patrimonio: true,
+  uo_ativa: {
+    id: 9,
+    codigo: '01.16.10',
+    nome: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+  },
+};
 
 const queryState = {
   data: null as {
@@ -72,15 +89,7 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
-    user: {
-      is_superuser: true,
-      is_gestor_patrimonio: true,
-      uo_ativa: {
-        id: 9,
-        codigo: '01.16.10',
-        nome: 'SECRETARIA MUNICIPAL DE EDUCACAO',
-      },
-    },
+    user: authUser,
   }),
 }));
 
@@ -116,6 +125,10 @@ function renderPage(initialPath = '/parametros-conciliacao-anual/novo') {
           path='/parametros-conciliacao-anual/:id'
           element={<ParametroConciliacaoAnualFormPage />}
         />
+        <Route
+          path='/parametros-conciliacao-anual/:id/editar'
+          element={<ParametroConciliacaoAnualFormPage />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -141,6 +154,15 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     queryState.isError = false;
     updateMutationState.isPending = false;
     deleteMutationState.isPending = false;
+    authUser = {
+      is_superuser: true,
+      is_gestor_patrimonio: true,
+      uo_ativa: {
+        id: 9,
+        codigo: '01.16.10',
+        nome: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+      },
+    };
     createMock.mockResolvedValue({ id: 1 });
     updateMutateAsyncMock.mockResolvedValue({ id: 1 });
     deleteMutateAsyncMock.mockResolvedValue(undefined);
@@ -186,7 +208,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
   it('na edicao so habilita salvar quando houver alteracao', async () => {
     queryState.data = parametroEdit;
 
-    renderPage('/parametros-conciliacao-anual/2');
+    renderPage('/parametros-conciliacao-anual/2/editar');
 
     const saveButton = await screen.findByRole('button', { name: 'Salvar' });
     expect(saveButton).toBeDisabled();
@@ -203,7 +225,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
   it('atualiza o parametro na edicao', async () => {
     queryState.data = parametroEdit;
 
-    renderPage('/parametros-conciliacao-anual/2');
+    renderPage('/parametros-conciliacao-anual/2/editar');
 
     const saveButton = await screen.findByRole('button', { name: 'Salvar' });
     fireEvent.change(screen.getByPlaceholderText('Ex: 2026'), {
@@ -268,7 +290,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
   it('exclui o parametro pela modal de confirmacao', async () => {
     queryState.data = parametroEdit;
 
-    renderPage('/parametros-conciliacao-anual/2');
+    renderPage('/parametros-conciliacao-anual/2/editar');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Excluir' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Excluir' }).at(-1) as HTMLElement);
@@ -292,8 +314,37 @@ describe('ParametroConciliacaoAnualFormPage', () => {
   it('exibe estado de carregamento na edicao', () => {
     queryState.isLoading = true;
 
-    renderPage('/parametros-conciliacao-anual/2');
+    renderPage('/parametros-conciliacao-anual/2/editar');
 
     expect(screen.getByText(/Carregando/)).toBeInTheDocument();
+  });
+
+  it('mantem visualizacao somente leitura e navega para edicao', async () => {
+    queryState.data = parametroEdit;
+
+    renderPage('/parametros-conciliacao-anual/2');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Visualizar Parâmetro de Conciliação Anual' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Ex: 2026')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/parametros-conciliacao-anual/2/editar');
+  });
+
+  it('bloqueia acesso ao modulo para operador', () => {
+    authUser = {
+      is_superuser: false,
+      is_gestor_patrimonio: false,
+      uo_ativa: null,
+    };
+
+    renderPage('/parametros-conciliacao-anual/novo');
+
+    expect(screen.getByText(/não tem permissão/i)).toBeInTheDocument();
   });
 });

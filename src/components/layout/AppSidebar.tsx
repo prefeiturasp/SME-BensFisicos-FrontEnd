@@ -19,6 +19,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions';
 
 const menuItems = [
   {
@@ -83,7 +84,17 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const canAccessParametros = canAccessParametrosConciliacao(user);
   const visibleMenuItems = menuItems.map((item) => {
+    if (item.items.some((subItem) => subItem.url === '/inventarios')) {
+      return {
+        ...item,
+        items: item.items.filter(
+          (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
+        ),
+      };
+    }
+
     if (item.title !== 'Configurações') {
       return item;
     }

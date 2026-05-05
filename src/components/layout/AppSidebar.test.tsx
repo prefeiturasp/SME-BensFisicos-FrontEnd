@@ -169,6 +169,42 @@ describe('AppSidebar', () => {
       expect(screen.queryByRole('link', { name: 'Unidades Orçamentárias' })).not.toBeInTheDocument();
     });
 
+    it('oculta o atalho de Parâmetros de Conciliação Anual para operador', async () => {
+      vi.mocked(useAuth).mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        mustChangePassword: false,
+        user: {
+          id: 3,
+          username: 'operador',
+          nome: 'Operador',
+          email: 'operador@sme.prefeitura.sp.gov.br',
+          rf: '1231231',
+          is_superuser: false,
+          is_gestor_patrimonio: false,
+          is_operador_inventario: true,
+          must_change_password: false,
+          uo_ativa: null,
+          ua_ativa: null,
+          opcoes_escopo: { grupos: [] },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoggingIn: false,
+        loginError: null,
+        loginAsync: vi.fn(),
+      });
+
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Inventário'));
+
+      expect(
+        screen.queryByRole('link', { name: 'Parâmetros de Conciliação Anual' }),
+      ).not.toBeInTheDocument();
+    });
+
     it('deve expandir submenu ao clicar no item pai', async () => {
       const user = userEvent.setup();
       renderSidebar();

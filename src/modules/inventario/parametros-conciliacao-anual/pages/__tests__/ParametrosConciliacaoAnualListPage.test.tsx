@@ -10,6 +10,10 @@ const setOrderingMock = vi.fn();
 const setUnidadeInputMock = vi.fn();
 const setAnoInputMock = vi.fn();
 const setStatusFilterMock = vi.fn();
+let authUser = {
+  is_superuser: true,
+  is_gestor_patrimonio: true,
+};
 
 const listState = {
   parametros: [
@@ -58,6 +62,12 @@ vi.mock('../../hooks/useParametrosConciliacaoAnual', () => ({
   useParametrosConciliacaoAnualList: () => listState,
 }));
 
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => ({
+    user: authUser,
+  }),
+}));
+
 vi.mock('@/hooks/useUnidadesPagination', () => ({
   useUnidadesPagination: () => ({
     pages: [{ type: 'page', id: '1', value: 1 }],
@@ -68,6 +78,10 @@ vi.mock('@/hooks/useUnidadesPagination', () => ({
 describe('ParametrosConciliacaoAnualListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authUser = {
+      is_superuser: true,
+      is_gestor_patrimonio: true,
+    };
   });
 
   it('renderiza filtros, listagem e navega para cadastro', () => {
@@ -122,5 +136,20 @@ describe('ParametrosConciliacaoAnualListPage', () => {
     const updateOrdering = setOrderingMock.mock.calls[0][0] as (current: string) => string;
     expect(updateOrdering('-ano_referencia')).toBe('ano_referencia');
     expect(updateOrdering('ativo')).toBe('ano_referencia');
+  });
+
+  it('bloqueia acesso ao modulo para operador', () => {
+    authUser = {
+      is_superuser: false,
+      is_gestor_patrimonio: false,
+    };
+
+    render(
+      <MemoryRouter>
+        <ParametrosConciliacaoAnualListPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/não tem permissão/i)).toBeInTheDocument();
   });
 });

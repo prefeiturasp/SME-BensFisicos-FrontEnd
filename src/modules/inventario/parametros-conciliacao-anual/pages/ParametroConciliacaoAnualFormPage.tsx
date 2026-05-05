@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
   parametroConciliacaoAnualSchema,
   type ParametroConciliacaoAnualFormData,
 } from '../validators/parametro-conciliacao-anual.schema';
+import { canAccessParametrosConciliacao } from '../utils/permissions';
 
 const OUTLINE_BUTTON_CLASS =
   'h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors';
@@ -119,18 +120,26 @@ function getParametroLabel(parametro: ParametroConciliacaoAnual) {
 
 export default function ParametroConciliacaoAnualFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const parametroId = id ? Number(id) : null;
-  const isEdit = Boolean(id);
-  const hasValidId = !isEdit || (Number.isInteger(parametroId) && Number(parametroId) > 0);
-  const canManage = Boolean(user?.is_superuser || user?.is_gestor_patrimonio);
+  const isCreate = !id;
+  const isEdit = Boolean(id && location.pathname.endsWith('/editar'));
+  const isView = Boolean(id && !isEdit);
+  const hasValidId = isCreate || (Number.isInteger(parametroId) && Number(parametroId) > 0);
+  const canManage = canAccessParametrosConciliacao(user);
+  const pageTitle = isCreate
+    ? 'Adicionar Par\u00e2metro de Concilia\u00e7\u00e3o Anual'
+    : isEdit
+      ? 'Editar Par\u00e2metro de Concilia\u00e7\u00e3o Anual'
+      : 'Visualizar Par\u00e2metro de Concilia\u00e7\u00e3o Anual';
 
   const parametroQuery = useParametroConciliacaoAnualById(
-    isEdit && hasValidId ? Number(parametroId) : null,
+    !isCreate && hasValidId && canManage ? Number(parametroId) : null,
   );
   const updateMutation = useParametroConciliacaoAnualUpdate();
   const deleteMutation = useParametroConciliacaoAnualDelete();
@@ -167,6 +176,11 @@ export default function ParametroConciliacaoAnualFormPage() {
   }, [form, parametro]);
 
   const handleCancel = () => navigate('/parametros-conciliacao-anual');
+  const handleEdit = () => {
+    if (parametro) {
+      navigate(`/parametros-conciliacao-anual/${parametro.id}/editar`);
+    }
+  };
 
   const handleSubmit = async (values: ParametroConciliacaoAnualFormData) => {
     form.clearErrors('root.serverError');
@@ -228,13 +242,24 @@ export default function ParametroConciliacaoAnualFormPage() {
   if (!hasValidId) {
     return (
       <div className='space-y-4 p-8'>
-        <ParametrosConciliacaoBreadcrumb current='Adicionar Parâmetro de Conciliação Anual' />
+        <ParametrosConciliacaoBreadcrumb current={pageTitle} />
         <Card className='p-6 text-sm text-red-700'>Identificador do parâmetro inválido.</Card>
       </div>
     );
   }
 
-  if (isEdit && parametroQuery.isLoading) {
+  if (!canManage) {
+    return (
+      <div className='space-y-4 p-8'>
+        <ParametrosConciliacaoBreadcrumb current={pageTitle} />
+        <Card className='p-6 text-sm text-red-700'>
+          {'Voc\u00ea n\u00e3o tem permiss\u00e3o para acessar Par\u00e2metros de Concilia\u00e7\u00e3o Anual.'}
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isCreate && parametroQuery.isLoading) {
     return (
       <div className='p-8 flex items-center justify-center'>
         <span className='text-sm text-gray-500'>Carregando parâmetro de conciliação anual...</span>
@@ -242,10 +267,10 @@ export default function ParametroConciliacaoAnualFormPage() {
     );
   }
 
-  if (isEdit && (parametroQuery.isError || !parametro)) {
+  if (!isCreate && (parametroQuery.isError || !parametro)) {
     return (
       <div className='space-y-4 p-8'>
-        <ParametrosConciliacaoBreadcrumb current='Adicionar Parâmetro de Conciliação Anual' />
+        <ParametrosConciliacaoBreadcrumb current={pageTitle} />
         <Card className='p-6 text-sm text-red-700'>
           Não foi possível carregar o parâmetro de conciliação anual.
         </Card>
@@ -262,15 +287,20 @@ export default function ParametroConciliacaoAnualFormPage() {
 
   return (
     <div className='space-y-4 p-8' data-testid='parametro-conciliacao-form'>
-      <ParametrosConciliacaoBreadcrumb current='Adicionar Parâmetro de Conciliação Anual' />
+      <ParametrosConciliacaoBreadcrumb current={pageTitle} />
 
       <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-          Adicionar Parâmetro de Conciliação Anual
+          {pageTitle}
         </h1>
 
         <div className='flex flex-wrap items-center justify-end gap-3'>
-          {isEdit && canManage && (
+          {isView && (
+            <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={handleEdit}>
+              Editar
+            </Button>
+          )}
+          {isEdit && (
             <Button
               type='button'
               className={DANGER_BUTTON_CLASS}
@@ -280,7 +310,7 @@ export default function ParametroConciliacaoAnualFormPage() {
               Excluir
             </Button>
           )}
-          {canManage && (
+          {!isView && (
             <Button
               type='button'
               className={SAVE_BUTTON_CLASS}
@@ -301,7 +331,7 @@ export default function ParametroConciliacaoAnualFormPage() {
           form={form}
           unidadeOrcamentariaLabel={unidadeOrcamentariaLabel}
           submitting={submitting || updateMutation.isPending}
-          disabled={!canManage}
+          disabled={isView}
           onSubmit={handleSubmit}
         />
       </Card>

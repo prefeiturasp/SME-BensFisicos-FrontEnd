@@ -77,6 +77,14 @@ describe('parametrosConciliacaoAnualService', () => {
     });
   });
 
+  it('carrega um parametro pelo id', async () => {
+    mockedApi.get.mockResolvedValueOnce({ data: parametro });
+
+    await expect(parametrosConciliacaoAnualService.retrieve(1)).resolves.toEqual(parametro);
+
+    expect(mockedApi.get).toHaveBeenCalledWith('/inventario/parametros-conciliacao-anual/1/');
+  });
+
   it('cria, atualiza e exclui parametros nos endpoints esperados', async () => {
     const payload = {
       unidade_orcamentaria: 9,
@@ -132,5 +140,35 @@ describe('parametrosConciliacaoAnualService', () => {
     mockedApi.delete.mockRejectedValueOnce(new AxiosError('Network Error'));
 
     await expect(parametrosConciliacaoAnualService.destroy(1)).rejects.toThrow(/servidor/);
+  });
+
+  it('usa detalhe retornado pela API para erros de escrita', async () => {
+    const error = new AxiosError('Forbidden', '403', undefined, undefined, {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Sem permissao.' },
+    });
+
+    mockedApi.patch.mockRejectedValueOnce(error);
+
+    await expect(parametrosConciliacaoAnualService.update(1, { ativo: false })).rejects.toThrow(
+      'Sem permissao.',
+    );
+  });
+
+  it('usa mensagem padrao quando erro de escrita nao vem da API', async () => {
+    mockedApi.post.mockRejectedValueOnce(new Error('erro inesperado'));
+
+    await expect(
+      parametrosConciliacaoAnualService.create({
+        unidade_orcamentaria: 9,
+        ano_referencia: 2026,
+        periodo_inicial: '2026-04-01',
+        periodo_final: '2026-04-30',
+        ativo: true,
+      }),
+    ).rejects.toThrow(/cadastrar/);
   });
 });
