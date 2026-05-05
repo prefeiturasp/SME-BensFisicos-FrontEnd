@@ -420,7 +420,7 @@ export default function VerBaixaPage() {
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
                         <span className="text-sm font-semibold text-gray-700">Gestor que aprovou a baixa:</span>
                         <span className="text-sm text-[#2F7D57]">
-                            {baixa.aprovado_por?.nome_completo || "-"}
+                            {baixa.aprovado_por?.nome_completo ?? "-"}
                         </span>
                     </div>
 

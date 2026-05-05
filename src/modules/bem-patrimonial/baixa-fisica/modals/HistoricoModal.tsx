@@ -157,9 +157,7 @@ function HistoricoModal({ baixaId, onClose }: HistoricoModalProps) {
                             <div className="px-4 py-4 space-y-2">
                                 <p className="text-sm font-semibold text-gray-700 mb-2">Ações:</p>
                                 {selectedGroup.items.map(item => {
-                                    const text = item.justificativa
-                                        ? item.justificativa
-                                        : `Campo "${item.campo}": ${item.valor_antigo ?? "vazio"} → ${item.valor_novo ?? "vazio"}`
+                                    const text = item.justificativa ?? `Campo "${item.campo}": ${item.valor_antigo ?? "vazio"} → ${item.valor_novo ?? "vazio"}`
                                     return (
                                         <p key={item.id} className="text-sm text-gray-600">
                                             {text}
