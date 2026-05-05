@@ -1,4 +1,3 @@
-import { Search } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,41 +8,20 @@ import {
 import type { ParametroConciliacaoStatusFilter } from '../types/parametros-conciliacao-anual.types';
 
 interface Props {
-  unidade: string;
   ano: string;
   status: ParametroConciliacaoStatusFilter;
-  onUnidadeChange: (value: string) => void;
   onAnoChange: (value: string) => void;
   onStatusChange: (value: ParametroConciliacaoStatusFilter) => void;
 }
 
-const INPUT_CLASS =
-  'h-10 w-full rounded-xs border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-700 outline-none transition focus:border-[#2F7D57]';
-
 export function ParametrosConciliacaoFilters({
-  unidade,
   ano,
   status,
-  onUnidadeChange,
   onAnoChange,
   onStatusChange,
 }: Readonly<Props>) {
   return (
-    <div className='grid grid-cols-1 items-center gap-5 px-3 pt-2 lg:grid-cols-3'>
-      <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Unidade Orçamentária</span>
-        <div className='relative'>
-          <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
-          <input
-            type='text'
-            value={unidade}
-            onChange={(event) => onUnidadeChange(event.target.value)}
-            placeholder='Digite o nome da Unidade Orçamentária'
-            className={INPUT_CLASS}
-          />
-        </div>
-      </label>
-
+    <div className='grid grid-cols-1 items-center gap-5 px-3 pt-2 lg:grid-cols-2'>
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
         <span>Filtrar por Ano de referência</span>
         <input

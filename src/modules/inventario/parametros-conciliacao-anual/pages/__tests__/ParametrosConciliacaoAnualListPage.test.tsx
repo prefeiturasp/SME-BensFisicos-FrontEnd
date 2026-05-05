@@ -7,7 +7,6 @@ const navigateMock = vi.fn();
 const dismissMock = vi.fn();
 const setPageMock = vi.fn();
 const setOrderingMock = vi.fn();
-const setUnidadeInputMock = vi.fn();
 const setAnoInputMock = vi.fn();
 const setStatusFilterMock = vi.fn();
 let authUser = {
@@ -34,12 +33,10 @@ const listState = {
   count: 1,
   loading: false,
   fetching: false,
-  unidadeInput: '',
   anoInput: '',
   statusFilter: 'todos' as const,
   setPage: setPageMock,
   setOrdering: setOrderingMock,
-  setUnidadeInput: setUnidadeInputMock,
   setAnoInput: setAnoInputMock,
   setStatusFilter: setStatusFilterMock,
 };
@@ -109,15 +106,11 @@ describe('ParametrosConciliacaoAnualListPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByRole('textbox', { name: /Unidade/i }), {
-      target: { value: 'SME' },
-    });
     fireEvent.change(screen.getByRole('textbox', { name: /Ano/i }), {
       target: { value: '2026' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Visualizar par.metro 2026/i }));
 
-    expect(setUnidadeInputMock).toHaveBeenCalledWith('SME');
     expect(setAnoInputMock).toHaveBeenCalledWith('2026');
     expect(navigateMock).toHaveBeenCalledWith('/parametros-conciliacao-anual/7');
   });

@@ -29,28 +29,17 @@ function useDebouncedValue(value: string, delay = 350) {
 export function useParametrosConciliacaoAnualList({ pageSize }: UseParametrosListParams) {
   const [page, setPage] = useState(1);
   const [ordering, setOrdering] = useState('-ano_referencia');
-  const [unidadeInput, setUnidadeInput] = useState('');
   const [anoInput, setAnoInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<ParametroConciliacaoStatusFilter>('todos');
 
-  const unidadeFiltro = useDebouncedValue(unidadeInput);
   const anoFiltro = useDebouncedValue(anoInput);
 
   const query = useQuery({
-    queryKey: [
-      'parametros-conciliacao-anual',
-      page,
-      pageSize,
-      unidadeFiltro,
-      anoFiltro,
-      statusFilter,
-      ordering,
-    ],
+    queryKey: ['parametros-conciliacao-anual', page, pageSize, anoFiltro, statusFilter, ordering],
     queryFn: () =>
       parametrosConciliacaoAnualService.list({
         page,
         pageSize,
-        unidadeOrcamentaria: unidadeFiltro,
         anoReferencia: anoFiltro,
         ativo: statusFilter,
         ordering,
@@ -64,17 +53,11 @@ export function useParametrosConciliacaoAnualList({ pageSize }: UseParametrosLis
     fetching: query.isFetching,
     page,
     ordering,
-    unidadeInput,
     anoInput,
-    unidadeFiltro,
     anoFiltro,
     statusFilter,
     setPage,
     setOrdering,
-    setUnidadeInput: (value: string) => {
-      setPage(1);
-      setUnidadeInput(value);
-    },
     setAnoInput: (value: string) => {
       setPage(1);
       setAnoInput(value);

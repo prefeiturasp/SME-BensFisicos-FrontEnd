@@ -46,7 +46,6 @@ describe('parametrosConciliacaoAnualService', () => {
     const result = await parametrosConciliacaoAnualService.list({
       page: 2,
       pageSize: 10,
-      unidadeOrcamentaria: ' SME ',
       anoReferencia: '2026',
       ativo: 'true',
       ordering: '-ano_referencia',
@@ -57,7 +56,6 @@ describe('parametrosConciliacaoAnualService', () => {
       params: {
         page: 2,
         page_size: 10,
-        search: 'SME',
         ano_referencia: '2026',
         ativo: 'true',
         ordering: '-ano_referencia',

@@ -71,7 +71,6 @@ describe('useParametrosConciliacaoAnual', () => {
 
     act(() => {
       result.current.setPage(3);
-      result.current.setUnidadeInput('SME');
       result.current.setAnoInput('2026');
       result.current.setStatusFilter('true');
     });
@@ -81,7 +80,6 @@ describe('useParametrosConciliacaoAnual', () => {
       expect(mockedService.list).toHaveBeenLastCalledWith({
         page: 1,
         pageSize: 10,
-        unidadeOrcamentaria: 'SME',
         anoReferencia: '2026',
         ativo: 'true',
         ordering: '-ano_referencia',

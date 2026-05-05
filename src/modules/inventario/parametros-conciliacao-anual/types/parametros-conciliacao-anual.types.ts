@@ -23,7 +23,6 @@ export interface PaginatedResponse<T> {
 export interface ParametrosConciliacaoListParams {
   page?: number;
   pageSize?: number;
-  unidadeOrcamentaria?: string;
   anoReferencia?: string;
   ativo?: ParametroConciliacaoStatusFilter;
   ordering?: string;

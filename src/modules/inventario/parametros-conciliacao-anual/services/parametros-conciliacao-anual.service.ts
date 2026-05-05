@@ -16,7 +16,6 @@ function buildListParams(params?: ParametrosConciliacaoListParams) {
 
   if (params?.page) queryParams.page = params.page;
   if (params?.pageSize) queryParams.page_size = params.pageSize;
-  if (params?.unidadeOrcamentaria?.trim()) queryParams.search = params.unidadeOrcamentaria.trim();
   if (params?.anoReferencia?.trim()) queryParams.ano_referencia = params.anoReferencia.trim();
   if (params?.ativo && params.ativo !== 'todos') queryParams.ativo = params.ativo;
   if (params?.ordering) queryParams.ordering = params.ordering;

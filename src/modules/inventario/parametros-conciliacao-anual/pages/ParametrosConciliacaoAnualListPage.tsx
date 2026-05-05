@@ -46,12 +46,10 @@ function ParametrosConciliacaoAnualListContent() {
     count,
     loading,
     fetching,
-    unidadeInput,
     anoInput,
     statusFilter,
     setPage,
     setOrdering,
-    setUnidadeInput,
     setAnoInput,
     setStatusFilter,
   } = useParametrosConciliacaoAnualList({ pageSize: PAGE_SIZE });
@@ -101,10 +99,8 @@ function ParametrosConciliacaoAnualListContent() {
 
       <Card className='space-y-6 p-8'>
         <ParametrosConciliacaoFilters
-          unidade={unidadeInput}
           ano={anoInput}
           status={statusFilter}
-          onUnidadeChange={setUnidadeInput}
           onAnoChange={setAnoInput}
           onStatusChange={setStatusFilter}
         />
