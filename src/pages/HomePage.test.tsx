@@ -1,7 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import HomePage from './HomePage';
+
+let authUser = {
+  is_superuser: true,
+  is_gestor_patrimonio: true,
+};
+
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => ({
+    user: authUser,
+  }),
+}));
 
 describe('HomePage', () => {
   const expectedCards = [
@@ -9,6 +20,7 @@ describe('HomePage', () => {
     { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
     { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
     { title: 'Inventários Cadastrados', href: '/inventarios' },
+    { title: 'Parâmetros de Conciliação Anual', href: '/parametros-conciliacao-anual' },
   ];
 
   const renderComponent = () => {
@@ -18,6 +30,13 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
   };
+
+  beforeEach(() => {
+    authUser = {
+      is_superuser: true,
+      is_gestor_patrimonio: true,
+    };
+  });
 
   describe('Renderização Estrutural e Breadcrumb', () => {
     it('deve renderizar o breadcrumb com o item "Início"', () => {
@@ -70,6 +89,17 @@ describe('HomePage', () => {
         });
         expect(link).toHaveAttribute('href', card.href);
       });
+    });
+
+    it('deve ocultar o atalho de parametros para operador', () => {
+      authUser = {
+        is_superuser: false,
+        is_gestor_patrimonio: false,
+      };
+
+      renderComponent();
+
+      expect(screen.queryByText('Parâmetros de Conciliação Anual')).not.toBeInTheDocument();
     });
   });
 
