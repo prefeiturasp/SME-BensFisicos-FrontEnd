@@ -1,21 +1,458 @@
-import { ListEnd } from 'lucide-react';
-import { AppBreadcrumb } from '@/components/AppBreadcrumb';
+import { useState, useEffect, useCallback } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import {
+    baixaFisicaService,
+} from "../service/baixas.service"
+import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas.types"
+import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
+import { format } from "date-fns"
+import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
+import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
+
+// ===================== CONSTANTES =====================
+
+const ACTION_BUTTON_CLASS = `
+h-10 px-6 bg-white border border-[#2F7D57]
+text-[#2F7D57] hover:bg-[#2F7D57]
+hover:text-white font-semibold rounded-md transition-colors
+`
+
+const INPUT_SEARCH_CLASS =
+    "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
+
+// ===================== COMPONENTS =====================
+
+// Fix: props readonly
+interface StatusBadgeProps {
+    readonly statusDisplay: string
+}
+
+function StatusBadge({ statusDisplay }: StatusBadgeProps) {
+    return <span className="text-xs text-gray-700">{statusDisplay}</span>
+}
+
+// ===================== PAGE =====================
 
 export default function BaixasListPage() {
-  return (
-    <div className='space-y-4'>
-      <AppBreadcrumb
-        items={[
-          { label: 'Bem Patrimonial', icon: ListEnd },
-          { label: 'Baixas Físicas', isActive: true },
-        ]}
-      />
+    const [baixas, setBaixas] = useState<BaixaFisica[]>([])
+    const [loading, setLoading] = useState(true)
+    const [count, setCount] = useState(0)
+    const [page, setPage] = useState(1)
+    const [selectedIds, setSelectedIds] = useState<number[]>([])
+    const [actionLoading, setActionLoading] = useState(false)
 
-      <h1 className='text-xl font-bold tracking-tight text-gray-700'>Baixas Físicas</h1>
+    const [searchInput, setSearchInput] = useState("")
+    const [unidadeInput, setUnidadeInput] = useState("")
+    const [dateRangeInput, setDateRangeInput] = useState<DateRange | undefined>()
 
-      <div className='border rounded-lg p-8 border-dashed flex justify-center items-center text-muted-foreground bg-muted/20 h-64'>
-        Lista de Baixas de Bens
-      </div>
-    </div>
-  );
+    const [appliedFilters, setAppliedFilters] = useState<BaixaFisicaListParams>({
+        ordering: "-data_criacao",
+    })
+
+    const totalPages = Math.ceil(count / 10)
+    const navigate = useNavigate()
+
+    const fetchBaixas = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await baixaFisicaService.list({ ...appliedFilters, page })
+            setBaixas(res.results)
+            setCount(res.count)
+        } finally {
+            setLoading(false)
+        }
+    }, [page, appliedFilters])
+
+    useEffect(() => {
+        fetchBaixas()
+    }, [fetchBaixas])
+
+    // ===================== SELECTION =====================
+
+    const aguardandoEnvioIds = baixas
+        .filter(b => b.status === "aguardando_envio")
+        .map(b => b.id)
+
+    const solicitadaIds = baixas
+        .filter(b => b.status === "solicitada")
+        .map(b => b.id)
+
+    const allSelectableIds = [...aguardandoEnvioIds, ...solicitadaIds]
+
+    const allSelected =
+        allSelectableIds.length > 0 &&
+        allSelectableIds.every(id => selectedIds.includes(id))
+
+    const toggleSelectAll = () => {
+        if (allSelected) setSelectedIds([])
+        else setSelectedIds(allSelectableIds)
+    }
+
+    const toggleSelect = (id: number) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        )
+    }
+
+    const selectedAguardandoEnvio = selectedIds.filter(id => aguardandoEnvioIds.includes(id))
+    const selectedSolicitadas = selectedIds.filter(id => solicitadaIds.includes(id))
+
+    // ===================== HANDLERS =====================
+
+    const handleSearch = () => {
+        setPage(1)
+        setSelectedIds([])
+        setAppliedFilters({
+            ordering: appliedFilters.ordering,
+            search: searchInput.trim() || undefined,
+            unidade_administrativa_origem: unidadeInput ? Number(unidadeInput) : undefined,
+            data_criacao__gte: dateRangeInput?.from
+                ? format(dateRangeInput.from, "yyyy-MM-dd")
+                : undefined,
+            data_criacao__lte: dateRangeInput?.to
+                ? format(dateRangeInput.to, "yyyy-MM-dd")
+                : undefined,
+        })
+    }
+
+    const handleOrdering = (field: string) => {
+        const current = appliedFilters.ordering ?? ""
+        const next = current === field ? `-${field}` : field
+        setAppliedFilters(prev => ({ ...prev, ordering: next }))
+    }
+
+    const handleExportarExcel = async () => {
+        try {
+            const blob = await baixaFisicaService.exportarExcel({
+                unidade_administrativa_origem: appliedFilters.unidade_administrativa_origem,
+                status: appliedFilters.status,
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = "baixas-fisicas.xlsx"
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch {
+            alert("Erro ao exportar Excel")
+        }
+    }
+
+    const handleSolicitar = async () => {
+        if (selectedAguardandoEnvio.length === 0) return
+        setActionLoading(true)
+        try {
+            await Promise.all(selectedAguardandoEnvio.map(id => baixaFisicaService.enviarSolicitacao(id)))
+            setSelectedIds([])
+            fetchBaixas()
+        } catch {
+            alert("Erro ao solicitar baixas.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleAprovar = async () => {
+        if (selectedSolicitadas.length === 0) return
+        setActionLoading(true)
+        try {
+            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.aprovar(id)))
+            setSelectedIds([])
+            fetchBaixas()
+        } catch {
+            alert("Erro ao aprovar baixas.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleRecusar = async () => {
+        if (selectedSolicitadas.length === 0) return
+        setActionLoading(true)
+        try {
+            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.recusar(id)))
+            setSelectedIds([])
+            fetchBaixas()
+        } catch {
+            alert("Erro ao recusar baixas.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    function formatDateTimeBR(dateString: string): string {
+        if (!dateString) return ""
+        const date = new Date(dateString)
+        if (isNaN(date.getTime())) return ""
+        const day = String(date.getDate()).padStart(2, "0")
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const year = date.getFullYear()
+        const hours = String(date.getHours()).padStart(2, "0")
+        const minutes = String(date.getMinutes()).padStart(2, "0")
+        return `${day}/${month}/${year} - ${hours}:${minutes}`
+    }
+
+    // Fix: extrair conteúdo do tbody para evitar ternário aninhado
+    const renderTableBody = () => {
+        if (loading) {
+            return (
+                <tr>
+                    <td colSpan={8} className="text-center py-10 text-gray-500">
+                        Carregando...
+                    </td>
+                </tr>
+            )
+        }
+        if (baixas.length === 0) {
+            return (
+                <tr>
+                    <td colSpan={8} className="text-center py-10 text-gray-400">
+                        Nenhum resultado encontrado.
+                    </td>
+                </tr>
+            )
+        }
+        return baixas.map((b) => {
+            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio"
+            const isChecked = selectedIds.includes(b.id)
+            return (
+                <tr
+                    key={b.id}
+                    className={`border-b hover:bg-gray-50 ${isChecked ? "bg-green-50" : ""}`}
+                >
+                    <td className="p-3">
+                        {isSelectable ? (
+                            <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSelect(b.id)}
+                                className="accent-[#00703C] cursor-pointer"
+                            />
+                        ) : (
+                            <input
+                                type="checkbox"
+                                disabled
+                                className="opacity-30 cursor-not-allowed"
+                            />
+                        )}
+                    </td>
+                    <td className="p-3">{b.id}</td>
+                    <td className="p-3">{b.unidade_administrativa_origem.sigla}</td>
+                    <td className="p-3">{b.numero_processo_baixa || "-"}</td>
+                    <td className="p-3">
+                        <StatusBadge statusDisplay={b.status_display} />
+                    </td>
+                    <td className="p-3 text-xs">
+                        <p>Solicitado por: {b.criado_por.nome_completo}</p>
+                        <p>Em: {formatDateTimeBR(b.data_criacao)}</p>
+                    </td>
+                    <td className="p-3 text-xs">
+                        {b.aprovado_por
+                            ? `${b.aprovado_por.nome_completo} em ${formatDateTimeBR(b.data_aprovacao ?? "")}`
+                            : "-"}
+                    </td>
+                    <td className="p-3 text-center">
+                        <Link to={`/baixas-fisicas/${b.id}`}>
+                            <Button size="icon" variant="ghost">
+                                <Eye size={18} />
+                            </Button>
+                        </Link>
+                    </td>
+                </tr>
+            )
+        })
+    }
+
+    // ===================== RENDER =====================
+
+    return (
+        <div className="p-8 space-y-4">
+            <AppBreadcrumb
+                items={[
+                    { label: "Bem Patrimonial" },
+                    { label: "Baixa Física de Bens Patrimoniais", isActive: true },
+                ]}
+            />
+
+            {/* HEADER */}
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-gray-700">
+                    Baixa Física de Bens Patrimoniais
+                </h1>
+                <div className="flex gap-3 items-center">
+                    <Button onClick={() => window.history.back()} className={ACTION_BUTTON_CLASS}>
+                        <ArrowLeft size={16} />
+                    </Button>
+
+                    {selectedAguardandoEnvio.length > 0 && (
+                        <Button
+                            onClick={handleSolicitar}
+                            disabled={actionLoading}
+                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                        >
+                            Solicitar ({selectedAguardandoEnvio.length})
+                        </Button>
+                    )}
+
+                    {selectedSolicitadas.length > 0 && (
+                        <>
+                            <Button
+                                onClick={handleAprovar}
+                                disabled={actionLoading}
+                                className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            >
+                                Aprovar ({selectedSolicitadas.length})
+                            </Button>
+                            <Button
+                                onClick={handleRecusar}
+                                disabled={actionLoading}
+                                className="h-10 px-6 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors"
+                            >
+                                Recusar ({selectedSolicitadas.length})
+                            </Button>
+                        </>
+                    )}
+
+                    <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
+                        Exportar Excel
+                    </Button>
+                    <Button className={ACTION_BUTTON_CLASS} onClick={() => navigate("/baixas-fisicas/novo")}>
+                        Adicionar Baixa
+                    </Button>
+                </div>
+            </div>
+
+            {/* CARD */}
+            <Card className="p-6">
+
+                {/* FILTROS */}
+                <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+                    {/* Fix: label associado via htmlFor + id no componente filho */}
+                    <div className="flex-1 min-w-[200px]">
+                        <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
+                            Filtrar por Unidade Administrativa
+                        </label>
+                        <div className="mt-1">
+                            <UnidadeAdministrativaSelect
+                                id="unidade-select"
+                                value={unidadeInput}
+                                onChange={setUnidadeInput}
+                                includeAll
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 min-w-[200px]">
+                        <label htmlFor="search-processo" className="text-sm font-semibold text-gray-700">
+                            Filtrar por Número do Processo de Baixa
+                        </label>
+                        <div className="relative mt-1">
+                            <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+                            <input
+                                id="search-processo"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                className={INPUT_SEARCH_CLASS}
+                                placeholder="Digite o número do processo"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label htmlFor="date-range-picker" className="text-sm font-semibold text-gray-700">
+                            Período da Solicitação de Baixa
+                        </label>
+                        <div className="mt-1">
+                            <DateRangePicker
+                                id="date-range-picker"
+                                value={dateRangeInput}
+                                onChange={setDateRangeInput}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-end">
+                        <Button
+                            onClick={handleSearch}
+                            className="h-10 px-6 bg-[#00703C] text-white hover:bg-[#005a30]"
+                        >
+                            Filtrar
+                        </Button>
+                    </div>
+                </div>
+
+                {/* LABEL */}
+                <p className="text-sm font-semibold text-green-700 mt-4">
+                    Baixas Físicas Cadastradas
+                </p>
+
+                {/* TABELA */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-[#F5F5F5] border-b">
+                            <tr className="text-left text-gray-600 font-semibold">
+                                <th className="p-3 w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        onChange={toggleSelectAll}
+                                        disabled={allSelectableIds.length === 0}
+                                        className="accent-[#00703C] cursor-pointer"
+                                    />
+                                </th>
+                                <th className="p-3">ID</th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("unidade_administrativa_origem__sigla")}>
+                                    <div className="flex gap-2 items-center">
+                                        Unidade <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("numero_processo_baixa")}>
+                                    <div className="flex gap-2 items-center">
+                                        Processo <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3">Solicitação</th>
+                                <th className="p-3">Aceite/Recusa</th>
+                                <th className="p-3 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {renderTableBody()}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* PAGINAÇÃO */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-end gap-2 mt-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                        >
+                            Anterior
+                        </Button>
+                        <span className="text-sm text-gray-600">
+                            Página {page} de {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page === totalPages}
+                            onClick={() => setPage(p => p + 1)}
+                        >
+                            Próxima
+                        </Button>
+                    </div>
+                )}
+
+            </Card>
+        </div>
+    )
 }

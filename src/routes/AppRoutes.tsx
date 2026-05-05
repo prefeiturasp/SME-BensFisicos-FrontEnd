@@ -19,6 +19,8 @@ import BaixasListPage from '@/modules/bem-patrimonial/baixa-fisica/pages/BaixasL
 
 // Módulo: Inventário
 import InventarioListPage from '@/modules/inventario/pages/InventarioListPage';
+import ParametrosConciliacaoAnualListPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametrosConciliacaoAnualListPage';
+import ParametroConciliacaoAnualFormPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametroConciliacaoAnualFormPage';
 
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { PublicRoute } from '../auth/PublicRoute';
@@ -31,6 +33,11 @@ import ViewUsuarioPage from '@/modules/configuracoes/usuarios/pages/ViewUsuarioP
 import EditarUsuarioPage from '@/modules/configuracoes/usuarios/pages/EditUsuarioPage';
 import UnidadesAdministrativasCreatePage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasCreatePage';
 import UnidadesAdministrativasViewPage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasViewPage';
+import AdicionarBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/AdicionarBaixaPage';
+import VerBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/VerBaixaPage';
+import UnidadesOrcamentariasListPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage';
+import UnidadesOrcamentariasCreatePage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage';
+import UnidadesOrcamentariasViewPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage';
 
 export default function AppRoutes() {
   return (
@@ -57,17 +64,30 @@ export default function AppRoutes() {
           <Route path='/bens-patrimoniais/:id' element={<BemDetailPage />} />
           <Route path='/bens-patrimoniais/:id/editar' element={<BemEditPage />} />
 
+          {/* Submódulo: Movimentações */}
           <Route path='/movimentacoes' element={<MovimentacoesListPage />} />
+          
+          {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
+          <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
+          <Route path='/baixas-fisicas/:id' element={<VerBaixaPage />} />
 
           {/* Módulo: Inventário */}
           <Route path='/inventarios' element={<InventarioListPage />} />
+          <Route path='/parametros-conciliacao-anual' element={<ParametrosConciliacaoAnualListPage />} />
+          <Route path='/parametros-conciliacao-anual/novo' element={<ParametroConciliacaoAnualFormPage />} />
+          <Route path='/parametros-conciliacao-anual/:id' element={<ParametroConciliacaoAnualFormPage />} />
+          <Route path='/parametros-conciliacao-anual/:id/editar' element={<ParametroConciliacaoAnualFormPage />} />
 
           {/* Módulo: Configurações */}
           {/* Submódulo: Unidades Administrativas */}
           <Route path='/unidades-administrativas' element={<UnidadesAdministrativasListPage />} />
           <Route path='/unidades-administrativas/novo' element={<UnidadesAdministrativasCreatePage />} />
           <Route path='/unidades-administrativas/:id' element={<UnidadesAdministrativasViewPage />} />
+          {/* Submódulo: Unidades Orçamentárias */}
+          <Route path='/unidades-orcamentarias' element={<UnidadesOrcamentariasListPage />} />
+          <Route path='/unidades-orcamentarias/novo' element={<UnidadesOrcamentariasCreatePage />} />
+          <Route path='/unidades-orcamentarias/:id' element={<UnidadesOrcamentariasViewPage />} />
           {/* Submódulo: Usuários */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
           <Route path='/usuarios/novo' element={<AdicionarUsuarioPage />} />

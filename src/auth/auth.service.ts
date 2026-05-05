@@ -42,6 +42,7 @@ export interface User {
   nome: string;
   email: string;
   rf: string;
+  is_superuser?: boolean;
   is_gestor_patrimonio: boolean;
   is_operador_inventario: boolean;
   must_change_password: boolean;

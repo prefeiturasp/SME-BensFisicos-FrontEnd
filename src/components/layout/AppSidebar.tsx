@@ -14,10 +14,12 @@ import {
   SidebarMenuSubButton,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useAuth } from '@/auth/useAuth';
 import { useLocation, Link } from 'react-router-dom';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions';
 
 const menuItems = [
   {
@@ -48,8 +50,8 @@ const menuItems = [
         url: '/inventarios',
       },
       {
-        title: 'Parametrização de Inventário',
-        url: '/parametrizacao-inventario',
+        title: 'Parâmetros de Conciliação Anual',
+        url: '/parametros-conciliacao-anual',
       },
     ],
   },
@@ -79,8 +81,31 @@ const menuItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user } = useAuth();
   const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const canAccessParametros = canAccessParametrosConciliacao(user);
+  const visibleMenuItems = menuItems.map((item) => {
+    if (item.items.some((subItem) => subItem.url === '/inventarios')) {
+      return {
+        ...item,
+        items: item.items.filter(
+          (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
+        ),
+      };
+    }
+
+    if (item.title !== 'Configurações') {
+      return item;
+    }
+
+    return {
+      ...item,
+      items: item.items.filter(
+        (subItem) => subItem.url !== '/unidades-orcamentarias' || Boolean(user?.is_superuser),
+      ),
+    };
+  });
 
   const handleSubItemClick = () => {
     if (isMobile) {
@@ -128,7 +153,7 @@ export function AppSidebar() {
         <SidebarGroup className='p-0'>
           <SidebarGroupContent>
             <SidebarMenu className={cn(isCollapsed ? 'gap-1' : 'gap-2')}>
-              {menuItems.map((item) => {
+              {visibleMenuItems.map((item) => {
                 const isActive = item.items?.some((sub) => location.pathname.startsWith(sub.url));
 
                 if (isCollapsed) {

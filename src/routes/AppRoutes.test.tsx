@@ -71,6 +71,18 @@ vi.mock(
     default: () => <div data-testid='unidades-administrativas-view'>Unidades Administrativas View</div>,
   }),
 );
+vi.mock('@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage', () => ({
+  default: () => <div data-testid='unidades-orcamentarias-list'>Unidades Orçamentárias List</div>,
+}));
+vi.mock(
+  '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage',
+  () => ({
+    default: () => <div data-testid='unidades-orcamentarias-create'>Unidades Orçamentárias Create</div>,
+  }),
+);
+vi.mock('@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage', () => ({
+  default: () => <div data-testid='unidades-orcamentarias-view'>Unidades Orçamentárias View</div>,
+}));
 
 describe('AppRoutes', () => {
   beforeEach(() => {
@@ -334,6 +346,33 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('unidades-administrativas-view')).toBeInTheDocument();
+    });
+
+    it('deve navegar para lista de unidades orçamentárias', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-orcamentarias']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-orcamentarias-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para cadastro de unidade orçamentária', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-orcamentarias/novo']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-orcamentarias-create')).toBeInTheDocument();
+    });
+
+    it('deve navegar para visualização de unidade orçamentária', () => {
+      render(
+        <MemoryRouter initialEntries={['/unidades-orcamentarias/10']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('unidades-orcamentarias-view')).toBeInTheDocument();
     });
   });
 
