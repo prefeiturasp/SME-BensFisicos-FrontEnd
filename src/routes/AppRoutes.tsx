@@ -33,6 +33,9 @@ import UnidadesAdministrativasCreatePage from '@/modules/configuracoes/unidades-
 import UnidadesAdministrativasViewPage from '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasViewPage';
 import AdicionarBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/AdicionarBaixaPage';
 import VerBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/VerBaixaPage';
+import UnidadesOrcamentariasListPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage';
+import UnidadesOrcamentariasCreatePage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage';
+import UnidadesOrcamentariasViewPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage';
 
 export default function AppRoutes() {
   return (
@@ -75,6 +78,10 @@ export default function AppRoutes() {
           <Route path='/unidades-administrativas' element={<UnidadesAdministrativasListPage />} />
           <Route path='/unidades-administrativas/novo' element={<UnidadesAdministrativasCreatePage />} />
           <Route path='/unidades-administrativas/:id' element={<UnidadesAdministrativasViewPage />} />
+          {/* Submódulo: Unidades Orçamentárias */}
+          <Route path='/unidades-orcamentarias' element={<UnidadesOrcamentariasListPage />} />
+          <Route path='/unidades-orcamentarias/novo' element={<UnidadesOrcamentariasCreatePage />} />
+          <Route path='/unidades-orcamentarias/:id' element={<UnidadesOrcamentariasViewPage />} />
           {/* Submódulo: Usuários */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
           <Route path='/usuarios/novo' element={<AdicionarUsuarioPage />} />

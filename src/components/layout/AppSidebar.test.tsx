@@ -5,8 +5,36 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useAuth } from '@/auth/useAuth';
+
+vi.mock('@/auth/useAuth');
 
 beforeEach(() => {
+  vi.mocked(useAuth).mockReturnValue({
+    isAuthenticated: true,
+    isLoading: false,
+    mustChangePassword: false,
+    user: {
+      id: 1,
+      username: 'superadmin',
+      nome: 'Super Admin',
+      email: 'superadmin@sme.prefeitura.sp.gov.br',
+      rf: '1234567',
+      is_superuser: true,
+      is_gestor_patrimonio: false,
+      is_operador_inventario: false,
+      must_change_password: false,
+      uo_ativa: null,
+      ua_ativa: null,
+      opcoes_escopo: { grupos: [] },
+    },
+    login: vi.fn(),
+    logout: vi.fn(),
+    isLoggingIn: false,
+    loginError: null,
+    loginAsync: vi.fn(),
+  });
+
   vi.stubGlobal(
     'ResizeObserver',
     class ResizeObserver {
@@ -98,6 +126,49 @@ describe('AppSidebar', () => {
   });
 
   describe('Navegação e Menus', () => {
+    it('exibe o atalho de Unidades Orçamentárias para superuser', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Configurações'));
+
+      expect(screen.getByRole('link', { name: 'Unidades Orçamentárias' })).toBeVisible();
+    });
+
+    it('oculta o atalho de Unidades Orçamentárias para não superuser', async () => {
+      vi.mocked(useAuth).mockReturnValue({
+        isAuthenticated: true,
+        isLoading: false,
+        mustChangePassword: false,
+        user: {
+          id: 2,
+          username: 'gestor',
+          nome: 'Gestor',
+          email: 'gestor@sme.prefeitura.sp.gov.br',
+          rf: '7654321',
+          is_superuser: false,
+          is_gestor_patrimonio: true,
+          is_operador_inventario: false,
+          must_change_password: false,
+          uo_ativa: null,
+          ua_ativa: null,
+          opcoes_escopo: { grupos: [] },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoggingIn: false,
+        loginError: null,
+        loginAsync: vi.fn(),
+      });
+
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Configurações'));
+
+      expect(screen.queryByRole('link', { name: 'Unidades Orçamentárias' })).not.toBeInTheDocument();
+    });
+
     it('deve expandir submenu ao clicar no item pai', async () => {
       const user = userEvent.setup();
       renderSidebar();

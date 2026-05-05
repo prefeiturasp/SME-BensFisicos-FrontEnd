@@ -3,6 +3,7 @@ import { useAuth } from '@/auth/useAuth';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { downloadBlobFile, getErrorMessage, toggleOrdering } from '@/lib/unidades-list-page';
 import { UnidadesAdministrativasActions } from '../components/UnidadesAdministrativasActions';
 import { UnidadesAdministrativasBreadcrumb } from '../components/UnidadesAdministrativasBreadcrumb';
 import { UnidadesAdministrativasFilters } from '../components/UnidadesAdministrativasFilters';
@@ -57,11 +58,7 @@ export default function UnidadesAdministrativasListPage() {
     const backendField = ORDERING_MAP[field] ?? field;
     setPage(1);
 
-    setOrdering((current) => {
-      if (current === backendField) return `-${backendField}`;
-      if (current === `-${backendField}`) return backendField;
-      return backendField;
-    });
+    setOrdering((current) => toggleOrdering(current, backendField));
   };
 
   const handleReport = async (format: UnidadeAdministrativaExportFormat) => {
@@ -81,19 +78,11 @@ export default function UnidadesAdministrativasListPage() {
 
       const { blob, fileName } = await unidadesAdministrativasService.exportar(format, reportParams);
 
-      const blobUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      downloadBlobFile(blob, fileName);
 
       toast.success('Relatório exportado com sucesso.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao exportar relatório.';
-      toast.error(message);
+      toast.error(getErrorMessage(error, 'Erro ao exportar relatório.'));
     } finally {
       setReportLoading(false);
     }

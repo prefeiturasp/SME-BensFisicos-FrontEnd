@@ -4,34 +4,36 @@ import {
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
 import type { PaginationItem } from '../hooks/usePagination';
-import type { UnidadeAdministrativa } from '../types/unidades-administrativas.types';
+import type { UnidadeOrcamentaria } from '../types/unidades-orcamentarias.types';
 
-interface UnidadesAdministrativasTableProps {
-  unidades: UnidadeAdministrativa[];
+export type UnidadeOrcamentariaSortableField = 'codigo' | 'sigla' | 'nome' | 'status';
+
+interface UnidadesOrcamentariasTableProps {
+  unidades: UnidadeOrcamentaria[];
   loading: boolean;
   page: number;
   pages: PaginationItem[];
   totalPages: number;
   onPageChange: (page: number) => void;
-  onSort: (field: string) => void;
+  onSort: (field: UnidadeOrcamentariaSortableField) => void;
   onView: (id: number) => void;
 }
 
-const HEADERS: ReadonlyArray<UnidadesListTableHeader<string>> = [
+const HEADERS: ReadonlyArray<UnidadesListTableHeader<UnidadeOrcamentariaSortableField>> = [
   { label: 'Código', field: 'codigo' },
   { label: 'Sigla', field: 'sigla' },
   { label: 'Nome', field: 'nome' },
   { label: 'Status', field: 'status' },
 ];
 
-const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeAdministrativa>> = [
+const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeOrcamentaria>> = [
   { key: 'codigo', render: (unidade) => unidade.codigo },
-  { key: 'sigla', render: (unidade) => unidade.sigla },
+  { key: 'sigla', render: (unidade) => unidade.sigla || '-' },
   { key: 'nome', render: (unidade) => unidade.nome },
-  { key: 'status', render: (unidade) => unidade.status_display },
+  { key: 'status', render: (unidade) => unidade.ativa_display },
 ];
 
-export function UnidadesAdministrativasTable({
+export function UnidadesOrcamentariasTable({
   unidades,
   loading,
   page,
@@ -40,14 +42,14 @@ export function UnidadesAdministrativasTable({
   onPageChange,
   onSort,
   onView,
-}: Readonly<UnidadesAdministrativasTableProps>) {
+}: Readonly<UnidadesOrcamentariasTableProps>) {
   return (
     <UnidadesListTable
-      title='Unidades Administrativas Cadastradas'
+      title='Unidades Orçamentárias Cadastradas'
       items={unidades}
       loading={loading}
-      loadingMessage='Carregando unidades administrativas...'
-      emptyMessage='Nenhuma unidade administrativa encontrada.'
+      loadingMessage='Carregando unidades orçamentárias...'
+      emptyMessage='Nenhuma unidade orçamentária encontrada.'
       headers={HEADERS}
       columns={COLUMNS}
       page={page}
@@ -57,7 +59,7 @@ export function UnidadesAdministrativasTable({
       onSort={onSort}
       onView={(unidade) => onView(unidade.id)}
       getRowKey={(unidade) => unidade.id}
-      getViewAriaLabel={(unidade) => `Visualizar unidade ${unidade.nome}`}
+      getViewAriaLabel={(unidade) => `Visualizar unidade orçamentária ${unidade.nome}`}
     />
   );
 }
