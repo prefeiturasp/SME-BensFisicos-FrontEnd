@@ -7,11 +7,13 @@ vi.mock('@/api/http', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
 const mockGet = vi.mocked(api.get);
 const mockPost = vi.mocked(api.post);
+const mockPatch = vi.mocked(api.patch);
 
 describe('unidadesOrcamentariasService', () => {
   beforeEach(() => {
@@ -224,6 +226,67 @@ describe('unidadesOrcamentariasService', () => {
         ativa: true,
       }),
     ).rejects.toThrow('Falha inesperada na criação');
+  });
+
+  it('busca unidade orçamentária por id', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        id: 3,
+        codigo: '30.30.30',
+        sigla: 'UO30',
+        nome: 'UO 30',
+        ativa: true,
+        ativa_display: 'Ativa',
+      },
+    });
+
+    const result = await unidadesOrcamentariasService.retrieve(3);
+
+    expect(mockGet).toHaveBeenCalledWith('/unidades-orcamentarias/3/');
+    expect(result.codigo).toBe('30.30.30');
+  });
+
+  it('atualiza unidade orçamentária por patch', async () => {
+    mockPatch.mockResolvedValueOnce({
+      data: {
+        id: 3,
+        codigo: '30.30.30',
+        sigla: 'UO30',
+        nome: 'UO 30 ALTERADA',
+        ativa: false,
+        ativa_display: 'Inativa',
+      },
+    });
+
+    const result = await unidadesOrcamentariasService.update(3, {
+      nome: 'UO 30 ALTERADA',
+      ativa: false,
+    });
+
+    expect(mockPatch).toHaveBeenCalledWith('/unidades-orcamentarias/3/', {
+      nome: 'UO 30 ALTERADA',
+      ativa: false,
+    });
+    expect(result.ativa).toBe(false);
+  });
+
+  it('repropaga erro 400 na atualização para a UI tratar campos', async () => {
+    const error = new AxiosError('Bad Request');
+    error.response = {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      data: { codigo: ['Código já utilizado.'] },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.update(3, {
+        codigo: '30.30.30',
+      }),
+    ).rejects.toBe(error);
   });
 
   it('exporta relatório com blob e nome de arquivo vindo do header', async () => {

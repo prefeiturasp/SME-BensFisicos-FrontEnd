@@ -17,6 +17,13 @@ export interface CreateUnidadeOrcamentariaPayload {
   ativa?: boolean;
 }
 
+export interface UpdateUnidadeOrcamentariaPayload {
+  codigo?: string;
+  sigla?: string;
+  nome?: string;
+  ativa?: boolean;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
