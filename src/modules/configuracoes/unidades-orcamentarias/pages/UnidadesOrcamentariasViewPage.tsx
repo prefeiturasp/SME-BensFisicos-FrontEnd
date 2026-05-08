@@ -61,6 +61,14 @@ function buildUpdatePayload(
   return payload;
 }
 
+function getPrimaryActionLabel(isEditing: boolean, isPending: boolean) {
+  if (!isEditing) {
+    return 'Editar';
+  }
+
+  return isPending ? 'Salvando...' : 'Salvar';
+}
+
 export default function UnidadesOrcamentariasViewPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -102,9 +110,7 @@ export default function UnidadesOrcamentariasViewPage() {
   };
 
   const handleSave = async (values: UnidadeOrcamentariaFormData) => {
-    if (!unidade) {
-      return;
-    }
+    if (!unidade) return;
 
     form.clearErrors('root.serverError');
 
@@ -209,11 +215,7 @@ export default function UnidadesOrcamentariasViewPage() {
     );
   }
 
-  const primaryActionLabel = isEditing
-    ? updateMutation.isPending
-      ? 'Salvando...'
-      : 'Salvar'
-    : 'Editar';
+  const primaryActionLabel = getPrimaryActionLabel(isEditing, updateMutation.isPending);
 
   return (
     <UnidadesOrcamentariasGuard>
