@@ -246,6 +246,56 @@ describe('unidadesOrcamentariasService', () => {
     expect(result.codigo).toBe('30.30.30');
   });
 
+  it('propaga detail do backend ao falhar no retrieve', async () => {
+    const error = new AxiosError('Forbidden');
+    error.response = {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      data: { detail: 'Você não tem permissão para visualizar esta UO.' },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockGet.mockRejectedValueOnce(error);
+
+    await expect(unidadesOrcamentariasService.retrieve(3)).rejects.toThrow(
+      'Você não tem permissão para visualizar esta UO.',
+    );
+  });
+
+  it('retorna mensagem padrão ao falhar no retrieve sem detail', async () => {
+    const error = new AxiosError('Internal Error');
+    error.response = {
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      data: {},
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockGet.mockRejectedValueOnce(error);
+
+    await expect(unidadesOrcamentariasService.retrieve(3)).rejects.toThrow(
+      'Erro ao carregar unidade orçamentária.',
+    );
+  });
+
+  it('retorna erro de conexão ao falhar no retrieve sem resposta', async () => {
+    mockGet.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(unidadesOrcamentariasService.retrieve(3)).rejects.toThrow(
+      'Erro de conexão com o servidor.',
+    );
+  });
+
+  it('repropaga erro não Axios no retrieve', async () => {
+    mockGet.mockRejectedValueOnce(new Error('Falha inesperada no retrieve'));
+
+    await expect(unidadesOrcamentariasService.retrieve(3)).rejects.toThrow(
+      'Falha inesperada no retrieve',
+    );
+  });
+
   it('atualiza unidade orçamentária por patch', async () => {
     mockPatch.mockResolvedValueOnce({
       data: {
@@ -287,6 +337,64 @@ describe('unidadesOrcamentariasService', () => {
         codigo: '30.30.30',
       }),
     ).rejects.toBe(error);
+  });
+
+  it('propaga detail do backend ao falhar na atualização', async () => {
+    const error = new AxiosError('Forbidden');
+    error.response = {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      data: { detail: 'Você não tem permissão para editar esta UO.' },
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.update(3, {
+        nome: 'UO BLOQUEADA',
+      }),
+    ).rejects.toThrow('Você não tem permissão para editar esta UO.');
+  });
+
+  it('retorna mensagem padrão ao falhar na atualização sem detail', async () => {
+    const error = new AxiosError('Internal Error');
+    error.response = {
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      data: {},
+      config: { headers: new AxiosHeaders() },
+    };
+
+    mockPatch.mockRejectedValueOnce(error);
+
+    await expect(
+      unidadesOrcamentariasService.update(3, {
+        nome: 'UO 30 ALTERADA',
+      }),
+    ).rejects.toThrow('Erro ao atualizar unidade orçamentária.');
+  });
+
+  it('retorna erro de conexão ao falhar na atualização sem resposta', async () => {
+    mockPatch.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(
+      unidadesOrcamentariasService.update(3, {
+        nome: 'UO 30 ALTERADA',
+      }),
+    ).rejects.toThrow('Erro de conexão com o servidor.');
+  });
+
+  it('repropaga erro não Axios na atualização', async () => {
+    mockPatch.mockRejectedValueOnce(new Error('Falha inesperada na atualização'));
+
+    await expect(
+      unidadesOrcamentariasService.update(3, {
+        nome: 'UO 30 ALTERADA',
+      }),
+    ).rejects.toThrow('Falha inesperada na atualização');
   });
 
   it('exporta relatório com blob e nome de arquivo vindo do header', async () => {
