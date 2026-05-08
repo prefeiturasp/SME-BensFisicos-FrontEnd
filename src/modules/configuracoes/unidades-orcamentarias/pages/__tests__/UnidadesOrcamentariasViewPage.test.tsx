@@ -1,10 +1,24 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import UnidadesOrcamentariasViewPage from '../UnidadesOrcamentariasViewPage';
+import type { UnidadeOrcamentaria } from '../../types/unidades-orcamentarias.types';
 
 const navigateMock = vi.fn();
+const mutateAsyncMock = vi.fn();
 let routeId = '12';
+
+const unidadeMock: UnidadeOrcamentaria = {
+  id: 12,
+  codigo: '10.10.10',
+  sigla: 'UO1',
+  nome: 'UNIDADE ORCAMENTARIA 1',
+  ativa: true,
+  ativa_display: 'Ativa',
+};
+
+const useUnidadeOrcamentariaByIdMock = vi.fn();
+const useUnidadeOrcamentariaUpdateMock = vi.fn();
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -24,13 +38,30 @@ vi.mock('@/auth/useAuth', () => ({
   }),
 }));
 
+vi.mock('../../hooks/useUnidadeOrcamentaria', () => ({
+  useUnidadeOrcamentariaById: (...args: unknown[]) => useUnidadeOrcamentariaByIdMock(...args),
+  useUnidadeOrcamentariaUpdate: () => useUnidadeOrcamentariaUpdateMock(),
+}));
+
 describe('UnidadesOrcamentariasViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     routeId = '12';
+
+    useUnidadeOrcamentariaByIdMock.mockReturnValue({
+      data: unidadeMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    useUnidadeOrcamentariaUpdateMock.mockReturnValue({
+      mutateAsync: mutateAsyncMock,
+      isPending: false,
+    });
   });
 
-  it('renderiza página placeholder de visualização', () => {
+  it('renderiza página de visualização com dados da unidade orçamentária', () => {
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasViewPage />
@@ -38,8 +69,10 @@ describe('UnidadesOrcamentariasViewPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Visualizar Unidade Orçamentária' })).toBeInTheDocument();
-    expect(screen.getByText('Página em branco preparada para a próxima etapa.')).toBeInTheDocument();
-    expect(screen.getByText('ID recebido da rota: 12')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('10.10.10')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('UO1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('UNIDADE ORCAMENTARIA 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
   });
 
   it('exibe mensagem de id inválido quando rota é inválida', () => {
@@ -54,14 +87,60 @@ describe('UnidadesOrcamentariasViewPage', () => {
     expect(screen.getByText('Identificador da Unidade Orçamentária inválido.')).toBeInTheDocument();
   });
 
-  it('volta para a listagem ao clicar em Voltar', () => {
+  it('envia atualização ao salvar edição', async () => {
+    mutateAsyncMock.mockResolvedValueOnce({
+      ...unidadeMock,
+      nome: 'NOVA UO',
+    });
+
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasViewPage />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('UNIDADE ORCAMENTARIA 1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    });
+
+    const nomeInput = screen.getByLabelText('Nome');
+
+    await waitFor(() => {
+      expect(nomeInput).not.toBeDisabled();
+    });
+
+    await act(async () => {
+      fireEvent.change(nomeInput, {
+        target: { value: 'Nova UO' },
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    });
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledWith({
+        id: 12,
+        payload: {
+          nome: 'NOVA UO',
+        },
+      });
+    });
+  });
+
+  it('volta para a listagem ao clicar em Cancelar', () => {
+    render(
+      <MemoryRouter>
+        <UnidadesOrcamentariasViewPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/unidades-orcamentarias');
   });
