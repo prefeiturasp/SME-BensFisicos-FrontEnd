@@ -50,6 +50,7 @@ interface ValoresOriginais {
     email: string
     grupo: string
     status: string
+    unidades_administrativas_ids: number[]
     unidade_administrativa_id: number | null
     unidade_orcamentaria_id: number | null
 }
@@ -63,7 +64,7 @@ export default function EditarUsuarioPage() {
     const { id } = useParams<{ id: string }>()
 
     const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
-    const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
+    const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<EscopoUa[]>([])
 
     const [loadingDados, setLoadingDados] = useState(true)
     const [loadingSalvar, setLoadingSalvar] = useState(false)
@@ -135,9 +136,16 @@ export default function EditarUsuarioPage() {
                     )
                     if (uaAtual) {
                         uaSelecionada = uaAtual
-                        setUnidadeSelecionada(uaAtual)
-                        setValue("unidade", String(uaAtual.unidade_administrativa_id))
+                        setUnidadesSelecionadas([uaAtual])
+                        setValue("unidade", [String(uaAtual.unidade_administrativa_id)])
                     }
+                }
+
+                const idsUasApi = (dadosUsuario.unidades_administrativas ?? []).map(Number)
+                if (idsUasApi.length > 0) {
+                    const selecionadas = uas.filter((ua) => idsUasApi.includes(ua.unidade_administrativa_id))
+                    setUnidadesSelecionadas(selecionadas)
+                    setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)))
                 }
 
                 // Salva snapshot dos valores originais para uso no PATCH
@@ -147,6 +155,7 @@ export default function EditarUsuarioPage() {
                     email: dadosUsuario.email ?? "",
                     grupo: dadosUsuario.grupo_nome ?? "",
                     status: dadosUsuario.status ?? "ativo",
+                    unidades_administrativas_ids: idsUasApi,
                     unidade_administrativa_id: uaSelecionada?.unidade_administrativa_id ?? null,
                     unidade_orcamentaria_id: uaSelecionada?.unidade_orcamentaria_id ?? null,
                 })
@@ -172,8 +181,9 @@ export default function EditarUsuarioPage() {
             setLoadingSalvar(true)
             setErrorMessage(null)
 
-            const uaAtualId = unidadeSelecionada?.unidade_administrativa_id ?? null
-            const uaAtualOrcId = unidadeSelecionada?.unidade_orcamentaria_id ?? null
+            const uaAtualId = unidadesSelecionadas[0]?.unidade_administrativa_id ?? null
+            const uaAtualOrcId = unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? null
+            const uasIdsAtuais = unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
 
             // Monta o payload apenas com os campos que foram alterados
             const payload: Record<string, unknown> = {}
@@ -200,6 +210,9 @@ export default function EditarUsuarioPage() {
 
             if (uaAtualOrcId !== valoresOriginais?.unidade_orcamentaria_id)
                 payload.unidade_orcamentaria = uaAtualOrcId
+            if (JSON.stringify(uasIdsAtuais) !== JSON.stringify(valoresOriginais?.unidades_administrativas_ids ?? [])) {
+                payload.unidades_administrativas = uasIdsAtuais
+            }
 
             if (data.senha) {
                 payload.password = data.senha
@@ -234,9 +247,11 @@ export default function EditarUsuarioPage() {
         const ua = unidadesAdministrativas.find(
             (u) => String(u.unidade_administrativa_id) === value
         )
-
-        setUnidadeSelecionada(ua ?? null)
-        setValue("unidade", value, { shouldValidate: true })
+        if (!ua) return
+        if (unidadesSelecionadas.some((item) => item.unidade_administrativa_id === ua.unidade_administrativa_id)) return
+        const next = [...unidadesSelecionadas, ua]
+        setUnidadesSelecionadas(next)
+        setValue("unidade", next.map((item) => String(item.unidade_administrativa_id)), { shouldValidate: true })
     }
 
     return (
@@ -331,8 +346,8 @@ export default function EditarUsuarioPage() {
                             value={grupoSelecionado}
                             onValueChange={(value) => {
                                 setValue("grupo", value, { shouldValidate: true })
-                                setValue("unidade", "")
-                                setUnidadeSelecionada(null)
+                                setValue("unidade", [])
+                                setUnidadesSelecionadas([])
                             }}
                         >
                             <SelectTrigger className={INPUT_CLASS}>
@@ -351,7 +366,6 @@ export default function EditarUsuarioPage() {
                             Unidade {unidadeObrigatoria && REQUIRED}
                         </label>
                         <Select
-                            value={unidadeSelecionada ? String(unidadeSelecionada.unidade_administrativa_id) : undefined}
                             onValueChange={handleUnidadeChange}
                         >
                             <SelectTrigger className={INPUT_CLASS}>
@@ -369,6 +383,24 @@ export default function EditarUsuarioPage() {
                             </SelectContent>
                         </Select>
                         {errors.unidade && <span className="text-red-600 text-sm">{errors.unidade.message}</span>}
+                        {unidadesSelecionadas.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {unidadesSelecionadas.map((ua) => (
+                                    <button
+                                        key={ua.unidade_administrativa_id}
+                                        type="button"
+                                        className="rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs"
+                                        onClick={() => {
+                                            const next = unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
+                                            setUnidadesSelecionadas(next)
+                                            setValue("unidade", next.map((item) => String(item.unidade_administrativa_id)), { shouldValidate: true })
+                                        }}
+                                    >
+                                        {ua.codigo} - {ua.nome} ×
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Email */}

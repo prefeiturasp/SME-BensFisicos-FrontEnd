@@ -50,7 +50,7 @@ export default function AdicionarUsuarioPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
-  const [unidadeSelecionada, setUnidadeSelecionada] = useState<EscopoUa | null>(null)
+  const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<EscopoUa[]>([])
 
   // UO do próprio gestor logado — usada quando Gestor não seleciona UA
   const [gestorUoId, setGestorUoId] = useState<number | null>(null)
@@ -65,7 +65,7 @@ export default function AdicionarUsuarioPage() {
     resolver: zodResolver(adicionarUsuarioSchema),
     defaultValues: {
       status: "ativo",
-      unidade: "",
+      unidade: [],
       grupo: "",
     },
   })
@@ -107,9 +107,10 @@ export default function AdicionarUsuarioPage() {
         email: data.email,
         rf: data.rf,
         // UA: apenas se selecionada (obrigatória para Operador, opcional para Gestor)
-        unidade_administrativa: unidadeSelecionada?.unidade_administrativa_id ?? null,
+        unidade_administrativa: unidadesSelecionadas[0]?.unidade_administrativa_id ?? null,
         // UO: vem da UA se selecionada, senão usa a UO do próprio gestor logado
-        unidade_orcamentaria: unidadeSelecionada?.unidade_orcamentaria_id ?? gestorUoId,
+        unidade_orcamentaria: unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? gestorUoId,
+        unidades_administrativas: unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id),
         group_name: data.grupo,
         password: data.password,
         password_confirm: data.confirmPassword,
@@ -236,8 +237,8 @@ export default function AdicionarUsuarioPage() {
               onValueChange={(value) => {
                 setValue("grupo", value, { shouldValidate: true })
                 // Limpa a unidade ao trocar o grupo para forçar nova seleção
-                setValue("unidade", "", { shouldValidate: false })
-                setUnidadeSelecionada(null)
+                setValue("unidade", [], { shouldValidate: false })
+                setUnidadesSelecionadas([])
               }}
             >
               <SelectTrigger className={INPUT_CLASS}>
@@ -271,10 +272,19 @@ export default function AdicionarUsuarioPage() {
             <Select
               onValueChange={(value) => {
                 const ua = unidadesAdministrativas.find(
-                  u => String(u.unidade_administrativa_id) === value
+                  (u) => String(u.unidade_administrativa_id) === value
                 )
-                setUnidadeSelecionada(ua ?? null)
-                setValue("unidade", value, { shouldValidate: true })
+                if (!ua) return
+                if (unidadesSelecionadas.some((item) => item.unidade_administrativa_id === ua.unidade_administrativa_id)) {
+                  return
+                }
+                const next = [...unidadesSelecionadas, ua]
+                setUnidadesSelecionadas(next)
+                setValue(
+                  "unidade",
+                  next.map((item) => String(item.unidade_administrativa_id)),
+                  { shouldValidate: true },
+                )
               }}
             >
               <SelectTrigger className={INPUT_CLASS}>
@@ -297,6 +307,30 @@ export default function AdicionarUsuarioPage() {
               <span className="text-red-600 text-sm">
                 {errors.unidade.message}
               </span>
+            )}
+            {unidadesSelecionadas.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {unidadesSelecionadas.map((ua) => (
+                  <button
+                    key={ua.unidade_administrativa_id}
+                    type="button"
+                    className="rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs"
+                    onClick={() => {
+                      const next = unidadesSelecionadas.filter(
+                        (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id,
+                      )
+                      setUnidadesSelecionadas(next)
+                      setValue(
+                        "unidade",
+                        next.map((item) => String(item.unidade_administrativa_id)),
+                        { shouldValidate: true },
+                      )
+                    }}
+                  >
+                    {ua.codigo} - {ua.nome} ×
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 

@@ -7,7 +7,7 @@ export const adicionarUsuarioSchema = z
     rf: z.string().min(1, "RF é obrigatório"),
     username: z.string().min(1, "Nome de usuário é obrigatório"),
     email: z.email("E-mail inválido"),
-    unidade: z.string(),
+    unidade: z.array(z.string()).default([]),
     grupo: z.string().min(1, "Selecione um grupo"),
     password: newPasswordSchema,
     confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
@@ -21,9 +21,7 @@ export const adicionarUsuarioSchema = z
     (data) => {
       // UA obrigatória apenas para Operador
       // Gestor pode não ter UA — a UO virá do próprio perfil do usuário logado
-      if (data.grupo === "OPERADOR_INVENTARIO") {
-        return data.unidade.trim().length > 0
-      }
+      if (data.grupo === "OPERADOR_INVENTARIO") return data.unidade.length > 0
       return true
     },
     {

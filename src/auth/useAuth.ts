@@ -44,6 +44,13 @@ export function useAuth() {
     });
   }, [user]);
 
+  const getHasMultipleUas = (userData: any) => {
+    if (!userData?.is_operador_inventario) return false;
+    const grupos = userData?.opcoes_escopo?.grupos ?? [];
+    const totalUas = grupos.reduce((acc: number, grupo: any) => acc + (grupo.uas?.length ?? 0), 0);
+    return totalUas > 1;
+  };
+
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: async (data) => {
@@ -52,6 +59,11 @@ export function useAuth() {
       await queryClient.refetchQueries({ queryKey: ['user'] });
       if (data.user.must_change_password) {
         navigate('/primeiro-acesso');
+        return;
+      }
+      if (getHasMultipleUas(data.user)) {
+        sessionStorage.setItem('pending_user_selection', '1');
+        navigate('/selecionar-ua-login');
         return;
       }
       navigate('/home');
