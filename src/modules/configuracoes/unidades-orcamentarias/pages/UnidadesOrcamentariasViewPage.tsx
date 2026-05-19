@@ -28,21 +28,35 @@ const ACTION_BUTTON_CLASS =
 const PRIMARY_SAVE_BUTTON_CLASS =
   'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
 
+function normalizeText(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
+function normalizeUppercaseText(value: string | null | undefined) {
+  return normalizeText(value).toUpperCase();
+}
+
 function buildUpdatePayload(
   unidade: UnidadeOrcamentaria,
   values: UnidadeOrcamentariaFormData,
 ): UpdateUnidadeOrcamentariaPayload {
-  const nextCodigo = values.codigo.trim();
-  const nextSigla = values.sigla.trim().toUpperCase();
-  const nextNome = values.nome.trim().toUpperCase();
+  const nextCodigo = normalizeText(values.codigo);
+  const nextSigla = normalizeUppercaseText(values.sigla);
+  const nextNome = normalizeUppercaseText(values.nome);
+  const nextSiglaOrgao = normalizeUppercaseText(values.sigla_orgao);
+  const nextOrgao = normalizeUppercaseText(values.orgao);
+  const nextCodigoOrgao = normalizeText(values.codigo_orgao);
   const nextAtiva = values.status === 'ativa';
 
-  const currentSigla = unidade.sigla.trim().toUpperCase();
-  const currentNome = unidade.nome.trim().toUpperCase();
+  const currentSigla = normalizeUppercaseText(unidade.sigla);
+  const currentNome = normalizeUppercaseText(unidade.nome);
+  const currentSiglaOrgao = normalizeUppercaseText(unidade.sigla_orgao);
+  const currentOrgao = normalizeUppercaseText(unidade.orgao);
+  const currentCodigoOrgao = normalizeText(unidade.codigo_orgao);
 
   const payload: UpdateUnidadeOrcamentariaPayload = {};
 
-  if (nextCodigo !== unidade.codigo) {
+  if (nextCodigo !== normalizeText(unidade.codigo)) {
     payload.codigo = nextCodigo;
   }
 
@@ -52,6 +66,18 @@ function buildUpdatePayload(
 
   if (nextNome !== currentNome) {
     payload.nome = nextNome;
+  }
+
+  if (nextSiglaOrgao !== currentSiglaOrgao) {
+    payload.sigla_orgao = nextSiglaOrgao;
+  }
+
+  if (nextOrgao !== currentOrgao) {
+    payload.orgao = nextOrgao;
+  }
+
+  if (nextCodigoOrgao !== currentCodigoOrgao) {
+    payload.codigo_orgao = nextCodigoOrgao;
   }
 
   if (nextAtiva !== unidade.ativa) {
@@ -86,6 +112,9 @@ export default function UnidadesOrcamentariasViewPage() {
       codigo: '',
       sigla: '',
       nome: '',
+      sigla_orgao: '',
+      orgao: '',
+      codigo_orgao: '',
       status: 'ativa',
     },
   });
@@ -101,6 +130,9 @@ export default function UnidadesOrcamentariasViewPage() {
       codigo: unidade.codigo,
       sigla: unidade.sigla,
       nome: unidade.nome,
+      sigla_orgao: unidade.sigla_orgao,
+      orgao: unidade.orgao,
+      codigo_orgao: unidade.codigo_orgao,
       status: unidade.ativa ? 'ativa' : 'inativa',
     });
   }, [form, unidade]);
@@ -180,7 +212,7 @@ export default function UnidadesOrcamentariasViewPage() {
     return (
       <UnidadesOrcamentariasGuard>
         <div className='flex items-center justify-center p-8'>
-          <span className='text-sm text-gray-500'>Carregando unidade orçamentária...</span>
+          <span className='text-sm text-gray-500'>Carregando detalhes da unidade orçamentária...</span>
         </div>
       </UnidadesOrcamentariasGuard>
     );

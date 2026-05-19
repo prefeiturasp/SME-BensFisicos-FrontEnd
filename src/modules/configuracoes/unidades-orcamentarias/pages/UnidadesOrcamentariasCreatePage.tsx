@@ -27,6 +27,9 @@ export default function UnidadesOrcamentariasCreatePage() {
       codigo: '',
       sigla: '',
       nome: '',
+      sigla_orgao: '',
+      orgao: '',
+      codigo_orgao: '',
       status: 'ativa',
     },
   });
@@ -39,6 +42,9 @@ export default function UnidadesOrcamentariasCreatePage() {
         codigo: values.codigo.trim(),
         sigla: values.sigla.trim().toUpperCase(),
         nome: values.nome.trim().toUpperCase(),
+        sigla_orgao: values.sigla_orgao.trim().toUpperCase(),
+        orgao: values.orgao.trim().toUpperCase(),
+        codigo_orgao: values.codigo_orgao.trim(),
         ativa: values.status === 'ativa',
       });
 

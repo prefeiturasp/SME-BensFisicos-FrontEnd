@@ -69,9 +69,12 @@ describe('UnidadesOrcamentariasCreatePage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Adicionar Unidade Orçamentária' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Código Inicial')).toBeInTheDocument();
-    expect(screen.getByLabelText('Sigla')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nome')).toBeInTheDocument();
+    expect(screen.getByLabelText('Código da UO')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sigla da UO')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nome da UO')).toBeInTheDocument();
+    expect(screen.getByLabelText('Sigla do órgão')).toBeInTheDocument();
+    expect(screen.getByLabelText('Código do órgão')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nome do órgão')).toBeInTheDocument();
   });
 
   it('envia payload correto e redireciona em caso de sucesso', async () => {
@@ -83,9 +86,12 @@ describe('UnidadesOrcamentariasCreatePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
-    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'uo60' } });
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'uo 60' } });
+    fireEvent.change(screen.getByLabelText('Código da UO'), { target: { value: '60.60.60' } });
+    fireEvent.change(screen.getByLabelText('Sigla da UO'), { target: { value: 'uo60' } });
+    fireEvent.change(screen.getByLabelText('Nome da UO'), { target: { value: 'uo 60' } });
+    fireEvent.change(screen.getByLabelText('Sigla do órgão'), { target: { value: 'sme' } });
+    fireEvent.change(screen.getByLabelText('Código do órgão'), { target: { value: '6060' } });
+    fireEvent.change(screen.getByLabelText('Nome do órgão'), { target: { value: 'secretaria externa 60' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
@@ -93,6 +99,9 @@ describe('UnidadesOrcamentariasCreatePage', () => {
         codigo: '60.60.60',
         sigla: 'UO60',
         nome: 'UO 60',
+        sigla_orgao: 'SME',
+        orgao: 'SECRETARIA EXTERNA 60',
+        codigo_orgao: '60.60',
         ativa: true,
       });
       expect(toastSuccessMock).toHaveBeenCalled();
@@ -100,20 +109,21 @@ describe('UnidadesOrcamentariasCreatePage', () => {
     });
   });
 
-  it('valida o código no padrão 00.00.00', async () => {
+  it('valida o código do órgão no padrão 00.00 quando informado', async () => {
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasCreatePage />
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '60.60' } });
-    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.change(screen.getByLabelText('Código da UO'), { target: { value: '60.60' } });
+    fireEvent.change(screen.getByLabelText('Sigla da UO'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome da UO'), { target: { value: 'UO 60' } });
+    fireEvent.change(screen.getByLabelText('Código do órgão'), { target: { value: '606' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Informe o código no padrão 00.00.00.')).toBeInTheDocument();
+      expect(screen.getByText('Informe o código do órgão no padrão 00.00.')).toBeInTheDocument();
       expect(createMock).not.toHaveBeenCalled();
     });
   });
@@ -131,9 +141,9 @@ describe('UnidadesOrcamentariasCreatePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
-    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.change(screen.getByLabelText('Código da UO'), { target: { value: '60.60.60' } });
+    fireEvent.change(screen.getByLabelText('Sigla da UO'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome da UO'), { target: { value: 'UO 60' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
@@ -177,9 +187,9 @@ describe('UnidadesOrcamentariasCreatePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
-    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.change(screen.getByLabelText('Código da UO'), { target: { value: '60.60.60' } });
+    fireEvent.change(screen.getByLabelText('Sigla da UO'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome da UO'), { target: { value: 'UO 60' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
@@ -197,9 +207,9 @@ describe('UnidadesOrcamentariasCreatePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Código Inicial'), { target: { value: '606060' } });
-    fireEvent.change(screen.getByLabelText('Sigla'), { target: { value: 'UO60' } });
-    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'UO 60' } });
+    fireEvent.change(screen.getByLabelText('Código da UO'), { target: { value: '60.60.60' } });
+    fireEvent.change(screen.getByLabelText('Sigla da UO'), { target: { value: 'UO60' } });
+    fireEvent.change(screen.getByLabelText('Nome da UO'), { target: { value: 'UO 60' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
