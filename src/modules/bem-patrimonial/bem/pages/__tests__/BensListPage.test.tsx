@@ -119,7 +119,9 @@ describe('BensListPage', () => {
       toggleSelect: toggle,
     })
     renderWithProviders()
-    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    const table = screen.getByRole('table')
+    const checkbox = table.querySelector('tbody input[type="checkbox"]') as HTMLInputElement
+    fireEvent.click(checkbox)
     expect(toggle).toHaveBeenCalledTimes(1)
   })
 
@@ -253,7 +255,8 @@ describe('BensListPage', () => {
 
     renderWithProviders()
 
-    const checkbox = screen.getAllByRole('checkbox')[1]
+    const table = screen.getByRole('table')
+    const checkbox = table.querySelector('tbody input[type="checkbox"]') as HTMLInputElement
     expect(checkbox).toBeDisabled()
   })
 
@@ -264,7 +267,8 @@ describe('BensListPage', () => {
 
     renderWithProviders()
 
-    const checkbox = screen.getAllByRole('checkbox')[1]
+    const table = screen.getByRole('table')
+    const checkbox = table.querySelector('tbody input[type="checkbox"]') as HTMLInputElement
     expect(checkbox).toBeChecked()
   })
   it('deve renderizar ícone de ordenação como inativo quando ordering não inclui o campo', () => {

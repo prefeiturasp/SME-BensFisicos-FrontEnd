@@ -49,12 +49,14 @@ export default function BensListPage() {
     statusFilter,
     escopoFilter,
     baixadosAntigos,
+    buscaGeralUos,
     ordering,
     setPage,
     setSearchInput,
     setStatusFilter,
     setEscopoFilter,
     setBaixadosAntigos,
+    setBuscaGeralUos,
     setOrdering,
     toggleSelect,
     atualizarStatusSelecionados,
@@ -224,7 +226,21 @@ export default function BensListPage() {
           </div>
 
           <div className='flex items-end pb-1'>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-gray-700">Busca especial</label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={buscaGeralUos}
+                  onChange={e => {
+                    setBuscaGeralUos(e.target.checked)
+                    setPage(1)
+                  }}
+                  className="h-4 w-4 accent-[#00703C]"
+                />
+                Busca geral em todas as UOs
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
                 id="baixados-antigos"
                 type="checkbox"
@@ -235,11 +251,9 @@ export default function BensListPage() {
                 }}
                 className="h-4 w-4 accent-[#00703C]"
               />
-              <label
-                htmlFor="baixados-antigos"
-                className="text-sm text-gray-700"
-              >
+              <span>
                 Baixados há mais de um período
+              </span>
               </label>
             </div>
           </div>
