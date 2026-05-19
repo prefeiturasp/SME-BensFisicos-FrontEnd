@@ -23,6 +23,20 @@ interface UnidadeOrcamentariaFormProps {
 const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 bg-white px-4 text-sm text-gray-700';
 
+function formatCodigoUO(value: string) {
+  const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+
+  if (digitsOnly.length <= 2) {
+    return digitsOnly;
+  }
+
+  if (digitsOnly.length <= 4) {
+    return `${digitsOnly.slice(0, 2)}.${digitsOnly.slice(2)}`;
+  }
+
+  return `${digitsOnly.slice(0, 2)}.${digitsOnly.slice(2, 4)}.${digitsOnly.slice(4)}`;
+}
+
 function formatCodigoOrgao(value: string) {
   const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
 
@@ -64,11 +78,12 @@ export function UnidadeOrcamentariaForm({
                 <FormControl>
                   <Input
                     id='codigo'
+                    inputMode='numeric'
                     placeholder='Informe o código da UO'
                     className={INPUT_CLASS}
                     disabled={disabled || submitting}
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(event) => field.onChange(formatCodigoUO(event.target.value))}
                   />
                 </FormControl>
                 <FormDescription>Obrigatório. Exemplo: 01.16.10.</FormDescription>

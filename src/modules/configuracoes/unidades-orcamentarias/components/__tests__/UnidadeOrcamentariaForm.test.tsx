@@ -91,7 +91,7 @@ describe('UnidadeOrcamentariaForm', () => {
     });
   });
 
-  it('mantém o código livre, formata código do órgão, converte textos para caixa alta e exibe erro raiz', () => {
+  it('formata os códigos, converte textos para caixa alta e exibe erro raiz', () => {
     renderForm({
       rootError: 'Erro retornado pela API.',
       defaultValues: { status: undefined as never },
@@ -107,14 +107,14 @@ describe('UnidadeOrcamentariaForm', () => {
     const codigoOrgaoInput = screen.getByPlaceholderText('Informe o código do órgão');
     const orgaoInput = screen.getByPlaceholderText('Informe o nome do órgão');
 
-    fireEvent.change(codigoInput, { target: { value: 'AA-01.16.10' } });
+    fireEvent.change(codigoInput, { target: { value: 'a1b23456' } });
     fireEvent.change(siglaInput, { target: { value: 'uo60' } });
     fireEvent.change(nomeInput, { target: { value: 'unidade orcamentaria 60' } });
     fireEvent.change(siglaOrgaoInput, { target: { value: 'sme' } });
     fireEvent.change(codigoOrgaoInput, { target: { value: '1010' } });
     fireEvent.change(orgaoInput, { target: { value: 'secretaria externa 60' } });
 
-    expect(codigoInput).toHaveValue('AA-01.16.10');
+    expect(codigoInput).toHaveValue('12.34.56');
     expect(siglaInput).toHaveValue('UO60');
     expect(nomeInput).toHaveValue('UNIDADE ORCAMENTARIA 60');
     expect(siglaOrgaoInput).toHaveValue('SME');
