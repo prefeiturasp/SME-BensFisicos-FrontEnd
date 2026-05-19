@@ -31,35 +31,35 @@ export function UnidadesOrcamentariasFilters({
   return (
     <div className='grid grid-cols-1 items-center gap-4 lg:grid-cols-3'>
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Código</span>
+        <span>Buscar por código</span>
         <div className='relative'>
           <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
           <input
             type='text'
             value={codigo}
             onChange={(event) => onCodigoChange(event.target.value)}
-            placeholder='Digite o código da UO'
+            placeholder='Código da UO ou do órgão'
             className={INPUT_CLASS}
           />
         </div>
       </label>
 
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Nome ou Sigla</span>
+        <span>Buscar por nome ou sigla</span>
         <div className='relative'>
           <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
           <input
             type='text'
             value={nomeOuSigla}
             onChange={(event) => onNomeOuSiglaChange(event.target.value)}
-            placeholder='Digite o nome ou sigla da UO'
+            placeholder='Nome ou sigla da UO ou do órgão'
             className={INPUT_CLASS}
           />
         </div>
       </label>
 
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Status</span>
+        <span>Filtrar por status</span>
 
         <Select
           value={status}
