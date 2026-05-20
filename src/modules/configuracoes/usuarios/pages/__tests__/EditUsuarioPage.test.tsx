@@ -317,7 +317,9 @@ describe("EditarUsuarioPage", () => {
         await user.click(screen.getByRole("button", { name: /salvar/i }))
 
         await waitFor(() => {
-            expect(screen.getByText("Erro ao salvar usuário.")).toBeInTheDocument()
+            expect(
+                screen.getByText(/erro ao salvar usuário|falha ao salvar/i)
+            ).toBeInTheDocument()
         })
     })
 

@@ -118,7 +118,7 @@ const ME_RESPONSE = {
 
 const VALID_FORM_DATA = {
     nome: "João da Silva",
-    rf: "123456",
+    rf: "A123456",
     username: "joao.silva",
     email: "joao@email.com",
     password: TEST_PWD,
@@ -138,7 +138,7 @@ function renderComponent() {
 /**
  * Ordem dos selects no DOM após refatoração do layout:
  *   [0] Grupo de Permissionamento
- *   [1] Unidade Administrativa
+ *   [1] Unidade Orçamentária
  *   [2] Status
  */
 async function fillForm(
@@ -170,7 +170,16 @@ async function fillForm(
 
     const selects = screen.getAllByRole("combobox")
     fireEvent.change(selects[0], { target: { value: grupo } })       // Grupo
-    fireEvent.change(selects[1], { target: { value: unidadeId } })   // Unidade
+
+    if (unidadeId) {
+        fireEvent.change(selects[1], { target: { value: "2" } }) // Unidade Orçamentária
+
+        await waitFor(() => {
+            expect(screen.getByText("001 - Secretaria de Finanças")).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByText("001 - Secretaria de Finanças"))
+    }
 }
 
 // ─── Testes ───────────────────────────────────────────────────────────────────
@@ -230,7 +239,7 @@ describe("AdicionarUsuarioPage", () => {
             expect(screen.getByText("RF")).toBeInTheDocument()
             expect(screen.getByText("E-mail do Usuário")).toBeInTheDocument()
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
-            expect(screen.getByText("Unidade Administrativa")).toBeInTheDocument()
+            expect(screen.getByText("Unidades Administrativas")).toBeInTheDocument()
             expect(screen.getByText("Cadastre uma Senha")).toBeInTheDocument()
             expect(screen.getByText("Confirme a Senha")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
@@ -253,9 +262,8 @@ describe("AdicionarUsuarioPage", () => {
             const selects = screen.getAllByRole("combobox")
             fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
 
-            // O asterisco (*) deve aparecer após o label da unidade
-            const unidadeLabel = screen.getByText("Unidade Administrativa")
-            expect(unidadeLabel.nextSibling).not.toBeNull()
+            const unidadeLabel = screen.getByText("Unidades Administrativas").closest("label")
+            expect(unidadeLabel?.querySelector("span")?.textContent).toBe("*")
         })
 
         it("Gestor: aceita formulário sem unidade selecionada", async () => {
@@ -305,14 +313,15 @@ describe("AdicionarUsuarioPage", () => {
 
             const selects = screen.getAllByRole("combobox")
 
-            // Seleciona operador e uma unidade
+            // Seleciona operador e uma unidade orçamentária
             fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
-            fireEvent.change(selects[1], { target: { value: "1" } })
+            fireEvent.change(selects[1], { target: { value: "2" } })
 
-            // Troca para gestor — unidade deve ser limpa
-            fireEvent.change(selects[0], { target: { value: "GESTOR_PATRIMONIO" } })
-
-            expect((selects[1] as HTMLSelectElement).value).toBe("")
+            return waitFor(() => {
+                fireEvent.click(screen.getByText("001 - Secretaria de Finanças"))
+                fireEvent.change(selects[0], { target: { value: "GESTOR_PATRIMONIO" } })
+                expect(screen.getByText("Nenhuma selecionada")).toBeInTheDocument()
+            })
         })
     })
 
@@ -320,36 +329,41 @@ describe("AdicionarUsuarioPage", () => {
 
     describe("carregamento de unidades administrativas", () => {
 
-        it("carrega e exibe as unidades do escopo no select", async () => {
+        it("carrega e exibe as unidades do escopo na lista", async () => {
             renderComponent()
+            const selects = screen.getAllByRole("combobox")
+            fireEvent.change(selects[1], { target: { value: "2" } })
 
             await waitFor(() => {
-                const selects = screen.getAllByRole("combobox")
                 expect(
-                    selects[1].querySelector('option[value="1"]')
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
             })
         })
 
         it("exibe o código e nome da UA na opção", async () => {
             renderComponent()
+            const selects = screen.getAllByRole("combobox")
+            fireEvent.change(selects[1], { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
-                    screen.getByRole("option", { name: "001 - Secretaria de Finanças" })
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
             })
         })
 
         it("exibe todas as UAs retornadas pelo escopo", async () => {
             renderComponent()
+            const selects = screen.getAllByRole("combobox")
+            fireEvent.change(selects[1], { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
-                    screen.getByRole("option", { name: "001 - Secretaria de Finanças" })
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
                 expect(
-                    screen.getByRole("option", { name: "002 - Secretaria de Educação" })
+                    screen.getByText("002 - Secretaria de Educação")
                 ).toBeInTheDocument()
             })
         })
@@ -540,7 +554,7 @@ describe("AdicionarUsuarioPage", () => {
                         username: "joao.silva",
                         nome: "João da Silva",
                         email: "joao@email.com",
-                        rf: "123456",
+                        rf: "A123456",
                         unidade_administrativa: 1,
                         unidade_orcamentaria: 2,
                         group_name: "GESTOR_PATRIMONIO",
@@ -658,7 +672,7 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
-        it("exibe mensagem específica quando há erro de validação da API (response.data)", async () => {
+        it("exibe mensagem padrão quando há erro de validação da API (response.data)", async () => {
             const apiError = new Error("Erro de validação")
             ;(apiError as any).response = { data: { username: ["Já existe."] } }
             mockUsuarioCreate.mockRejectedValue(apiError)
@@ -671,7 +685,7 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => {
                 expect(
-                    screen.getByText("Erro de validação ao criar usuário")
+                    screen.getByText("Corrija os campos destacados.")
                 ).toBeInTheDocument()
             })
         })
