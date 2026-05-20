@@ -31,6 +31,12 @@ export default function BemEditPage() {
   const [loading, setLoading] = useState(true)
   const [bem, setBem] = useState<Bem | null>(null)
 
+  // Track original values for justificativa trigger
+  const [originalNome, setOriginalNome] = useState('')
+  const [originalNumeroPatrimonial, setOriginalNumeroPatrimonial] = useState('')
+  const [justificativa, setJustificativa] = useState('')
+  const [justificativaError, setJustificativaError] = useState('')
+
   const form = useForm<Bem>({
     defaultValues: {} as Bem,
   })
@@ -39,6 +45,7 @@ export default function BemEditPage() {
   const numeroPatrimonial = form.watch('numero_patrimonial')
   const formatoAntigo = form.watch('numero_formato_antigo')
   const semNumeracao = form.watch('sem_numeracao')
+  const nomeAtual = form.watch('nome')
 
   const numeroHook = useNumeroPatrimonial({
     valor: numeroPatrimonial ?? '',
@@ -46,12 +53,21 @@ export default function BemEditPage() {
     semNumeracaoInicial: semNumeracao ?? false,
   })
 
+  const nomeAlterado = !!originalNome && nomeAtual !== originalNome
+  const numeroAlterado =
+    !!originalNumeroPatrimonial &&
+    (numeroPatrimonial ?? '') !== originalNumeroPatrimonial
+  const justificativaHabilitada = nomeAlterado || numeroAlterado
+  const justificativaObrigatoria = justificativaHabilitada
+
   useEffect(() => {
     async function fetchBem() {
       try {
         const data = await bemService.retrieve(Number(id))
         setBem(data)
         form.reset(data)
+        setOriginalNome(data.nome ?? '')
+        setOriginalNumeroPatrimonial(data.numero_patrimonial ?? '')
       } catch {
         toast.error('Erro ao carregar bem')
         navigate('/bens-patrimoniais')
@@ -78,8 +94,18 @@ export default function BemEditPage() {
   const podeEditar = isGestor && !isBaixaFisica
 
   const onSubmit = async (values: Bem) => {
+    if (justificativaObrigatoria && !justificativa.trim()) {
+      setJustificativaError(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+      return
+    }
+
     try {
-      await bemService.update(values.id, values)
+      await bemService.update(values.id, {
+        ...values,
+        justificativa: justificativaHabilitada ? justificativa : '',
+      } as any)
       toast.success('Bem atualizado com sucesso')
       navigate(`/bens-patrimoniais/${values.id}`)
     } catch (error: any) {
@@ -121,7 +147,6 @@ export default function BemEditPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 
-            {/* STATUS */}
             <div className="flex justify-end">
               <div className="text-sm font-semibold text-green-700">
                 Status: {bem.status_display}
@@ -131,7 +156,6 @@ export default function BemEditPage() {
             {/* PRIMEIRA LINHA */}
             <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-8 items-start">
 
-              {/* UNIDADE */}
               <div className="space-y-1">
                 <label
                   htmlFor="unidade_administrativa"
@@ -147,7 +171,6 @@ export default function BemEditPage() {
                 />
               </div>
 
-              {/* NÚMERO PATRIMONIAL */}
               <FormField
                 control={form.control}
                 name="numero_patrimonial"
@@ -157,10 +180,7 @@ export default function BemEditPage() {
                     <FormControl>
                       <Input
                         {...field}
-                        disabled={
-                          !podeEditar ||
-                          numeroHook.disabled
-                        }
+                        disabled={!podeEditar || numeroHook.disabled}
                         className={INPUT_CLASS}
                         onChange={(e) => {
                           const masked = numeroHook.applyMask(e.target.value)
@@ -176,7 +196,6 @@ export default function BemEditPage() {
                 )}
               />
 
-              {/* FORMATO ANTIGO */}
               <FormField
                 control={form.control}
                 name="numero_formato_antigo"
@@ -190,7 +209,6 @@ export default function BemEditPage() {
                           checked={field.value}
                           onChange={(e) => {
                             field.onChange(e.target.checked)
-
                             if (e.target.checked) {
                               numeroHook.ativarFormatoAntigo()
                             } else {
@@ -200,7 +218,6 @@ export default function BemEditPage() {
                           disabled={!podeEditar}
                         />
                       </FormControl>
-
                       <FormLabel
                         htmlFor="numero_formato_antigo"
                         className="text-sm text-gray-700 whitespace-nowrap"
@@ -212,7 +229,6 @@ export default function BemEditPage() {
                 )}
               />
 
-              {/* SEM NUMERAÇÃO */}
               <FormField
                 control={form.control}
                 name="sem_numeracao"
@@ -231,7 +247,6 @@ export default function BemEditPage() {
                           disabled={!podeEditar}
                         />
                       </FormControl>
-
                       <FormLabel
                         htmlFor="sem_numeracao"
                         className="text-sm text-gray-700 whitespace-nowrap"
@@ -245,9 +260,8 @@ export default function BemEditPage() {
 
             </div>
 
-            {/* RESTANTE DOS CAMPOS */}
+            {/* CAMPOS RESTANTES */}
             <div className="grid grid-cols-3 gap-6">
-
               {[
                 'nome',
                 'descricao',
@@ -287,7 +301,52 @@ export default function BemEditPage() {
                   )}
                 />
               ))}
+            </div>
 
+            {/* OBSERVAÇÃO */}
+            <FormField
+              control={form.control}
+              name={'observacao' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>OBSERVAÇÃO</FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      disabled={!podeEditar}
+                      placeholder="Observação"
+                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* JUSTIFICATIVA */}
+            <div className="space-y-1">
+              <label htmlFor="justificativa" className="text-sm font-semibold text-gray-700">
+                JUSTIFICATIVA
+                {justificativaObrigatoria && <span className="text-red-500"> *</span>}
+              </label>
+              <textarea
+                id="justificativa"
+                disabled={!podeEditar || !justificativaHabilitada}
+                placeholder={
+                  justificativaHabilitada
+                    ? 'Justificativa para a alteração'
+                    : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
+                }
+                value={justificativa}
+                onChange={(e) => {
+                  setJustificativa(e.target.value)
+                  if (e.target.value.trim()) setJustificativaError('')
+                }}
+                className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {justificativaError && (
+                <p className="text-xs text-red-500">{justificativaError}</p>
+              )}
             </div>
 
             {podeEditar && (
@@ -297,9 +356,7 @@ export default function BemEditPage() {
                   disabled={form.formState.isSubmitting}
                   className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8"
                 >
-                  {form.formState.isSubmitting
-                    ? 'Salvando...'
-                    : 'Salvar Edição'}
+                  {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Edição'}
                 </Button>
               </div>
             )}

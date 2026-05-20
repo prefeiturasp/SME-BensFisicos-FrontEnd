@@ -68,6 +68,8 @@ function renderPage() {
   )
 }
 
+// nomeOriginal é sempre '', então qualquer nome preenchido ativa justificativa obrigatória.
+// Por isso preencherCamposBase também preenche a justificativa.
 function preencherCamposBase() {
   fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
     target: { value: 'Notebook' },
@@ -86,6 +88,9 @@ function preencherCamposBase() {
   })
   fireEvent.change(screen.getByPlaceholderText('Localização'), {
     target: { value: 'Sala 1' },
+  })
+  fireEvent.change(screen.getByPlaceholderText('Justificativa para a alteração'), {
+    target: { value: 'Justificativa de teste' },
   })
   // UA é auto-selecionada pois o mock retorna apenas 1 UA
 }
@@ -175,7 +180,6 @@ describe('BemCreatePage', () => {
   it('deve exibir mensagem de erro inline para campo nome ausente', async () => {
     renderPage()
 
-    // Preenche tudo menos nome
     fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), {
       target: { value: 'Desc' },
     })
@@ -188,7 +192,6 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('Modelo'), {
       target: { value: 'X' },
     })
-    // UA é auto-selecionada pois o mock retorna apenas 1 UA
 
     fireEvent.click(screen.getByText('Salvar'))
 
@@ -216,12 +219,15 @@ describe('BemCreatePage', () => {
     const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
 
-    // Preenche todos os campos base mas deixa localização vazia
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
     fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), { target: { value: 'Desc' } })
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
     fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+    fireEvent.change(screen.getByPlaceholderText('Justificativa para a alteração'), {
+      target: { value: 'Justificativa de teste' },
+    })
+    // Localização propositalmente não preenchida
 
     fireEvent.click(screen.getByText('Salvar'))
 
@@ -241,6 +247,9 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
     fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+    fireEvent.change(screen.getByPlaceholderText('Justificativa para a alteração'), {
+      target: { value: 'Justificativa de teste' },
+    })
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -251,7 +260,9 @@ describe('BemCreatePage', () => {
       target: { value: 'Sala 1' },
     })
 
-    expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
+    })
   })
 
   // ------------------------------------------------------------------
@@ -394,10 +405,11 @@ describe('BemCreatePage', () => {
       expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
     })
 
-    // Adicionar nova linha dispara updateLinhas → limpa erros
     fireEvent.click(screen.getByText('Adicionar Linha'))
 
-    expect(screen.queryByTestId('erro-linha-0')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByTestId('erro-linha-0')).not.toBeInTheDocument()
+    })
   })
 
   // ------------------------------------------------------------------
@@ -413,7 +425,9 @@ describe('BemCreatePage', () => {
     preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
-    expect(screen.getByText('Salvando...')).toBeDisabled()
+    await waitFor(() => {
+      expect(screen.getByText('Salvando...')).toBeDisabled()
+    })
 
     resolve(undefined)
 
