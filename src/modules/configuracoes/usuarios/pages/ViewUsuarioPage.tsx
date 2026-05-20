@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react"
+﻿import { ArrowLeft, Settings } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
 
@@ -38,6 +38,30 @@ function Campo({ label, value, required }: CampoProps) {
       />
     </div>
   )
+}
+
+function ListaUas({ unidades }: { unidades: string[] }) {
+  const valorFormatado = unidades.length
+    ? unidades.join(", ")
+    : "Nenhuma unidade administrativa selecionada."
+
+  return (
+    <div className="flex flex-col gap-2 md:col-span-2">
+      <label className="text-sm font-semibold text-gray-700">Unidades Administrativas</label>
+      <textarea
+        readOnly
+        value={valorFormatado}
+        className="min-h-20 w-full rounded-xs border border-gray-300 px-4 py-3 text-sm text-gray-700 bg-gray-50 resize-none leading-6"
+      />
+    </div>
+  )
+}
+
+function getUnidadeOrcamentariaLabel(usuario: Usuario) {
+  if (usuario.unidade_orcamentaria_codigo && usuario.unidade_orcamentaria_nome) {
+    return `${usuario.unidade_orcamentaria_codigo} - ${usuario.unidade_orcamentaria_nome}`
+  }
+  return "—"
 }
 
 export default function ViewUsuarioPage() {
@@ -148,28 +172,36 @@ export default function ViewUsuarioPage() {
 
             {/* 4 */}
             <Campo
-              label="Unidade Administrativa"
-              value={
-                usuario.unidade_codigo && usuario.unidade_nome
-                  ? `${usuario.unidade_codigo} - ${usuario.unidade_nome}`
-                  : null
-              }
-            />
-
-            {/* 5 */}
-            <Campo
               label="Nome de Usuário de Acesso"
               value={usuario.username}
             />
 
-            {/* 6 */}
+            {/* 5 */}
             <Campo
               label="E-mail do Usuário"
               value={usuario.email}
               required
             />
 
+            {/* 6 */}
+            <Campo
+              label="Unidade Orçamentária"
+              value={getUnidadeOrcamentariaLabel(usuario)}
+              required
+            />
+
             {/* 7 */}
+            <ListaUas
+              unidades={
+                usuario.unidades_administrativas?.length
+                  ? usuario.unidades_administrativas.map((id) => `UA ${id}`)
+                  : usuario.unidade_codigo && usuario.unidade_nome
+                    ? [`${usuario.unidade_codigo} - ${usuario.unidade_nome}`]
+                    : []
+              }
+            />
+
+            {/* 8 */}
             <Campo
               label="Status"
               value={usuario.status_display}
@@ -183,3 +215,5 @@ export default function ViewUsuarioPage() {
     </div>
   )
 }
+
+

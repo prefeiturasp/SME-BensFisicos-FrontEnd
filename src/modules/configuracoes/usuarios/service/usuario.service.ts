@@ -12,7 +12,7 @@ export interface Usuario {
     status: string
     status_display: string
     rf: string
-    unidades_administrativas?: Array<number>
+    unidades_administrativas?: number[]
 }
 
 export interface UsuarioCreatePayload {
@@ -22,11 +22,11 @@ export interface UsuarioCreatePayload {
     rf: string
     unidade_administrativa: number | null
     unidade_orcamentaria: number | null
-    unidades_administrativas?: number[]
     group_name: string
     password: string
     password_confirm: string
     is_active: boolean
+    unidades_administrativas?: number[]
 }
 
 export interface PaginatedResponse<T> {

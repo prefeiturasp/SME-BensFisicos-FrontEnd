@@ -1,134 +1,169 @@
-import { ArrowLeft, Settings, Eye, EyeOff } from "lucide-react"
+﻿import { ArrowLeft, Eye, EyeOff, ListFilter, Settings, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useEffect, useState } from "react"
-
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-import { AppBreadcrumb } from "@/components/AppBreadcrumb"
-
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-
 import { z } from "zod"
-import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 
+import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 import { usuarioService } from "../service/usuario.service"
-import { authService, type EscopoUa } from "../../../../auth/auth.service"
+import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
 
-const INPUT_CLASS =
-  "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
-
-const INPUT_TEXT_CLASS =
-  "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
-
-const ACTION_BUTTON_CLASS = `
-  h-10 px-6 bg-white border border-[#2F7D57]
-  text-[#2F7D57] hover:bg-[#2F7D57]
-  hover:text-white font-semibold rounded-md transition-colors
-`
-
+const INPUT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
+const INPUT_TEXT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
+const ACTION_BUTTON_CLASS = "h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
 const REQUIRED = <span className="text-red-500 ml-1">*</span>
 
 export default function AdicionarUsuarioPage() {
   const navigate = useNavigate()
-
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<EscopoUa[]>([])
+  const [gruposEscopo, setGruposEscopo] = useState<EscopoGrupo[]>([])
+  const [uoSelecionadaId, setUoSelecionadaId] = useState<number | null>(null)
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<EscopoUa[]>([])
-
-  // UO do próprio gestor logado — usada quando Gestor não seleciona UA
+  const [filtroUa, setFiltroUa] = useState("")
+  const [somenteSelecionadas, setSomenteSelecionadas] = useState(false)
   const [gestorUoId, setGestorUoId] = useState<number | null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<FormData>({
+  const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(adicionarUsuarioSchema),
-    defaultValues: {
-      status: "ativo",
-      unidade: [],
-      grupo: "",
-    },
+    defaultValues: { status: "ativo", unidade: [], grupo: "" },
   })
 
   const grupoSelecionado = watch("grupo")
   const unidadeObrigatoria = grupoSelecionado === "OPERADOR_INVENTARIO"
 
   useEffect(() => {
-    const carregarUnidadesDoEscopo = async () => {
-      try {
-        const { data: me } = await authService.getCurrentUser()
+    if (unidadesSelecionadas.length === 0 && somenteSelecionadas) setSomenteSelecionadas(false)
+  }, [somenteSelecionadas, unidadesSelecionadas.length])
 
-        const uas: EscopoUa[] =
-          me.opcoes_escopo?.grupos.flatMap(grupo => grupo.uas) ?? []
-
-        setUnidadesAdministrativas(uas)
-
-        // Guarda a UO do usuário logado para usar quando Gestor não selecionar UA
-        if (me.uo_ativa) {
-          setGestorUoId(me.uo_ativa.id)
-        }
-
-      } catch (error) {
-        console.error("Erro ao carregar unidades do escopo", error)
-      }
+  useEffect(() => {
+    const carregar = async () => {
+      const { data: me } = await authService.getCurrentUser()
+      const grupos = (me.opcoes_escopo?.grupos ?? []).filter((g) => g?.uo?.id)
+      setGruposEscopo(grupos)
+      const uoInicialId = me.uo_ativa?.id ?? grupos[0]?.uo.id ?? null
+      setUoSelecionadaId(uoInicialId)
+      const grupoInicial = grupos.find((g) => g.uo.id === uoInicialId)
+      setUnidadesAdministrativas(grupoInicial?.uas ?? [])
+      if (me.uo_ativa) setGestorUoId(me.uo_ativa.id)
     }
-
-    carregarUnidadesDoEscopo()
+    carregar().catch((error) => console.error("Erro ao carregar unidades do escopo", error))
   }, [])
+
+  const idsSelecionados = useMemo(() => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)), [unidadesSelecionadas])
+
+  const uosDisponiveis = useMemo(
+    () =>
+      gruposEscopo
+      .filter((g) => g?.uo?.id)
+      .map((g) => ({
+        id: g.uo.id,
+        label: g.uo.label,
+      })),
+    [gruposEscopo]
+  )
+
+  useEffect(() => {
+    if (!uoSelecionadaId) {
+      setUnidadesAdministrativas([])
+      setUnidadesSelecionadas([])
+      setFiltroUa("")
+      syncFormUnidades([])
+      return
+    }
+    const grupo = gruposEscopo.find((g) => g.uo.id === uoSelecionadaId)
+    const uasDaUo = grupo?.uas ?? []
+    setUnidadesAdministrativas(uasDaUo)
+    setUnidadesSelecionadas((prev) => {
+      const filtradas = prev.filter((ua) => ua.unidade_orcamentaria_id === uoSelecionadaId)
+      syncFormUnidades(filtradas)
+      return filtradas
+    })
+  }, [uoSelecionadaId, gruposEscopo])
+
+  const unidadesListadas = useMemo(() => {
+    const base = somenteSelecionadas ? unidadesAdministrativas.filter((ua) => idsSelecionados.has(ua.unidade_administrativa_id)) : unidadesAdministrativas
+    const termo = filtroUa.trim().toLowerCase()
+    if (!termo) return base
+    return base.filter((ua) => `${ua.codigo} ${ua.nome}`.toLowerCase().includes(termo))
+  }, [filtroUa, idsSelecionados, somenteSelecionadas, unidadesAdministrativas])
+
+  const syncFormUnidades = (selecionadas: EscopoUa[]) => {
+    setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
+  }
+
+  const toggleUa = (ua: EscopoUa) => {
+    const jaSelecionada = idsSelecionados.has(ua.unidade_administrativa_id)
+    const next = jaSelecionada
+      ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
+      : [...unidadesSelecionadas, ua]
+    setUnidadesSelecionadas(next)
+    syncFormUnidades(next)
+  }
 
   const onSubmit = async (data: FormData) => {
     try {
       setLoading(true)
       setErrorMessage(null)
+      const selecionadasEfetivas =
+        unidadesSelecionadas.length > 0
+          ? unidadesSelecionadas
+          : data.grupo === "GESTOR_PATRIMONIO"
+            ? unidadesAdministrativas
+            : []
 
-      const payload = {
+      await usuarioService.create({
         username: data.username,
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        // UA: apenas se selecionada (obrigatória para Operador, opcional para Gestor)
-        unidade_administrativa: unidadesSelecionadas[0]?.unidade_administrativa_id ?? null,
-        // UO: vem da UA se selecionada, senão usa a UO do próprio gestor logado
-        unidade_orcamentaria: unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? gestorUoId,
-        unidades_administrativas: unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id),
+        unidade_administrativa: selecionadasEfetivas[0]?.unidade_administrativa_id ?? null,
+        unidade_orcamentaria: selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId,
+        unidades_administrativas: selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id),
         group_name: data.grupo,
         password: data.password,
         password_confirm: data.confirmPassword,
         is_active: data.status === "ativo",
-      }
-
-      await usuarioService.create(payload)
-
+      })
       navigate("/usuarios")
-
     } catch (error: any) {
-
-      if (error?.response?.data) {
-        setErrorMessage("Erro de validação ao criar usuário")
+      const apiErrors = error?.response?.data
+      if (apiErrors && typeof apiErrors === "object") {
+        const fieldMap: Record<string, keyof FormData> = {
+          rf: "rf",
+          email: "email",
+          username: "username",
+          nome: "nome",
+          group_name: "grupo",
+          password: "password",
+          password_confirm: "confirmPassword",
+          unidades_administrativas: "unidade",
+          unidade_administrativa: "unidade",
+        }
+        let hasFieldError = false
+        Object.entries(fieldMap).forEach(([apiField, formField]) => {
+          const value = apiErrors[apiField]
+          if (value) {
+            hasFieldError = true
+            const msg = Array.isArray(value) ? String(value[0]) : String(value)
+            setError(formField, { type: "server", message: msg })
+          }
+        })
+        setErrorMessage(hasFieldError ? "Corrija os campos destacados." : "Erro de validação ao criar usuário")
       } else {
         setErrorMessage(error.message ?? "Erro ao criar usuário")
       }
-
     } finally {
       setLoading(false)
     }
@@ -136,338 +171,54 @@ export default function AdicionarUsuarioPage() {
 
   return (
     <div className="p-8 space-y-4">
-
-      <AppBreadcrumb
-        items={[
-          { label: "Configurações", icon: Settings },
-          { label: "Usuários" },
-          { label: "Adicionar Usuário", isActive: true },
-        ]}
-      />
-
+      <AppBreadcrumb items={[{ label: "Configurações", icon: Settings }, { label: "Usuários" }, { label: "Adicionar Usuário", isActive: true }]} />
       <div className="flex items-center justify-between">
-
-        <h1 className="text-xl font-bold tracking-tight text-gray-700">
-          Adicionar Usuário
-        </h1>
-
+        <h1 className="text-xl font-bold tracking-tight text-gray-700">Adicionar Usuário</h1>
         <div className="flex items-center gap-3">
-
-          <Button
-            type="button"
-            onClick={() => navigate(-1)}
-            className={ACTION_BUTTON_CLASS}
-          >
-            <ArrowLeft size={18} />
-          </Button>
-
-          <Button
-            onClick={handleSubmit(onSubmit)}
-            disabled={loading}
-            className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md"
-          >
-            {loading ? "Salvando..." : "Salvar"}
-          </Button>
-
-          <Button
-            onClick={() => navigate("/usuarios")}
-            className={ACTION_BUTTON_CLASS}
-          >
-            Cancelar
-          </Button>
-
+          <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={loading} className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md">{loading ? "Salvando..." : "Salvar"}</Button>
+          <Button onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>Cancelar</Button>
         </div>
       </div>
 
-      {errorMessage && (
-        <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">
-          {errorMessage}
-        </div>
-      )}
+      {errorMessage && <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">{errorMessage}</div>}
 
-      <Card className="p-6 space-y-6 h-[calc(70vh-75px)]">
-
+      <Card className="p-6 space-y-6">
         <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Nome Completo{REQUIRED}</label><input type="text" placeholder="Digite o nome completo" className={INPUT_TEXT_CLASS} {...register("nome")} />{errors.nome && <span className="text-red-600 text-sm">{errors.nome.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">RF{REQUIRED}</label><input type="text" placeholder="Digite o rf" className={INPUT_TEXT_CLASS} {...register("rf")} />{errors.rf && <span className="text-red-600 text-sm">{errors.rf.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</label><Select onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]) }}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione os grupos" /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select>{errors.grupo && <span className="text-red-600 text-sm">{errors.grupo.message}</span>}</div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              Nome Completo{REQUIRED}
-            </label>
 
-            <input
-              type="text"
-              placeholder="Digite o nome completo"
-              className={INPUT_TEXT_CLASS}
-              {...register("nome")}
-            />
-
-            {errors.nome && (
-              <span className="text-red-600 text-sm">
-                {errors.nome.message}
-              </span>
-            )}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Nome de Usuário de Acesso</label><input type="text" placeholder="Digite o nome de usuário de acesso" className={INPUT_TEXT_CLASS} {...register("username")} />{errors.username && <span className="text-red-600 text-sm">{errors.username.message}</span>}</div>
+            <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">E-mail do Usuário{REQUIRED}</label><input type="email" placeholder="Digite o e-mail" className={INPUT_TEXT_CLASS} {...register("email")} />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
+            <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</label><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              RF{REQUIRED}
-            </label>
-
-            <input
-              type="text"
-              placeholder="Digite o rf"
-              className={INPUT_TEXT_CLASS}
-              {...register("rf")}
-            />
-
-            {errors.rf && (
-              <span className="text-red-600 text-sm">
-                {errors.rf.message}
-              </span>
-            )}
-          </div>
-
-          {/* Grupo — vem antes de Unidade para que o asterisco reflita a escolha */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              Grupo de Permissionamento{REQUIRED}
-            </label>
-
-            <Select
-              onValueChange={(value) => {
-                setValue("grupo", value, { shouldValidate: true })
-                // Limpa a unidade ao trocar o grupo para forçar nova seleção
-                setValue("unidade", [], { shouldValidate: false })
-                setUnidadesSelecionadas([])
-              }}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder="Selecione os grupos" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="GESTOR_PATRIMONIO">
-                  Gestor
-                </SelectItem>
-                <SelectItem value="OPERADOR_INVENTARIO">
-                  Operador
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            {errors.grupo && (
-              <span className="text-red-600 text-sm">
-                {errors.grupo.message}
-              </span>
-            )}
-          </div>
-
-          {/* Unidade — asterisco condicional: obrigatória apenas para Operador */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              Unidade Administrativa
-              {unidadeObrigatoria ? REQUIRED : null}
-            </label>
-
-            <Select
-              onValueChange={(value) => {
-                const ua = unidadesAdministrativas.find(
-                  (u) => String(u.unidade_administrativa_id) === value
-                )
-                if (!ua) return
-                if (unidadesSelecionadas.some((item) => item.unidade_administrativa_id === ua.unidade_administrativa_id)) {
-                  return
-                }
-                const next = [...unidadesSelecionadas, ua]
-                setUnidadesSelecionadas(next)
-                setValue(
-                  "unidade",
-                  next.map((item) => String(item.unidade_administrativa_id)),
-                  { shouldValidate: true },
-                )
-              }}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder="Selecione uma UA" />
-              </SelectTrigger>
-
-              <SelectContent>
-                {unidadesAdministrativas.map(ua => (
-                  <SelectItem
-                    key={ua.unidade_administrativa_id}
-                    value={String(ua.unidade_administrativa_id)}
-                  >
-                    {ua.codigo} - {ua.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {errors.unidade && (
-              <span className="text-red-600 text-sm">
-                {errors.unidade.message}
-              </span>
-            )}
-            {unidadesSelecionadas.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {unidadesSelecionadas.map((ua) => (
-                  <button
-                    key={ua.unidade_administrativa_id}
-                    type="button"
-                    className="rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs"
-                    onClick={() => {
-                      const next = unidadesSelecionadas.filter(
-                        (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id,
-                      )
-                      setUnidadesSelecionadas(next)
-                      setValue(
-                        "unidade",
-                        next.map((item) => String(item.unidade_administrativa_id)),
-                        { shouldValidate: true },
-                      )
-                    }}
-                  >
-                    {ua.codigo} - {ua.nome} ×
-                  </button>
-                ))}
+          <div className="md:col-span-2 flex flex-col gap-2">
+            <label className="text-sm font-semibold text-gray-700">Unidades Administrativas{unidadeObrigatoria ? REQUIRED : null}</label>
+            <div className="border border-gray-300 rounded-xs max-w-[940px]">
+              <div className="p-2 border-b border-gray-200 flex items-center gap-2">
+                <input value={filtroUa} onChange={(e) => setFiltroUa(e.target.value)} placeholder="Pesquisar unidade por código ou nome" className={INPUT_TEXT_CLASS} />
+                <button type="button" aria-pressed={somenteSelecionadas} disabled={unidadesSelecionadas.length === 0} onClick={() => setSomenteSelecionadas((prev) => !prev)} className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${unidadesSelecionadas.length === 0 ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed" : somenteSelecionadas ? "border-[#2F7D57] bg-[#2F7D57] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}><ListFilter size={14} /><span>{unidadesSelecionadas.length === 0 ? "Nenhuma selecionada" : `${unidadesSelecionadas.length} selecionadas`}</span></button>
               </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              Nome de Usuário de Acesso
-              {/*  */}
-              <input
-                type="text"
-                placeholder="Digite o nome de usuário de acesso"
-                className={INPUT_TEXT_CLASS}
-                {...register("username")}
-              />
-            </label>
-
-            {errors.username && (
-              <span className="text-red-600 text-sm">
-                {errors.username.message}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">
-              E-mail do Usuário{REQUIRED}
-            </label>
-
-            <input
-              type="email"
-              placeholder="Digite o e-mail"
-              className={INPUT_TEXT_CLASS}
-              {...register("email")}
-            />
-
-            {errors.email && (
-              <span className="text-red-600 text-sm">
-                {errors.email.message}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-
-            <label className="text-sm font-semibold text-gray-700">
-              Cadastre uma Senha
-
-              <div className="relative">
-
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Cadastre uma senha"
-                  className={INPUT_TEXT_CLASS}
-                  {...register("password")}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-500"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-
+              <div className="max-h-32 overflow-y-auto">
+                {unidadesListadas.map((ua) => {
+                  const selecionada = idsSelecionados.has(ua.unidade_administrativa_id)
+                  return <div key={ua.unidade_administrativa_id} className={`flex items-center justify-between px-3 py-2 border-b border-gray-100 text-sm ${selecionada ? "bg-green-50 text-green-900" : "text-gray-700 hover:bg-gray-50"}`}><button type="button" className="flex-1 text-left" onClick={() => toggleUa(ua)}>{ua.codigo} - {ua.nome}</button>{selecionada && <button type="button" onClick={() => toggleUa(ua)} className="text-gray-500 hover:text-red-600"><X size={16} /></button>}</div>
+                })}
               </div>
-            </label>
-
-            {errors.password && (
-              <span className="text-red-600 text-sm">
-                {errors.password.message}
-              </span>
-            )}
-
+            </div>
+            {errors.unidade && <span className="text-red-600 text-sm">{errors.unidade.message}</span>}
           </div>
 
-          <div className="flex flex-col gap-2">
-
-            <label className="text-sm font-semibold text-gray-700">
-              Confirme a Senha
-
-              <div className="relative">
-
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirme a senha"
-                  className={INPUT_TEXT_CLASS}
-                  {...register("confirmPassword")}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-gray-500"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={18} />
-                  ) : (
-                    <Eye size={18} />
-                  )}
-                </button>
-
-              </div>
-            </label>
-
-            {errors.confirmPassword && (
-              <span className="text-red-600 text-sm">
-                {errors.confirmPassword.message}
-              </span>
-            )}
-
-          </div>
-
-          <div className="flex flex-col gap-2">
-
-            <label className="text-sm font-semibold text-gray-700">
-              Status
-
-              <Select
-                defaultValue="ativo"
-                onValueChange={(value) => setValue("status", value)}
-              >
-                <SelectTrigger className={INPUT_CLASS}>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-
-              </Select>
-            </label>
-
-          </div>
-
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Cadastre uma Senha</label><div className="relative"><input type={showPassword ? "text" : "password"} placeholder="Cadastre uma senha" className={INPUT_TEXT_CLASS} {...register("password")} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-gray-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.password && <span className="text-red-600 text-sm">{errors.password.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Confirme a Senha</label><div className="relative"><input type={showConfirmPassword ? "text" : "password"} placeholder="Confirme a senha" className={INPUT_TEXT_CLASS} {...register("confirmPassword")} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3 text-gray-500">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmPassword && <span className="text-red-600 text-sm">{errors.confirmPassword.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Status</label><Select defaultValue="ativo" onValueChange={(value) => setValue("status", value)}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
         </form>
-
       </Card>
     </div>
   )
 }
+

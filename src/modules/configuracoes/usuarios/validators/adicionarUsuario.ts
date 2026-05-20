@@ -21,7 +21,9 @@ export const adicionarUsuarioSchema = z
     (data) => {
       // UA obrigatória apenas para Operador
       // Gestor pode não ter UA — a UO virá do próprio perfil do usuário logado
-      if (data.grupo === "OPERADOR_INVENTARIO") return data.unidade.length > 0
+      if (data.grupo === "OPERADOR_INVENTARIO") {
+        return data.unidade.length > 0
+      }
       return true
     },
     {
