@@ -23,6 +23,17 @@ import {
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 
+const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
+
+function isNumeroPatrimonialValido(values: Bem): boolean {
+  if (values.sem_numeracao) return true
+  if (values.numero_formato_antigo) return true
+
+  const numero = values.numero_patrimonial ?? ''
+
+  return NUMERO_PATRIMONIAL_REGEX.test(numero)
+}
+
 export default function BemEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -31,7 +42,6 @@ export default function BemEditPage() {
   const [loading, setLoading] = useState(true)
   const [bem, setBem] = useState<Bem | null>(null)
 
-  // Track original values for justificativa trigger
   const [originalNome, setOriginalNome] = useState('')
   const [originalNumeroPatrimonial, setOriginalNumeroPatrimonial] = useState('')
   const [justificativa, setJustificativa] = useState('')
@@ -57,6 +67,7 @@ export default function BemEditPage() {
   const numeroAlterado =
     !!originalNumeroPatrimonial &&
     (numeroPatrimonial ?? '') !== originalNumeroPatrimonial
+
   const justificativaHabilitada = nomeAlterado || numeroAlterado
   const justificativaObrigatoria = justificativaHabilitada
 
@@ -64,6 +75,7 @@ export default function BemEditPage() {
     async function fetchBem() {
       try {
         const data = await bemService.retrieve(Number(id))
+
         setBem(data)
         form.reset(data)
         setOriginalNome(data.nome ?? '')
@@ -94,10 +106,34 @@ export default function BemEditPage() {
   const podeEditar = isGestor && !isBaixaFisica
 
   const onSubmit = async (values: Bem) => {
-    if (justificativaObrigatoria && !justificativa.trim()) {
+    const houveAlteracaoNumero =
+      (values.numero_patrimonial ?? '') !== originalNumeroPatrimonial
+
+    if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
+      form.setError('numero_patrimonial' as any, {
+        message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
+      })
+
+      return
+    }
+
+    /*
+      Importante:
+      Quando o número patrimonial foi alterado, não bloqueamos no frontend
+      por falta de justificativa antes da chamada à API.
+
+      Isso preserva a paridade com o fluxo do Django Admin e permite que
+      erros críticos do número patrimonial, como duplicidade, sejam retornados
+      pelo backend em vez de serem mascarados pela justificativa.
+    */
+    const deveBloquearPorJustificativaNoFrontend =
+      justificativaObrigatoria && !houveAlteracaoNumero && !justificativa.trim()
+
+    if (deveBloquearPorJustificativaNoFrontend) {
       setJustificativaError(
         'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
       )
+
       return
     }
 
@@ -106,6 +142,7 @@ export default function BemEditPage() {
         ...values,
         justificativa: justificativaHabilitada ? justificativa : '',
       } as any)
+
       toast.success('Bem atualizado com sucesso')
       navigate(`/bens-patrimoniais/${values.id}`)
     } catch (error: any) {
@@ -146,16 +183,13 @@ export default function BemEditPage() {
       <Card className="p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
             <div className="flex justify-end">
               <div className="text-sm font-semibold text-green-700">
                 Status: {bem.status_display}
               </div>
             </div>
 
-            {/* PRIMEIRA LINHA */}
             <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-8 items-start">
-
               <div className="space-y-1">
                 <label
                   htmlFor="unidade_administrativa"
@@ -257,10 +291,8 @@ export default function BemEditPage() {
                   </FormItem>
                 )}
               />
-
             </div>
 
-            {/* CAMPOS RESTANTES */}
             <div className="grid grid-cols-3 gap-6">
               {[
                 'nome',
@@ -277,7 +309,9 @@ export default function BemEditPage() {
                   control={form.control}
                   name={fieldName as any}
                   render={({ field }) => (
-                    <FormItem className={fieldName === 'descricao' ? 'col-span-3' : ''}>
+                    <FormItem
+                      className={fieldName === 'descricao' ? 'col-span-3' : ''}
+                    >
                       <FormLabel>
                         {fieldName.replaceAll('_', ' ').toUpperCase()}
                       </FormLabel>
@@ -291,7 +325,10 @@ export default function BemEditPage() {
                         ) : (
                           <Input
                             {...field}
-                            disabled={!podeEditar || fieldName === 'numero_processo_baixa'}
+                            disabled={
+                              !podeEditar ||
+                              fieldName === 'numero_processo_baixa'
+                            }
                             className={INPUT_CLASS}
                           />
                         )}
@@ -303,7 +340,6 @@ export default function BemEditPage() {
               ))}
             </div>
 
-            {/* OBSERVAÇÃO */}
             <FormField
               control={form.control}
               name={'observacao' as any}
@@ -323,11 +359,15 @@ export default function BemEditPage() {
               )}
             />
 
-            {/* JUSTIFICATIVA */}
             <div className="space-y-1">
-              <label htmlFor="justificativa" className="text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="justificativa"
+                className="text-sm font-semibold text-gray-700"
+              >
                 JUSTIFICATIVA
-                {justificativaObrigatoria && <span className="text-red-500"> *</span>}
+                {justificativaObrigatoria && (
+                  <span className="text-red-500"> *</span>
+                )}
               </label>
               <textarea
                 id="justificativa"
@@ -356,11 +396,12 @@ export default function BemEditPage() {
                   disabled={form.formState.isSubmitting}
                   className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8"
                 >
-                  {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Edição'}
+                  {form.formState.isSubmitting
+                    ? 'Salvando...'
+                    : 'Salvar Edição'}
                 </Button>
               </div>
             )}
-
           </form>
         </Form>
       </Card>
