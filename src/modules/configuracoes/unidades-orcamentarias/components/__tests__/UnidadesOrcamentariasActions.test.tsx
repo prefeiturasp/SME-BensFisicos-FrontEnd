@@ -33,7 +33,7 @@ describe('UnidadesOrcamentariasActions', () => {
   it('dispara callback de adicionar unidade', () => {
     const { onAdd } = renderAcoes();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade Orçamentária' }));
 
     expect(onAdd).toHaveBeenCalledTimes(1);
   });

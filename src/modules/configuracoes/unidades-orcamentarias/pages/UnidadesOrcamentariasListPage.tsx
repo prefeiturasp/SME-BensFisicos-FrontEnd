@@ -22,6 +22,9 @@ const ORDERING_MAP: Record<string, string> = {
   codigo: 'codigo',
   sigla: 'sigla',
   nome: 'nome',
+  codigo_orgao: 'codigo_orgao',
+  sigla_orgao: 'sigla_orgao',
+  orgao: 'orgao',
   status: 'ativa',
 };
 
