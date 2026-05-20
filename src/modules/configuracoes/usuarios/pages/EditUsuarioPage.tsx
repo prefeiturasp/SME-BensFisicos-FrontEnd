@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, EyeOff, ListFilter, Settings, X } from "lucide-react"
+﻿import { ArrowLeft, Eye, EyeOff, Settings } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -11,6 +11,7 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 
 import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
+import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 import { type EditarUsuarioFormData, editarUsuarioSchema } from "../validators/editarUsuario"
 
 const INPUT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
@@ -263,22 +264,19 @@ export default function EditarUsuarioPage() {
             <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</label><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
           </div>
 
-          <div className="md:col-span-2 flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">Unidades Administrativas{unidadeObrigatoria ? REQUIRED : null}</label>
-            <div className="border border-gray-300 rounded-xs max-w-[940px]">
-              <div className="p-2 border-b border-gray-200 flex items-center gap-2">
-                <input value={filtroUa} onChange={(e) => setFiltroUa(e.target.value)} placeholder="Pesquisar unidade por codigo ou nome" className={INPUT_TEXT_CLASS} />
-                <button type="button" aria-pressed={somenteSelecionadas} disabled={unidadesSelecionadas.length === 0} onClick={() => setSomenteSelecionadas((prev) => !prev)} className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${unidadesSelecionadas.length === 0 ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed" : somenteSelecionadas ? "border-[#2F7D57] bg-[#2F7D57] text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}><ListFilter size={14} /><span>{unidadesSelecionadas.length === 0 ? "Nenhuma selecionada" : `${unidadesSelecionadas.length} selecionadas`}</span></button>
-              </div>
-              <div className="max-h-32 overflow-y-auto">
-                {unidadesListadas.map((ua) => {
-                  const selecionada = idsSelecionados.has(ua.unidade_administrativa_id)
-                  return <div key={ua.unidade_administrativa_id} className={`flex items-center justify-between px-3 py-2 border-b border-gray-100 text-sm ${selecionada ? "bg-green-50 text-green-900" : "text-gray-700 hover:bg-gray-50"}`}><button type="button" className="flex-1 text-left" onClick={() => toggleUa(ua)}>{ua.codigo} - {ua.nome}</button>{selecionada && <button type="button" onClick={() => toggleUa(ua)} className="text-gray-500 hover:text-red-600"><X size={16} /></button>}</div>
-                })}
-              </div>
-            </div>
-            {errors.unidade && <span className="text-red-600 text-sm">{errors.unidade.message}</span>}
-          </div>
+                    <UnidadesAdministrativasSelector
+            unidadesListadas={unidadesListadas}
+            unidadesSelecionadasCount={unidadesSelecionadas.length}
+            isSelecionada={(uaId) => idsSelecionados.has(uaId)}
+            somenteSelecionadas={somenteSelecionadas}
+            filtroUa={filtroUa}
+            inputClassName={INPUT_TEXT_CLASS}
+            requiredNode={unidadeObrigatoria ? REQUIRED : null}
+            errorMessage={errors.unidade?.message}
+            onFiltroChange={setFiltroUa}
+            onToggleSomenteSelecionadas={() => setSomenteSelecionadas((prev) => !prev)}
+            onToggleUa={toggleUa}
+          />
         </form>
         <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-gray-700">Cadastre uma Senha</label><div className="relative"><input type={mostrarSenha ? "text" : "password"} placeholder="Cadastre uma senha" {...register("senha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}</div>
@@ -289,3 +287,6 @@ export default function EditarUsuarioPage() {
     </div>
   )
 }
+
+
+
