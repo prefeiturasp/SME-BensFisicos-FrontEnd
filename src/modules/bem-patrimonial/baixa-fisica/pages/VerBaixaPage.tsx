@@ -435,12 +435,12 @@ export default function VerBaixaPage() {
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
                         <span className="text-sm font-semibold text-gray-700">Número do Processo:</span>
-                        <span className="text-sm text-gray-700">{baixa.numero_processo_baixa || "-"}</span>
+                        <span className="text-sm text-gray-700">{baixa.numero_processo_baixa ?? "-"}</span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
                         <span className="text-sm font-semibold text-gray-700">Número NBBPM:</span>
-                        <span className="text-sm text-gray-700">{baixa.numero_nbbpm || "-"}</span>
+                        <span className="text-sm text-gray-700">{baixa.numero_nbbpm ?? "-"}</span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
