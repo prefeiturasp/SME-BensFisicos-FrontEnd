@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, History, Plus, Trash2, X, ChevronDown, Pencil } from "lucide-react"
+import { ArrowLeft, History, Plus, Trash2, X, ChevronDown, Pencil, FileDown } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
@@ -42,7 +42,6 @@ function formatDateTimeBR(dateString: string | null | undefined): string {
 // STATUS BADGE
 // ============================================================================
 
-// Fix: props readonly
 interface StatusBadgeProps {
     readonly status: string
     readonly statusDisplay: string
@@ -68,13 +67,13 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
 // BEM SELECTOR (inline no item da lista)
 // ============================================================================
 
-// Fix: props readonly
 interface BemSelectorProps {
     readonly selectedIds: number[]
+    readonly unidadeAdministrativa: string
     readonly onSelect: (bem: Bem) => void
 }
 
-function BemSelectorDropdown({ selectedIds, onSelect }: BemSelectorProps) {
+function BemSelectorDropdown({ selectedIds, unidadeAdministrativa, onSelect }: BemSelectorProps) {
     const [inputValue, setInputValue] = useState("")
     const [results, setResults] = useState<Bem[]>([])
     const [loading, setLoading] = useState(false)
@@ -93,12 +92,16 @@ function BemSelectorDropdown({ selectedIds, onSelect }: BemSelectorProps) {
     const search = useCallback(async (query: string) => {
         setLoading(true)
         try {
-            const res = await bemService.list({ search: query, status: "aprovado" })
+            const res = await bemService.list({
+                search: query,
+                status: "aprovado",
+                unidade_administrativa: unidadeAdministrativa,
+            })
             setResults(res.results)
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [unidadeAdministrativa])
 
     const handleFocus = () => {
         setOpen(true)
@@ -119,7 +122,6 @@ function BemSelectorDropdown({ selectedIds, onSelect }: BemSelectorProps) {
         setOpen(false)
     }
 
-    // Fix: extrair conteúdo do dropdown para evitar ternário aninhado
     const renderDropdownContent = () => {
         if (loading) {
             return <div className="px-3 py-2 text-sm text-gray-400">Buscando...</div>
@@ -130,7 +132,6 @@ function BemSelectorDropdown({ selectedIds, onSelect }: BemSelectorProps) {
         return results.map((bem) => {
             const already = selectedIds.includes(bem.id)
             return (
-                // Fix: usar <button> em vez de <div> com onClick
                 <button
                     key={bem.id}
                     type="button"
@@ -170,26 +171,30 @@ function BemSelectorDropdown({ selectedIds, onSelect }: BemSelectorProps) {
 // ITEM ROW
 // ============================================================================
 
-// Fix: props readonly
 interface ItemRowProps {
     readonly item: BaixaFisicaItem | null
     readonly isEditing: boolean
     readonly isLast: boolean
     readonly allSelectedIds: number[]
+    readonly unidadeAdministrativa: string
     readonly onRemove: () => void
     readonly onAdd: () => void
     readonly onSelect: (bem: Bem) => void
     readonly onClear: () => void
 }
 
-function ItemRow({ item, isEditing, isLast, allSelectedIds, onRemove, onAdd, onSelect, onClear }: ItemRowProps) {
+function ItemRow({ item, isEditing, isLast, allSelectedIds, unidadeAdministrativa, onRemove, onAdd, onSelect, onClear }: ItemRowProps) {
     return (
         <div className="flex items-stretch border border-gray-300 rounded bg-white overflow-hidden">
             <div className="flex-1 px-4 flex items-center text-sm text-gray-700 truncate min-h-[42px]">
                 {item ? (
                     <span>{item.bem.numero_patrimonial} - {item.bem.nome || item.bem.descricao}</span>
                 ) : (
-                    <BemSelectorDropdown selectedIds={allSelectedIds} onSelect={onSelect} />
+                    <BemSelectorDropdown
+                        selectedIds={allSelectedIds}
+                        unidadeAdministrativa={unidadeAdministrativa}
+                        onSelect={onSelect}
+                    />
                 )}
             </div>
 
@@ -328,6 +333,21 @@ export default function VerBaixaPage() {
         }
     }
 
+    const handleGerarNbbpm = async () => {
+        if (!baixa) return
+        try {
+            const blob = await baixaFisicaService.gerarNbbpm(baixa.id)
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `NBBPM-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     if (loading) return <div className="p-8 text-sm text-gray-500">Carregando...</div>
     if (!baixa) return <div className="p-8 text-sm text-gray-500">Baixa não encontrada</div>
 
@@ -373,6 +393,12 @@ export default function VerBaixaPage() {
                         </button>
                     )}
 
+                    {baixa.url_gerar_nbbpm && (
+                        <button onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
+                            <FileDown size={14} />
+                            Baixar NBBPM
+                        </button>
+                    )}
                     <button onClick={() => setShowHistorico(true)} className={ACTION_BUTTON_CLASS}>
                         <History size={14} />
                         Histórico
@@ -405,6 +431,16 @@ export default function VerBaixaPage() {
                             <p className="text-sm text-gray-700">{formatDateBR(baixa.data_baixa)}</p>
                             <p className="text-xs text-gray-400">Data informada no processo de baixa física</p>
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
+                        <span className="text-sm font-semibold text-gray-700">Número do Processo:</span>
+                        <span className="text-sm text-gray-700">{baixa.numero_processo_baixa || "-"}</span>
+                    </div>
+
+                    <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
+                        <span className="text-sm font-semibold text-gray-700">Número NBBPM:</span>
+                        <span className="text-sm text-gray-700">{baixa.numero_nbbpm || "-"}</span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
@@ -445,6 +481,7 @@ export default function VerBaixaPage() {
                             isEditing={isEditing}
                             isLast={idx === editRows.length - 1}
                             allSelectedIds={allSelectedIds}
+                            unidadeAdministrativa={ua.codigo}
                             onSelect={(bem) => handleSelectBem(row.rowId, bem)}
                             onClear={() => handleClearRow(row.rowId)}
                             onRemove={() => handleRemoveRow(row.rowId)}

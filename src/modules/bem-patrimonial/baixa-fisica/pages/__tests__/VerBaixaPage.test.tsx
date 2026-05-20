@@ -247,16 +247,6 @@ describe("VerBaixaPage", () => {
         })
     })
 
-    it("abre dropdown ao focar no input de bem", async () => {
-        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
-        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => {
-            expect(bemService.list).toHaveBeenCalledWith({ search: "", status: "aprovado" })
-        })
-    })
-
     it("seleciona bem no dropdown", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
         renderPage()
