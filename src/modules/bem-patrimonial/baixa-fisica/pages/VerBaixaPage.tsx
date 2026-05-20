@@ -1,11 +1,24 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, History, Plus, Trash2, X, ChevronDown, Pencil, FileDown } from "lucide-react"
+import {
+    ArrowLeft,
+    History,
+    Plus,
+    Trash2,
+    X,
+    ChevronDown,
+    Pencil,
+    FileDown,
+} from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
-import type { BaixaFisicaDetail, BaixaFisicaItem, EditRow } from '../types/baixas-fisicas.types'
+import type {
+    BaixaFisicaDetail,
+    BaixaFisicaItem,
+    EditRow,
+} from "../types/baixas-fisicas.types"
 
 import { baixaFisicaService } from "../service/baixas.service"
 
@@ -22,8 +35,11 @@ const ACTION_BUTTON_CLASS =
 
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
+
     const date = new Date(dateString)
+
     if (isNaN(date.getTime())) return "-"
+
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
         month: "long",
@@ -33,8 +49,11 @@ function formatDateBR(dateString: string | null | undefined): string {
 
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
+
     const date = new Date(dateString)
+
     if (isNaN(date.getTime())) return "-"
+
     return date.toLocaleString("pt-BR")
 }
 
@@ -54,8 +73,11 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
         aceita: "text-[#2F7D57]",
         recusada: "text-red-600",
         cancelada: "text-gray-500",
+        solicitada: "text-blue-700",
     }
+
     const cls = colorMap[status] ?? "text-gray-600"
+
     return (
         <span className={`text-sm font-bold ${cls}`}>
             Status: {statusDisplay}
@@ -64,56 +86,95 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
 }
 
 // ============================================================================
-// BEM SELECTOR (inline no item da lista)
+// BEM SELECTOR
 // ============================================================================
 
 interface BemSelectorProps {
     readonly selectedIds: number[]
-    readonly unidadeAdministrativa: string
+    readonly unidadeAdministrativa: number | string
     readonly onSelect: (bem: Bem) => void
 }
 
-function BemSelectorDropdown({ selectedIds, unidadeAdministrativa, onSelect }: BemSelectorProps) {
+function BemSelectorDropdown({
+    selectedIds,
+    unidadeAdministrativa,
+    onSelect,
+}: BemSelectorProps) {
     const [inputValue, setInputValue] = useState("")
     const [results, setResults] = useState<Bem[]>([])
     const [loading, setLoading] = useState(false)
     const [open, setOpen] = useState(false)
+
     const ref = useRef<HTMLDivElement>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false)
+            }
         }
+
         document.addEventListener("mousedown", handleClickOutside)
-        return () => document.removeEventListener("mousedown", handleClickOutside)
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
     }, [])
 
-    const search = useCallback(async (query: string) => {
-        setLoading(true)
-        try {
-            const res = await bemService.list({
-                search: query,
-                status: "aprovado",
-                unidade_administrativa: unidadeAdministrativa,
-            })
-            setResults(res.results)
-        } finally {
-            setLoading(false)
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current)
+            }
         }
-    }, [unidadeAdministrativa])
+    }, [])
+
+    const search = useCallback(
+        async (query: string) => {
+            if (!unidadeAdministrativa) {
+                setResults([])
+                return
+            }
+
+            setLoading(true)
+
+            try {
+                const res = await bemService.list({
+                    search: query,
+                    status: "aprovado",
+                    unidade_administrativa: String(unidadeAdministrativa),
+                })
+
+                setResults(res.results)
+            } finally {
+                setLoading(false)
+            }
+        },
+        [unidadeAdministrativa]
+    )
 
     const handleFocus = () => {
         setOpen(true)
-        if (results.length === 0) search("")
+
+        if (results.length === 0) {
+            search("")
+        }
     }
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
+
         setInputValue(val)
         setOpen(true)
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => search(val), 300)
+
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current)
+        }
+
+        debounceRef.current = setTimeout(() => {
+            search(val)
+        }, 300)
     }
 
     const handleSelect = (bem: Bem) => {
@@ -124,13 +185,24 @@ function BemSelectorDropdown({ selectedIds, unidadeAdministrativa, onSelect }: B
 
     const renderDropdownContent = () => {
         if (loading) {
-            return <div className="px-3 py-2 text-sm text-gray-400">Buscando...</div>
+            return (
+                <div className="px-3 py-2 text-sm text-gray-400">
+                    Buscando...
+                </div>
+            )
         }
+
         if (results.length === 0) {
-            return <div className="px-3 py-2 text-sm text-gray-400">Nenhum bem encontrado.</div>
+            return (
+                <div className="px-3 py-2 text-sm text-gray-400">
+                    Nenhum bem encontrado.
+                </div>
+            )
         }
+
         return results.map((bem) => {
             const already = selectedIds.includes(bem.id)
+
             return (
                 <button
                     key={bem.id}
@@ -142,7 +214,9 @@ function BemSelectorDropdown({ selectedIds, unidadeAdministrativa, onSelect }: B
                         : "hover:bg-[#2F7D57] hover:text-white cursor-pointer"
                         }`}
                 >
-                    <span className="font-mono mr-2">{bem.numero_patrimonial}</span>
+                    <span className="font-mono mr-2">
+                        {bem.numero_patrimonial}
+                    </span>
                     {bem.nome}
                 </button>
             )
@@ -158,8 +232,9 @@ function BemSelectorDropdown({ selectedIds, unidadeAdministrativa, onSelect }: B
                 placeholder="Selecione um bem"
                 className="h-[42px] w-full px-4 text-sm text-gray-700 bg-transparent outline-none"
             />
+
             {open && (
-                <div className="absolute top-full left-0 right-0 mt-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-[9999] max-h-56 overflow-auto">
                     {renderDropdownContent()}
                 </div>
             )}
@@ -176,19 +251,36 @@ interface ItemRowProps {
     readonly isEditing: boolean
     readonly isLast: boolean
     readonly allSelectedIds: number[]
-    readonly unidadeAdministrativa: string
+    readonly unidadeAdministrativa: number | string
     readonly onRemove: () => void
     readonly onAdd: () => void
     readonly onSelect: (bem: Bem) => void
     readonly onClear: () => void
 }
 
-function ItemRow({ item, isEditing, isLast, allSelectedIds, unidadeAdministrativa, onRemove, onAdd, onSelect, onClear }: ItemRowProps) {
+function ItemRow({
+    item,
+    isEditing,
+    isLast,
+    allSelectedIds,
+    unidadeAdministrativa,
+    onRemove,
+    onAdd,
+    onSelect,
+    onClear,
+}: ItemRowProps) {
     return (
-        <div className="flex items-stretch border border-gray-300 rounded bg-white overflow-hidden">
-            <div className="flex-1 px-4 flex items-center text-sm text-gray-700 truncate min-h-[42px]">
+        <div
+            className={`relative flex items-stretch border border-gray-300 rounded bg-white overflow-visible ${
+                item ? "z-10" : "z-50"
+            }`}
+        >
+            <div className="relative flex-1 px-4 flex items-center text-sm text-gray-700 min-h-[42px] overflow-visible">
                 {item ? (
-                    <span>{item.bem.numero_patrimonial} - {item.bem.nome || item.bem.descricao}</span>
+                    <span className="truncate">
+                        {item.bem.numero_patrimonial} -{" "}
+                        {item.bem.nome || item.bem.descricao}
+                    </span>
                 ) : (
                     <BemSelectorDropdown
                         selectedIds={allSelectedIds}
@@ -260,18 +352,29 @@ export default function VerBaixaPage() {
     const [editRows, setEditRows] = useState<EditRow[]>([])
     const [hasChanges, setHasChanges] = useState(false)
 
-    const [showHistorico, setShowHistorico] = useState(false);
+    const [showHistorico, setShowHistorico] = useState(false)
 
     useEffect(() => {
         const fetchBaixa = async () => {
             try {
                 if (!id) return
+
                 const data = await baixaFisicaService.retrieve(Number(id))
+
                 setBaixa(data)
+
                 setEditRows(
                     data.itens.length > 0
-                        ? data.itens.map(i => ({ rowId: nextRowId++, item: i }))
-                        : [{ rowId: nextRowId++, item: null }]
+                        ? data.itens.map((i) => ({
+                            rowId: nextRowId++,
+                            item: i,
+                        }))
+                        : [
+                            {
+                                rowId: nextRowId++,
+                                item: null,
+                            },
+                        ]
                 )
             } catch (err) {
                 console.error(err)
@@ -279,52 +382,123 @@ export default function VerBaixaPage() {
                 setLoading(false)
             }
         }
+
         fetchBaixa()
     }, [id])
 
-    const isEditing = baixa?.status !== "aceita" && baixa?.status !== "recusada" && baixa?.status !== "cancelada" && baixa?.status !== "solicitada"
+    const isEditing =
+        baixa?.status !== "aceita" &&
+        baixa?.status !== "recusada" &&
+        baixa?.status !== "cancelada" &&
+        baixa?.status !== "solicitada"
 
-    const allSelectedIds = editRows.filter(r => r.item).map(r => r.item!.bem.id)
+    const allSelectedIds = editRows
+        .filter((r) => r.item)
+        .map((r) => r.item!.bem.id)
 
     const handleSelectBem = (rowId: number, bem: Bem) => {
-        setEditRows(prev => prev.map(r =>
-            r.rowId === rowId
-                ? { ...r, item: { id: -rowId, bem: { id: bem.id, numero_patrimonial: bem.numero_patrimonial, nome: bem.nome, descricao: bem.descricao, status: bem.status } } }
-                : r
-        ))
+        const numeroPatrimonial =
+            bem.numero_patrimonial ?? `SEM-NUMERO-${bem.id}`
+
+        setEditRows((prev) =>
+            prev.map((r): EditRow =>
+                r.rowId === rowId
+                    ? {
+                        ...r,
+                        item: {
+                            id: -rowId,
+                            bem: {
+                                id: bem.id,
+                                numero_patrimonial: numeroPatrimonial,
+                                nome: bem.nome,
+                                descricao: bem.descricao,
+                                status: bem.status,
+                            },
+                        },
+                    }
+                    : r
+            )
+        )
+
         setHasChanges(true)
     }
 
     const handleClearRow = (rowId: number) => {
-        setEditRows(prev => prev.map(r => r.rowId === rowId ? { ...r, item: null } : r))
+        setEditRows((prev) =>
+            prev.map((r) =>
+                r.rowId === rowId
+                    ? {
+                        ...r,
+                        item: null,
+                    }
+                    : r
+            )
+        )
+
         setHasChanges(true)
     }
 
     const handleRemoveRow = (rowId: number) => {
-        setEditRows(prev => {
-            const next = prev.filter(r => r.rowId !== rowId)
-            if (next.length === 0) return [{ rowId: nextRowId++, item: null }]
+        setEditRows((prev) => {
+            const next = prev.filter((r) => r.rowId !== rowId)
+
+            if (next.length === 0) {
+                return [
+                    {
+                        rowId: nextRowId++,
+                        item: null,
+                    },
+                ]
+            }
+
             return next
         })
+
         setHasChanges(true)
     }
 
     const handleAddRow = () => {
-        setEditRows(prev => [...prev, { rowId: nextRowId++, item: null }])
+        setEditRows((prev) => [
+            ...prev,
+            {
+                rowId: nextRowId++,
+                item: null,
+            },
+        ])
     }
 
     const handleSave = async () => {
         if (!baixa) return
+
         setSaving(true)
+
         try {
-            const itens = editRows.filter(r => r.item).map(r => ({ bem: r.item!.bem.id }))
+            const itens = editRows
+                .filter((r) => r.item)
+                .map((r) => ({
+                    bem: r.item!.bem.id,
+                }))
+
             const updated = await baixaFisicaService.update(baixa.id, {
-                numero_processo_baixa: baixa.numero_processo_baixa,
-                data_baixa: baixa.data_baixa,
                 itens,
             })
+
             setBaixa(updated)
-            setEditRows(updated.itens.map(i => ({ rowId: nextRowId++, item: i })))
+
+            setEditRows(
+                updated.itens.length > 0
+                    ? updated.itens.map((i) => ({
+                        rowId: nextRowId++,
+                        item: i,
+                    }))
+                    : [
+                        {
+                            rowId: nextRowId++,
+                            item: null,
+                        },
+                    ]
+            )
+
             setHasChanges(false)
         } catch (err) {
             console.error(err)
@@ -335,36 +509,57 @@ export default function VerBaixaPage() {
 
     const handleGerarNbbpm = async () => {
         if (!baixa) return
+
         try {
             const blob = await baixaFisicaService.gerarNbbpm(baixa.id)
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
+
             a.href = url
             a.download = `NBBPM-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
+
             URL.revokeObjectURL(url)
         } catch (err) {
             console.error(err)
         }
     }
 
-    if (loading) return <div className="p-8 text-sm text-gray-500">Carregando...</div>
-    if (!baixa) return <div className="p-8 text-sm text-gray-500">Baixa não encontrada</div>
+    if (loading) {
+        return (
+            <div className="p-8 text-sm text-gray-500">
+                Carregando...
+            </div>
+        )
+    }
+
+    if (!baixa) {
+        return (
+            <div className="p-8 text-sm text-gray-500">
+                Baixa não encontrada
+            </div>
+        )
+    }
 
     const ua = baixa.unidade_administrativa_origem
 
     return (
         <div className="p-8 space-y-4">
-
             <AppBreadcrumb
                 items={[
-                    { label: "Bem Patrimonial" },
-                    { label: "Baixa Física de Bens Patrimoniais" },
-                    { label: "Visualizar Baixa Física de Bem Patrimonial", isActive: true },
+                    {
+                        label: "Bem Patrimonial",
+                    },
+                    {
+                        label: "Baixa Física de Bens Patrimoniais",
+                    },
+                    {
+                        label: "Visualizar Baixa Física de Bem Patrimonial",
+                        isActive: true,
+                    },
                 ]}
             />
 
-            {/* HEADER */}
             <div className="flex items-center justify-between">
                 <h1 className="text-xl font-bold text-gray-700">
                     Visualizar Baixa Física de Bem Patrimonial
@@ -394,84 +589,133 @@ export default function VerBaixaPage() {
                     )}
 
                     {baixa.url_gerar_nbbpm && (
-                        <button onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
+                        <button
+                            onClick={handleGerarNbbpm}
+                            className={ACTION_BUTTON_CLASS}
+                        >
                             <FileDown size={14} />
                             Baixar NBBPM
                         </button>
                     )}
-                    <button onClick={() => setShowHistorico(true)} className={ACTION_BUTTON_CLASS}>
+
+                    <button
+                        onClick={() => setShowHistorico(true)}
+                        className={ACTION_BUTTON_CLASS}
+                    >
                         <History size={14} />
                         Histórico
                     </button>
 
-                    <button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        className={ACTION_BUTTON_CLASS}
+                    >
                         <ArrowLeft size={14} />
                         Voltar
                     </button>
                 </div>
             </div>
 
-            {/* CARD */}
-            <div className="bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm">
-
-                {/* ROW 1 — identificação + status */}
+            <div className="bg-white border border-gray-200 rounded-md overflow-visible shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                     <span className="text-sm font-bold text-[#2F7D57]">
-                        Baixa Física #{String(baixa.id).padStart(3, "0")} - UA: {ua.codigo} - {ua.sigla}
+                        Baixa Física #{String(baixa.id).padStart(3, "0")} - UA:{" "}
+                        {ua.codigo} - {ua.sigla}
                     </span>
-                    <StatusBadge status={baixa.status} statusDisplay={baixa.status_display} />
+
+                    <StatusBadge
+                        status={baixa.status}
+                        statusDisplay={baixa.status_display}
+                    />
                 </div>
 
-                {/* INFORMAÇÕES */}
                 <div className="divide-y divide-gray-100">
-
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Data da Baixa Física:</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Data da Baixa Física:
+                        </span>
+
                         <div>
-                            <p className="text-sm text-gray-700">{formatDateBR(baixa.data_baixa)}</p>
-                            <p className="text-xs text-gray-400">Data informada no processo de baixa física</p>
+                            <p className="text-sm text-gray-700">
+                                {formatDateBR(baixa.data_baixa)}
+                            </p>
+
+                            <p className="text-xs text-gray-400">
+                                Data informada no processo de baixa física
+                            </p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Número do Processo:</span>
-                        <span className="text-sm text-gray-700">{baixa.numero_processo_baixa ?? "-"}</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Número do Processo:
+                        </span>
+
+                        <span className="text-sm text-gray-700">
+                            {baixa.numero_processo_baixa ?? "-"}
+                        </span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Número NBBPM:</span>
-                        <span className="text-sm text-gray-700">{baixa.numero_nbbpm ?? "-"}</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Número NBBPM:
+                        </span>
+
+                        <span className="text-sm text-gray-700">
+                            {baixa.numero_nbbpm ?? "-"}
+                        </span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Usuário que solicitou a baixa:</span>
-                        <span className="text-sm text-[#2F7D57]">{baixa.criado_por.nome_completo}</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Usuário que solicitou a baixa:
+                        </span>
+
+                        <span className="text-sm text-[#2F7D57]">
+                            {baixa.criado_por.nome_completo}
+                        </span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Data da solicitação:</span>
-                        <span className="text-sm text-gray-700">{formatDateTimeBR(baixa.data_criacao)}</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Data da solicitação:
+                        </span>
+
+                        <span className="text-sm text-gray-700">
+                            {formatDateTimeBR(baixa.data_criacao)}
+                        </span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Gestor que aprovou a baixa:</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Gestor que aprovou a baixa:
+                        </span>
+
                         <span className="text-sm text-[#2F7D57]">
                             {baixa.aprovado_por?.nome_completo ?? "-"}
                         </span>
                     </div>
 
                     <div className="grid grid-cols-[200px_1fr] px-6 py-3 bg-[#FAFAFA]">
-                        <span className="text-sm font-semibold text-gray-700">Data da aprovação:</span>
-                        <span className="text-sm text-gray-700">{formatDateTimeBR(baixa.data_aprovacao)}</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                            Data da aprovação:
+                        </span>
+
+                        <span className="text-sm text-gray-700">
+                            {formatDateTimeBR(baixa.data_aprovacao)}
+                        </span>
                     </div>
                 </div>
 
-                {/* ITENS */}
                 <div className="px-6 py-5 space-y-3">
-                    <p className="text-sm font-bold text-[#2F7D57]">Itens de Baixa Física</p>
+                    <p className="text-sm font-bold text-[#2F7D57]">
+                        Itens de Baixa Física
+                    </p>
 
                     {editRows.length === 0 && (
-                        <p className="text-sm text-gray-400">Nenhum item vinculado</p>
+                        <p className="text-sm text-gray-400">
+                            Nenhum item vinculado
+                        </p>
                     )}
 
                     {editRows.map((row, idx) => (
@@ -481,7 +725,7 @@ export default function VerBaixaPage() {
                             isEditing={isEditing}
                             isLast={idx === editRows.length - 1}
                             allSelectedIds={allSelectedIds}
-                            unidadeAdministrativa={ua.codigo}
+                            unidadeAdministrativa={ua.id}
                             onSelect={(bem) => handleSelectBem(row.rowId, bem)}
                             onClear={() => handleClearRow(row.rowId)}
                             onRemove={() => handleRemoveRow(row.rowId)}
@@ -489,10 +733,13 @@ export default function VerBaixaPage() {
                         />
                     ))}
                 </div>
-
             </div>
+
             {showHistorico && baixa && (
-                <HistoricoModal baixaId={baixa.id} onClose={() => setShowHistorico(false)} />
+                <HistoricoModal
+                    baixaId={baixa.id}
+                    onClose={() => setShowHistorico(false)}
+                />
             )}
         </div>
     )
