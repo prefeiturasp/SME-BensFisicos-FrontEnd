@@ -227,7 +227,7 @@ export default function BensListPage() {
 
           <div className='flex items-end pb-1'>
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">Busca especial</label>
+              <span className="text-sm font-semibold text-gray-700">Busca especial</span>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
@@ -238,7 +238,7 @@ export default function BensListPage() {
                   }}
                   className="h-4 w-4 accent-[#00703C]"
                 />
-                Busca geral em todas as UOs
+                <span>Busca geral em todas as UOs</span>
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
