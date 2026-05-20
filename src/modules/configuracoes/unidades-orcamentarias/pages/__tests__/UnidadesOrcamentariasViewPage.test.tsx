@@ -16,6 +16,9 @@ const unidadeMock: UnidadeOrcamentaria = {
   codigo: '10.10.10',
   sigla: 'UO1',
   nome: 'UNIDADE ORCAMENTARIA 1',
+  sigla_orgao: 'SME',
+  orgao: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+  codigo_orgao: '10.10',
   ativa: true,
   ativa_display: 'Ativa',
 };
@@ -90,6 +93,9 @@ describe('UnidadesOrcamentariasViewPage', () => {
     expect(screen.getByDisplayValue('10.10.10')).toBeInTheDocument();
     expect(screen.getByDisplayValue('UO1')).toBeInTheDocument();
     expect(screen.getByDisplayValue('UNIDADE ORCAMENTARIA 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('SME')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('10.10')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('SECRETARIA MUNICIPAL DE EDUCACAO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
   });
 
@@ -119,7 +125,7 @@ describe('UnidadesOrcamentariasViewPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Carregando unidade orçamentária...')).toBeInTheDocument();
+    expect(screen.getByText('Carregando detalhes da unidade orçamentária...')).toBeInTheDocument();
   });
 
   it('exibe mensagem da query quando ocorre erro no carregamento', () => {
@@ -178,7 +184,7 @@ describe('UnidadesOrcamentariasViewPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
     });
 
-    const nomeInput = screen.getByLabelText('Nome');
+    const nomeInput = screen.getByLabelText('Nome da UO');
 
     await waitFor(() => {
       expect(nomeInput).not.toBeDisabled();
@@ -254,7 +260,7 @@ describe('UnidadesOrcamentariasViewPage', () => {
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Nome'), {
+      fireEvent.change(screen.getByLabelText('Nome da UO'), {
         target: { value: 'Nova UO' },
       });
     });
@@ -286,7 +292,7 @@ describe('UnidadesOrcamentariasViewPage', () => {
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Nome'), {
+      fireEvent.change(screen.getByLabelText('Nome da UO'), {
         target: { value: 'Nova UO' },
       });
     });

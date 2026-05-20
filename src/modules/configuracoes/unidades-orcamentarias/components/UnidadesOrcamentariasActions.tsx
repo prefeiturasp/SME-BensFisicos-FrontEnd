@@ -37,7 +37,7 @@ export function UnidadesOrcamentariasActions({
       onAdd={onAdd}
       onReport={onReport}
       reportFormats={REPORT_FORMATS}
-      addLabel='Adicionar Unidade'
+      addLabel='Adicionar Unidade Orçamentária'
       addIcon={<Plus size={16} />}
       containerClassName='flex flex-wrap items-center justify-end gap-3'
       buttonClassName={ACTION_BUTTON_CLASS}

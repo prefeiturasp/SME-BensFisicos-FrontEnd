@@ -41,6 +41,9 @@ const hookState = {
       codigo: '10.10.10',
       sigla: 'UO1',
       nome: 'Unidade Orçamentária 1',
+      sigla_orgao: 'SME',
+      orgao: 'Secretaria Municipal de Educacao',
+      codigo_orgao: '10.10',
       ativa: true,
       ativa_display: 'Ativa',
     },
@@ -114,6 +117,9 @@ describe('UnidadesOrcamentariasListPage', () => {
         codigo: '10.10.10',
         sigla: 'UO1',
         nome: 'Unidade Orçamentária 1',
+        sigla_orgao: 'SME',
+        orgao: 'Secretaria Municipal de Educacao',
+        codigo_orgao: '10.10',
         ativa: true,
         ativa_display: 'Ativa',
       },
@@ -134,9 +140,11 @@ describe('UnidadesOrcamentariasListPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Adicionar Unidade')).toBeInTheDocument();
+    expect(screen.getByText('Adicionar Unidade Orçamentária')).toBeInTheDocument();
     expect(screen.getByText('Relatório')).toBeInTheDocument();
     expect(screen.getByText('Unidade Orçamentária 1')).toBeInTheDocument();
+    expect(screen.getByText('10.10')).toBeInTheDocument();
+    expect(screen.getByText('Secretaria Municipal de Educacao')).toBeInTheDocument();
   });
 
   it('navega para detalhe ao clicar em visualizar', () => {
@@ -151,14 +159,14 @@ describe('UnidadesOrcamentariasListPage', () => {
     expect(navigateMock).toHaveBeenCalledWith('/unidades-orcamentarias/1');
   });
 
-  it('navega para tela de nova unidade ao clicar em Adicionar Unidade', () => {
+  it('navega para tela de nova unidade ao clicar em Adicionar Unidade Orçamentária', () => {
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasListPage />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade Orçamentária' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/unidades-orcamentarias/novo');
   });
@@ -182,26 +190,26 @@ describe('UnidadesOrcamentariasListPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Código' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Código do órgão' }));
 
     expect(setPageMock).toHaveBeenCalledWith(1);
     expect(setOrderingMock).toHaveBeenCalled();
   });
 
-  it('aplica ciclo de ordenação asc, desc e asc novamente', () => {
+  it('aplica ciclo de ordenação asc, desc e asc novamente para os novos campos', () => {
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasListPage />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Código' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sigla do órgão' }));
 
     const sortUpdater = setOrderingMock.mock.calls[0][0] as (current: string) => string;
 
-    expect(sortUpdater('sigla')).toBe('codigo');
-    expect(sortUpdater('codigo')).toBe('-codigo');
-    expect(sortUpdater('-codigo')).toBe('codigo');
+    expect(sortUpdater('nome')).toBe('sigla_orgao');
+    expect(sortUpdater('sigla_orgao')).toBe('-sigla_orgao');
+    expect(sortUpdater('-sigla_orgao')).toBe('sigla_orgao');
   });
 
   it('mantém tabela em loading quando query ainda está buscando', () => {
