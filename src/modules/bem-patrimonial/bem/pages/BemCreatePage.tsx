@@ -157,15 +157,6 @@ export default function BemCreatePage() {
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
 
-  // Track original nome to detect changes for justificativa
-  const [nomeOriginal] = useState('')
-  const [justificativa, setJustificativa] = useState('')
-  const [justificativaError, setJustificativaError] = useState('')
-
-  const nomeAlterado = formBase.nome !== nomeOriginal
-  const justificativaObrigatoria = nomeAlterado
-  const justificativaHabilitada = nomeAlterado
-
   const [linhas, setLinhas] = useState<LinhaBemComId[]>([novaLinha()])
   const [linhasErrors, setLinhasErrors] = useState<
     Record<number, Record<string, string>>
@@ -230,12 +221,6 @@ export default function BemCreatePage() {
       return
     }
 
-    if (justificativaObrigatoria && !justificativa.trim()) {
-      setJustificativaError('Justificativa é obrigatória quando o Nome do Bem é alterado.')
-      toast.error('Preencha os campos obrigatórios.')
-      return
-    }
-
     const linhaErrors = validarLinhas()
     if (Object.keys(linhaErrors).length) {
       setLinhasErrors(linhaErrors)
@@ -247,7 +232,6 @@ export default function BemCreatePage() {
     try {
       await bemService.createMulti({
         ...formBase,
-        justificativa: justificativaHabilitada ? justificativa : '',
         multi_payload: linhas.map(({ id: _id, ...rest }) => rest),
       })
       toast.success('Bens criados com sucesso')
@@ -440,32 +424,6 @@ export default function BemCreatePage() {
             value={formBase.observacao}
             onChange={e => setField('observacao', e.target.value)}
           />
-        </div>
-
-        {/* JUSTIFICATIVA */}
-        <div className="space-y-1">
-          <label htmlFor="justificativa" className="text-sm font-semibold text-gray-700">
-            Justificativa
-            {justificativaObrigatoria && <span className="text-red-500"> *</span>}
-          </label>
-          <Textarea
-            id="justificativa"
-            className="min-h-25 disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder={
-              justificativaHabilitada
-                ? 'Justificativa para a alteração'
-                : 'Habilitado ao alterar Nome do Bem'
-            }
-            value={justificativa}
-            disabled={!justificativaHabilitada}
-            onChange={e => {
-              setJustificativa(e.target.value)
-              if (e.target.value.trim()) setJustificativaError('')
-            }}
-          />
-          {justificativaError && (
-            <p className="text-xs text-red-500">{justificativaError}</p>
-          )}
         </div>
 
         {/* LINHAS DOS BENS */}
