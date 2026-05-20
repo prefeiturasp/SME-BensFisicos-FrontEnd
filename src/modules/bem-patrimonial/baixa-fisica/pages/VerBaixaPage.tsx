@@ -277,7 +277,7 @@ export default function VerBaixaPage() {
         fetchBaixa()
     }, [id])
 
-    const isEditing = baixa?.status !== "aceita" && baixa?.status !== "recusada" && baixa?.status !== "cancelada"
+    const isEditing = baixa?.status !== "aceita" && baixa?.status !== "recusada" && baixa?.status !== "cancelada" && baixa?.status !== "solicitada"
 
     const allSelectedIds = editRows.filter(r => r.item).map(r => r.item!.bem.id)
 

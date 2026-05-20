@@ -37,6 +37,7 @@ const ICON_BTN = `
 interface BemSelectorRowProps {
     readonly row: ItemRow
     readonly allSelectedIds: number[]
+    readonly unidadeId: number | null
     readonly onSelect: (rowId: number, bem: Bem) => void
     readonly onClear: (rowId: number) => void
     readonly onRemove: (rowId: number) => void
@@ -44,7 +45,7 @@ interface BemSelectorRowProps {
     readonly isLast: boolean
 }
 
-function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAdd, isLast }: BemSelectorRowProps) {
+function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onRemove, onAdd, isLast }: BemSelectorRowProps) {
     const [open, setOpen] = useState(false)
     const [inputValue, setInputValue] = useState("")
     const [results, setResults] = useState<Bem[]>([])
@@ -63,17 +64,22 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
     }, [])
 
     const search = useCallback(async (query: string) => {
+        if (!unidadeId) return
         setLoading(true)
         try {
-            const res = await bemService.list({ search: query, status: "aprovado" })
+            const res = await bemService.list({
+                search: query,
+                status: "aprovado",
+                unidade_administrativa: unidadeId,
+            })
             setResults(res.results)
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [unidadeId])
 
     const handleFocus = () => {
-        if (row.bem) return
+        if (row.bem || !unidadeId) return
         setOpen(true)
         if (results.length === 0) search("")
     }
@@ -99,7 +105,6 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
         setResults([])
     }
 
-    // Fix: extrair conteúdo do dropdown para evitar ternário aninhado
     const renderDropdownContent = () => {
         if (loading) {
             return <li className="px-3 py-2 text-sm text-gray-400">Buscando...</li>
@@ -110,7 +115,6 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
         return results.map((bem) => {
             const alreadyAdded = allSelectedIds.includes(bem.id)
             return (
-                // Fix: usar <button> em vez de <li role="option"> para elemento interativo nativo
                 <li key={bem.id} className="border-b border-gray-100 last:border-0">
                     <button
                         type="button"
@@ -130,12 +134,12 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
         })
     }
 
+    const isDisabled = !unidadeId
+
     return (
         <div className="flex items-center gap-2">
-            {/* Seletor */}
             <div className="flex-1 relative" ref={ref}>
                 {row.bem ? (
-                    /* Bem selecionado */
                     <div className="h-11 w-full rounded-xs border border-gray-300 px-3 bg-white flex items-center justify-between">
                         <span className="text-sm text-gray-700 truncate">
                             <span className="font-mono mr-2 text-gray-500">{row.bem.numero_patrimonial}</span>
@@ -154,22 +158,20 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
                         </div>
                     </div>
                 ) : (
-                    /* Input de busca */
                     <div className="relative">
                         <input
                             id={`bem-input-${row.rowId}`}
                             value={inputValue}
                             onChange={handleInputChange}
                             onFocus={handleFocus}
-                            placeholder="Selecione um bem"
-                            className={`${INPUT_CLASS} pr-8`}
+                            placeholder={isDisabled ? "Selecione uma unidade administrativa primeiro" : "Selecione um bem"}
+                            disabled={isDisabled}
+                            className={`${INPUT_CLASS} pr-8 ${isDisabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""}`}
                             aria-label="Buscar bem patrimonial"
                         />
                         <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
 
-                        {/* Fix: usar <select> nativo não é viável aqui (custom UI), então remover role="listbox" do <ul>
-                            e usar uma <ul> simples sem role ARIA inválido */}
-                        {open && (
+                        {open && !isDisabled && (
                             <ul className="absolute top-full left-0 right-0 mt-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto">
                                 {renderDropdownContent()}
                             </ul>
@@ -178,7 +180,6 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
                 )}
             </div>
 
-            {/* Botão + (só na última linha) */}
             {isLast ? (
                 <button type="button" onClick={onAdd} className={ICON_BTN} aria-label="Adicionar item">
                     <Plus size={18} />
@@ -187,7 +188,6 @@ function BemSelectorRow({ row, allSelectedIds, onSelect, onClear, onRemove, onAd
                 <div className="w-10 shrink-0" />
             )}
 
-            {/* Botão remover */}
             <button
                 type="button"
                 onClick={() => onRemove(row.rowId)}
@@ -217,6 +217,13 @@ export default function AdicionarBaixaPage() {
     const [error, setError] = useState<string | null>(null)
 
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
+    const unidadeId = unidade ? Number(unidade) : null
+
+    // Limpa os itens quando a UA muda
+    const handleUnidadeChange = (value: string) => {
+        setUnidade(value)
+        setRows([{ rowId: nextRowId++, bem: null }])
+    }
 
     const handleSelect = (rowId: number, bem: Bem) => {
         setRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem } : r))
@@ -311,11 +318,11 @@ export default function AdicionarBaixaPage() {
 
                     <div className="flex flex-col gap-2">
                         <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
-                            Unidade Administrativa
+                            Unidade Administrativa *
                         </label>
                         <UnidadeAdministrativaSelect
                             value={unidade}
-                            onChange={setUnidade}
+                            onChange={handleUnidadeChange}
                             className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white"
                         />
                     </div>
@@ -359,6 +366,7 @@ export default function AdicionarBaixaPage() {
                                 key={row.rowId}
                                 row={row}
                                 allSelectedIds={allSelectedIds}
+                                unidadeId={unidadeId}
                                 onSelect={handleSelect}
                                 onClear={handleClear}
                                 onRemove={handleRemove}

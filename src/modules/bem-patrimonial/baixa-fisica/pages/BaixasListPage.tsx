@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card"
 import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
-import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
 
 // ===================== CONSTANTES =====================
 
@@ -45,8 +44,10 @@ export default function BaixasListPage() {
     const [actionLoading, setActionLoading] = useState(false)
 
     const [searchInput, setSearchInput] = useState("")
-    const [unidadeInput, setUnidadeInput] = useState("")
+    const [statusInput, setStatusInput] = useState("")
     const [dateRangeInput, setDateRangeInput] = useState<DateRange | undefined>()
+    const [dateTypeAprovadas, setDateTypeAprovadas] = useState(false)
+    const [dateTypeSolicitadas, setDateTypeSolicitadas] = useState(false)
 
     const [appliedFilters, setAppliedFilters] = useState<BaixaFisicaListParams>({
         ordering: "-data_criacao",
@@ -105,16 +106,20 @@ export default function BaixasListPage() {
     const handleSearch = () => {
         setPage(1)
         setSelectedIds([])
+
+        const dateFrom = dateRangeInput?.from ? format(dateRangeInput.from, "yyyy-MM-dd") : undefined
+        const dateTo = dateRangeInput?.to ? format(dateRangeInput.to, "yyyy-MM-dd") : undefined
+
         setAppliedFilters({
             ordering: appliedFilters.ordering,
             search: searchInput.trim() || undefined,
-            unidade_administrativa_origem: unidadeInput ? Number(unidadeInput) : undefined,
-            data_criacao__gte: dateRangeInput?.from
-                ? format(dateRangeInput.from, "yyyy-MM-dd")
-                : undefined,
-            data_criacao__lte: dateRangeInput?.to
-                ? format(dateRangeInput.to, "yyyy-MM-dd")
-                : undefined,
+            status: statusInput || undefined,
+            // se "Aprovadas" marcado → filtra por data_aprovacao
+            data_aprovacao__gte: dateTypeAprovadas ? dateFrom : undefined,
+            data_aprovacao__lte: dateTypeAprovadas ? dateTo : undefined,
+            // se "Solicitadas" marcado (ou nenhum marcado → comportamento padrão) → filtra por data_criacao
+            data_criacao__gte: !dateTypeAprovadas || dateTypeSolicitadas ? dateFrom : undefined,
+            data_criacao__lte: !dateTypeAprovadas || dateTypeSolicitadas ? dateTo : undefined,
         })
     }
 
@@ -239,9 +244,8 @@ export default function BaixasListPage() {
                             />
                         )}
                     </td>
-                    <td className="p-3">{b.id}</td>
-                    <td className="p-3">{b.unidade_administrativa_origem.sigla}</td>
                     <td className="p-3">{b.numero_processo_baixa || "-"}</td>
+                    <td className="p-3">{b.unidade_administrativa_origem.sigla}</td>
                     <td className="p-3">
                         <StatusBadge statusDisplay={b.status_display} />
                     </td>
@@ -333,21 +337,7 @@ export default function BaixasListPage() {
                     {/* Fix: label associado via htmlFor + id no componente filho */}
                     <div className="flex-1 min-w-[200px]">
                         <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
-                            Filtrar por Unidade Administrativa
-                        </label>
-                        <div className="mt-1">
-                            <UnidadeAdministrativaSelect
-                                id="unidade-select"
-                                value={unidadeInput}
-                                onChange={setUnidadeInput}
-                                includeAll
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex-1 min-w-[200px]">
-                        <label htmlFor="search-processo" className="text-sm font-semibold text-gray-700">
-                            Filtrar por Número do Processo de Baixa
+                            Buscar por Número/Nome do Bem ou NBBPM
                         </label>
                         <div className="relative mt-1">
                             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
@@ -357,20 +347,44 @@ export default function BaixasListPage() {
                                 onChange={(e) => setSearchInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                                 className={INPUT_SEARCH_CLASS}
-                                placeholder="Digite o número do processo"
+                                placeholder="Nº patrimonial, nome do item, NBBPM"
                             />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 min-w-[200px]">
+                        <label htmlFor="search-processo" className="text-sm font-semibold text-gray-700">
+                            Filtrar por status
+                        </label>
+                        <div className="relative mt-1">
+                            <select
+                                id="status-select"
+                                value={statusInput}
+                                onChange={(e) => setStatusInput(e.target.value)}
+                                className="h-10 w-full border border-gray-300 rounded-xs px-3 text-sm text-gray-700 bg-white"
+                            >
+                                <option value="">Todos</option>
+                                <option value="aceita">Aceita</option>
+                                <option value="recusada">Recusada</option>
+                                <option value="solicitada">Solicitada</option>
+                                <option value="aguardando_envio">Aguardando Envio</option>
+                            </select>
                         </div>
                     </div>
 
                     <div>
                         <label htmlFor="date-range-picker" className="text-sm font-semibold text-gray-700">
-                            Período da Solicitação de Baixa
+                            Filtro por periodo
                         </label>
                         <div className="mt-1">
                             <DateRangePicker
                                 id="date-range-picker"
                                 value={dateRangeInput}
                                 onChange={setDateRangeInput}
+                                dateTypeAprovadas={dateTypeAprovadas}
+                                dateTypeSolicitadas={dateTypeSolicitadas}
+                                onDateTypeAprovadasChange={setDateTypeAprovadas}
+                                onDateTypeSolicitadasChange={setDateTypeSolicitadas}
                             />
                         </div>
                     </div>
@@ -404,15 +418,14 @@ export default function BaixasListPage() {
                                         className="accent-[#00703C] cursor-pointer"
                                     />
                                 </th>
-                                <th className="p-3">ID</th>
-                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("unidade_administrativa_origem__sigla")}>
-                                    <div className="flex gap-2 items-center">
-                                        Unidade <ArrowUpDown size={14} />
-                                    </div>
-                                </th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("numero_processo_baixa")}>
                                     <div className="flex gap-2 items-center">
                                         Processo <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("unidade_administrativa_origem__sigla")}>
+                                    <div className="flex gap-2 items-center">
+                                        Unidade <ArrowUpDown size={14} />
                                     </div>
                                 </th>
                                 <th className="p-3">Status</th>
