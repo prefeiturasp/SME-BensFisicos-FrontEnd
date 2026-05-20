@@ -23,13 +23,13 @@ type CampoProps = {
   readonly required?: boolean
 }
 
-function Campo({ label, value, required }: CampoProps) {
+function Campo({ label, value, required }: Readonly<CampoProps>) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-semibold text-gray-700">
+      <span className="text-sm font-semibold text-gray-700">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
+      </span>
       <input
         type="text"
         readOnly
@@ -40,14 +40,14 @@ function Campo({ label, value, required }: CampoProps) {
   )
 }
 
-function ListaUas({ unidades }: { unidades: string[] }) {
+function ListaUas({ unidades }: Readonly<{ unidades: string[] }>) {
   const valorFormatado = unidades.length
     ? unidades.join(", ")
     : "Nenhuma unidade administrativa selecionada."
 
   return (
     <div className="flex flex-col gap-2 md:col-span-2">
-      <label className="text-sm font-semibold text-gray-700">Unidades Administrativas</label>
+      <span className="text-sm font-semibold text-gray-700">Unidades Administrativas</span>
       <textarea
         readOnly
         value={valorFormatado}

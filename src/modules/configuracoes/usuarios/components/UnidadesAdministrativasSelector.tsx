@@ -28,12 +28,22 @@ export function UnidadesAdministrativasSelector({
   onToggleSomenteSelecionadas,
   onToggleUa,
 }: Props) {
+  const semSelecao = unidadesSelecionadasCount === 0
+  const botaoFiltroClasse = semSelecao
+    ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
+    : somenteSelecionadas
+      ? "border-[#2F7D57] bg-[#2F7D57] text-white"
+      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+  const textoContador = semSelecao
+    ? "Nenhuma selecionada"
+    : `${unidadesSelecionadasCount} selecionadas`
+
   return (
     <div className="md:col-span-2 flex flex-col gap-2">
-      <label className="text-sm font-semibold text-gray-700">
+      <span className="text-sm font-semibold text-gray-700">
         Unidades Administrativas
         {requiredNode ?? null}
-      </label>
+      </span>
       <div className="border border-gray-300 rounded-xs max-w-[940px]">
         <div className="p-2 border-b border-gray-200 flex items-center gap-2">
           <input
@@ -45,22 +55,12 @@ export function UnidadesAdministrativasSelector({
           <button
             type="button"
             aria-pressed={somenteSelecionadas}
-            disabled={unidadesSelecionadasCount === 0}
+            disabled={semSelecao}
             onClick={onToggleSomenteSelecionadas}
-            className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
-              unidadesSelecionadasCount === 0
-                ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-                : somenteSelecionadas
-                  ? "border-[#2F7D57] bg-[#2F7D57] text-white"
-                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
+            className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${botaoFiltroClasse}`}
           >
             <ListFilter size={14} />
-            <span>
-              {unidadesSelecionadasCount === 0
-                ? "Nenhuma selecionada"
-                : `${unidadesSelecionadasCount} selecionadas`}
-            </span>
+            <span>{textoContador}</span>
           </button>
         </div>
         <div className="max-h-32 overflow-y-auto">
@@ -100,4 +100,3 @@ export function UnidadesAdministrativasSelector({
     </div>
   )
 }
-

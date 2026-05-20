@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
-import { authService, type EscopoUa } from '@/auth/auth.service';
+import { authService } from '@/auth/auth.service';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -13,7 +13,7 @@ export default function SelectUaLoginPage() {
 
   const uas = useMemo(() => {
     const grupos = user?.opcoes_escopo?.grupos ?? [];
-    return grupos.flatMap((grupo) => grupo.uas) as EscopoUa[];
+    return grupos.flatMap((grupo) => grupo.uas);
   }, [user?.opcoes_escopo?.grupos]);
 
   const onConfirm = async () => {
