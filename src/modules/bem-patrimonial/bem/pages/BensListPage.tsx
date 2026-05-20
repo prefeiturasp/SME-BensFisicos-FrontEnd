@@ -233,7 +233,11 @@ export default function BensListPage() {
                   type="checkbox"
                   checked={buscaGeralUos}
                   onChange={e => {
-                    setBuscaGeralUos(e.target.checked)
+                    const checked = e.target.checked
+                    setBuscaGeralUos(checked)
+                    if (checked) {
+                      setEscopoFilter('todas')
+                    }
                     setPage(1)
                   }}
                   className="h-4 w-4 accent-[#00703C]"

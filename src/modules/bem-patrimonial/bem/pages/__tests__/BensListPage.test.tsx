@@ -61,12 +61,14 @@ const baseMock = {
   statusFilter: 'todos',
   escopoFilter: 'todas',
   baixadosAntigos: false,
+  buscaGeralUos: false,
   ordering: '',
   setPage: vi.fn(),
   setSearchInput: vi.fn(),
   setStatusFilter: vi.fn(),
   setEscopoFilter: vi.fn(),
   setBaixadosAntigos: vi.fn(),
+  setBuscaGeralUos: vi.fn(),
   setOrdering: vi.fn(),
   toggleSelect: vi.fn(),
   atualizarStatusSelecionados: vi.fn(),
@@ -246,6 +248,27 @@ describe('BensListPage', () => {
     fireEvent.change(input, { target: { value: 'abc' } })
 
     expect(setSearchInput).toHaveBeenCalledWith('abc')
+  })
+
+  it('deve definir escopo como todas ao marcar busca geral em todas as UOs', () => {
+    const setBuscaGeralUos = vi.fn()
+    const setEscopoFilter = vi.fn()
+    const setPage = vi.fn()
+
+    mockPage({
+      buscaGeralUos: false,
+      setBuscaGeralUos,
+      setEscopoFilter,
+      setPage,
+    })
+
+    renderWithProviders()
+
+    fireEvent.click(screen.getByLabelText('Busca geral em todas as UOs'))
+
+    expect(setBuscaGeralUos).toHaveBeenCalledWith(true)
+    expect(setEscopoFilter).toHaveBeenCalledWith('todas')
+    expect(setPage).toHaveBeenCalledWith(1)
   })
 
   it('deve desabilitar o checkbox quando status não for aguardando_aprovacao', () => {
