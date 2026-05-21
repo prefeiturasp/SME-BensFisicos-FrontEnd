@@ -210,14 +210,14 @@ export default function ViewUsuarioPage() {
         items={[
           { label: "Configurações", icon: Settings },
           { label: "Usuários" },
-          { label: "Detalhar Usuário", isActive: true },
+          { label: "Visualizar Usuário", isActive: true },
         ]}
       />
 
       <div className="flex items-center justify-between">
 
         <h1 className="text-xl font-bold tracking-tight text-gray-700">
-          Detalhar Usuário
+          Visualizar Usuário
         </h1>
 
         <div className="flex items-center gap-3">
@@ -312,4 +312,3 @@ export default function ViewUsuarioPage() {
     </div>
   )
 }
-
