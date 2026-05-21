@@ -560,7 +560,7 @@ describe("UsuariosListPage", () => {
         it("aplica 'unidade_orcamentaria__nome' ao ordenar por Unidade Orçamentaria", () => {
             renderComponent()
 
-            fireEvent.click(screen.getByText("Unidade Orçamentaria"))
+            fireEvent.click(screen.getByText("Unidade Orçamentária"))
 
             expect(resolveOrdering("")).toBe("unidade_orcamentaria__nome")
         })

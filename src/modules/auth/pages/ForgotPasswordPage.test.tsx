@@ -14,6 +14,11 @@ vi.mock('../services/password.service', () => ({
 describe('ForgotPasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function setupServiceMock({ shouldReject = false, errorMessage = '' } = {}) {
