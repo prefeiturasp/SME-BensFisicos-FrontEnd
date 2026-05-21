@@ -273,8 +273,8 @@ describe("AdicionarUsuarioPage", () => {
             const { grupo } = getSelects()
             fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
 
-            const unidadeLabel = screen.getByText("Unidades Administrativas").closest("label")
-            expect(unidadeLabel?.querySelector("span")?.textContent).toBe("*")
+            expect(screen.getByText("Unidades Administrativas")).toBeInTheDocument()
+            expect(screen.getByText("Unidades Administrativas").parentElement?.textContent).toContain("*")
         })
 
         it("Gestor: aceita formulário sem unidade selecionada", async () => {

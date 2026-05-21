@@ -40,8 +40,28 @@ function getIdsUsuario(dadosUsuario: any): number[] {
 }
 
 function getSelecionadasEfetivas(selecionadas: EscopoUa[]) {
-  if (selecionadas.length > 0) return selecionadas
-  return []
+  return selecionadas
+}
+
+function getPayloadUnidades(
+  data: EditarUsuarioFormData,
+  todasUnidades: boolean,
+  selecionadasEfetivas: EscopoUa[],
+  uoSelecionadaId: number | null
+) {
+  const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadasEfetivas.length === 0)
+  const idsAtuais = selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id).sort((a, b) => a - b)
+  const unidadeAdministrativa = semSelecaoGestor ? null : (idsAtuais[0] ?? null)
+  const unidadeOrcamentaria = semSelecaoGestor
+    ? (uoSelecionadaId ?? null)
+    : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null)
+
+  return {
+    idsAtuais,
+    semSelecaoGestor,
+    unidadeAdministrativa,
+    unidadeOrcamentaria,
+  }
 }
 
 export default function EditarUsuarioPage() {
@@ -204,18 +224,19 @@ export default function EditarUsuarioPage() {
       if (isActiveAtual !== isActiveOriginal) payload.is_active = isActiveAtual
 
       const selecionadasEfetivas = getSelecionadasEfetivas(unidadesSelecionadas)
-      const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadasEfetivas.length === 0)
-
-      const idsAtuais = selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id).sort((a, b) => a - b)
+      const {
+        idsAtuais,
+        semSelecaoGestor,
+        unidadeAdministrativa,
+        unidadeOrcamentaria,
+      } = getPayloadUnidades(data, todasUnidades, selecionadasEfetivas, uoSelecionadaId)
       const idsOriginais = [...(valoresOriginais?.unidadeIds ?? [])].sort((a, b) => a - b)
       const houveMudancaUo =
         (uoSelecionadaId ?? null) !== (valoresOriginais?.unidadeOrcamentariaId ?? null)
       if (JSON.stringify(idsAtuais) !== JSON.stringify(idsOriginais) || houveMudancaUo) {
         payload.unidades_administrativas = semSelecaoGestor ? [] : idsAtuais
-        payload.unidade_administrativa = semSelecaoGestor ? null : (idsAtuais[0] ?? null)
-        payload.unidade_orcamentaria = semSelecaoGestor
-          ? (uoSelecionadaId ?? null)
-          : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null)
+        payload.unidade_administrativa = unidadeAdministrativa
+        payload.unidade_orcamentaria = unidadeOrcamentaria
       }
 
       if (data.senha) {
@@ -286,7 +307,7 @@ export default function EditarUsuarioPage() {
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome de Usuario de Acesso</span><input value={usernameAcesso} disabled className={`${INPUT_TEXT_CLASS} bg-gray-100 cursor-not-allowed`} placeholder="Nao editavel" /></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuario{REQUIRED}</span><input {...register("email")} className={INPUT_TEXT_CLASS} placeholder="Digite o e-mail" />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select value={grupoSelecionado} onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]); if (value !== "GESTOR_PATRIMONIO") setTodasUnidades(false) }}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select></div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Status{REQUIRED}</span><Select value={statusSelecionado} onValueChange={(v) => setValue("status", v, { shouldValidate: true })}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><label htmlFor="status" className="text-sm font-semibold text-gray-700">Status{REQUIRED}</label><Select value={statusSelecionado} onValueChange={(v) => setValue("status", v, { shouldValidate: true })}><SelectTrigger id="status" className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
 
           <div>
@@ -296,7 +317,7 @@ export default function EditarUsuarioPage() {
             todasUnidades={todasUnidades}
             filtroUa={filtroUa}
             inputClassName={INPUT_TEXT_CLASS}
-            requiredNode={unidadeObrigatoria ? REQUIRED : null}
+            requiredNode={unidadeObrigatoria ? REQUIRED : undefined}
             errorMessage={errors.unidade?.message}
             onFiltroChange={setFiltroUa}
             onToggleTodasUnidades={() => {
@@ -315,8 +336,8 @@ export default function EditarUsuarioPage() {
           </div>
         </form>
         <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Cadastre uma Senha</span><div className="relative"><input type={mostrarSenha ? "text" : "password"} placeholder="Cadastre uma senha" {...register("senha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Confirme a Senha</span><div className="relative"><input type={mostrarConfirmarSenha ? "text" : "password"} placeholder="Confirme a senha" {...register("confirmarSenha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarConfirmarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label htmlFor="senha" className="text-sm font-semibold text-gray-700">Cadastre uma Senha</label><div className="relative"><input id="senha" type={mostrarSenha ? "text" : "password"} placeholder="Cadastre uma senha" {...register("senha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label htmlFor="confirmarSenha" className="text-sm font-semibold text-gray-700">Confirme a Senha</label><div className="relative"><input id="confirmarSenha" type={mostrarConfirmarSenha ? "text" : "password"} placeholder="Confirme a senha" {...register("confirmarSenha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarConfirmarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}</div>
         </div>
       </Card>
     </div>

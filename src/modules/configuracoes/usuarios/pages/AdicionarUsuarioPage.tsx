@@ -23,8 +23,7 @@ const ACTION_BUTTON_CLASS = "h-10 px-6 bg-white border border-[#2F7D57] text-[#2
 const REQUIRED = <span className="text-red-500 ml-1">*</span>
 
 function getSelecionadasEfetivas(selecionadas: EscopoUa[]) {
-  if (selecionadas.length > 0) return selecionadas
-  return []
+  return selecionadas
 }
 
 export default function AdicionarUsuarioPage() {
@@ -132,19 +131,20 @@ export default function AdicionarUsuarioPage() {
       setErrorMessage(null)
       const selecionadasEfetivas = getSelecionadasEfetivas(unidadesSelecionadas)
       const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadasEfetivas.length === 0)
+      const unidadeAdministrativa = semSelecaoGestor ? null : (selecionadasEfetivas[0]?.unidade_administrativa_id ?? null)
+      const unidadeOrcamentaria = semSelecaoGestor
+        ? (uoSelecionadaId ?? gestorUoId)
+        : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId)
+      const unidadesAdministrativasIds = semSelecaoGestor ? [] : selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id)
 
       await usuarioService.create({
         username: data.username,
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        unidade_administrativa: semSelecaoGestor ? null : (selecionadasEfetivas[0]?.unidade_administrativa_id ?? null),
-        unidade_orcamentaria: semSelecaoGestor
-          ? (uoSelecionadaId ?? gestorUoId)
-          : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId),
-        unidades_administrativas: semSelecaoGestor
-          ? []
-          : selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id),
+        unidade_administrativa: unidadeAdministrativa,
+        unidade_orcamentaria: unidadeOrcamentaria,
+        unidades_administrativas: unidadesAdministrativasIds,
         group_name: data.grupo,
         password: data.password,
         password_confirm: data.confirmPassword,
@@ -205,7 +205,7 @@ export default function AdicionarUsuarioPage() {
 
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuário{REQUIRED}</span><input type="email" placeholder="Digite o e-mail" className={INPUT_TEXT_CLASS} {...register("email")} />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]); if (value !== "GESTOR_PATRIMONIO") setTodasUnidades(false) }}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione os grupos" /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select>{errors.grupo && <span className="text-red-600 text-sm">{errors.grupo.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Status{REQUIRED}</span><Select defaultValue="ativo" onValueChange={(value) => setValue("status", value)}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><label htmlFor="status" className="text-sm font-semibold text-gray-700">Status{REQUIRED}</label><Select defaultValue="ativo" onValueChange={(value) => setValue("status", value)}><SelectTrigger id="status" className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
 
           <div>
@@ -215,7 +215,7 @@ export default function AdicionarUsuarioPage() {
             todasUnidades={todasUnidades}
             filtroUa={filtroUa}
             inputClassName={INPUT_TEXT_CLASS}
-            requiredNode={unidadeObrigatoria ? REQUIRED : null}
+            requiredNode={unidadeObrigatoria ? REQUIRED : undefined}
             errorMessage={errors.unidade?.message}
             disabled={!uoSelecionadaId}
             onFiltroChange={setFiltroUa}
@@ -235,8 +235,8 @@ export default function AdicionarUsuarioPage() {
           </div>
         </form>
         <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Cadastre uma Senha</span><div className="relative"><input type={showPassword ? "text" : "password"} placeholder="Cadastre uma senha" className={INPUT_TEXT_CLASS} {...register("password")} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-gray-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.password && <span className="text-red-600 text-sm">{errors.password.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Confirme a Senha</span><div className="relative"><input type={showConfirmPassword ? "text" : "password"} placeholder="Confirme a senha" className={INPUT_TEXT_CLASS} {...register("confirmPassword")} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3 text-gray-500">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmPassword && <span className="text-red-600 text-sm">{errors.confirmPassword.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label htmlFor="password" className="text-sm font-semibold text-gray-700">Cadastre uma Senha</label><div className="relative"><input id="password" type={showPassword ? "text" : "password"} placeholder="Cadastre uma senha" className={INPUT_TEXT_CLASS} {...register("password")} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-gray-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.password && <span className="text-red-600 text-sm">{errors.password.message}</span>}</div>
+          <div className="flex flex-col gap-2"><label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirme a Senha</label><div className="relative"><input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Confirme a senha" className={INPUT_TEXT_CLASS} {...register("confirmPassword")} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3 text-gray-500">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmPassword && <span className="text-red-600 text-sm">{errors.confirmPassword.message}</span>}</div>
         </div>
       </Card>
     </div>

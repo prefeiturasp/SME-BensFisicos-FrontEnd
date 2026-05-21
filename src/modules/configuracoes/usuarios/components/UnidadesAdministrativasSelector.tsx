@@ -28,12 +28,16 @@ export function UnidadesAdministrativasSelector({
   onToggleTodasUnidades,
   onToggleUa,
 }: Props) {
+  const toggleLabelClass = disabled
+    ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+    : "border-gray-300 bg-white text-gray-700 cursor-pointer"
+
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-semibold text-gray-700">
+      <span className="text-sm font-semibold text-gray-700">
         Unidades Administrativas
         {requiredNode ?? null}
-      </label>
+      </span>
       <div className={`border rounded-xs ${disabled ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"}`}>
         <div className="p-2 border-b border-gray-200 flex items-center gap-2">
           <input
@@ -43,13 +47,7 @@ export function UnidadesAdministrativasSelector({
             className={`${inputClassName} ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-500 border-gray-200" : ""}`}
             disabled={disabled}
           />
-          <label
-            className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
-              disabled
-                ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
-                : "border-gray-300 bg-white text-gray-700 cursor-pointer"
-            }`}
-          >
+          <label className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${toggleLabelClass}`}>
             <input
               type="checkbox"
               checked={todasUnidades}
@@ -104,4 +102,3 @@ export function UnidadesAdministrativasSelector({
     </div>
   )
 }
-

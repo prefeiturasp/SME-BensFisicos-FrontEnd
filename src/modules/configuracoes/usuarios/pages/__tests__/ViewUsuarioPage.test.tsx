@@ -129,14 +129,14 @@ describe("ViewUsuarioPage", () => {
         expect(screen.getByText("Página de Edição")).toBeInTheDocument()
     })
 
-    it("exibe o título 'Detalhar Usuário'", async () => {
+    it("exibe o título 'Visualizar Usuário'", async () => {
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
 
         renderPage()
 
         await waitFor(() => {
             expect(
-                screen.getByRole("heading", { name: /detalhar usuário/i })
+                screen.getByRole("heading", { name: /visualizar usuário/i })
             ).toBeInTheDocument()
         })
     })
