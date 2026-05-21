@@ -39,7 +39,7 @@ export function UnidadesAdministrativasSelector({
           <input
             value={filtroUa}
             onChange={(e) => onFiltroChange(e.target.value)}
-            placeholder="Pesquisar unidade por codigo ou nome"
+            placeholder="Pesquise por código ou UA"
             className={`${inputClassName} ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-500 border-gray-200" : ""}`}
             disabled={disabled}
           />
@@ -57,7 +57,7 @@ export function UnidadesAdministrativasSelector({
               disabled={disabled}
               className={`h-4 w-4 ${disabled ? "cursor-not-allowed" : "cursor-pointer"} accent-[#2F7D57]`}
             />
-            <span>Todas Unidades Administrativas</span>
+            <span>Todas</span>
           </label>
         </div>
         {!disabled && (

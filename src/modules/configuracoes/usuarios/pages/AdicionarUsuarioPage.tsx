@@ -117,6 +117,11 @@ export default function AdicionarUsuarioPage() {
     const next = jaSelecionada
       ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
       : [...unidadesSelecionadas, ua]
+
+    const selecionouTodasManualmente =
+      unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
+    setTodasUnidades(selecionouTodasManualmente)
+
     setUnidadesSelecionadas(next)
     syncFormUnidades(next)
   }
@@ -184,7 +189,7 @@ export default function AdicionarUsuarioPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Adicionar Usuário</h1>
         <div className="flex items-center gap-3">
-          <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
+          <Button type="button" onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
           <Button onClick={handleSubmit(onSubmit)} disabled={loading} className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md">{loading ? "Salvando..." : "Salvar"}</Button>
           <Button onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>Cancelar</Button>
         </div>

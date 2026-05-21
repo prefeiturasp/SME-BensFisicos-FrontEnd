@@ -65,6 +65,40 @@ function ListaUas({ unidades }: Readonly<{ unidades: string[] }>) {
   )
 }
 
+function ListaUasComHelper({
+  unidades,
+  exibirHelperTodas,
+}: Readonly<{ unidades: string[]; exibirHelperTodas: boolean }>) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-gray-700">Unidades Administrativas</span>
+        {exibirHelperTodas && (
+          <span className="inline-flex items-center rounded-xs border border-green-300 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-800">
+            Todas da UO
+          </span>
+        )}
+      </div>
+      <div className="min-h-20 max-h-36 w-full rounded-xs border border-gray-300 px-3 py-3 text-sm text-gray-700 bg-gray-50 overflow-y-auto cursor-not-allowed">
+        {unidades.length === 0 ? (
+          <span className="text-gray-500">Nenhuma unidade administrativa selecionada.</span>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {unidades.map((unidade) => (
+              <span
+                key={unidade}
+                className="inline-flex items-center rounded-xs border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700"
+              >
+                {unidade}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function getUnidadeOrcamentariaLabel(usuario: Usuario) {
   if (usuario.unidade_orcamentaria_codigo && usuario.unidade_orcamentaria_nome) {
     return `${usuario.unidade_orcamentaria_codigo} - ${usuario.unidade_orcamentaria_nome}`
@@ -81,6 +115,7 @@ export default function ViewUsuarioPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [uaLabelsById, setUaLabelsById] = useState<Record<number, string>>({})
   const [uoLabelsById, setUoLabelsById] = useState<Record<number, string>>({})
+  const [uasByUoId, setUasByUoId] = useState<Record<number, string[]>>({})
 
   useEffect(() => {
     const carregarUsuario = async () => {
@@ -102,11 +137,17 @@ export default function ViewUsuarioPage() {
             acc[ua.unidade_administrativa_id] = `${ua.codigo} - ${ua.nome}`
             return acc
           }, {})
+        const uasPorUo = (me?.opcoes_escopo?.grupos ?? []).reduce<Record<number, string[]>>((acc, g) => {
+          if (!g?.uo?.id) return acc
+          acc[g.uo.id] = (g.uas ?? []).map((ua) => `${ua.codigo} - ${ua.nome}`)
+          return acc
+        }, {})
         const uoLabels = (me?.opcoes_escopo?.grupos ?? []).reduce<Record<number, string>>((acc, g) => {
           if (g?.uo?.id && g?.uo?.label) acc[g.uo.id] = g.uo.label
           return acc
         }, {})
         setUaLabelsById(labels)
+        setUasByUoId(uasPorUo)
         setUoLabelsById(uoLabels)
         setUsuario(data)
       } catch {
@@ -123,15 +164,22 @@ export default function ViewUsuarioPage() {
     navigate(`/usuarios/${id}/editar`)
   }
 
+  const isTodasUasDaUo = (item: Usuario): boolean => {
+    const ids = Array.isArray(item.unidades_administrativas) ? item.unidades_administrativas : []
+    const grupo = String(item.grupo_nome ?? "").toUpperCase()
+    const isGestor = grupo.includes("GESTOR")
+    return isGestor && ids.length === 0
+  }
+
   const getUnidadesView = (item: Usuario): string[] => {
     const ids = Array.isArray(item.unidades_administrativas) ? item.unidades_administrativas : []
     if (ids.length > 0) {
       return ids.map((uaId) => uaLabelsById[uaId] ?? `UA ${uaId}`)
     }
-    const grupo = String(item.grupo_nome ?? "").toUpperCase()
-    const isGestor = grupo.includes("GESTOR")
-    if (isGestor) {
-      return ["Todas as UAs da Unidade Orçamentária selecionada"]
+    if (isTodasUasDaUo(item)) {
+      const uoId = typeof (item as any).unidade_orcamentaria === "number" ? (item as any).unidade_orcamentaria : null
+      if (uoId && uasByUoId[uoId]?.length) return uasByUoId[uoId]
+      return []
     }
     if (item.unidade_codigo && item.unidade_nome) {
       return [`${item.unidade_codigo} - ${item.unidade_nome}`]
@@ -176,7 +224,7 @@ export default function ViewUsuarioPage() {
 
           <Button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/usuarios")}
             className={ACTION_BUTTON_CLASS}
           >
             <ArrowLeft size={18} />
@@ -251,8 +299,9 @@ export default function ViewUsuarioPage() {
             />
 
             {/* 8 */}
-            <ListaUas
+            <ListaUasComHelper
               unidades={getUnidadesView(usuario)}
+              exibirHelperTodas={isTodasUasDaUo(usuario)}
             />
 
           </div>
@@ -263,5 +312,4 @@ export default function ViewUsuarioPage() {
     </div>
   )
 }
-
 

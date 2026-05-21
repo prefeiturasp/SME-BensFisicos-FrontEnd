@@ -112,6 +112,11 @@ export default function EditarUsuarioPage() {
     const next = jaSelecionada
       ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
       : [...unidadesSelecionadas, ua]
+
+    const selecionouTodasManualmente =
+      unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
+    setTodasUnidades(selecionouTodasManualmente)
+
     setUnidadesSelecionadas(next)
     syncFormUnidades(next)
   }
@@ -263,9 +268,9 @@ export default function EditarUsuarioPage() {
 
   return (
     <div className="p-8 space-y-4">
-      <AppBreadcrumb items={[{ label: "Configuracoes", icon: Settings }, { label: "Usuarios" }, { label: "Editar Usuario", isActive: true }]} />
+      <AppBreadcrumb items={[{ label: "Configuracoes", icon: Settings }, { label: "Usuarios" }, { label: "Editar Usuário", isActive: true }]} />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-gray-700">Editar Usuario</h1>
+        <h1 className="text-xl font-bold tracking-tight text-gray-700">Editar Usuário</h1>
         <div className="flex items-center gap-3">
           <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
           <Button onClick={handleSubmit(onSubmit)} disabled={loadingSalvar} className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md font-semibold">{loadingSalvar ? "Salvando..." : "Salvar"}</Button>
