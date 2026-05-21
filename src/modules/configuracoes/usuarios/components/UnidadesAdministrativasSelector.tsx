@@ -1,71 +1,69 @@
-import { ListFilter, X } from "lucide-react"
+﻿import { X } from "lucide-react"
 import type { EscopoUa } from "../../../../auth/auth.service"
 
 type Props = Readonly<{
   unidadesListadas: EscopoUa[]
-  unidadesSelecionadasCount: number
   isSelecionada: (uaId: number) => boolean
-  somenteSelecionadas: boolean
+  todasUnidades: boolean
+  disabled?: boolean
   filtroUa: string
   inputClassName: string
   requiredNode?: React.ReactNode
   errorMessage?: string
   onFiltroChange: (value: string) => void
-  onToggleSomenteSelecionadas: () => void
+  onToggleTodasUnidades: () => void
   onToggleUa: (ua: EscopoUa) => void
 }>
 
 export function UnidadesAdministrativasSelector({
   unidadesListadas,
-  unidadesSelecionadasCount,
   isSelecionada,
-  somenteSelecionadas,
+  todasUnidades,
+  disabled = false,
   filtroUa,
   inputClassName,
   requiredNode,
   errorMessage,
   onFiltroChange,
-  onToggleSomenteSelecionadas,
+  onToggleTodasUnidades,
   onToggleUa,
 }: Props) {
-  const semSelecao = unidadesSelecionadasCount === 0
-  const botaoFiltroClasse = semSelecao
-    ? "border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed"
-    : somenteSelecionadas
-      ? "border-[#2F7D57] bg-[#2F7D57] text-white"
-      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-  const textoContador = semSelecao
-    ? "Nenhuma selecionada"
-    : `${unidadesSelecionadasCount} selecionadas`
-
   return (
-    <div className="md:col-span-2 flex flex-col gap-2">
-      <span className="text-sm font-semibold text-gray-700">
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-semibold text-gray-700">
         Unidades Administrativas
         {requiredNode ?? null}
-      </span>
-      <div className="border border-gray-300 rounded-xs max-w-[940px]">
+      </label>
+      <div className={`border rounded-xs ${disabled ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"}`}>
         <div className="p-2 border-b border-gray-200 flex items-center gap-2">
           <input
             value={filtroUa}
             onChange={(e) => onFiltroChange(e.target.value)}
             placeholder="Pesquisar unidade por codigo ou nome"
-            className={inputClassName}
+            className={`${inputClassName} ${disabled ? "cursor-not-allowed bg-gray-100 text-gray-500 border-gray-200" : ""}`}
+            disabled={disabled}
           />
-          <button
-            type="button"
-            aria-pressed={somenteSelecionadas}
-            disabled={semSelecao}
-            onClick={onToggleSomenteSelecionadas}
-            className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${botaoFiltroClasse}`}
+          <label
+            className={`h-11 rounded-xs border px-3 text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
+              disabled
+                ? "border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                : "border-gray-300 bg-white text-gray-700 cursor-pointer"
+            }`}
           >
-            <ListFilter size={14} />
-            <span>{textoContador}</span>
-          </button>
+            <input
+              type="checkbox"
+              checked={todasUnidades}
+              onChange={onToggleTodasUnidades}
+              disabled={disabled}
+              className={`h-4 w-4 ${disabled ? "cursor-not-allowed" : "cursor-pointer"} accent-[#2F7D57]`}
+            />
+            <span>Todas Unidades Administrativas</span>
+          </label>
         </div>
-        <div className="max-h-32 overflow-y-auto">
+        {!disabled && (
+          <div className="max-h-32 overflow-y-auto">
           {unidadesListadas.map((ua) => {
-            const selecionada = isSelecionada(ua.unidade_administrativa_id)
+            const selecionada = todasUnidades || isSelecionada(ua.unidade_administrativa_id)
             return (
               <div
                 key={ua.unidade_administrativa_id}
@@ -94,9 +92,16 @@ export function UnidadesAdministrativasSelector({
               </div>
             )
           })}
-        </div>
+          </div>
+        )}
+        {disabled && (
+          <div className="px-3 py-3 text-sm text-gray-500 border-t border-gray-200 cursor-not-allowed select-none">
+            Selecione uma Unidade Orçamentária para habilitar as Unidades Administrativas.
+          </div>
+        )}
       </div>
       {errorMessage && <span className="text-red-600 text-sm">{errorMessage}</span>}
     </div>
   )
 }
+

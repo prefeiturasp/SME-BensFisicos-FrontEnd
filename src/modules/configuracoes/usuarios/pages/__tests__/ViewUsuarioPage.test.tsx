@@ -6,12 +6,19 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 
 import ViewUsuarioPage from "../ViewUsuarioPage"
 import { usuarioService } from "../../service/usuario.service"
+import { authService } from "../../../../../auth/auth.service"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: {
         retrieve: vi.fn(),
+    },
+}))
+
+vi.mock("../../../../../auth/auth.service", () => ({
+    authService: {
+        getCurrentUser: vi.fn(),
     },
 }))
 
@@ -51,6 +58,7 @@ describe("ViewUsuarioPage", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        vi.mocked(authService.getCurrentUser).mockResolvedValue({ data: { opcoes_escopo: { grupos: [] } } } as any)
     })
 
     // ── Estado de carregamento ─────────────────────────────────────────────────
@@ -79,13 +87,13 @@ describe("ViewUsuarioPage", () => {
 
     // ── Renderização dos dados ─────────────────────────────────────────────────
 
-    it("exibe a unidade administrativa formatada como 'codigo - nome'", async () => {
+    it("exibe texto de todas as UAs quando gestor não tem seleção explícita", async () => {
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
 
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByDisplayValue("UA001 - Unidade Central")).toBeInTheDocument()
+            expect(screen.getByDisplayValue("Todas as UAs da Unidade Orçamentária selecionada")).toBeInTheDocument()
         })
     })
 

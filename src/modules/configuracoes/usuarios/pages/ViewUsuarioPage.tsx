@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { usuarioService, type Usuario } from "../service/usuario.service"
+import { authService } from "../../../../auth/auth.service"
 
 const INPUT_TEXT_CLASS =
   "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-gray-50 cursor-not-allowed"
@@ -32,7 +33,7 @@ function Campo({ label, value, required }: Readonly<CampoProps>) {
       </span>
       <input
         type="text"
-        readOnly
+        disabled
         value={value ?? "—"}
         className={INPUT_TEXT_CLASS}
       />
@@ -41,18 +42,25 @@ function Campo({ label, value, required }: Readonly<CampoProps>) {
 }
 
 function ListaUas({ unidades }: Readonly<{ unidades: string[] }>) {
-  const valorFormatado = unidades.length
-    ? unidades.join(", ")
-    : "Nenhuma unidade administrativa selecionada."
-
   return (
-    <div className="flex flex-col gap-2 md:col-span-2">
+    <div className="flex flex-col gap-2">
       <span className="text-sm font-semibold text-gray-700">Unidades Administrativas</span>
-      <textarea
-        readOnly
-        value={valorFormatado}
-        className="min-h-20 w-full rounded-xs border border-gray-300 px-4 py-3 text-sm text-gray-700 bg-gray-50 resize-none leading-6"
-      />
+      <div className="min-h-20 max-h-36 w-full rounded-xs border border-gray-300 px-3 py-3 text-sm text-gray-700 bg-gray-50 overflow-y-auto cursor-not-allowed">
+        {unidades.length === 0 ? (
+          <span className="text-gray-500">Nenhuma unidade administrativa selecionada.</span>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {unidades.map((unidade) => (
+              <span
+                key={unidade}
+                className="inline-flex items-center rounded-xs border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700"
+              >
+                {unidade}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -71,6 +79,8 @@ export default function ViewUsuarioPage() {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [uaLabelsById, setUaLabelsById] = useState<Record<number, string>>({})
+  const [uoLabelsById, setUoLabelsById] = useState<Record<number, string>>({})
 
   useEffect(() => {
     const carregarUsuario = async () => {
@@ -79,6 +89,25 @@ export default function ViewUsuarioPage() {
       try {
         setLoading(true)
         const data = await usuarioService.retrieve(Number(id))
+        let me: any = null
+        try {
+          const meResponse = await authService.getCurrentUser()
+          me = meResponse?.data
+        } catch {
+          me = null
+        }
+        const labels = (me?.opcoes_escopo?.grupos ?? [])
+          .flatMap((g) => g.uas ?? [])
+          .reduce<Record<number, string>>((acc, ua) => {
+            acc[ua.unidade_administrativa_id] = `${ua.codigo} - ${ua.nome}`
+            return acc
+          }, {})
+        const uoLabels = (me?.opcoes_escopo?.grupos ?? []).reduce<Record<number, string>>((acc, g) => {
+          if (g?.uo?.id && g?.uo?.label) acc[g.uo.id] = g.uo.label
+          return acc
+        }, {})
+        setUaLabelsById(labels)
+        setUoLabelsById(uoLabels)
         setUsuario(data)
       } catch {
         setErrorMessage("Erro ao carregar os dados do usuário.")
@@ -92,6 +121,30 @@ export default function ViewUsuarioPage() {
 
   const handleEditar = () => {
     navigate(`/usuarios/${id}/editar`)
+  }
+
+  const getUnidadesView = (item: Usuario): string[] => {
+    const ids = Array.isArray(item.unidades_administrativas) ? item.unidades_administrativas : []
+    if (ids.length > 0) {
+      return ids.map((uaId) => uaLabelsById[uaId] ?? `UA ${uaId}`)
+    }
+    const grupo = String(item.grupo_nome ?? "").toUpperCase()
+    const isGestor = grupo.includes("GESTOR")
+    if (isGestor) {
+      return ["Todas as UAs da Unidade Orçamentária selecionada"]
+    }
+    if (item.unidade_codigo && item.unidade_nome) {
+      return [`${item.unidade_codigo} - ${item.unidade_nome}`]
+    }
+    return []
+  }
+
+  const getUoViewLabel = (item: Usuario): string => {
+    const labelDireto = getUnidadeOrcamentariaLabel(item)
+    if (labelDireto !== "—") return labelDireto
+    const uoId = (item as any).unidade_orcamentaria
+    if (typeof uoId === "number" && uoLabelsById[uoId]) return uoLabelsById[uoId]
+    return "—"
   }
 
   if (loading) {
@@ -165,46 +218,41 @@ export default function ViewUsuarioPage() {
 
             {/* 3 */}
             <Campo
-              label="Grupo de Permissionamento"
-              value={usuario.grupo_nome}
-              required
-            />
-
-            {/* 4 */}
-            <Campo
               label="Nome de Usuário de Acesso"
               value={usuario.username}
             />
 
-            {/* 5 */}
+            {/* 4 */}
             <Campo
               label="E-mail do Usuário"
               value={usuario.email}
               required
             />
 
+            {/* 5 */}
+            <Campo
+              label="Grupo de Permissionamento"
+              value={usuario.grupo_nome}
+              required
+            />
+
             {/* 6 */}
             <Campo
-              label="Unidade Orçamentária"
-              value={getUnidadeOrcamentariaLabel(usuario)}
+              label="Status"
+              value={usuario.status_display}
               required
             />
 
             {/* 7 */}
-            <ListaUas
-              unidades={
-                usuario.unidades_administrativas?.length
-                  ? usuario.unidades_administrativas.map((id) => `UA ${id}`)
-                  : usuario.unidade_codigo && usuario.unidade_nome
-                    ? [`${usuario.unidade_codigo} - ${usuario.unidade_nome}`]
-                    : []
-              }
+            <Campo
+              label="Unidade Orçamentária"
+              value={getUoViewLabel(usuario)}
+              required
             />
 
             {/* 8 */}
-            <Campo
-              label="Status"
-              value={usuario.status_display}
+            <ListaUas
+              unidades={getUnidadesView(usuario)}
             />
 
           </div>

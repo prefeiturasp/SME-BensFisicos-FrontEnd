@@ -26,6 +26,7 @@ interface ValoresOriginais {
   grupo: string
   status: string
   unidadeIds: number[]
+  unidadeOrcamentariaId: number | null
 }
 
 function getIdsUsuario(dadosUsuario: any): number[] {
@@ -38,13 +39,8 @@ function getIdsUsuario(dadosUsuario: any): number[] {
   return []
 }
 
-function getSelecionadasEfetivas(
-  selecionadas: EscopoUa[],
-  grupo: string,
-  todasDaUo: EscopoUa[]
-) {
+function getSelecionadasEfetivas(selecionadas: EscopoUa[]) {
   if (selecionadas.length > 0) return selecionadas
-  if (grupo === "GESTOR_PATRIMONIO") return todasDaUo
   return []
 }
 
@@ -57,7 +53,7 @@ export default function EditarUsuarioPage() {
   const [uoSelecionadaId, setUoSelecionadaId] = useState<number | null>(null)
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<EscopoUa[]>([])
   const [filtroUa, setFiltroUa] = useState("")
-  const [somenteSelecionadas, setSomenteSelecionadas] = useState(false)
+  const [todasUnidades, setTodasUnidades] = useState(false)
   const [loadingDados, setLoadingDados] = useState(true)
   const [loadingSalvar, setLoadingSalvar] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -91,24 +87,27 @@ export default function EditarUsuarioPage() {
     [gruposEscopo]
   )
 
-  useEffect(() => {
-    if (unidadesSelecionadas.length === 0 && somenteSelecionadas) setSomenteSelecionadas(false)
-  }, [somenteSelecionadas, unidadesSelecionadas.length])
-
   const unidadesListadas = useMemo(() => {
-    const base = somenteSelecionadas
-      ? unidadesAdministrativas.filter((ua) => idsSelecionados.has(ua.unidade_administrativa_id))
-      : unidadesAdministrativas
     const termo = filtroUa.trim().toLowerCase()
-    if (!termo) return base
-    return base.filter((ua) => `${ua.codigo} ${ua.nome}`.toLowerCase().includes(termo))
-  }, [filtroUa, idsSelecionados, somenteSelecionadas, unidadesAdministrativas])
+    if (!termo) return unidadesAdministrativas
+    return unidadesAdministrativas.filter((ua) => `${ua.codigo} ${ua.nome}`.toLowerCase().includes(termo))
+  }, [filtroUa, unidadesAdministrativas])
 
   const syncFormUnidades = (selecionadas: EscopoUa[]) => {
     setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
   }
 
   const toggleUa = (ua: EscopoUa) => {
+    if (todasUnidades) {
+      setTodasUnidades(false)
+      const next = unidadesAdministrativas.filter(
+        (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id
+      )
+      setUnidadesSelecionadas(next)
+      syncFormUnidades(next)
+      return
+    }
+
     const jaSelecionada = idsSelecionados.has(ua.unidade_administrativa_id)
     const next = jaSelecionada
       ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
@@ -139,7 +138,12 @@ export default function EditarUsuarioPage() {
         const selecionadas = uas.filter((ua) => idsUsuario.includes(ua.unidade_administrativa_id))
         setUnidadesSelecionadas(selecionadas)
         syncFormUnidades(selecionadas)
-        setUoSelecionadaId(selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null)
+        setTodasUnidades((dadosUsuario.grupo_nome ?? "") === "GESTOR_PATRIMONIO" && idsUsuario.length === 0)
+        const uoUsuarioId =
+          typeof dadosUsuario.unidade_orcamentaria === "number"
+            ? dadosUsuario.unidade_orcamentaria
+            : null
+        setUoSelecionadaId(uoUsuarioId ?? selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null)
 
         setValoresOriginais({
           nome: dadosUsuario.nome ?? "",
@@ -148,6 +152,8 @@ export default function EditarUsuarioPage() {
           grupo: dadosUsuario.grupo_nome ?? "",
           status: dadosUsuario.status ?? "ativo",
           unidadeIds: selecionadas.map((ua) => ua.unidade_administrativa_id),
+          unidadeOrcamentariaId:
+            uoUsuarioId ?? selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null,
         })
       } catch {
         setErrorMessage("Erro ao carregar os dados do usuário.")
@@ -192,18 +198,19 @@ export default function EditarUsuarioPage() {
       const isActiveOriginal = valoresOriginais?.status === "ativo"
       if (isActiveAtual !== isActiveOriginal) payload.is_active = isActiveAtual
 
-      const selecionadasEfetivas = getSelecionadasEfetivas(
-        unidadesSelecionadas,
-        data.grupo,
-        unidadesAdministrativas
-      )
+      const selecionadasEfetivas = getSelecionadasEfetivas(unidadesSelecionadas)
+      const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadasEfetivas.length === 0)
 
       const idsAtuais = selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id).sort((a, b) => a - b)
       const idsOriginais = [...(valoresOriginais?.unidadeIds ?? [])].sort((a, b) => a - b)
-      if (JSON.stringify(idsAtuais) !== JSON.stringify(idsOriginais)) {
-        payload.unidades_administrativas = idsAtuais
-        payload.unidade_administrativa = idsAtuais[0] ?? null
-        payload.unidade_orcamentaria = selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null
+      const houveMudancaUo =
+        (uoSelecionadaId ?? null) !== (valoresOriginais?.unidadeOrcamentariaId ?? null)
+      if (JSON.stringify(idsAtuais) !== JSON.stringify(idsOriginais) || houveMudancaUo) {
+        payload.unidades_administrativas = semSelecaoGestor ? [] : idsAtuais
+        payload.unidade_administrativa = semSelecaoGestor ? null : (idsAtuais[0] ?? null)
+        payload.unidade_orcamentaria = semSelecaoGestor
+          ? (uoSelecionadaId ?? null)
+          : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null)
       }
 
       if (data.senha) {
@@ -271,32 +278,40 @@ export default function EditarUsuarioPage() {
         <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome Completo{REQUIRED}</span><input {...register("nome")} className={INPUT_TEXT_CLASS} placeholder="Digite o nome completo" />{errors.nome && <span className="text-red-600 text-sm">{errors.nome.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">RF{REQUIRED}</span><input {...register("rf")} className={INPUT_TEXT_CLASS} placeholder="Digite o rf" />{errors.rf && <span className="text-red-600 text-sm">{errors.rf.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select value={grupoSelecionado} onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]) }}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome de Usuario de Acesso</span><input value={usernameAcesso} disabled className={`${INPUT_TEXT_CLASS} bg-gray-100 cursor-not-allowed`} placeholder="Nao editavel" /></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuario{REQUIRED}</span><input {...register("email")} className={INPUT_TEXT_CLASS} placeholder="Digite o e-mail" />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select value={grupoSelecionado} onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]); if (value !== "GESTOR_PATRIMONIO") setTodasUnidades(false) }}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Status{REQUIRED}</span><Select value={statusSelecionado} onValueChange={(v) => setValue("status", v, { shouldValidate: true })}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
+          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome de Usuario de Acesso</span><input value={usernameAcesso} disabled className={`${INPUT_TEXT_CLASS} bg-gray-100 cursor-not-allowed`} placeholder="Nao editavel" /></div>
-            <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuario{REQUIRED}</span><input {...register("email")} className={INPUT_TEXT_CLASS} placeholder="Digite o e-mail" />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
-            <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
-          </div>
-
-                    <UnidadesAdministrativasSelector
+          <div>
+            <UnidadesAdministrativasSelector
             unidadesListadas={unidadesListadas}
-            unidadesSelecionadasCount={unidadesSelecionadas.length}
             isSelecionada={(uaId) => idsSelecionados.has(uaId)}
-            somenteSelecionadas={somenteSelecionadas}
+            todasUnidades={todasUnidades}
             filtroUa={filtroUa}
             inputClassName={INPUT_TEXT_CLASS}
             requiredNode={unidadeObrigatoria ? REQUIRED : null}
             errorMessage={errors.unidade?.message}
             onFiltroChange={setFiltroUa}
-            onToggleSomenteSelecionadas={() => setSomenteSelecionadas((prev) => !prev)}
+            onToggleTodasUnidades={() => {
+              setTodasUnidades((prev) => {
+                const next = !prev
+                if (next) {
+                  setUnidadesSelecionadas([])
+                  syncFormUnidades([])
+                  setFiltroUa("")
+                }
+                return next
+              })
+            }}
             onToggleUa={toggleUa}
           />
+          </div>
         </form>
         <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Cadastre uma Senha</span><div className="relative"><input type={mostrarSenha ? "text" : "password"} placeholder="Cadastre uma senha" {...register("senha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.senha && <span className="text-red-600 text-sm">{errors.senha.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Confirme a Senha</span><div className="relative"><input type={mostrarConfirmarSenha ? "text" : "password"} placeholder="Confirme a senha" {...register("confirmarSenha")} className={`${INPUT_TEXT_CLASS} pr-10`} /><button type="button" onClick={() => setMostrarConfirmarSenha((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">{mostrarConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmarSenha && <span className="text-red-600 text-sm">{errors.confirmarSenha.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Status{REQUIRED}</span><Select value={statusSelecionado} onValueChange={(v) => setValue("status", v, { shouldValidate: true })}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
         </div>
       </Card>
     </div>
