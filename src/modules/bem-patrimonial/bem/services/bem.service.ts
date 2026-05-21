@@ -12,24 +12,26 @@ export interface Bem {
   unidade_administrativa_codigo: string
   unidade_administrativa_nome: string
   unidade_orcamentaria_nome: string
+  observacao?: string
+  justificativa?: string
 }
 export interface HistoricoAcao {
-    campo: string
-    valor_antigo: string | null
-    valor_novo: string | null
+  campo: string
+  valor_antigo: string | null
+  valor_novo: string | null
 }
 
 export interface HistoricoGrupo {
-    alterado_em: string
-    alterado_por: number | null
-    alterado_por_nome: string | null
-    acoes: HistoricoAcao[]
+  alterado_em: string
+  alterado_por: number | null
+  alterado_por_nome: string | null
+  acoes: HistoricoAcao[]
 }
 export interface PaginatedResponse<T> {
-	count: number
-	next: string | null
-	previous: string | null
-	results: T[]
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
 }
 
 export const bemService = {
@@ -51,6 +53,9 @@ export const bemService = {
 
       if (params.unidade_orcamentaria)
         query.append('unidade_orcamentaria', params.unidade_orcamentaria)
+
+      if (params.busca_geral_uos)
+        query.append('busca_geral_uos', String(params.busca_geral_uos))
 
       if (params.baixados_mais_de_um_periodo)
         query.append(
@@ -102,14 +107,24 @@ export const bemService = {
     }
   },
   async getHistorico(id: number) {
-      const { data } = await api.get(`/bens/${id}/historico/`)
-      return data
+    const { data } = await api.get(`/bens/${id}/historico/`)
+    return data
   },
   createMulti: async (payload: any): Promise<void> => {
     try {
       await api.post('/bens/multi/', payload)
     } catch (error) {
       handleApiError(error, 'Erro ao criar bens')
+    }
+  },
+  gerarNbbpm: async (id: number): Promise<Blob> => {
+    try {
+      const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
+        responseType: 'blob',
+      })
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao gerar PDF NBBPM')
     }
   },
 }

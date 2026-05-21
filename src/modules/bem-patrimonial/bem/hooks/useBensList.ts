@@ -20,6 +20,7 @@ export function useBensList({ pageSize }: UseBensListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [escopoFilter, setEscopoFilter] = useState<string>('todas')
   const [baixadosAntigos, setBaixadosAntigos] = useState(false)
+  const [buscaGeralUos, setBuscaGeralUos] = useState(false)
   const [ordering, setOrdering] = useState<string>('')
 
   // debounce search
@@ -48,6 +49,7 @@ export function useBensList({ pageSize }: UseBensListProps) {
           escopoFilter.startsWith('uo:')
             ? escopoFilter.replace('uo:', '')
             : undefined,
+        busca_geral_uos: buscaGeralUos || undefined,
         baixados_mais_de_um_periodo: baixadosAntigos || undefined,
         ordering,
       })
@@ -59,7 +61,7 @@ export function useBensList({ pageSize }: UseBensListProps) {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, escopoFilter, baixadosAntigos, ordering])
+  }, [page, search, statusFilter, escopoFilter, baixadosAntigos, buscaGeralUos, ordering])
 
   useEffect(() => {
     fetchData()
@@ -102,6 +104,7 @@ export function useBensList({ pageSize }: UseBensListProps) {
     statusFilter,
     escopoFilter,
     baixadosAntigos,
+    buscaGeralUos,
     ordering,
 
     setPage,
@@ -109,6 +112,7 @@ export function useBensList({ pageSize }: UseBensListProps) {
     setStatusFilter,
     setEscopoFilter,
     setBaixadosAntigos,
+    setBuscaGeralUos,
     setOrdering,
     toggleSelect,
     atualizarStatusSelecionados,

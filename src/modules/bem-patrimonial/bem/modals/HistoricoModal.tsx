@@ -190,6 +190,14 @@ export default function HistoricoModal({ bemId, open, onClose }: Props) {
                                         </div>
                                     ))}
                                 </div>
+                                {historico[selecionado].acoes.some((a: any) => a.justificativa) && (
+                                    <div className="mt-6 pt-5 border-t border-gray-100">
+                                        <div className="text-sm font-semibold text-gray-800 mb-1">Justificativa</div>
+                                        <div className="text-sm text-gray-600">
+                                            {historico[selecionado].acoes.find((a: any) => a.justificativa)?.justificativa}
+                                        </div>
+                                    </div>
+                                )}
 
                             </div>
                         )}

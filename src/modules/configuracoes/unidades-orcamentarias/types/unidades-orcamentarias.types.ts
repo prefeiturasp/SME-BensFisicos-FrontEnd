@@ -6,6 +6,9 @@ export interface UnidadeOrcamentaria {
   codigo: string;
   sigla: string;
   nome: string;
+  sigla_orgao: string;
+  orgao: string;
+  codigo_orgao: string;
   ativa: boolean;
   ativa_display: string;
 }
@@ -14,6 +17,19 @@ export interface CreateUnidadeOrcamentariaPayload {
   codigo: string;
   sigla: string;
   nome: string;
+  sigla_orgao: string;
+  orgao: string;
+  codigo_orgao: string;
+  ativa?: boolean;
+}
+
+export interface UpdateUnidadeOrcamentariaPayload {
+  codigo?: string;
+  sigla?: string;
+  nome?: string;
+  sigla_orgao?: string;
+  orgao?: string;
+  codigo_orgao?: string;
   ativa?: boolean;
 }
 

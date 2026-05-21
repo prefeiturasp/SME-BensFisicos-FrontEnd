@@ -15,6 +15,9 @@ function StatusResetForm({ nextStatus }: Readonly<StatusResetFormProps>) {
       codigo: '10.10.10',
       sigla: 'UO1',
       nome: 'UNIDADE ORCAMENTARIA 1',
+      sigla_orgao: 'SME',
+      orgao: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+      codigo_orgao: '10.10',
       status: 'ativa',
     },
   });
@@ -24,6 +27,9 @@ function StatusResetForm({ nextStatus }: Readonly<StatusResetFormProps>) {
       codigo: '10.10.10',
       sigla: 'UO1',
       nome: 'UNIDADE ORCAMENTARIA 1',
+      sigla_orgao: 'SME',
+      orgao: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+      codigo_orgao: '10.10',
       status: nextStatus as UnidadeOrcamentariaFormData['status'],
     });
   }, [form, nextStatus]);
@@ -47,6 +53,9 @@ function renderForm(options: Readonly<RenderFormOptions> = {}) {
         codigo: '10.10.10',
         sigla: 'UO1',
         nome: 'UNIDADE ORCAMENTARIA 1',
+        sigla_orgao: 'SME',
+        orgao: 'SECRETARIA MUNICIPAL DE EDUCACAO',
+        codigo_orgao: '10.10',
         status: 'ativa',
         ...defaultValues,
       },
@@ -82,7 +91,7 @@ describe('UnidadeOrcamentariaForm', () => {
     });
   });
 
-  it('mascara codigo, converte sigla e nome para caixa alta e exibe erro raiz', () => {
+  it('formata os códigos, converte textos para caixa alta e exibe erro raiz', () => {
     renderForm({
       rootError: 'Erro retornado pela API.',
       defaultValues: { status: undefined as never },
@@ -91,25 +100,37 @@ describe('UnidadeOrcamentariaForm', () => {
     expect(screen.getByText('Erro retornado pela API.')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveTextContent('Selecione o status');
 
-    const codigoInput = screen.getByPlaceholderText('00.00.00');
-    const siglaInput = screen.getByPlaceholderText('Digite a sigla da unidade orçamentária');
-    const nomeInput = screen.getByPlaceholderText('Digite o nome da unidade orçamentária');
+    const codigoInput = screen.getByPlaceholderText('Informe o código da UO');
+    const siglaInput = screen.getByPlaceholderText('Informe a sigla da UO');
+    const nomeInput = screen.getByPlaceholderText('Informe o nome da UO');
+    const siglaOrgaoInput = screen.getByPlaceholderText('Informe a sigla do órgão');
+    const codigoOrgaoInput = screen.getByPlaceholderText('Informe o código do órgão');
+    const orgaoInput = screen.getByPlaceholderText('Informe o nome do órgão');
 
     fireEvent.change(codigoInput, { target: { value: 'a1b23456' } });
     fireEvent.change(siglaInput, { target: { value: 'uo60' } });
     fireEvent.change(nomeInput, { target: { value: 'unidade orcamentaria 60' } });
+    fireEvent.change(siglaOrgaoInput, { target: { value: 'sme' } });
+    fireEvent.change(codigoOrgaoInput, { target: { value: '1010' } });
+    fireEvent.change(orgaoInput, { target: { value: 'secretaria externa 60' } });
 
     expect(codigoInput).toHaveValue('12.34.56');
     expect(siglaInput).toHaveValue('UO60');
     expect(nomeInput).toHaveValue('UNIDADE ORCAMENTARIA 60');
+    expect(siglaOrgaoInput).toHaveValue('SME');
+    expect(codigoOrgaoInput).toHaveValue('10.10');
+    expect(orgaoInput).toHaveValue('SECRETARIA EXTERNA 60');
   });
 
   it('desabilita os campos editáveis quando está submetendo', () => {
     renderForm({ submitting: true });
 
-    expect(screen.getByPlaceholderText('00.00.00')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe o código da UO')).toBeDisabled();
     expect(screen.getByRole('combobox')).toBeDisabled();
-    expect(screen.getByPlaceholderText('Digite a sigla da unidade orçamentária')).toBeDisabled();
-    expect(screen.getByPlaceholderText('Digite o nome da unidade orçamentária')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe a sigla da UO')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe o nome da UO')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe a sigla do órgão')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe o código do órgão')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Informe o nome do órgão')).toBeDisabled();
   });
 });

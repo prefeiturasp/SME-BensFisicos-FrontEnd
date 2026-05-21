@@ -5,7 +5,9 @@ import type { UnidadesPaginationItem } from '@/hooks/useUnidadesPagination';
 
 export interface UnidadesListTableHeader<TField extends string> {
   label: string;
-  field: TField;
+  field?: TField;
+  sortable?: boolean;
+  key?: string;
 }
 
 export interface UnidadesListTableColumn<TItem> {
@@ -59,18 +61,27 @@ export function UnidadesListTable<TItem, TField extends string>({
         <table className='w-full min-w-190 text-sm'>
           <thead className='border-b bg-[#F5F5F5] text-left text-gray-700'>
             <tr>
-              {headers.map((header) => (
-                <th key={header.field} className='p-3'>
-                  <button
-                    type='button'
-                    className='inline-flex items-center gap-2 font-semibold'
-                    onClick={() => onSort(header.field)}
-                  >
-                    {header.label}
-                    <ArrowUpDown size={14} />
-                  </button>
-                </th>
-              ))}
+              {headers.map((header) => {
+                const field = header.field;
+                const isSortable = header.sortable !== false && Boolean(field);
+
+                return (
+                  <th key={header.key ?? field ?? header.label} className='p-3'>
+                    {isSortable && field ? (
+                      <button
+                        type='button'
+                        className='inline-flex items-center gap-2 font-semibold'
+                        onClick={() => onSort(field)}
+                      >
+                        {header.label}
+                        <ArrowUpDown size={14} />
+                      </button>
+                    ) : (
+                      <span className='font-semibold'>{header.label}</span>
+                    )}
+                  </th>
+                );
+              })}
               <th className='p-3 text-center font-semibold'>Ações</th>
             </tr>
           </thead>

@@ -6,6 +6,9 @@ const FIELD_MAP: Record<string, keyof UnidadeOrcamentariaFormData> = {
   codigo: 'codigo',
   sigla: 'sigla',
   nome: 'nome',
+  sigla_orgao: 'sigla_orgao',
+  orgao: 'orgao',
+  codigo_orgao: 'codigo_orgao',
   ativa: 'status',
 };
 
