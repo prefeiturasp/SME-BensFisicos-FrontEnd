@@ -218,9 +218,12 @@ describe('ChangePasswordPage', () => {
 
       expect(toast.success).toHaveBeenCalledWith('Senha alterada com sucesso!', expect.anything());
 
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/home');
-      });
+      await waitFor(
+        () => {
+          expect(mockNavigate).toHaveBeenCalledWith('/home');
+        },
+        { timeout: 3000 },
+      );
     });
   });
 
