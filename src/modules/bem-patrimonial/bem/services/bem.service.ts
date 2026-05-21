@@ -117,6 +117,16 @@ export const bemService = {
       handleApiError(error, 'Erro ao criar bens')
     }
   },
+  gerarNbbpm: async (id: number): Promise<Blob> => {
+    try {
+      const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
+        responseType: 'blob',
+      })
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao gerar PDF NBBPM')
+    }
+  },
 }
 
 

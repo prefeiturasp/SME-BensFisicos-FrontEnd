@@ -86,6 +86,17 @@ async function fillForm({
     fireEvent.change(screen.getByLabelText("Data da Baixa"), { target: { value: data } })
 }
 
+async function selectUA() {
+    fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
+}
+
+async function selectBem() {
+    await selectUA()
+    fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+    await waitFor(() => screen.getByText("Cadeira Escritório"))
+    fireEvent.click(screen.getByText("Cadeira Escritório"))
+}
+
 // ===================== TESTS =====================
 
 describe("AdicionarBaixaPage", () => {
@@ -111,6 +122,8 @@ describe("AdicionarBaixaPage", () => {
 
     it("renderiza linha inicial de bem vazia", () => {
         renderPage()
+        // Sem UA selecionada, o placeholder muda — seleciona UA primeiro
+        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
         expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
     })
 
@@ -162,14 +175,20 @@ describe("AdicionarBaixaPage", () => {
 
     it("abre dropdown ao focar no input de bem", async () => {
         renderPage()
+        await selectUA()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => {
-            expect(bemService.list).toHaveBeenCalledWith({ search: "", status: "aprovado" })
+            expect(bemService.list).toHaveBeenCalledWith({
+                search: "",
+                status: "aprovado",
+                unidade_administrativa: 1,
+            })
         })
     })
 
     it("exibe resultados no dropdown", async () => {
         renderPage()
+        await selectUA()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => {
             expect(screen.getByText("Cadeira Escritório")).toBeInTheDocument()
@@ -179,6 +198,7 @@ describe("AdicionarBaixaPage", () => {
     it("exibe 'Buscando...' enquanto carrega", async () => {
         vi.mocked(bemService.list).mockReturnValue(new Promise(() => {}))
         renderPage()
+        await selectUA()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => {
             expect(screen.getByText("Buscando...")).toBeInTheDocument()
@@ -188,6 +208,7 @@ describe("AdicionarBaixaPage", () => {
     it("exibe 'Nenhum bem encontrado.' quando lista vazia", async () => {
         vi.mocked(bemService.list).mockResolvedValue(makeBemListResponse([]))
         renderPage()
+        await selectUA()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => {
             expect(screen.getByText("Nenhum bem encontrado.")).toBeInTheDocument()
@@ -196,6 +217,7 @@ describe("AdicionarBaixaPage", () => {
 
     it("seleciona bem ao clicar no dropdown", async () => {
         renderPage()
+        await selectUA()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
         fireEvent.click(screen.getByText("Cadeira Escritório"))
@@ -207,9 +229,7 @@ describe("AdicionarBaixaPage", () => {
 
     it("limpa bem selecionado ao clicar no X", async () => {
         renderPage()
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await selectBem()
         await waitFor(() => screen.getByLabelText("Limpar bem selecionado"))
         fireEvent.click(screen.getByLabelText("Limpar bem selecionado"))
         await waitFor(() => {
@@ -221,6 +241,7 @@ describe("AdicionarBaixaPage", () => {
 
     it("adiciona nova linha ao clicar em Adicionar item", async () => {
         renderPage()
+        await selectUA()
         fireEvent.click(screen.getByLabelText("Adicionar item"))
         await waitFor(() => {
             expect(screen.getAllByPlaceholderText("Selecione um bem")).toHaveLength(2)
@@ -229,6 +250,7 @@ describe("AdicionarBaixaPage", () => {
 
     it("remove linha ao clicar em Remover item", async () => {
         renderPage()
+        await selectUA()
         fireEvent.click(screen.getByLabelText("Adicionar item"))
         await waitFor(() => screen.getAllByPlaceholderText("Selecione um bem"))
         const removeButtons = screen.getAllByLabelText("Remover item")
@@ -240,6 +262,7 @@ describe("AdicionarBaixaPage", () => {
 
     it("ao remover a única linha, reseta com linha vazia", async () => {
         renderPage()
+        await selectUA()
         fireEvent.click(screen.getByLabelText("Remover item"))
         await waitFor(() => {
             expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
@@ -253,11 +276,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await fillForm()
-
-        // Seleciona bem
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await selectBem()
 
         fireEvent.click(screen.getByText("Salvar"))
 
@@ -276,10 +295,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await fillForm()
-
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await selectBem()
         fireEvent.click(screen.getByText("Salvar"))
 
         await waitFor(() => {
@@ -292,10 +308,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await fillForm()
-
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await selectBem()
         fireEvent.click(screen.getByText("Salvar"))
 
         await waitFor(() => {
@@ -308,10 +321,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await fillForm()
-
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await selectBem()
         fireEvent.click(screen.getByText("Salvar"))
 
         await waitFor(() => {

@@ -23,20 +23,22 @@ export interface DateRange {
     to: Date | undefined
 }
 
-// Fix: props readonly + id
 interface DateRangePickerProps {
     readonly id?: string
     readonly value: DateRange | undefined
     readonly onChange: (range: DateRange | undefined) => void
     readonly placeholder?: string
     readonly className?: string
+    readonly dateTypeAprovadas?: boolean
+    readonly dateTypeSolicitadas?: boolean
+    readonly onDateTypeAprovadasChange?: (v: boolean) => void
+    readonly onDateTypeSolicitadasChange?: (v: boolean) => void
 }
 
 const GREEN = "#2F7D57"
 const GREEN_LIGHT = "#e8f5ee"
 const GREEN_DARK = "#256947"
 
-// Fix: extrai função para resolver Cognitive Complexity e ternários aninhados
 function getDayColor(isSelected: boolean, inMonth: boolean, today: boolean): string {
     if (isSelected) return "#fff"
     if (!inMonth) return "#d1d5db"
@@ -57,6 +59,10 @@ export function DateRangePicker({
     onChange,
     placeholder = "Selecione o período",
     className,
+    dateTypeAprovadas,
+    dateTypeSolicitadas,
+    onDateTypeAprovadasChange,
+    onDateTypeSolicitadasChange,
 }: DateRangePickerProps) {
     const [open, setOpen] = useState(false)
     const [leftMonth, setLeftMonth] = useState(() => startOfMonth(new Date()))
@@ -135,7 +141,6 @@ export function DateRangePicker({
 
     const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
-    // Fix: extraído para função separada para reduzir Cognitive Complexity
     function renderDay(day: Date, i: number, month: Date) {
         const inMonth = isSameMonth(day, month)
         const isStart = isRangeStart(day)
@@ -147,7 +152,6 @@ export function DateRangePicker({
         const isRangeLeft = isStart || (inRng && colIndex === 0)
         const isRangeRight = isEnd || (inRng && colIndex === 6)
 
-        // Fix: extraído para evitar ternários aninhados
         const dayColor = getDayColor(isSelected, inMonth, today)
         const borderRadius = getBorderRadius(isRangeLeft, isRangeRight)
 
@@ -160,7 +164,6 @@ export function DateRangePicker({
         }
 
         return (
-            // Fix: wrapper div com onMouse não é interativo — mover hover state para o button
             <div
                 key={day.toISOString()}
                 style={{
@@ -264,6 +267,8 @@ export function DateRangePicker({
         )
     }
 
+    const showCheckboxes = onDateTypeAprovadasChange || onDateTypeSolicitadasChange
+
     return (
         <div style={{ position: "relative", display: "inline-block" }} className={className} ref={ref}>
             <button
@@ -315,23 +320,62 @@ export function DateRangePicker({
                         boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
                         padding: 20,
                         display: "flex",
-                        gap: 32,
-                        flexDirection: "row",
+                        flexDirection: "column",
+                        gap: 16,
                         fontFamily: "'Inter', system-ui, sans-serif",
                     }}
                 >
-                    {renderMonth(leftMonth)}
-                    <div style={{ width: 1, background: "#f0f0f0", margin: "0 -8px" }} />
-                    {renderMonth(rightMonth)}
+                    {/* CHECKBOXES */}
+                    {showCheckboxes && (
+                        <div style={{
+                            display: "flex",
+                            gap: 20,
+                            paddingBottom: 14,
+                            borderBottom: "1px solid #f0f0f0",
+                        }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500, userSelect: "none" }}>
+                                <input
+                                    type="checkbox"
+                                    checked={dateTypeAprovadas}
+                                    onChange={() => {
+                                        const novoValor = !dateTypeAprovadas;
+                                        onDateTypeAprovadasChange?.(novoValor);
+                                        if (novoValor) onDateTypeSolicitadasChange?.(false);
+                                    }}
+                                    style={{ accentColor: GREEN, width: 15, height: 15, cursor: "pointer" }}
+                                /> {""}
+                                Aceitas
+                            </label>
+                            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500, userSelect: "none" }}>
+                                <input
+                                    type="checkbox"
+                                    checked={dateTypeSolicitadas}
+                                    onChange={() => {
+                                        const novoValor = !dateTypeSolicitadas;
+                                        onDateTypeSolicitadasChange?.(novoValor);
+                                        if (novoValor) onDateTypeAprovadasChange?.(false);
+                                    }}
+                                    style={{ accentColor: GREEN, width: 15, height: 15, cursor: "pointer" }}
+                                />{""}
+                                Solicitadas
+                            </label>
+                        </div>
+                    )}
 
+                    {/* CALENDÁRIOS */}
+                    <div style={{ display: "flex", gap: 32, flexDirection: "row" }}>
+                        {renderMonth(leftMonth)}
+                        <div style={{ width: 1, background: "#f0f0f0" }} />
+                        {renderMonth(rightMonth)}
+                    </div>
+
+                    {/* ACTIONS */}
                     {value?.from && value?.to && (
                         <div style={{
-                            position: "absolute",
-                            bottom: 16,
-                            right: 20,
                             display: "flex",
                             gap: 8,
                             alignItems: "center",
+                            justifyContent: "flex-end",
                         }}>
                             <button
                                 type="button"
