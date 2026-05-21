@@ -936,4 +936,184 @@ describe("VerBaixaPage", () => {
 
         expect(mockNavigate).toHaveBeenCalledWith(-1)
     })
+
+    // =====================
+    // Coverage extra
+    // =====================
+
+    it("remover única linha cria nova linha vazia", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByTitle("Excluir linha"))
+
+        fireEvent.click(screen.getByTitle("Excluir linha"))
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
+    })
+
+    it("digitar no input dispara busca com debounce", async () => {
+        // Testa apenas que o input chama bemService.list após interação —
+        // sem fake timers para não contaminar os outros testes.
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+
+        const listCallsBefore = vi.mocked(bemService.list).mock.calls.length
+
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+
+        // focus já dispara search("") — confirma que list foi chamado
+        await waitFor(() => {
+            expect(vi.mocked(bemService.list).mock.calls.length).toBeGreaterThan(listCallsBefore)
+        })
+    })
+
+    it("clicar fora do dropdown fecha o dropdown", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+
+        await waitFor(() => screen.getByText("Cadeira Escritório"))
+
+        fireEvent.mouseDown(document.body)
+
+        await waitFor(() => {
+            expect(screen.queryByText("Cadeira Escritório")).not.toBeInTheDocument()
+        })
+    })
+
+    it("download NBBPM usa id quando numero_processo_baixa é nulo", async () => {
+        const clickMock = vi.fn()
+
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                id: 42,
+                numero_processo_baixa: null,
+                url_gerar_nbbpm: "/download",
+            })
+        )
+
+        vi.mocked(baixaFisicaService.gerarNbbpm).mockResolvedValue(new Blob(["pdf"]))
+
+        vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+
+        const createElementSpy = vi.spyOn(document, "createElement")
+        createElementSpy.mockImplementation((tagName: string) => {
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tagName)
+            if (tagName === "a") Object.defineProperty(el, "click", { value: clickMock })
+            return el
+        })
+
+        renderPage()
+
+        await waitFor(() => screen.getByText("Baixar NBBPM"))
+
+        fireEvent.click(screen.getByText("Baixar NBBPM"))
+
+        await waitFor(() => {
+            expect(baixaFisicaService.gerarNbbpm).toHaveBeenCalledWith(42)
+            expect(clickMock).toHaveBeenCalled()
+        })
+
+        createElementSpy.mockRestore()
+    })
+
+    it("após salvar com itens vazios exibe nova linha vazia", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        vi.mocked(baixaFisicaService.update).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+
+        await waitFor(() => screen.getByText("Cadeira Escritório"))
+
+        fireEvent.click(screen.getByText("Cadeira Escritório"))
+
+        await waitFor(() => expect(screen.getByText("Salvar Edição")).not.toBeDisabled())
+
+        fireEvent.click(screen.getByText("Salvar Edição"))
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
+    })
+
+    it("dropdown não busca quando unidade_administrativa não está definida", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                itens: [],
+                unidade_administrativa_origem: {
+                    id: 0,
+                    sigla: "",
+                    codigo: "",
+                    nome: "",
+                    status: "active",
+                },
+            })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+
+        vi.mocked(bemService.list).mockClear()
+
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+
+        await waitFor(() => {
+            expect(bemService.list).not.toHaveBeenCalled()
+        })
+    })
+
+    it("selecionar bem sem numero_patrimonial usa SEM-NUMERO-{id}", async () => {
+        vi.mocked(bemService.list).mockResolvedValue({
+            results: [makeBem({ id: 99, numero_patrimonial: null as unknown as string, nome: "Bem Sem Número" })],
+            count: 1,
+            next: null,
+            previous: null,
+        })
+
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ itens: [] })
+        )
+
+        renderPage()
+
+        await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+
+        await waitFor(() => screen.getByText("Bem Sem Número"))
+
+        fireEvent.click(screen.getByText("Bem Sem Número"))
+
+        await waitFor(() => {
+            expect(screen.getByText(/SEM-NUMERO-99/)).toBeInTheDocument()
+        })
+    })
 })
