@@ -23,6 +23,17 @@ import {
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 
+const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
+
+function isNumeroPatrimonialValido(values: Bem): boolean {
+  if (values.sem_numeracao) return true
+  if (values.numero_formato_antigo) return true
+
+  const numero = values.numero_patrimonial ?? ''
+
+  return NUMERO_PATRIMONIAL_REGEX.test(numero)
+}
+
 export default function BemEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -31,14 +42,19 @@ export default function BemEditPage() {
   const [loading, setLoading] = useState(true)
   const [bem, setBem] = useState<Bem | null>(null)
 
+  const [originalNome, setOriginalNome] = useState('')
+  const [originalNumeroPatrimonial, setOriginalNumeroPatrimonial] = useState('')
+
   const form = useForm<Bem>({
-    defaultValues: {} as Bem,
+    defaultValues: { justificativa: '' } as Bem,
   })
 
   const status = form.watch('status')
   const numeroPatrimonial = form.watch('numero_patrimonial')
   const formatoAntigo = form.watch('numero_formato_antigo')
   const semNumeracao = form.watch('sem_numeracao')
+  const nomeAtual = form.watch('nome')
+  const justificativa = (form.watch('justificativa' as any) as string) ?? ''
 
   const numeroHook = useNumeroPatrimonial({
     valor: numeroPatrimonial ?? '',
@@ -46,12 +62,22 @@ export default function BemEditPage() {
     semNumeracaoInicial: semNumeracao ?? false,
   })
 
+  const nomeAlterado = !!originalNome && nomeAtual !== originalNome
+  const numeroAlterado =
+    (numeroPatrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+
+  const justificativaHabilitada = nomeAlterado || numeroAlterado
+  const justificativaObrigatoria = justificativaHabilitada
+
   useEffect(() => {
     async function fetchBem() {
       try {
         const data = await bemService.retrieve(Number(id))
+
         setBem(data)
-        form.reset(data)
+        form.reset({ ...data, justificativa: '' })
+        setOriginalNome(data.nome ?? '')
+        setOriginalNumeroPatrimonial(data.numero_patrimonial ?? '')
       } catch {
         toast.error('Erro ao carregar bem')
         navigate('/bens-patrimoniais')
@@ -78,8 +104,44 @@ export default function BemEditPage() {
   const podeEditar = isGestor && !isBaixaFisica
 
   const onSubmit = async (values: Bem) => {
+    const houveAlteracaoNumero =
+      (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+
+    if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
+      form.setError('numero_patrimonial' as any, {
+        message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
+      })
+
+      return
+    }
+
+    /*
+      Importante:
+      Quando o número patrimonial foi alterado, não bloqueamos no frontend
+      por falta de justificativa antes da chamada à API.
+
+      Isso preserva a paridade com o fluxo do Django Admin e permite que
+      erros críticos do número patrimonial, como duplicidade, sejam retornados
+      pelo backend em vez de serem mascarados pela justificativa.
+    */
+    const deveBloquearPorJustificativaNoFrontend =
+      justificativaObrigatoria && !houveAlteracaoNumero && !justificativa.trim()
+
+    if (deveBloquearPorJustificativaNoFrontend) {
+      form.setError('justificativa' as any, {
+        message:
+          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+      })
+
+      return
+    }
+
     try {
-      await bemService.update(values.id, values)
+      await bemService.update(values.id, {
+        ...values,
+        justificativa: justificativaHabilitada ? justificativa : '',
+      } as any)
+
       toast.success('Bem atualizado com sucesso')
       navigate(`/bens-patrimoniais/${values.id}`)
     } catch (error: any) {
@@ -120,18 +182,13 @@ export default function BemEditPage() {
       <Card className="p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
-            {/* STATUS */}
             <div className="flex justify-end">
               <div className="text-sm font-semibold text-green-700">
                 Status: {bem.status_display}
               </div>
             </div>
 
-            {/* PRIMEIRA LINHA */}
             <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-8 items-start">
-
-              {/* UNIDADE */}
               <div className="space-y-1">
                 <label
                   htmlFor="unidade_administrativa"
@@ -147,7 +204,6 @@ export default function BemEditPage() {
                 />
               </div>
 
-              {/* NÚMERO PATRIMONIAL */}
               <FormField
                 control={form.control}
                 name="numero_patrimonial"
@@ -157,10 +213,7 @@ export default function BemEditPage() {
                     <FormControl>
                       <Input
                         {...field}
-                        disabled={
-                          !podeEditar ||
-                          numeroHook.disabled
-                        }
+                        disabled={!podeEditar || numeroHook.disabled}
                         className={INPUT_CLASS}
                         onChange={(e) => {
                           const masked = numeroHook.applyMask(e.target.value)
@@ -176,7 +229,6 @@ export default function BemEditPage() {
                 )}
               />
 
-              {/* FORMATO ANTIGO */}
               <FormField
                 control={form.control}
                 name="numero_formato_antigo"
@@ -190,7 +242,6 @@ export default function BemEditPage() {
                           checked={field.value}
                           onChange={(e) => {
                             field.onChange(e.target.checked)
-
                             if (e.target.checked) {
                               numeroHook.ativarFormatoAntigo()
                             } else {
@@ -200,7 +251,6 @@ export default function BemEditPage() {
                           disabled={!podeEditar}
                         />
                       </FormControl>
-
                       <FormLabel
                         htmlFor="numero_formato_antigo"
                         className="text-sm text-gray-700 whitespace-nowrap"
@@ -212,7 +262,6 @@ export default function BemEditPage() {
                 )}
               />
 
-              {/* SEM NUMERAÇÃO */}
               <FormField
                 control={form.control}
                 name="sem_numeracao"
@@ -231,7 +280,6 @@ export default function BemEditPage() {
                           disabled={!podeEditar}
                         />
                       </FormControl>
-
                       <FormLabel
                         htmlFor="sem_numeracao"
                         className="text-sm text-gray-700 whitespace-nowrap"
@@ -242,12 +290,9 @@ export default function BemEditPage() {
                   </FormItem>
                 )}
               />
-
             </div>
 
-            {/* RESTANTE DOS CAMPOS */}
             <div className="grid grid-cols-3 gap-6">
-
               {[
                 'nome',
                 'descricao',
@@ -263,7 +308,9 @@ export default function BemEditPage() {
                   control={form.control}
                   name={fieldName as any}
                   render={({ field }) => (
-                    <FormItem className={fieldName === 'descricao' ? 'col-span-3' : ''}>
+                    <FormItem
+                      className={fieldName === 'descricao' ? 'col-span-3' : ''}
+                    >
                       <FormLabel>
                         {fieldName.replaceAll('_', ' ').toUpperCase()}
                       </FormLabel>
@@ -277,7 +324,10 @@ export default function BemEditPage() {
                         ) : (
                           <Input
                             {...field}
-                            disabled={!podeEditar || fieldName === 'numero_processo_baixa'}
+                            disabled={
+                              !podeEditar ||
+                              fieldName === 'numero_processo_baixa'
+                            }
                             className={INPUT_CLASS}
                           />
                         )}
@@ -287,8 +337,59 @@ export default function BemEditPage() {
                   )}
                 />
               ))}
-
             </div>
+
+            <FormField
+              control={form.control}
+              name={'observacao' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>OBSERVAÇÃO</FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      disabled={!podeEditar}
+                      placeholder="Observação"
+                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* JUSTIFICATIVA */}
+            <FormField
+              control={form.control}
+              name={'justificativa' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    JUSTIFICATIVA
+                    {justificativaObrigatoria && (
+                      <span className="text-red-500"> *</span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      disabled={!podeEditar || !justificativaHabilitada}
+                      placeholder={
+                        justificativaHabilitada
+                          ? 'Justificativa para a alteração'
+                          : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
+                      }
+                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
+                        form.formState.errors['justificativa' as any]
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {podeEditar && (
               <div className="flex justify-end pt-6 border-t">
@@ -303,7 +404,6 @@ export default function BemEditPage() {
                 </Button>
               </div>
             )}
-
           </form>
         </Form>
       </Card>

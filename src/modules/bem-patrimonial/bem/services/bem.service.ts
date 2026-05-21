@@ -12,24 +12,26 @@ export interface Bem {
   unidade_administrativa_codigo: string
   unidade_administrativa_nome: string
   unidade_orcamentaria_nome: string
+  observacao?: string
+  justificativa?: string
 }
 export interface HistoricoAcao {
-    campo: string
-    valor_antigo: string | null
-    valor_novo: string | null
+  campo: string
+  valor_antigo: string | null
+  valor_novo: string | null
 }
 
 export interface HistoricoGrupo {
-    alterado_em: string
-    alterado_por: number | null
-    alterado_por_nome: string | null
-    acoes: HistoricoAcao[]
+  alterado_em: string
+  alterado_por: number | null
+  alterado_por_nome: string | null
+  acoes: HistoricoAcao[]
 }
 export interface PaginatedResponse<T> {
-	count: number
-	next: string | null
-	previous: string | null
-	results: T[]
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
 }
 
 export const bemService = {
@@ -105,8 +107,8 @@ export const bemService = {
     }
   },
   async getHistorico(id: number) {
-      const { data } = await api.get(`/bens/${id}/historico/`)
-      return data
+    const { data } = await api.get(`/bens/${id}/historico/`)
+    return data
   },
   createMulti: async (payload: any): Promise<void> => {
     try {
