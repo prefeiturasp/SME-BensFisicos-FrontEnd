@@ -1,4 +1,4 @@
-import { Eye, ArrowLeft, ArrowUpDown, Settings, FileText } from "lucide-react"
+﻿import { Eye, ArrowLeft, ArrowUpDown, Settings, FileText } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,23 @@ function resolveNextOrdering(prevOrdering: string, backendField: string) {
   if (prevOrdering === backendField) return `-${backendField}`
   if (prevOrdering === `-${backendField}`) return ""
   return backendField
+}
+
+function resolveUnidadeOrcamentariaDisplay(
+  usuario: {
+    unidade_orcamentaria_codigo?: string | null
+    unidade_orcamentaria_nome?: string | null
+    unidade_orcamentaria?: number | null
+  },
+  uoLabelsById: Record<number, string>
+) {
+  if (usuario.unidade_orcamentaria_codigo && usuario.unidade_orcamentaria_nome) {
+    return `${usuario.unidade_orcamentaria_codigo} - ${usuario.unidade_orcamentaria_nome}`
+  }
+  if (usuario.unidade_orcamentaria) {
+    return uoLabelsById[usuario.unidade_orcamentaria] ?? `UO ${usuario.unidade_orcamentaria}`
+  }
+  return "â€”"
 }
 
 export default function UsuariosListPage() {
@@ -253,7 +270,7 @@ export default function UsuariosListPage() {
                   { label: "ID", field: "id" },
                   { label: "Usuário", field: "username" },
                   { label: "Nome do Usuário", field: "nome" },
-                  { label: "Unidade Orçamentaria", field: "unidade_orcamentaria" },
+                  { label: "Unidade Orçamentária", field: "unidade_orcamentaria" },
                   { label: "Grupo de Permissionamento", field: "grupo" },
                   { label: "Status", field: "status" },
                 ].map((col) => (
@@ -285,13 +302,7 @@ export default function UsuariosListPage() {
                     <td className="p-3">{usuario.id}</td>
                     <td className="p-3 font-medium">{usuario.username}</td>
                     <td className="p-3">{usuario.nome}</td>
-                    <td className="p-3">
-                      {usuario.unidade_orcamentaria_codigo && usuario.unidade_orcamentaria_nome
-                        ? `${usuario.unidade_orcamentaria_codigo} - ${usuario.unidade_orcamentaria_nome}`
-                        : usuario.unidade_orcamentaria
-                          ? (uoLabelsById[usuario.unidade_orcamentaria] ?? `UO ${usuario.unidade_orcamentaria}`)
-                          : "—"}
-                    </td>
+                    <td className="p-3">{resolveUnidadeOrcamentariaDisplay(usuario, uoLabelsById)}</td>
                     <td className="p-3">{usuario.grupo_nome}</td>
                     <td className="p-3">{usuario.status_display}</td>
                     <td className="p-3 text-center">

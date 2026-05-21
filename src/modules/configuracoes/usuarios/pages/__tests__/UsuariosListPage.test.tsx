@@ -243,7 +243,7 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("ID")).toBeInTheDocument()
             expect(screen.getByText("Usuário")).toBeInTheDocument()
             expect(screen.getByText("Nome do Usuário")).toBeInTheDocument()
-            expect(screen.getByText("Unidade Orçamentaria")).toBeInTheDocument()
+            expect(screen.getByText("Unidade Orçamentária")).toBeInTheDocument()
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
             expect(screen.getByText("Ações")).toBeInTheDocument()
