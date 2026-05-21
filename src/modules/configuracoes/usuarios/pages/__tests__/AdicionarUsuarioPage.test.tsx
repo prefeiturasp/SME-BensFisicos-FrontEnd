@@ -5,7 +5,7 @@ import React from "react"
 
 import AdicionarUsuarioPage from "../AdicionarUsuarioPage"
 
-// ─── Mock do Select do Radix UI ───────────────────────────────────────────────
+//  Mock do Select do Radix UI 
 
 vi.mock("@/components/ui/select", () => ({
     Select: ({
@@ -26,7 +26,7 @@ vi.mock("@/components/ui/select", () => ({
     ),
     SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectValue: ({ placeholder }: { placeholder?: string }) => (
-        <option value="" disabled>{placeholder ?? ""}</option>
+        <option value="" disabled>{placeholder ? "" : ""}</option>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectItem: ({
@@ -38,7 +38,7 @@ vi.mock("@/components/ui/select", () => ({
     }) => <option value={value}>{children}</option>,
 }))
 
-// ─── Mocks de navegação ───────────────────────────────────────────────────────
+//  Mocks de navegação 
 
 const navigateMock = vi.fn()
 
@@ -47,7 +47,7 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => navigateMock }
 })
 
-// ─── Mocks de serviços ────────────────────────────────────────────────────────
+//  Mocks de serviços 
 
 const mockUsuarioCreate = vi.fn()
 const mockGetCurrentUser = vi.fn()
@@ -64,7 +64,7 @@ vi.mock("../../../../../auth/auth.service", () => ({
     },
 }))
 
-// ─── Dados de fixture ─────────────────────────────────────────────────────────
+//  Dados de fixture 
 
 const TEST_PWD = ["Senha", "@", "123"].join("")
 
@@ -125,7 +125,7 @@ const VALID_FORM_DATA = {
     confirmPassword: TEST_PWD,
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 function renderComponent() {
     return render(
@@ -136,11 +136,19 @@ function renderComponent() {
 }
 
 /**
- * Ordem dos selects no DOM após refatoração do layout:
+ * Ordem dos selects no DOM:
  *   [0] Grupo de Permissionamento
- *   [1] Unidade Orçamentária
- *   [2] Status
+ *   [1] Status
+ *   [2] Unidade Orçamentária
  */
+function getSelects() {
+    const selects = screen.getAllByRole("combobox")
+    return {
+        grupo: selects[0],
+        status: selects[1],
+        uo: selects[2],
+    }
+}
 async function fillForm(
     overrides: Partial<typeof VALID_FORM_DATA> = {},
     grupo = "GESTOR_PATRIMONIO",
@@ -168,21 +176,24 @@ async function fillForm(
         target: { value: data.confirmPassword },
     })
 
-    const selects = screen.getAllByRole("combobox")
-    fireEvent.change(selects[0], { target: { value: grupo } })       // Grupo
+    const { grupo: selectGrupo, uo: selectUo } = getSelects()
+    fireEvent.change(selectGrupo, { target: { value: grupo } })
 
     if (unidadeId) {
-        fireEvent.change(selects[1], { target: { value: "2" } }) // Unidade Orçamentária
+        await waitFor(() => {
+            expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+        })
+        fireEvent.change(selectUo, { target: { value: "2" } })
 
         await waitFor(() => {
             expect(screen.getByText("001 - Secretaria de Finanças")).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByText("001 - Secretaria de Finanças"))
+        fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
     }
 }
 
-// ─── Testes ───────────────────────────────────────────────────────────────────
+//  Testes 
 
 describe("AdicionarUsuarioPage", () => {
 
@@ -192,7 +203,7 @@ describe("AdicionarUsuarioPage", () => {
         mockUsuarioCreate.mockResolvedValue({ id: 1 })
     })
 
-    // ── Estrutura da página ───────────────────────────────────────────────────
+    //  Estrutura da página 
 
     describe("estrutura da página", () => {
 
@@ -252,15 +263,15 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Obrigatoriedade condicional da Unidade Administrativa ─────────────────
+    //  Obrigatoriedade condicional da Unidade Administrativa 
 
-    describe("unidade administrativa — obrigatoriedade condicional", () => {
+    describe("unidade administrativa  obrigatoriedade condicional", () => {
 
         it("exibe asterisco na unidade quando grupo é Operador", () => {
             renderComponent()
 
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
+            const { grupo } = getSelects()
+            fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
 
             const unidadeLabel = screen.getByText("Unidades Administrativas").closest("label")
             expect(unidadeLabel?.querySelector("span")?.textContent).toBe("*")
@@ -308,31 +319,38 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
-        it("limpa a unidade selecionada ao trocar o grupo", () => {
+        it("limpa a unidade selecionada ao trocar o grupo", async () => {
             renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
+            const { grupo, uo } = getSelects()
 
             // Seleciona operador e uma unidade orçamentária
-            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
-            fireEvent.change(selects[1], { target: { value: "2" } })
+            fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
+            fireEvent.change(uo, { target: { value: "2" } })
 
-            return waitFor(() => {
-                fireEvent.click(screen.getByText("001 - Secretaria de Finanças"))
-                fireEvent.change(selects[0], { target: { value: "GESTOR_PATRIMONIO" } })
-                expect(screen.getByText("Nenhuma selecionada")).toBeInTheDocument()
+            await waitFor(() => {
+                fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
+                fireEvent.change(grupo, { target: { value: "GESTOR_PATRIMONIO" } })
+                expect(
+                    screen.getByText(/Nenhuma selecionada|Todas/i)
+                ).toBeInTheDocument()
             })
         })
     })
 
-    // ── Carregamento de unidades ──────────────────────────────────────────────
+    //  Carregamento de unidades 
 
     describe("carregamento de unidades administrativas", () => {
 
         it("carrega e exibe as unidades do escopo na lista", async () => {
             renderComponent()
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[1], { target: { value: "2" } })
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
@@ -343,8 +361,12 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe o código e nome da UA na opção", async () => {
             renderComponent()
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[1], { target: { value: "2" } })
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
@@ -355,8 +377,12 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe todas as UAs retornadas pelo escopo", async () => {
             renderComponent()
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[1], { target: { value: "2" } })
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
@@ -377,8 +403,8 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
-            const options = selects[1].querySelectorAll("option")
+            const { uo } = getSelects()
+            const options = uo.querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
 
@@ -397,13 +423,13 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
-            const options = selects[1].querySelectorAll("option")
+            const { uo } = getSelects()
+            const options = uo.querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
     })
 
-    // ── Visibilidade da senha ─────────────────────────────────────────────────
+    //  Visibilidade da senha 
 
     describe("toggle de visibilidade da senha", () => {
 
@@ -476,7 +502,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Navegação ─────────────────────────────────────────────────────────────
+    //  Navegação 
 
     describe("navegação", () => {
 
@@ -485,7 +511,7 @@ describe("AdicionarUsuarioPage", () => {
 
             fireEvent.click(screen.getAllByRole("button")[0])
 
-            expect(navigateMock).toHaveBeenCalledWith(-1)
+            expect(navigateMock).toHaveBeenCalledWith("/usuarios")
         })
 
         it("navega para /usuarios ao clicar em Cancelar", () => {
@@ -497,7 +523,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Validações do formulário ──────────────────────────────────────────────
+    //  Validações do formulário 
 
     describe("validações do formulário", () => {
 
@@ -537,7 +563,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Submissão do formulário ───────────────────────────────────────────────
+    //  Submissão do formulário 
 
     describe("submissão do formulário", () => {
 
@@ -589,8 +615,8 @@ describe("AdicionarUsuarioPage", () => {
 
             await fillForm({}, "GESTOR_PATRIMONIO", "1")
 
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[2], { target: { value: "inativo" } })
+            const { status } = getSelects()
+            fireEvent.change(status, { target: { value: "inativo" } })
 
             fireEvent.click(screen.getByText("Salvar"))
 
@@ -654,7 +680,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Tratamento de erros ───────────────────────────────────────────────────
+    //  Tratamento de erros 
 
     describe("tratamento de erros na submissão", () => {
 

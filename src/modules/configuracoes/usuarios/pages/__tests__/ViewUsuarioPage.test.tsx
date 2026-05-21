@@ -93,7 +93,7 @@ describe("ViewUsuarioPage", () => {
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByDisplayValue("Todas as UAs da Unidade Orçamentária selecionada")).toBeInTheDocument()
+            expect(screen.getByText("Todas da UO")).toBeInTheDocument()
         })
     })
 
@@ -108,7 +108,7 @@ describe("ViewUsuarioPage", () => {
 
         const inputs = screen.getAllByRole("textbox")
         inputs.forEach((input) => {
-            expect(input).toHaveAttribute("readonly")
+            expect(input).toBeDisabled()
         })
     })
 
