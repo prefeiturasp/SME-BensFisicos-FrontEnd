@@ -145,8 +145,8 @@ function getSelects() {
     const selects = screen.getAllByRole("combobox")
     return {
         grupo: selects[0],
-        status: selects[1],
-        uo: selects[2],
+        uo: selects[1],
+        status: selects[2],
     }
 }
 async function fillForm(

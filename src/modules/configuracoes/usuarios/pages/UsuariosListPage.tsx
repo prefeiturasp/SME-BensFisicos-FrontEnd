@@ -34,6 +34,12 @@ const ORDERING_MAP: Record<string, string> = {
   status: "status",
 }
 
+function resolveNextOrdering(prevOrdering: string, backendField: string) {
+  if (prevOrdering === backendField) return `-${backendField}`
+  if (prevOrdering === `-${backendField}`) return ""
+  return backendField
+}
+
 export default function UsuariosListPage() {
   const navigate = useNavigate()
 
@@ -94,11 +100,7 @@ export default function UsuariosListPage() {
   const handleSort = (field: string) => {
     const backendField = ORDERING_MAP[field] ?? field
     setPage(1)
-    setOrdering((prev) => {
-      if (prev === backendField) return `-${backendField}`
-      if (prev === `-${backendField}`) return ""
-      return backendField
-    })
+    setOrdering((prev) => resolveNextOrdering(prev, backendField))
   }
 
   const handleNovoUsuario = () => navigate("/usuarios/novo")

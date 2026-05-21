@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, Eye, EyeOff, Settings } from "lucide-react"
+import { ArrowLeft, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -14,17 +14,9 @@ import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
+import { ACTION_BUTTON_CLASS, INPUT_CLASS, INPUT_TEXT_CLASS, PasswordStatusSection, REQUIRED } from "./usuarioFormShared"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
-
-const INPUT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
-const INPUT_TEXT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
-const ACTION_BUTTON_CLASS = "h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
-const REQUIRED = <span className="text-red-500 ml-1">*</span>
-
-function getSelecionadasEfetivas(selecionadas: EscopoUa[]) {
-  return selecionadas
-}
 
 export default function AdicionarUsuarioPage() {
   const navigate = useNavigate()
@@ -61,17 +53,11 @@ export default function AdicionarUsuarioPage() {
   }, [])
 
   const idsSelecionados = useMemo(() => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)), [unidadesSelecionadas])
+  const uosDisponiveis = useMemo(() => gruposEscopo.filter((g) => g?.uo?.id).map((g) => ({ id: g.uo.id, label: g.uo.label })), [gruposEscopo])
 
-  const uosDisponiveis = useMemo(
-    () =>
-      gruposEscopo
-      .filter((g) => g?.uo?.id)
-      .map((g) => ({
-        id: g.uo.id,
-        label: g.uo.label,
-      })),
-    [gruposEscopo]
-  )
+  const syncFormUnidades = (selecionadas: EscopoUa[]) => {
+    setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
+  }
 
   useEffect(() => {
     if (!uoSelecionadaId) {
@@ -97,30 +83,20 @@ export default function AdicionarUsuarioPage() {
     return unidadesAdministrativas.filter((ua) => `${ua.codigo} ${ua.nome}`.toLowerCase().includes(termo))
   }, [filtroUa, unidadesAdministrativas])
 
-  const syncFormUnidades = (selecionadas: EscopoUa[]) => {
-    setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
-  }
-
   const toggleUa = (ua: EscopoUa) => {
     if (todasUnidades) {
       setTodasUnidades(false)
-      const next = unidadesAdministrativas.filter(
-        (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id
-      )
+      const next = unidadesAdministrativas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
       setUnidadesSelecionadas(next)
       syncFormUnidades(next)
       return
     }
-
     const jaSelecionada = idsSelecionados.has(ua.unidade_administrativa_id)
     const next = jaSelecionada
       ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
       : [...unidadesSelecionadas, ua]
-
-    const selecionouTodasManualmente =
-      unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
+    const selecionouTodasManualmente = unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
     setTodasUnidades(selecionouTodasManualmente)
-
     setUnidadesSelecionadas(next)
     syncFormUnidades(next)
   }
@@ -129,13 +105,12 @@ export default function AdicionarUsuarioPage() {
     try {
       setLoading(true)
       setErrorMessage(null)
-      const selecionadasEfetivas = getSelecionadasEfetivas(unidadesSelecionadas)
-      const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadasEfetivas.length === 0)
-      const unidadeAdministrativa = semSelecaoGestor ? null : (selecionadasEfetivas[0]?.unidade_administrativa_id ?? null)
+      const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || unidadesSelecionadas.length === 0)
+      const unidadeAdministrativa = semSelecaoGestor ? null : (unidadesSelecionadas[0]?.unidade_administrativa_id ?? null)
       const unidadeOrcamentaria = semSelecaoGestor
         ? (uoSelecionadaId ?? gestorUoId)
-        : (selecionadasEfetivas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId)
-      const unidadesAdministrativasIds = semSelecaoGestor ? [] : selecionadasEfetivas.map((ua) => ua.unidade_administrativa_id)
+        : (unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId)
+      const unidadesAdministrativasIds = semSelecaoGestor ? [] : unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
 
       await usuarioService.create({
         username: data.username,
@@ -155,15 +130,8 @@ export default function AdicionarUsuarioPage() {
       const apiErrors = error?.response?.data
       if (apiErrors && typeof apiErrors === "object") {
         const fieldMap: Record<string, keyof FormData> = {
-          rf: "rf",
-          email: "email",
-          username: "username",
-          nome: "nome",
-          group_name: "grupo",
-          password: "password",
-          password_confirm: "confirmPassword",
-          unidades_administrativas: "unidade",
-          unidade_administrativa: "unidade",
+          rf: "rf", email: "email", username: "username", nome: "nome", group_name: "grupo",
+          password: "password", password_confirm: "confirmPassword", unidades_administrativas: "unidade", unidade_administrativa: "unidade",
         }
         let hasFieldError = false
         Object.entries(fieldMap).forEach(([apiField, formField]) => {
@@ -194,56 +162,56 @@ export default function AdicionarUsuarioPage() {
           <Button onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>Cancelar</Button>
         </div>
       </div>
-
       {errorMessage && <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">{errorMessage}</div>}
-
       <Card className="p-6 space-y-6">
         <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome Completo{REQUIRED}</span><input type="text" placeholder="Digite o nome completo" className={INPUT_TEXT_CLASS} {...register("nome")} />{errors.nome && <span className="text-red-600 text-sm">{errors.nome.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">RF{REQUIRED}</span><input type="text" placeholder="Digite o rf" className={INPUT_TEXT_CLASS} {...register("rf")} />{errors.rf && <span className="text-red-600 text-sm">{errors.rf.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome de Usuário de Acesso</span><input type="text" placeholder="Digite o nome de usuário de acesso" className={INPUT_TEXT_CLASS} {...register("username")} />{errors.username && <span className="text-red-600 text-sm">{errors.username.message}</span>}</div>
-
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuário{REQUIRED}</span><input type="email" placeholder="Digite o e-mail" className={INPUT_TEXT_CLASS} {...register("email")} />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]); if (value !== "GESTOR_PATRIMONIO") setTodasUnidades(false) }}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione os grupos" /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select>{errors.grupo && <span className="text-red-600 text-sm">{errors.grupo.message}</span>}</div>
-          <div className="flex flex-col gap-2"><label htmlFor="status" className="text-sm font-semibold text-gray-700">Status{REQUIRED}</label><Select defaultValue="ativo" onValueChange={(value) => setValue("status", value)}><SelectTrigger id="status" className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
           <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
-
           <div>
             <UnidadesAdministrativasSelector
-            unidadesListadas={unidadesListadas}
-            isSelecionada={(uaId) => idsSelecionados.has(uaId)}
-            todasUnidades={todasUnidades}
-            filtroUa={filtroUa}
-            inputClassName={INPUT_TEXT_CLASS}
-            requiredNode={unidadeObrigatoria ? REQUIRED : undefined}
-            errorMessage={errors.unidade?.message}
-            disabled={!uoSelecionadaId}
-            onFiltroChange={setFiltroUa}
-            onToggleTodasUnidades={() => {
-              setTodasUnidades((prev) => {
-                const next = !prev
-                if (next) {
-                  setUnidadesSelecionadas([])
-                  syncFormUnidades([])
-                  setFiltroUa("")
-                }
-                return next
-              })
-            }}
-            onToggleUa={toggleUa}
-          />
+              unidadesListadas={unidadesListadas}
+              isSelecionada={(uaId) => idsSelecionados.has(uaId)}
+              todasUnidades={todasUnidades}
+              filtroUa={filtroUa}
+              inputClassName={INPUT_TEXT_CLASS}
+              requiredNode={unidadeObrigatoria ? REQUIRED : undefined}
+              errorMessage={errors.unidade?.message}
+              disabled={!uoSelecionadaId}
+              onFiltroChange={setFiltroUa}
+              onToggleTodasUnidades={() => {
+                setTodasUnidades((prev) => {
+                  const next = !prev
+                  if (next) {
+                    setUnidadesSelecionadas([])
+                    syncFormUnidades([])
+                    setFiltroUa("")
+                  }
+                  return next
+                })
+              }}
+              onToggleUa={toggleUa}
+            />
           </div>
         </form>
-        <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="flex flex-col gap-2"><label htmlFor="password" className="text-sm font-semibold text-gray-700">Cadastre uma Senha</label><div className="relative"><input id="password" type={showPassword ? "text" : "password"} placeholder="Cadastre uma senha" className={INPUT_TEXT_CLASS} {...register("password")} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-gray-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.password && <span className="text-red-600 text-sm">{errors.password.message}</span>}</div>
-          <div className="flex flex-col gap-2"><label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirme a Senha</label><div className="relative"><input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} placeholder="Confirme a senha" className={INPUT_TEXT_CLASS} {...register("confirmPassword")} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-3 text-gray-500">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{errors.confirmPassword && <span className="text-red-600 text-sm">{errors.confirmPassword.message}</span>}</div>
-        </div>
+        <PasswordStatusSection
+          senhaId="password"
+          confirmarSenhaId="confirmPassword"
+          senhaField={register("password")}
+          confirmarSenhaField={register("confirmPassword")}
+          showSenha={showPassword}
+          showConfirmarSenha={showConfirmPassword}
+          onToggleSenha={() => setShowPassword((v) => !v)}
+          onToggleConfirmarSenha={() => setShowConfirmPassword((v) => !v)}
+          senhaError={errors.password?.message}
+          confirmarSenhaError={errors.confirmPassword?.message}
+          statusValue={watch("status")}
+          onStatusChange={(value) => setValue("status", value)}
+        />
       </Card>
     </div>
   )
 }
-
-
-
-
-
