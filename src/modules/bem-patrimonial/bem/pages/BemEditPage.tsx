@@ -44,11 +44,9 @@ export default function BemEditPage() {
 
   const [originalNome, setOriginalNome] = useState('')
   const [originalNumeroPatrimonial, setOriginalNumeroPatrimonial] = useState('')
-  const [justificativa, setJustificativa] = useState('')
-  const [justificativaError, setJustificativaError] = useState('')
 
   const form = useForm<Bem>({
-    defaultValues: {} as Bem,
+    defaultValues: { justificativa: '' } as Bem,
   })
 
   const status = form.watch('status')
@@ -56,6 +54,7 @@ export default function BemEditPage() {
   const formatoAntigo = form.watch('numero_formato_antigo')
   const semNumeracao = form.watch('sem_numeracao')
   const nomeAtual = form.watch('nome')
+  const justificativa = (form.watch('justificativa' as any) as string) ?? ''
 
   const numeroHook = useNumeroPatrimonial({
     valor: numeroPatrimonial ?? '',
@@ -65,8 +64,7 @@ export default function BemEditPage() {
 
   const nomeAlterado = !!originalNome && nomeAtual !== originalNome
   const numeroAlterado =
-    !!originalNumeroPatrimonial &&
-    (numeroPatrimonial ?? '') !== originalNumeroPatrimonial
+    (numeroPatrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
 
   const justificativaHabilitada = nomeAlterado || numeroAlterado
   const justificativaObrigatoria = justificativaHabilitada
@@ -77,7 +75,7 @@ export default function BemEditPage() {
         const data = await bemService.retrieve(Number(id))
 
         setBem(data)
-        form.reset(data)
+        form.reset({ ...data, justificativa: '' })
         setOriginalNome(data.nome ?? '')
         setOriginalNumeroPatrimonial(data.numero_patrimonial ?? '')
       } catch {
@@ -107,7 +105,7 @@ export default function BemEditPage() {
 
   const onSubmit = async (values: Bem) => {
     const houveAlteracaoNumero =
-      (values.numero_patrimonial ?? '') !== originalNumeroPatrimonial
+      (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
 
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
       form.setError('numero_patrimonial' as any, {
@@ -130,9 +128,10 @@ export default function BemEditPage() {
       justificativaObrigatoria && !houveAlteracaoNumero && !justificativa.trim()
 
     if (deveBloquearPorJustificativaNoFrontend) {
-      setJustificativaError(
-        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
-      )
+      form.setError('justificativa' as any, {
+        message:
+          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+      })
 
       return
     }
@@ -359,35 +358,38 @@ export default function BemEditPage() {
               )}
             />
 
-            <div className="space-y-1">
-              <label
-                htmlFor="justificativa"
-                className="text-sm font-semibold text-gray-700"
-              >
-                JUSTIFICATIVA
-                {justificativaObrigatoria && (
-                  <span className="text-red-500"> *</span>
-                )}
-              </label>
-              <textarea
-                id="justificativa"
-                disabled={!podeEditar || !justificativaHabilitada}
-                placeholder={
-                  justificativaHabilitada
-                    ? 'Justificativa para a alteração'
-                    : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
-                }
-                value={justificativa}
-                onChange={(e) => {
-                  setJustificativa(e.target.value)
-                  if (e.target.value.trim()) setJustificativaError('')
-                }}
-                className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {justificativaError && (
-                <p className="text-xs text-red-500">{justificativaError}</p>
+            {/* JUSTIFICATIVA */}
+            <FormField
+              control={form.control}
+              name={'justificativa' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    JUSTIFICATIVA
+                    {justificativaObrigatoria && (
+                      <span className="text-red-500"> *</span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      disabled={!podeEditar || !justificativaHabilitada}
+                      placeholder={
+                        justificativaHabilitada
+                          ? 'Justificativa para a alteração'
+                          : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
+                      }
+                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
+                        form.formState.errors['justificativa' as any]
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
+            />
 
             {podeEditar && (
               <div className="flex justify-end pt-6 border-t">
