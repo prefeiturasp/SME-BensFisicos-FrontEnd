@@ -16,15 +16,12 @@ import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/a
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 import {
   ACTION_BUTTON_CLASS,
-  API_FIELD_PASSWORD,
-  API_FIELD_PASSWORD_CONFIRM,
-  API_FIELD_UNIDADE_ADMINISTRATIVA,
-  API_FIELD_UNIDADES_ADMINISTRATIVAS,
   INPUT_CLASS,
   INPUT_TEXT_CLASS,
   PasswordStatusSection,
   REQUIRED,
   applyApiFieldErrors,
+  buildFieldMap,
 } from "./usuarioFormShared"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
@@ -118,16 +115,13 @@ export default function AdicionarUsuarioPage() {
       setErrorMessage(null)
       const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || unidadesSelecionadas.length === 0)
 
-      let unidadeAdministrativa: number | null = null
       let unidadeOrcamentaria: number | null = null
       let unidadesAdministrativasIds: number[] = []
+      const unidadeAdministrativaPadrao = unidadesSelecionadas[0]?.unidade_administrativa_id ?? null
 
       if (semSelecaoGestor) {
-        unidadeAdministrativa = null
         unidadeOrcamentaria = uoSelecionadaId ?? gestorUoId ?? null
-        unidadesAdministrativasIds = []
       } else {
-        unidadeAdministrativa = unidadesSelecionadas[0]?.unidade_administrativa_id ?? null
         unidadeOrcamentaria = unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId ?? null
         unidadesAdministrativasIds = unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
       }
@@ -137,7 +131,7 @@ export default function AdicionarUsuarioPage() {
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        unidade_administrativa: unidadeAdministrativa,
+        unidade_administrativa: semSelecaoGestor ? null : unidadeAdministrativaPadrao,
         unidade_orcamentaria: unidadeOrcamentaria,
         unidades_administrativas: unidadesAdministrativasIds,
         group_name: data.grupo,
@@ -149,13 +143,7 @@ export default function AdicionarUsuarioPage() {
     } catch (error: any) {
       const apiErrors = error?.response?.data
       if (apiErrors && typeof apiErrors === "object") {
-        const fieldMap: Record<string, keyof FormData> = {
-          rf: "rf", email: "email", username: "username", nome: "nome", group_name: "grupo",
-          [API_FIELD_PASSWORD]: "password",
-          [API_FIELD_PASSWORD_CONFIRM]: "confirmPassword",
-          [API_FIELD_UNIDADES_ADMINISTRATIVAS]: "unidade",
-          [API_FIELD_UNIDADE_ADMINISTRATIVA]: "unidade",
-        }
+        const fieldMap = buildFieldMap<FormData>("password", "confirmPassword", "unidade")
         const hasFieldError = applyApiFieldErrors<FormData>(apiErrors, fieldMap, setError)
         setErrorMessage(hasFieldError ? "Corrija os campos destacados." : "Erro de validação ao criar usuário")
       } else {

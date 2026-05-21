@@ -17,13 +17,12 @@ import {
   ACTION_BUTTON_CLASS,
   API_FIELD_PASSWORD,
   API_FIELD_PASSWORD_CONFIRM,
-  API_FIELD_UNIDADE_ADMINISTRATIVA,
-  API_FIELD_UNIDADES_ADMINISTRATIVAS,
   INPUT_CLASS,
   INPUT_TEXT_CLASS,
   PasswordStatusSection,
   REQUIRED,
   applyApiFieldErrors,
+  buildFieldMap,
 } from "./usuarioFormShared"
 
 interface ValoresOriginais {
@@ -214,16 +213,7 @@ export default function EditarUsuarioPage() {
     } catch (error: any) {
       const apiErrors = error?.response?.data
       if (apiErrors && typeof apiErrors === "object") {
-        const fieldMap: Record<string, keyof EditarUsuarioFormData> = {
-          rf: "rf",
-          email: "email",
-          nome: "nome",
-          group_name: "grupo",
-          [API_FIELD_PASSWORD]: "senha",
-          [API_FIELD_PASSWORD_CONFIRM]: "confirmarSenha",
-          [API_FIELD_UNIDADES_ADMINISTRATIVAS]: "unidade",
-          [API_FIELD_UNIDADE_ADMINISTRATIVA]: "unidade",
-        }
+        const fieldMap = buildFieldMap<EditarUsuarioFormData>("senha", "confirmarSenha", "unidade")
         const hasFieldError = applyApiFieldErrors<EditarUsuarioFormData>(apiErrors, fieldMap, setError)
         if (typeof apiErrors.detail === "string") setErrorMessage(apiErrors.detail)
         else setErrorMessage(hasFieldError ? "Corrija os campos destacados." : "Erro de validação ao salvar usuário.")

@@ -14,6 +14,24 @@ export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
 
+export function buildFieldMap<T extends Record<string, unknown>>(
+  passwordField: keyof T,
+  passwordConfirmField: keyof T,
+  unidadeField: keyof T
+): Record<string, keyof T> {
+  return {
+    rf: "rf" as keyof T,
+    email: "email" as keyof T,
+    username: "username" as keyof T,
+    nome: "nome" as keyof T,
+    group_name: "grupo" as keyof T,
+    [API_FIELD_PASSWORD]: passwordField,
+    [API_FIELD_PASSWORD_CONFIRM]: passwordConfirmField,
+    [API_FIELD_UNIDADES_ADMINISTRATIVAS]: unidadeField,
+    [API_FIELD_UNIDADE_ADMINISTRATIVA]: unidadeField,
+  }
+}
+
 export function applyApiFieldErrors<T extends Record<string, unknown>>(
   apiErrors: Record<string, unknown>,
   fieldMap: Partial<Record<string, keyof T>>,
