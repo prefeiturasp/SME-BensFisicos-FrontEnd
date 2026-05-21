@@ -14,7 +14,18 @@ import { adicionarUsuarioSchema } from "../validators/adicionarUsuario"
 import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
-import { ACTION_BUTTON_CLASS, INPUT_CLASS, INPUT_TEXT_CLASS, PasswordStatusSection, REQUIRED } from "./usuarioFormShared"
+import {
+  ACTION_BUTTON_CLASS,
+  API_FIELD_PASSWORD,
+  API_FIELD_PASSWORD_CONFIRM,
+  API_FIELD_UNIDADE_ADMINISTRATIVA,
+  API_FIELD_UNIDADES_ADMINISTRATIVAS,
+  INPUT_CLASS,
+  INPUT_TEXT_CLASS,
+  PasswordStatusSection,
+  REQUIRED,
+  applyApiFieldErrors,
+} from "./usuarioFormShared"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
 
@@ -106,11 +117,20 @@ export default function AdicionarUsuarioPage() {
       setLoading(true)
       setErrorMessage(null)
       const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || unidadesSelecionadas.length === 0)
-      const unidadeAdministrativa = semSelecaoGestor ? null : (unidadesSelecionadas[0]?.unidade_administrativa_id ?? null)
-      const unidadeOrcamentaria = semSelecaoGestor
-        ? (uoSelecionadaId ?? gestorUoId)
-        : (unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId)
-      const unidadesAdministrativasIds = semSelecaoGestor ? [] : unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
+
+      let unidadeAdministrativa: number | null = null
+      let unidadeOrcamentaria: number | null = null
+      let unidadesAdministrativasIds: number[] = []
+
+      if (semSelecaoGestor) {
+        unidadeAdministrativa = null
+        unidadeOrcamentaria = uoSelecionadaId ?? gestorUoId ?? null
+        unidadesAdministrativasIds = []
+      } else {
+        unidadeAdministrativa = unidadesSelecionadas[0]?.unidade_administrativa_id ?? null
+        unidadeOrcamentaria = unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId ?? null
+        unidadesAdministrativasIds = unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
+      }
 
       await usuarioService.create({
         username: data.username,
@@ -122,7 +142,7 @@ export default function AdicionarUsuarioPage() {
         unidades_administrativas: unidadesAdministrativasIds,
         group_name: data.grupo,
         password: data.password,
-        password_confirm: data.confirmPassword,
+        [API_FIELD_PASSWORD_CONFIRM]: data.confirmPassword,
         is_active: data.status === "ativo",
       })
       navigate("/usuarios")
@@ -131,17 +151,12 @@ export default function AdicionarUsuarioPage() {
       if (apiErrors && typeof apiErrors === "object") {
         const fieldMap: Record<string, keyof FormData> = {
           rf: "rf", email: "email", username: "username", nome: "nome", group_name: "grupo",
-          password: "password", password_confirm: "confirmPassword", unidades_administrativas: "unidade", unidade_administrativa: "unidade",
+          [API_FIELD_PASSWORD]: "password",
+          [API_FIELD_PASSWORD_CONFIRM]: "confirmPassword",
+          [API_FIELD_UNIDADES_ADMINISTRATIVAS]: "unidade",
+          [API_FIELD_UNIDADE_ADMINISTRATIVA]: "unidade",
         }
-        let hasFieldError = false
-        Object.entries(fieldMap).forEach(([apiField, formField]) => {
-          const value = apiErrors[apiField]
-          if (value) {
-            hasFieldError = true
-            const msg = Array.isArray(value) ? String(value[0]) : String(value)
-            setError(formField, { type: "server", message: msg })
-          }
-        })
+        const hasFieldError = applyApiFieldErrors<FormData>(apiErrors, fieldMap, setError)
         setErrorMessage(hasFieldError ? "Corrija os campos destacados." : "Erro de validação ao criar usuário")
       } else {
         setErrorMessage(error.message ?? "Erro ao criar usuário")

@@ -9,6 +9,27 @@ export const INPUT_TEXT_CLASS =
 export const ACTION_BUTTON_CLASS =
   "h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
 export const REQUIRED = <span className="text-red-500 ml-1">*</span>
+export const API_FIELD_PASSWORD = "password"
+export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
+export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
+export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
+
+export function applyApiFieldErrors<T extends Record<string, unknown>>(
+  apiErrors: Record<string, unknown>,
+  fieldMap: Partial<Record<string, keyof T>>,
+  setError: (name: keyof T, error: { type: string; message: string }) => void
+) {
+  let hasFieldError = false
+  Object.entries(fieldMap).forEach(([apiField, formField]) => {
+    if (!formField) return
+    const value = apiErrors[apiField]
+    if (!value) return
+    hasFieldError = true
+    const msg = Array.isArray(value) ? String(value[0]) : String(value)
+    setError(formField, { type: "server", message: msg })
+  })
+  return hasFieldError
+}
 
 type PasswordStatusSectionProps = {
   senhaId: string

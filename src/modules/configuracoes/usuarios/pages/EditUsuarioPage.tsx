@@ -13,7 +13,18 @@ import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 import { type EditarUsuarioFormData, editarUsuarioSchema } from "../validators/editarUsuario"
-import { ACTION_BUTTON_CLASS, INPUT_CLASS, INPUT_TEXT_CLASS, PasswordStatusSection, REQUIRED } from "./usuarioFormShared"
+import {
+  ACTION_BUTTON_CLASS,
+  API_FIELD_PASSWORD,
+  API_FIELD_PASSWORD_CONFIRM,
+  API_FIELD_UNIDADE_ADMINISTRATIVA,
+  API_FIELD_UNIDADES_ADMINISTRATIVAS,
+  INPUT_CLASS,
+  INPUT_TEXT_CLASS,
+  PasswordStatusSection,
+  REQUIRED,
+  applyApiFieldErrors,
+} from "./usuarioFormShared"
 
 interface ValoresOriginais {
   nome: string
@@ -53,16 +64,20 @@ function mountPayload(
   const idsOriginais = [...(valoresOriginais?.unidadeIds ?? [])].sort((a, b) => a - b)
   const houveMudancaUo = (uoSelecionadaId ?? null) !== (valoresOriginais?.unidadeOrcamentariaId ?? null)
   if (JSON.stringify(idsAtuais) !== JSON.stringify(idsOriginais) || houveMudancaUo) {
-    payload.unidades_administrativas = semSelecaoGestor ? [] : idsAtuais
-    payload.unidade_administrativa = semSelecaoGestor ? null : (idsAtuais[0] ?? null)
-    payload.unidade_orcamentaria = semSelecaoGestor
-      ? (uoSelecionadaId ?? null)
-      : (selecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null)
+    if (semSelecaoGestor) {
+      payload.unidades_administrativas = []
+      payload.unidade_administrativa = null
+      payload.unidade_orcamentaria = uoSelecionadaId ?? null
+    } else {
+      payload.unidades_administrativas = idsAtuais
+      payload.unidade_administrativa = idsAtuais[0] ?? null
+      payload.unidade_orcamentaria = selecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null
+    }
   }
 
   if (data.senha) {
-    payload.password = data.senha
-    payload.password_confirm = data.confirmarSenha
+    payload[API_FIELD_PASSWORD] = data.senha
+    payload[API_FIELD_PASSWORD_CONFIRM] = data.confirmarSenha
   }
 
   return payload
@@ -200,18 +215,16 @@ export default function EditarUsuarioPage() {
       const apiErrors = error?.response?.data
       if (apiErrors && typeof apiErrors === "object") {
         const fieldMap: Record<string, keyof EditarUsuarioFormData> = {
-          rf: "rf", email: "email", nome: "nome", group_name: "grupo", password: "senha",
-          password_confirm: "confirmarSenha", unidades_administrativas: "unidade", unidade_administrativa: "unidade",
+          rf: "rf",
+          email: "email",
+          nome: "nome",
+          group_name: "grupo",
+          [API_FIELD_PASSWORD]: "senha",
+          [API_FIELD_PASSWORD_CONFIRM]: "confirmarSenha",
+          [API_FIELD_UNIDADES_ADMINISTRATIVAS]: "unidade",
+          [API_FIELD_UNIDADE_ADMINISTRATIVA]: "unidade",
         }
-        let hasFieldError = false
-        Object.entries(fieldMap).forEach(([apiField, formField]) => {
-          const value = apiErrors[apiField]
-          if (value) {
-            hasFieldError = true
-            const msg = Array.isArray(value) ? String(value[0]) : String(value)
-            setError(formField, { type: "server", message: msg })
-          }
-        })
+        const hasFieldError = applyApiFieldErrors<EditarUsuarioFormData>(apiErrors, fieldMap, setError)
         if (typeof apiErrors.detail === "string") setErrorMessage(apiErrors.detail)
         else setErrorMessage(hasFieldError ? "Corrija os campos destacados." : "Erro de validação ao salvar usuário.")
       } else {
