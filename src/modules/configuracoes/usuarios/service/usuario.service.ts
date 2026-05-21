@@ -14,6 +14,7 @@ export interface Usuario {
     status: string
     status_display: string
     rf: string
+    unidade_orcamentaria?: number | null
     unidades_administrativas?: number[]
 }
 
