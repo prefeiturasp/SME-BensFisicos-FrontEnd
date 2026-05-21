@@ -649,7 +649,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Salvando...")).toBeInTheDocument()
+                expect(screen.getByRole("button", { name: /salvando/i })).toBeInTheDocument()
             })
         })
 
@@ -663,7 +663,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Salvando...")).toBeDisabled()
+                expect(screen.getByRole("button", { name: /salvando/i })).toBeDisabled()
             })
         })
 
@@ -764,7 +764,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Falha")).toBeInTheDocument()
+                expect(screen.getByText(/Falha/i)).toBeInTheDocument()
             })
 
             expect(navigateMock).not.toHaveBeenCalledWith("/usuarios")

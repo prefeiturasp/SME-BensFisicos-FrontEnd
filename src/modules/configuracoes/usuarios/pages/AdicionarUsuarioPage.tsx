@@ -15,6 +15,7 @@ import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 import {
+  API_FIELD_PASSWORD_CONFIRM,
   ACTION_BUTTON_CLASS,
   INPUT_CLASS,
   INPUT_TEXT_CLASS,
