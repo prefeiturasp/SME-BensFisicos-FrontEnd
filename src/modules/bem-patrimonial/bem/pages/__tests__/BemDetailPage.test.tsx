@@ -45,6 +45,7 @@ const bemMock = {
   status_display: 'Ativo',
   unidade_administrativa_codigo: '001',
   unidade_administrativa_nome: 'Escola Central',
+  unidade_orcamentaria_nome: 'UO Central',
   criado_por_nome: 'Admin',
   criado_em: '2024-01-01',
 }
@@ -93,7 +94,10 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
     })
 
     renderPage()
@@ -116,7 +120,10 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
     })
 
     renderPage()
@@ -138,9 +145,7 @@ describe('BemDetailPage', () => {
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-      screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
   })
 
   it('deve abrir modal de histórico ao clicar no botão', async () => {
@@ -203,16 +208,14 @@ describe('BemDetailPage', () => {
         } as any)
 
     ;(useAuth as any).mockReturnValue({
-        user: { is_gestor_patrimonio: true },
+        user: { is_gestor_patrimonio: true, ua_ativa: { codigo: '001' } },
     })
 
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-        screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
    })
 
 
@@ -228,9 +231,7 @@ describe('BemDetailPage', () => {
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-        screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
    })
    
    it('deve navegar para edição ao clicar em Editar', async () => {
@@ -238,7 +239,10 @@ describe('BemDetailPage', () => {
             .mockResolvedValue(bemMock as any)
 
         ;(useAuth as any).mockReturnValue({
-            user: { is_gestor_patrimonio: true },
+            user: {
+              is_gestor_patrimonio: true,
+              ua_ativa: { codigo: '001' },
+            },
         })
 
         renderPage()

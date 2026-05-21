@@ -38,6 +38,7 @@ const ORDERING_MAP: Record<string, string> = {
 export default function BensListPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const persistKey = `bens-list:${user?.id ?? 'anon'}`
 
   const {
     bens,
@@ -60,7 +61,7 @@ export default function BensListPage() {
     setOrdering,
     toggleSelect,
     atualizarStatusSelecionados,
-  } = useBensList({ pageSize: PAGE_SIZE })
+  } = useBensList({ pageSize: PAGE_SIZE, persistKey })
 
   const { pages, totalPages } = usePagination({
     page,

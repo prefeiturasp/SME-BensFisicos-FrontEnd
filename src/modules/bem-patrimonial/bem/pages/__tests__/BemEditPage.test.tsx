@@ -91,7 +91,11 @@ describe('BemEditPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        uo_ativa: { nome: 'Financeiro' },
+      },
     })
 
     renderPage()
@@ -117,7 +121,11 @@ describe('BemEditPage', () => {
       .mockResolvedValue({ ...bemMock })
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        uo_ativa: { nome: 'Financeiro' },
+      },
     })
 
     renderPage()
@@ -148,7 +156,11 @@ describe('BemEditPage', () => {
       .mockRejectedValue(new Error('Erro customizado'))
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        uo_ativa: { nome: 'Financeiro' },
+      },
     })
 
     renderPage()
@@ -174,7 +186,11 @@ describe('BemEditPage', () => {
       })
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        uo_ativa: { nome: 'Financeiro' },
+      },
     })
 
     renderPage()

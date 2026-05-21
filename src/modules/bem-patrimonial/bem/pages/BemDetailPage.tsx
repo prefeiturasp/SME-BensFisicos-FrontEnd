@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Loader2, ArrowLeft, Network, Pencil} from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService, type Bem } from '../services/bem.service'
@@ -58,9 +59,21 @@ export default function BemDetailPage() {
 
   if (!bem) return null
 
+  const bemDaUaAtiva =
+    !!user?.ua_ativa?.codigo && user.ua_ativa.codigo === bem.unidade_administrativa_codigo
+  const bemDaUoAtiva =
+    !!user?.uo_ativa?.nome && user.uo_ativa.nome === bem.unidade_orcamentaria_nome
+  const podeEditarEscopo = bemDaUaAtiva || (!user?.ua_ativa && bemDaUoAtiva)
+
   const podeEditar =
-    user?.is_gestor_patrimonio &&
-    bem.status !== 'baixa_fisica'
+    !!user?.is_gestor_patrimonio &&
+    bem.status !== 'baixa_fisica' &&
+    podeEditarEscopo
+  const motivoBloqueioEdicao = !user?.is_gestor_patrimonio
+    ? 'Somente Gestor de Patrimônio pode editar este bem.'
+    : bem.status === 'baixa_fisica'
+      ? 'Este bem não pode ser editado por estar com status de baixa física.'
+      : 'Edição bloqueada: você não pertence à Unidade Orçamentária deste bem.'
 
   return (
   <div className="p-8 space-y-6">
@@ -79,16 +92,26 @@ export default function BemDetailPage() {
       </h1>
 
       <div className="flex gap-3">
-        {podeEditar && (
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/bens-patrimoniais/${bem.id}/editar`)}
-            className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6`}
-          >
-            <Pencil size={16} />
-            Editar
-          </Button>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                disabled={!podeEditar}
+                onClick={() => navigate(`/bens-patrimoniais/${bem.id}/editar`)}
+                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Pencil size={16} />
+                Editar
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!podeEditar && (
+            <TooltipContent side="bottom" sideOffset={6}>
+              {motivoBloqueioEdicao}
+            </TooltipContent>
+          )}
+        </Tooltip>
 
         <Button
           variant="outline"

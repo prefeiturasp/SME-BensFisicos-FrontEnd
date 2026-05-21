@@ -61,7 +61,26 @@ export default function BemEditPage() {
     }
 
     fetchBem()
-  }, [id])
+  }, [id, form, navigate])
+
+  const isGestor = user?.is_gestor_patrimonio
+  const isBaixaFisica = status === 'baixa_fisica'
+  const bemDaUaAtiva =
+    !!user?.ua_ativa?.codigo &&
+    !!bem?.unidade_administrativa_codigo &&
+    user.ua_ativa.codigo === bem.unidade_administrativa_codigo
+  const bemDaUoAtiva =
+    !!user?.uo_ativa?.nome &&
+    !!bem?.unidade_orcamentaria_nome &&
+    user?.uo_ativa?.nome === bem.unidade_orcamentaria_nome
+  const podeEditarEscopo = bemDaUaAtiva || (!user?.ua_ativa && bemDaUoAtiva)
+  const podeEditar = !!isGestor && !isBaixaFisica && podeEditarEscopo
+
+  useEffect(() => {
+    if (!loading && bem && !podeEditar) {
+      navigate(`/bens-patrimoniais/${bem.id}`, { replace: true })
+    }
+  }, [loading, bem, podeEditar, navigate])
 
   if (loading) {
     return (
@@ -72,10 +91,6 @@ export default function BemEditPage() {
   }
 
   if (!bem) return null
-
-  const isGestor = user?.is_gestor_patrimonio
-  const isBaixaFisica = status === 'baixa_fisica'
-  const podeEditar = isGestor && !isBaixaFisica
 
   const onSubmit = async (values: Bem) => {
     try {
