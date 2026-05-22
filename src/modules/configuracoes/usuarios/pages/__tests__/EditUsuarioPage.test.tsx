@@ -332,4 +332,43 @@ describe("EditarUsuarioPage", () => {
 
         expect(screen.getByText("Lista de Usuários")).toBeInTheDocument()
     })
+
+    it("exibe o username como campo desabilitado", async () => {
+        renderPage()
+        await aguardarCarregamento()
+
+        expect(screen.getByDisplayValue("joao.silva")).toBeInTheDocument()
+        // O campo de username deve existir e estar desabilitado
+        const usernameInput = screen.getByDisplayValue("joao.silva") as HTMLInputElement
+        expect(usernameInput).toBeDisabled()
+    })
+
+    it("exibe mensagem de erro 'Corrija os campos destacados.' quando API retorna erros de campo", async () => {
+        vi.mocked(usuarioService.partialUpdate).mockRejectedValue({ response: { data: { nome: ["Campo obrigatório"] } } })
+
+        renderPage()
+        await aguardarCarregamento()
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("button", { name: /salvar/i }))
+
+        await waitFor(() => {
+            expect(screen.getByText("Corrija os campos destacados.")).toBeInTheDocument()
+        })
+    })
+
+    it("exige unidade administrativa quando o grupo for OPERADOR_INVENTARIO", async () => {
+        // Mocka retorno do usuário com grupo OPERADOR_INVENTARIO e sem unidades selecionadas
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({ ...usuarioMock, grupo_nome: "OPERADOR_INVENTARIO", unidades_administrativas: [] })
+
+        renderPage()
+        await aguardarCarregamento()
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("button", { name: /salvar/i }))
+
+        await waitFor(() => {
+            expect(screen.getByText("Unidade Administrativa é obrigatória para Operador")).toBeInTheDocument()
+        })
+    })
 })

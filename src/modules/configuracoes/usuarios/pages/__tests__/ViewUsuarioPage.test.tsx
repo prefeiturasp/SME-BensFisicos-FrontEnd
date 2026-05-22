@@ -97,6 +97,57 @@ describe("ViewUsuarioPage", () => {
         })
     })
 
+    it("exibe labels de UAs a partir do escopo quando usuário tem unidades administrativas", async () => {
+        vi.mocked(authService.getCurrentUser).mockResolvedValue({
+            data: {
+                opcoes_escopo: {
+                    grupos: [
+                        {
+                            uo: { id: 2, label: "02.17.20 - UO Teste" },
+                            uas: [
+                                {
+                                    unidade_administrativa_id: 1,
+                                    codigo: "001",
+                                    nome: "Secretaria Teste",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        } as any)
+
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidades_administrativas: [1],
+            unidade_orcamentaria: 2,
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("001 - Secretaria Teste")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe unidade administrativa via unidade_codigo/unidade_nome quando não há UAs selecionadas", async () => {
+        vi.mocked(authService.getCurrentUser).mockRejectedValue(new Error("Falha no auth"))
+
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidades_administrativas: [],
+            unidade_codigo: "UA999",
+            unidade_nome: "Unidade Fallback",
+            grupo_nome: "OPERADOR_INVENTARIO",
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("UA999 - Unidade Fallback")).toBeInTheDocument()
+        })
+    })
+
     it("todos os campos estão como somente leitura", async () => {
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
 
