@@ -1,28 +1,27 @@
 import { ArrowLeft, Settings } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 
 import { usuarioService } from "../service/usuario.service"
 import { authService, type EscopoGrupo, type EscopoUa } from "../../../../auth/auth.service"
-import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 import { type EditarUsuarioFormData, editarUsuarioSchema } from "../validators/editarUsuario"
 import {
   ACTION_BUTTON_CLASS,
   API_FIELD_PASSWORD,
   API_FIELD_PASSWORD_CONFIRM,
-  INPUT_CLASS,
-  INPUT_TEXT_CLASS,
   PasswordStatusSection,
-  REQUIRED,
+  UserTopSection,
+  buildToggleTodasHandler,
   applyApiFieldErrors,
   buildFieldMap,
+  filterUnidadesListadas,
+  getUosDisponiveis,
 } from "./usuarioFormShared"
 
 interface ValoresOriginais {
@@ -100,7 +99,7 @@ export default function EditarUsuarioPage() {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false)
 
   const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<EditarUsuarioFormData>({
-    resolver: zodResolver(editarUsuarioSchema),
+    resolver: zodResolver(editarUsuarioSchema) as Resolver<EditarUsuarioFormData>,
     defaultValues: { nome: "", rf: "", email: "", unidade: [], grupo: "", status: "ativo", senha: "", confirmarSenha: "" },
   })
 
@@ -109,12 +108,11 @@ export default function EditarUsuarioPage() {
   const unidadeObrigatoria = grupoSelecionado === "OPERADOR_INVENTARIO"
 
   const idsSelecionados = useMemo(() => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)), [unidadesSelecionadas])
-  const uosDisponiveis = useMemo(() => gruposEscopo.filter((g) => g?.uo?.id).map((g) => ({ id: g.uo.id, label: g.uo.label })), [gruposEscopo])
-  const unidadesListadas = useMemo(() => {
-    const termo = filtroUa.trim().toLowerCase()
-    if (!termo) return unidadesAdministrativas
-    return unidadesAdministrativas.filter((ua) => `${ua.codigo} ${ua.nome}`.toLowerCase().includes(termo))
-  }, [filtroUa, unidadesAdministrativas])
+  const uosDisponiveis = useMemo(() => getUosDisponiveis(gruposEscopo), [gruposEscopo])
+  const unidadesListadas = useMemo(
+    () => filterUnidadesListadas(unidadesAdministrativas, filtroUa),
+    [filtroUa, unidadesAdministrativas]
+  )
 
   const syncFormUnidades = (selecionadas: EscopoUa[]) => {
     setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
@@ -149,7 +147,7 @@ export default function EditarUsuarioPage() {
         setValue("email", dadosUsuario.email ?? "")
         setUsernameAcesso(dadosUsuario.username ?? "")
         setValue("grupo", dadosUsuario.grupo_nome ?? "")
-        setValue("status", dadosUsuario.status ?? "ativo")
+        setValue("status", dadosUsuario.status === "inativo" ? "inativo" : "ativo")
 
         const grupos = (me.opcoes_escopo?.grupos ?? []).filter((g) => g?.uo?.id)
         setGruposEscopo(grupos)
@@ -202,7 +200,7 @@ export default function EditarUsuarioPage() {
     })
   }, [uoSelecionadaId, gruposEscopo])
 
-  const onSubmit = async (data: EditarUsuarioFormData) => {
+  const onSubmit: SubmitHandler<EditarUsuarioFormData> = async (data) => {
     if (!id) return
     try {
       setLoadingSalvar(true)
@@ -241,38 +239,51 @@ export default function EditarUsuarioPage() {
       {errorMessage && <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">{errorMessage}</div>}
 
       <Card className="p-6 space-y-6">
-        <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome Completo{REQUIRED}</span><input {...register("nome")} className={INPUT_TEXT_CLASS} placeholder="Digite o nome completo" />{errors.nome && <span className="text-red-600 text-sm">{errors.nome.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">RF{REQUIRED}</span><input {...register("rf")} className={INPUT_TEXT_CLASS} placeholder="Digite o rf" />{errors.rf && <span className="text-red-600 text-sm">{errors.rf.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Nome de Usuário de Acesso</span><input value={usernameAcesso} disabled className={`${INPUT_TEXT_CLASS} bg-gray-100 cursor-not-allowed`} placeholder="Não editável" /></div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">E-mail do Usuário{REQUIRED}</span><input {...register("email")} className={INPUT_TEXT_CLASS} placeholder="Digite o e-mail" />{errors.email && <span className="text-red-600 text-sm">{errors.email.message}</span>}</div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Grupo de Permissionamento{REQUIRED}</span><Select value={grupoSelecionado} onValueChange={(value) => { setValue("grupo", value, { shouldValidate: true }); setUnidadesSelecionadas([]); syncFormUnidades([]); if (value !== "GESTOR_PATRIMONIO") setTodasUnidades(false) }}><SelectTrigger className={INPUT_CLASS}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="GESTOR_PATRIMONIO">Gestor</SelectItem><SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem></SelectContent></Select></div>
-          <div className="flex flex-col gap-2"><span className="text-sm font-semibold text-gray-700">Unidade Orçamentária{REQUIRED}</span><Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => setUoSelecionadaId(Number(value))}><SelectTrigger className={INPUT_CLASS}><SelectValue placeholder="Selecione a UO" /></SelectTrigger><SelectContent>{uosDisponiveis.map((uo) => <SelectItem key={uo.id} value={String(uo.id)}>{uo.label}</SelectItem>)}</SelectContent></Select></div>
-          <div>
-            <UnidadesAdministrativasSelector
-              unidadesListadas={unidadesListadas}
-              isSelecionada={(uaId) => idsSelecionados.has(uaId)}
-              todasUnidades={todasUnidades}
-              filtroUa={filtroUa}
-              inputClassName={INPUT_TEXT_CLASS}
-              requiredNode={unidadeObrigatoria ? REQUIRED : undefined}
-              errorMessage={errors.unidade?.message}
-              onFiltroChange={setFiltroUa}
-              onToggleTodasUnidades={() => {
-                setTodasUnidades((prev) => {
-                  const next = !prev
-                  if (next) {
-                    setUnidadesSelecionadas([])
-                    syncFormUnidades([])
-                    setFiltroUa("")
-                  }
-                  return next
-                })
-              }}
-              onToggleUa={toggleUa}
-            />
-          </div>
-        </form>
+        <UserTopSection
+          nomeValue={watch("nome")}
+          rfValue={watch("rf")}
+          usernameValue={usernameAcesso}
+          usernameDisabled
+          emailValue={watch("email")}
+          grupoValue={watch("grupo")}
+          uoSelecionadaId={uoSelecionadaId}
+          uosDisponiveis={uosDisponiveis}
+          unidadeObrigatoria={unidadeObrigatoria}
+          unidadesListadas={unidadesListadas}
+          idsSelecionados={idsSelecionados}
+          todasUnidades={todasUnidades}
+          filtroUa={filtroUa}
+          unidadeError={errors.unidade?.message}
+          disableUaSelector={false}
+          onNomeChange={(event) => setValue("nome", event.target.value, { shouldValidate: true })}
+          onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true })}
+          onUsernameChange={() => undefined}
+          onEmailChange={(event) => setValue("email", event.target.value, { shouldValidate: true })}
+          onGrupoChange={(value) => {
+            setValue("grupo", value, { shouldValidate: true })
+            if (value === "GESTOR_PATRIMONIO") {
+              setUnidadesSelecionadas([])
+              syncFormUnidades([])
+              setTodasUnidades(false)
+            } else {
+              setTodasUnidades(false)
+            }
+          }}
+          onUoChange={setUoSelecionadaId}
+          onFiltroUaChange={setFiltroUa}
+          onToggleTodasUnidades={buildToggleTodasHandler(
+            setTodasUnidades,
+            setUnidadesSelecionadas,
+            syncFormUnidades,
+            setFiltroUa
+          )}
+          onToggleUa={toggleUa}
+          nomeError={errors.nome?.message}
+          rfError={errors.rf?.message}
+          usernameError={undefined}
+          emailError={errors.email?.message}
+          grupoError={errors.grupo?.message}
+        />
 
         <PasswordStatusSection
           senhaId="senha"
@@ -286,7 +297,7 @@ export default function EditarUsuarioPage() {
           senhaError={errors.senha?.message}
           confirmarSenhaError={errors.confirmarSenha?.message}
           statusValue={statusSelecionado}
-          onStatusChange={(v) => setValue("status", v, { shouldValidate: true })}
+          onStatusChange={(v) => setValue("status", v as "ativo" | "inativo", { shouldValidate: true })}
         />
       </Card>
     </div>
