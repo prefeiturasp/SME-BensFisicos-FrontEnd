@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import ChangePasswordPage from './ChangePasswordPage';
@@ -31,11 +31,6 @@ describe('ChangePasswordPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
   function setupServiceMock({ shouldReject = false, errorMessage = '' } = {}) {
@@ -211,12 +206,13 @@ describe('ChangePasswordPage', () => {
       await user.type(oldPasswordInput, 'Antiga123@');
       await user.type(newPasswordInput, validPass);
       await user.type(confirmInput, validPass);
-
-      fireEvent.click(btn);
+      await user.click(btn);
 
       await waitFor(() => expect(passwordService.changePassword).toHaveBeenCalled());
 
       expect(toast.success).toHaveBeenCalledWith('Senha alterada com sucesso!', expect.anything());
+
+      await new Promise((resolve) => setTimeout(resolve, 1600));
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/home');
