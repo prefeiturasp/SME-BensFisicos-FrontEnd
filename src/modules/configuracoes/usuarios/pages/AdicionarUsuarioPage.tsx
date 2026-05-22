@@ -1,6 +1,6 @@
 import { ArrowLeft, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -18,10 +18,10 @@ import {
   PasswordStatusSection,
   UserTopSection,
   buildToggleTodasHandler,
+  buildGrupoChangeHandler,
   applyApiFieldErrors,
   buildFieldMap,
-  filterUnidadesListadas,
-  getUosDisponiveis,
+  useUsuarioFormState,
 } from "./usuarioFormShared"
 
 type FormData = z.infer<typeof adicionarUsuarioSchema>
@@ -60,53 +60,25 @@ export default function AdicionarUsuarioPage() {
     carregar().catch((error) => console.error("Erro ao carregar unidades do escopo", error))
   }, [])
 
-  const idsSelecionados = useMemo(() => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)), [unidadesSelecionadas])
-  const uosDisponiveis = useMemo(() => getUosDisponiveis(gruposEscopo), [gruposEscopo])
-
-  const syncFormUnidades = (selecionadas: EscopoUa[]) => {
-    setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
-  }
-
-  const unidadesListadas = useMemo(
-    () => filterUnidadesListadas(unidadesAdministrativas, filtroUa),
-    [filtroUa, unidadesAdministrativas]
-  )
-
-  useEffect(() => {
-    if (!uoSelecionadaId) {
-      setUnidadesAdministrativas([])
-      setUnidadesSelecionadas([])
-      setFiltroUa("")
-      syncFormUnidades([])
-      return
-    }
-    const grupo = gruposEscopo.find((g) => g.uo.id === uoSelecionadaId)
-    const uasDaUo = grupo?.uas ?? []
-    setUnidadesAdministrativas(uasDaUo)
-    setUnidadesSelecionadas((prev) => {
-      const filtradas = prev.filter((ua) => ua.unidade_orcamentaria_id === uoSelecionadaId)
-      syncFormUnidades(filtradas)
-      return filtradas
-    })
-  }, [uoSelecionadaId, gruposEscopo])
-
-  const toggleUa = (ua: EscopoUa) => {
-    if (todasUnidades) {
-      setTodasUnidades(false)
-      const next = unidadesAdministrativas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
-      setUnidadesSelecionadas(next)
-      syncFormUnidades(next)
-      return
-    }
-    const jaSelecionada = idsSelecionados.has(ua.unidade_administrativa_id)
-    const next = jaSelecionada
-      ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
-      : [...unidadesSelecionadas, ua]
-    const selecionouTodasManualmente = unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
-    setTodasUnidades(selecionouTodasManualmente)
-    setUnidadesSelecionadas(next)
-    syncFormUnidades(next)
-  }
+  const {
+    idsSelecionados,
+    uosDisponiveis,
+    unidadesListadas,
+    syncFormUnidades,
+    toggleUa,
+  } = useUsuarioFormState({
+    gruposEscopo,
+    uoSelecionadaId,
+    unidadesAdministrativas,
+    unidadesSelecionadas,
+    filtroUa,
+    todasUnidades,
+    setUnidadesAdministrativas,
+    setUnidadesSelecionadas,
+    setFiltroUa,
+    setTodasUnidades,
+    setValue,
+  })
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
@@ -185,16 +157,12 @@ export default function AdicionarUsuarioPage() {
           onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true })}
           onUsernameChange={(event) => setValue("username", event.target.value, { shouldValidate: true })}
           onEmailChange={(event) => setValue("email", event.target.value, { shouldValidate: true })}
-          onGrupoChange={(value) => {
-            setValue("grupo", value, { shouldValidate: true })
-            if (value === "GESTOR_PATRIMONIO") {
-              setUnidadesSelecionadas([])
-              syncFormUnidades([])
-              setTodasUnidades(false)
-            } else {
-              setTodasUnidades(false)
-            }
-          }}
+          onGrupoChange={buildGrupoChangeHandler(
+            setValue,
+            setUnidadesSelecionadas,
+            syncFormUnidades,
+            setTodasUnidades
+          )}
           onUoChange={setUoSelecionadaId}
           onFiltroUaChange={setFiltroUa}
           onToggleTodasUnidades={buildToggleTodasHandler(

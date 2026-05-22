@@ -1,5 +1,7 @@
 import { Eye, EyeOff } from "lucide-react"
-import type { InputHTMLAttributes, ReactNode } from "react"
+import { useCallback, useEffect, useMemo } from "react"
+import type { Dispatch, InputHTMLAttributes, ReactNode, SetStateAction } from "react"
+import type { UseFormSetValue } from "react-hook-form"
 import type { EscopoGrupo, EscopoUa } from "../../../../auth/auth.service"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -16,6 +18,104 @@ export const API_FIELD_PASSWORD = "password"
 export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
+
+type UseUsuarioFormStateOptions = {
+  gruposEscopo: EscopoGrupo[]
+  uoSelecionadaId: number | null
+  unidadesAdministrativas: EscopoUa[]
+  unidadesSelecionadas: EscopoUa[]
+  filtroUa: string
+  todasUnidades: boolean
+  setUnidadesAdministrativas: Dispatch<SetStateAction<EscopoUa[]>>
+  setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>
+  setFiltroUa: Dispatch<SetStateAction<string>>
+  setTodasUnidades: Dispatch<SetStateAction<boolean>>
+  setValue: UseFormSetValue<Record<string, unknown>>
+}
+
+export function useUsuarioFormState({
+  gruposEscopo,
+  uoSelecionadaId,
+  unidadesAdministrativas,
+  unidadesSelecionadas,
+  filtroUa,
+  todasUnidades,
+  setUnidadesAdministrativas,
+  setUnidadesSelecionadas,
+  setFiltroUa,
+  setTodasUnidades,
+  setValue,
+}: UseUsuarioFormStateOptions) {
+  const idsSelecionados = useMemo(
+    () => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)),
+    [unidadesSelecionadas]
+  )
+
+  const uosDisponiveis = useMemo(() => getUosDisponiveis(gruposEscopo), [gruposEscopo])
+
+  const unidadesListadas = useMemo(
+    () => filterUnidadesListadas(unidadesAdministrativas, filtroUa),
+    [filtroUa, unidadesAdministrativas]
+  )
+
+  const syncFormUnidades = useCallback(
+    (selecionadas: EscopoUa[]) => {
+      setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
+    },
+    [setValue]
+  )
+
+  const toggleUa = useCallback(
+    (ua: EscopoUa) => {
+      if (todasUnidades) {
+        setTodasUnidades(false)
+        const next = unidadesAdministrativas.filter(
+          (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id
+        )
+        setUnidadesSelecionadas(next)
+        syncFormUnidades(next)
+        return
+      }
+
+      const jaSelecionada = idsSelecionados.has(ua.unidade_administrativa_id)
+      const next = jaSelecionada
+        ? unidadesSelecionadas.filter((item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id)
+        : [...unidadesSelecionadas, ua]
+      const selecionouTodasManualmente = unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
+      setTodasUnidades(selecionouTodasManualmente)
+      setUnidadesSelecionadas(next)
+      syncFormUnidades(next)
+    },
+    [todasUnidades, unidadesAdministrativas, unidadesSelecionadas, idsSelecionados, setTodasUnidades, setUnidadesSelecionadas, syncFormUnidades]
+  )
+
+  useEffect(() => {
+    if (!uoSelecionadaId) {
+      setUnidadesAdministrativas([])
+      setUnidadesSelecionadas([])
+      setFiltroUa("")
+      syncFormUnidades([])
+      return
+    }
+
+    const grupo = gruposEscopo.find((g) => g.uo.id === uoSelecionadaId)
+    const uasDaUo = grupo?.uas ?? []
+    setUnidadesAdministrativas(uasDaUo)
+    setUnidadesSelecionadas((prev) => {
+      const filtradas = prev.filter((ua) => ua.unidade_orcamentaria_id === uoSelecionadaId)
+      syncFormUnidades(filtradas)
+      return filtradas
+    })
+  }, [gruposEscopo, syncFormUnidades, setFiltroUa, setUnidadesAdministrativas, setUnidadesSelecionadas, uoSelecionadaId])
+
+  return {
+    idsSelecionados,
+    uosDisponiveis,
+    unidadesListadas,
+    syncFormUnidades,
+    toggleUa,
+  }
+}
 
 function hasValidUo(grupo: EscopoGrupo): grupo is EscopoGrupo & { uo: { id: number; label: string } } {
   return Boolean(grupo?.uo?.id)
@@ -74,6 +174,22 @@ export function applyApiFieldErrors<T extends Record<string, unknown>>(
     setError(formField, { type: "server", message: msg })
   })
   return hasFieldError
+}
+
+export function buildGrupoChangeHandler(
+  setValue: UseFormSetValue<Record<string, unknown>>,
+  setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>,
+  syncFormUnidades: (selecionadas: EscopoUa[]) => void,
+  setTodasUnidades: Dispatch<SetStateAction<boolean>>
+) {
+  return (value: string) => {
+    setValue("grupo", value, { shouldValidate: true })
+    if (value === "GESTOR_PATRIMONIO") {
+      setUnidadesSelecionadas([])
+      syncFormUnidades([])
+    }
+    setTodasUnidades(false)
+  }
 }
 
 export type UaOption = EscopoUa
