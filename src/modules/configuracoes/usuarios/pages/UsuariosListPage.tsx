@@ -155,7 +155,7 @@ export default function UsuariosListPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Filtrar por Nome do Usuário
+              <span>Filtrar por Nome do Usuário</span>
               <input
                 type="text"
                 value={searchInput}
@@ -168,7 +168,7 @@ export default function UsuariosListPage() {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Filtrar por Unidade Orçamentária
+              <span>Filtrar por Unidade Orçamentária</span>
               <Select
                 value={uoFilter}
                 onValueChange={(v) => {
@@ -194,7 +194,7 @@ export default function UsuariosListPage() {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Filtrar por Unidade Administrativa
+              <span>Filtrar por Unidade Administrativa</span>
               <Select
                 value={unidadeFilter}
                 onValueChange={(v) => {
@@ -219,7 +219,7 @@ export default function UsuariosListPage() {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Filtrar por Grupo de Permissionamento
+              <span>Filtrar por Grupo de Permissionamento</span>
               <Select
                 value={grupoFilter}
                 onValueChange={(v) => {
@@ -241,7 +241,7 @@ export default function UsuariosListPage() {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-gray-700">
-              Filtrar por Status
+              <span>Filtrar por Status</span>
               <Select
                 value={statusFilter}
                 onValueChange={(v) => {

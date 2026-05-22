@@ -26,7 +26,7 @@ vi.mock("@/components/ui/select", () => ({
     ),
     SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectValue: ({ placeholder }: { placeholder?: string }) => (
-        <option value="" disabled>{placeholder ? "" : ""}</option>
+        <option value="" disabled>{placeholder || ""}</option>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectItem: ({

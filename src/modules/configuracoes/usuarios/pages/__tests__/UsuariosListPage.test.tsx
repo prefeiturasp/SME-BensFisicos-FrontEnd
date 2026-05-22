@@ -557,10 +557,10 @@ describe("UsuariosListPage", () => {
             expect(resolveOrdering("")).toBe("nome")
         })
 
-        it("aplica 'unidade_orcamentaria__nome' ao ordenar por Unidade Orçamentaria", () => {
+        it("aplica 'unidade_orcamentaria__nome' ao ordenar por Unidade Orçamentária", () => {
             renderComponent()
 
-            fireEvent.click(screen.getByText("Unidade Orçamentaria"))
+            fireEvent.click(screen.getByText("Unidade Orçamentária"))
 
             expect(resolveOrdering("")).toBe("unidade_orcamentaria__nome")
         })
