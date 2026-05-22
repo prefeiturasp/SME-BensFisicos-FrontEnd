@@ -5,7 +5,6 @@ import VerifyEmailPage from '@/modules/auth/pages/VerifyEmailPage';
 import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
 import ChangePasswordPage from '@/modules/auth/pages/ChangePasswordPage';
 import FirstAccessChangePasswordPage from '@/modules/auth/pages/FirstAccessChangePasswordPage';
-import SelectUaLoginPage from '@/modules/auth/pages/SelectUaLoginPage';
 
 // Pages Globais
 import HomePage from '../pages/HomePage';
@@ -54,7 +53,6 @@ export default function AppRoutes() {
       {/* Rotas Protegidas (acessíveis apenas se logado) */}
       <Route element={<ProtectedRoute />}>
         <Route path='/primeiro-acesso' element={<FirstAccessChangePasswordPage />} />
-        <Route path='/selecionar-ua-login' element={<SelectUaLoginPage />} />
         <Route path='/trocar-senha' element={<ChangePasswordPage />} />
 
         <Route element={<MainLayout />}>
