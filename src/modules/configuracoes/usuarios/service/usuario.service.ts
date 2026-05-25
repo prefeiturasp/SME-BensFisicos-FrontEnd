@@ -8,10 +8,14 @@ export interface Usuario {
     email: string
     unidade_codigo: string
     unidade_nome: string
+    unidade_orcamentaria_codigo?: string
+    unidade_orcamentaria_nome?: string
     grupo_nome: string
     status: string
     status_display: string
     rf: string
+    unidade_orcamentaria?: number | null
+    unidades_administrativas?: number[]
 }
 
 export interface UsuarioCreatePayload {
@@ -25,6 +29,7 @@ export interface UsuarioCreatePayload {
     password: string
     password_confirm: string
     is_active: boolean
+    unidades_administrativas?: number[]
 }
 
 export interface PaginatedResponse<T> {
@@ -49,6 +54,9 @@ export const usuarioService = {
 
             if (params.unidade && params.unidade !== 'todas')
                 query.append('unidade', params.unidade)
+
+            if (params.unidade_orcamentaria && params.unidade_orcamentaria !== 'todas')
+                query.append('unidade_orcamentaria', params.unidade_orcamentaria)
 
             if (params.grupo && params.grupo !== 'todos')
                 query.append('group_name', params.grupo)
