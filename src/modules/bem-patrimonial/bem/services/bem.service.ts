@@ -2,34 +2,36 @@ import { api } from '@/api/http';
 import { AxiosError } from 'axios';
 
 export interface Bem {
-  id: number;
-  status: string;
-  status_display: string;
-  nome: string;
-  descricao: string;
-  numero_patrimonial: string | null;
-  localizacao: string;
-  unidade_administrativa_codigo: string;
-  unidade_administrativa_nome: string;
-  unidade_orcamentaria_nome: string;
+  id: number
+  status: string
+  status_display: string
+  nome: string
+  descricao: string
+  numero_patrimonial: string | null
+  localizacao: string
+  unidade_administrativa_codigo: string
+  unidade_administrativa_nome: string
+  unidade_orcamentaria_nome: string
+  observacao?: string
+  justificativa?: string
 }
 export interface HistoricoAcao {
-  campo: string;
-  valor_antigo: string | null;
-  valor_novo: string | null;
+  campo: string
+  valor_antigo: string | null
+  valor_novo: string | null
 }
 
 export interface HistoricoGrupo {
-  alterado_em: string;
-  alterado_por: number | null;
-  alterado_por_nome: string | null;
-  acoes: HistoricoAcao[];
+  alterado_em: string
+  alterado_por: number | null
+  alterado_por_nome: string | null
+  acoes: HistoricoAcao[]
 }
 export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
 }
 
 export const bemService = {
@@ -115,6 +117,18 @@ export const bemService = {
     }
   },
 };
+  gerarNbbpm: async (id: number): Promise<Blob> => {
+    try {
+      const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
+        responseType: 'blob',
+      })
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao gerar PDF NBBPM')
+    }
+  },
+}
+
 
 function handleApiError(error: unknown, defaultMessage: string): never {
   if (error instanceof AxiosError) {

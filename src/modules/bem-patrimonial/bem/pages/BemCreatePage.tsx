@@ -21,6 +21,7 @@ type FormBase = {
   marca: string
   modelo: string
   numero_processo: string
+  observacao: string
 }
 
 type FormErrors = Partial<Record<keyof FormBase, string>>
@@ -45,6 +46,7 @@ const LABEL_CAMPO: Record<keyof FormBase, string> = {
   marca: 'Marca',
   modelo: 'Modelo',
   numero_processo: 'Número do Processo',
+  observacao: 'Observação',
 }
 
 function UASearchSelect({
@@ -151,6 +153,7 @@ export default function BemCreatePage() {
     marca: '',
     modelo: '',
     numero_processo: '',
+    observacao: '',
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
 
@@ -159,12 +162,10 @@ export default function BemCreatePage() {
     Record<number, Record<string, string>>
   >({})
 
-  // UAs disponíveis a partir do escopo do usuário
   const todasUAs = (user?.opcoes_escopo?.grupos ?? []).flatMap(
     (g: any) => g.uas ?? []
   )
 
-  // Auto-seleciona UA quando o usuário tem apenas uma disponível
   useEffect(() => {
     if (todasUAs.length === 1 && !formBase.unidade_administrativa) {
       setFormBase(prev => ({
@@ -245,7 +246,6 @@ export default function BemCreatePage() {
         setLinhasErrors(erros)
         toast.error('Corrija os erros nas linhas dos bens.')
       } else if (data && typeof data === 'object') {
-        // erros nos campos base vindos do backend
         setFormErrors(data as FormErrors)
         toast.error('Corrija os erros no formulário.')
       } else {
@@ -269,7 +269,6 @@ export default function BemCreatePage() {
 
   return (
     <div className="p-8 space-y-6">
-      {/* BREADCRUMB */}
       <AppBreadcrumb
         items={[
           { label: 'Bem Patrimonial', icon: Boxes },
@@ -278,7 +277,6 @@ export default function BemCreatePage() {
         ]}
       />
 
-      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-[#363636]">
           Adicionar Bem Patrimonial
@@ -304,10 +302,7 @@ export default function BemCreatePage() {
 
       <Card className="p-6 space-y-6">
 
-        {/* DADOS BASE */}
         <div className="grid grid-cols-2 gap-6">
-
-          {/* UNIDADE ADMINISTRATIVA */}
           <div className="space-y-1">
             <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
               Unidade Administrativa <span className="text-red-500">*</span>
@@ -321,7 +316,6 @@ export default function BemCreatePage() {
             />
           </div>
 
-          {/* NOME */}
           <div className="space-y-1">
             <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
               Nome do Bem <span className="text-red-500">*</span>
@@ -339,7 +333,6 @@ export default function BemCreatePage() {
           </div>
         </div>
 
-        {/* DESCRIÇÃO */}
         <div className="space-y-1">
           <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
             Descrição <span className="text-red-500">*</span>
@@ -357,8 +350,6 @@ export default function BemCreatePage() {
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-
-          {/* VALOR UNITÁRIO */}
           <div className="space-y-1">
             <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
               Valor Unitário <span className="text-red-500">*</span>
@@ -375,7 +366,6 @@ export default function BemCreatePage() {
             )}
           </div>
 
-          {/* MARCA */}
           <div className="space-y-1">
             <label htmlFor="marca" className="text-sm font-semibold text-gray-700">
               Marca <span className="text-red-500">*</span>
@@ -392,7 +382,6 @@ export default function BemCreatePage() {
             )}
           </div>
 
-          {/* MODELO */}
           <div className="space-y-1">
             <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
               Modelo <span className="text-red-500">*</span>
@@ -410,7 +399,6 @@ export default function BemCreatePage() {
           </div>
         </div>
 
-        {/* NÚMERO DO PROCESSO */}
         <div className="space-y-1">
           <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
             Número do processo de incorporação
@@ -421,6 +409,20 @@ export default function BemCreatePage() {
             placeholder="Número do processo de incorporação"
             value={formBase.numero_processo}
             onChange={e => setField('numero_processo', e.target.value)}
+          />
+        </div>
+
+        {/* OBSERVAÇÃO */}
+        <div className="space-y-1">
+          <label htmlFor="observacao" className="text-sm font-semibold text-gray-700">
+            Observação
+          </label>
+          <Textarea
+            id="observacao"
+            className="min-h-25"
+            placeholder="Observação"
+            value={formBase.observacao}
+            onChange={e => setField('observacao', e.target.value)}
           />
         </div>
 

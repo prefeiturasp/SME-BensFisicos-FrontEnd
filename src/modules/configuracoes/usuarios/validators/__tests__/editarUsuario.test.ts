@@ -137,7 +137,7 @@ describe("editarUsuarioSchema", () => {
     const result = editarUsuarioSchema.safeParse({
       ...baseData,
       grupo: "OPERADOR_INVENTARIO",
-      unidade: "",
+      unidade: [],
     })
 
     expect(result.success).toBe(false)
@@ -155,7 +155,7 @@ describe("editarUsuarioSchema", () => {
     const result = editarUsuarioSchema.safeParse({
       ...baseData,
       grupo: "OPERADOR_INVENTARIO",
-      unidade: "1",
+      unidade: ["1"],
     })
 
     expect(result.success).toBe(true)
@@ -165,7 +165,7 @@ describe("editarUsuarioSchema", () => {
     const result = editarUsuarioSchema.safeParse({
       ...baseData,
       grupo: "GESTOR_PATRIMONIO",
-      unidade: "",
+      unidade: [],
     })
 
     expect(result.success).toBe(true)

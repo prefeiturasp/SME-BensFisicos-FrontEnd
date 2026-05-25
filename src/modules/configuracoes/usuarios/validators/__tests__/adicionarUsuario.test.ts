@@ -8,7 +8,7 @@ const VALID_FORM = {
     rf: "123456",
     username: "joao.silva",
     email: "joao@email.com",
-    unidade: "001",
+    unidade: ["001"],
     grupo: "GESTOR_PATRIMONIO",
     password: VALID_PWD,
     confirmPassword: VALID_PWD,
@@ -36,7 +36,7 @@ describe("adicionarUsuarioSchema", () => {
         })
 
         it("aceita todos os campos corretos com Operador e unidade preenchida", () => {
-            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: "001" }).success).toBe(true)
+            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: ["001"] }).success).toBe(true)
         })
 
         it("retorna os dados tipados quando válido", () => {
@@ -110,7 +110,7 @@ describe("adicionarUsuarioSchema", () => {
         })
 
         it("aceita OPERADOR_INVENTARIO com unidade preenchida", () => {
-            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: "001" }).success).toBe(true)
+            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: ["001"] }).success).toBe(true)
         })
     })
 
@@ -119,33 +119,33 @@ describe("adicionarUsuarioSchema", () => {
     describe("campo unidade — regra condicional por grupo", () => {
 
         it("Gestor: aceita unidade vazia", () => {
-            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: "" }).success).toBe(true)
+            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: [] }).success).toBe(true)
         })
 
         it("Gestor: aceita unidade preenchida", () => {
-            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: "001" }).success).toBe(true)
+            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: ["001"] }).success).toBe(true)
         })
 
         it("Operador: rejeita unidade vazia com mensagem correta", () => {
-            const result = parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: "" })
+            const result = parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: [] })
             expect(getError(result, "unidade")).toBe(
                 "Unidade Administrativa é obrigatória para Operadores"
             )
         })
 
-        it("Operador: rejeita unidade com apenas espaços", () => {
-            const result = parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: "   " })
+        it("Operador: rejeita unidade vazia em array", () => {
+            const result = parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: [] })
             expect(getError(result, "unidade")).toBe(
                 "Unidade Administrativa é obrigatória para Operadores"
             )
         })
 
         it("Operador: aceita unidade preenchida", () => {
-            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: "001" }).success).toBe(true)
+            expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: ["001"] }).success).toBe(true)
         })
 
         it("sem grupo definido: não exige unidade", () => {
-            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: "" }).success).toBe(true)
+            expect(parseForm({ grupo: "GESTOR_PATRIMONIO", unidade: [] }).success).toBe(true)
         })
     })
 

@@ -6,12 +6,19 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 
 import ViewUsuarioPage from "../ViewUsuarioPage"
 import { usuarioService } from "../../service/usuario.service"
+import { authService } from "../../../../../auth/auth.service"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: {
         retrieve: vi.fn(),
+    },
+}))
+
+vi.mock("../../../../../auth/auth.service", () => ({
+    authService: {
+        getCurrentUser: vi.fn(),
     },
 }))
 
@@ -51,6 +58,7 @@ describe("ViewUsuarioPage", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        vi.mocked(authService.getCurrentUser).mockResolvedValue({ data: { opcoes_escopo: { grupos: [] } } } as any)
     })
 
     // ── Estado de carregamento ─────────────────────────────────────────────────
@@ -79,13 +87,64 @@ describe("ViewUsuarioPage", () => {
 
     // ── Renderização dos dados ─────────────────────────────────────────────────
 
-    it("exibe a unidade administrativa formatada como 'codigo - nome'", async () => {
+    it("exibe texto de todas as UAs quando gestor não tem seleção explícita", async () => {
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
 
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByDisplayValue("UA001 - Unidade Central")).toBeInTheDocument()
+            expect(screen.getByText("Todas da UO")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe labels de UAs a partir do escopo quando usuário tem unidades administrativas", async () => {
+        vi.mocked(authService.getCurrentUser).mockResolvedValue({
+            data: {
+                opcoes_escopo: {
+                    grupos: [
+                        {
+                            uo: { id: 2, label: "02.17.20 - UO Teste" },
+                            uas: [
+                                {
+                                    unidade_administrativa_id: 1,
+                                    codigo: "001",
+                                    nome: "Secretaria Teste",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        } as any)
+
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidades_administrativas: [1],
+            unidade_orcamentaria: 2,
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("001 - Secretaria Teste")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe unidade administrativa via unidade_codigo/unidade_nome quando não há UAs selecionadas", async () => {
+        vi.mocked(authService.getCurrentUser).mockRejectedValue(new Error("Falha no auth"))
+
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidades_administrativas: [],
+            unidade_codigo: "UA999",
+            unidade_nome: "Unidade Fallback",
+            grupo_nome: "OPERADOR_INVENTARIO",
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("UA999 - Unidade Fallback")).toBeInTheDocument()
         })
     })
 
@@ -100,7 +159,7 @@ describe("ViewUsuarioPage", () => {
 
         const inputs = screen.getAllByRole("textbox")
         inputs.forEach((input) => {
-            expect(input).toHaveAttribute("readonly")
+            expect(input).toBeDisabled()
         })
     })
 
@@ -121,14 +180,14 @@ describe("ViewUsuarioPage", () => {
         expect(screen.getByText("Página de Edição")).toBeInTheDocument()
     })
 
-    it("exibe o título 'Detalhar Usuário'", async () => {
+    it("exibe o título 'Visualizar Usuário'", async () => {
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
 
         renderPage()
 
         await waitFor(() => {
             expect(
-                screen.getByRole("heading", { name: /detalhar usuário/i })
+                screen.getByRole("heading", { name: /visualizar usuário/i })
             ).toBeInTheDocument()
         })
     })
