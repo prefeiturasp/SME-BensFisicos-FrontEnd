@@ -305,19 +305,15 @@ export default function BemEditPage() {
 
             </div>
 
-            {podeEditar && (
-              <div className="flex justify-end pt-6 border-t">
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8"
-                >
-                  {form.formState.isSubmitting
-                    ? 'Salvando...'
-                    : 'Salvar Edição'}
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-end pt-6 border-t">
+              <Button
+                type="submit"
+                disabled={!podeEditar || form.formState.isSubmitting}
+                className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Edição'}
+              </Button>
+            </div>
 
           </form>
         </Form>

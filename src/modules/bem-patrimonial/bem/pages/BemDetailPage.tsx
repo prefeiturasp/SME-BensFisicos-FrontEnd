@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowLeft, Network, Pencil} from 'lucide-react'
+import { Loader2, ArrowLeft, Network, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService, type Bem } from '../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import HistoricoModal from '../modals/HistoricoModal'
+import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 
 const FIELD_CLASS =
@@ -32,6 +33,8 @@ export default function BemDetailPage() {
   const [bem, setBem] = useState<Bem | null>(null)
   const [loading, setLoading] = useState(true)
   const [openHistorico, setOpenHistorico] = useState(false)
+  const [openExcluir, setOpenExcluir] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchBem()
@@ -41,7 +44,8 @@ export default function BemDetailPage() {
     try {
       const data = await bemService.retrieve(Number(id))
       setBem(data)
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.error('Erro ao carregar bem')
       navigate('/bens-patrimoniais')
     } finally {
@@ -69,11 +73,13 @@ export default function BemDetailPage() {
     !!user?.is_gestor_patrimonio &&
     bem.status !== 'baixa_fisica' &&
     podeEditarEscopo
-  const motivoBloqueioEdicao = !user?.is_gestor_patrimonio
-    ? 'Somente Gestor de Patrimônio pode editar este bem.'
-    : bem.status === 'baixa_fisica'
-      ? 'Este bem não pode ser editado por estar com status de baixa física.'
-      : 'Edição bloqueada: você não pertence à Unidade Orçamentária deste bem.'
+
+  let motivoBloqueioEdicao = 'Edição bloqueada: você não pertence à Unidade Orçamentária deste bem.'
+  if (!user?.is_gestor_patrimonio) {
+    motivoBloqueioEdicao = 'Somente Gestor de Patrimônio pode editar este bem.'
+  } else if (bem.status === 'baixa_fisica') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status de baixa física.'
+  }
 
   return (
   <div className="p-8 space-y-6">
@@ -113,6 +119,27 @@ export default function BemDetailPage() {
           )}
         </Tooltip>
 
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                disabled={!podeEditar}
+                onClick={() => setOpenExcluir(true)}
+                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Trash2 size={16} />
+                Apagar
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!podeEditar && (
+            <TooltipContent side="bottom" sideOffset={6}>
+              {motivoBloqueioEdicao}
+            </TooltipContent>
+          )}
+        </Tooltip>
+
         <Button
           variant="outline"
           onClick={() => setOpenHistorico(true)}
@@ -126,6 +153,28 @@ export default function BemDetailPage() {
           open={openHistorico}
           onClose={() => setOpenHistorico(false)}
         />
+
+        {openExcluir && (
+          <ExcluirBemModal
+            bem={bem}
+            deleting={deleting}
+            onClose={() => setOpenExcluir(false)}
+            onConfirm={async () => {
+              setDeleting(true)
+              try {
+                await bemService.delete(bem.id)
+                toast.success('Bem excluído com sucesso')
+                navigate('/bens-patrimoniais')
+              } catch (error) {
+                console.error(error)
+                toast.error('Erro ao excluir bem')
+              } finally {
+                setDeleting(false)
+                setOpenExcluir(false)
+              }
+            }}
+          />
+        )}
 
         <Button
           variant="outline"

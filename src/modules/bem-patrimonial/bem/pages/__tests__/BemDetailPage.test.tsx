@@ -13,6 +13,7 @@ vi.mock('@/auth/useAuth', () => ({
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
+    success: vi.fn(),
   },
 }))
 
@@ -23,6 +24,24 @@ vi.mock(
       open ? (
         <div data-testid="modal-historico">
           Modal Histórico
+        </div>
+      ) : null,
+  })
+)
+
+vi.mock(
+  '@/modules/bem-patrimonial/bem/components/ExcluirBemModal',
+  () => ({
+    default: ({ bem, deleting, onClose, onConfirm }: any) =>
+      bem ? (
+        <div data-testid="modal-excluir">
+          <div>{bem.nome}</div>
+          <button onClick={onClose} disabled={deleting}>
+            Manter
+          </button>
+          <button onClick={onConfirm} disabled={deleting}>
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </button>
         </div>
       ) : null,
   })
@@ -267,6 +286,130 @@ describe('BemDetailPage', () => {
     expect(
         await screen.findByText('Lista')
     ).toBeInTheDocument()
+  })
+
+  it('deve exibir botão Apagar e manter desabilitado se não for gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: { is_gestor_patrimonio: false },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    expect(screen.getByRole('button', { name: 'Apagar' })).toBeDisabled()
+  })
+
+  it('deve abrir modal de exclusão ao clicar em Apagar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    expect(
+      await screen.findByTestId('modal-excluir')
+    ).toBeInTheDocument()
+
+    expect(screen.getByText('Notebook Dell')).toBeInTheDocument()
+  })
+
+  it('deve fechar modal ao clicar em Manter', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manter' }))
+
+    expect(
+      screen.queryByTestId('modal-excluir')
+    ).not.toBeInTheDocument()
+  })
+
+  it('deve excluir bem ao clicar em Excluir no modal', async () => {
+    const deleteSpyFn = vi.spyOn(bemServiceModule.bemService, 'delete')
+      .mockResolvedValue(undefined)
+
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    expect(deleteSpyFn).toHaveBeenCalledWith(1)
+    expect(toast.success).toHaveBeenCalledWith('Bem excluído com sucesso')
+  })
+
+  it('deve exibir toast de erro ao falhar na exclusão', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'delete')
+      .mockRejectedValue(new Error('Erro na API'))
+
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { codigo: '001' },
+      },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    expect(toast.error).toHaveBeenCalledWith('Erro ao excluir bem')
   })
 
 })
