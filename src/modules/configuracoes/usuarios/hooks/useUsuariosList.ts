@@ -20,6 +20,7 @@ export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
     const [search, setSearch] = useState("")
 
     const [unidadeFilter, setUnidadeFilter] = useState("todas")
+    const [uoFilter, setUoFilter] = useState("todas")
     const [grupoFilter, setGrupoFilter] = useState("todos")
     const [statusFilter, setStatusFilter] = useState("todos")
 
@@ -47,6 +48,7 @@ export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
                 page,
                 search,
                 unidade: unidadeFilter === "todas" ? undefined : unidadeFilter,
+                unidade_orcamentaria: uoFilter === "todas" ? undefined : uoFilter,
                 grupo: grupoFilter === "todos" ? undefined : grupoFilter,
                 status: statusFilter === "todos" ? undefined : statusFilter,
                 ordering,
@@ -61,7 +63,7 @@ export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
             setLoading(false)
         }
 
-    }, [page, search, unidadeFilter, grupoFilter, statusFilter, ordering])
+    }, [page, search, unidadeFilter, uoFilter, grupoFilter, statusFilter, ordering])
 
     useEffect(() => {
         fetchUsuarios()
@@ -77,6 +79,7 @@ export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
         searchInput,
         unidadeFilter,
         grupoFilter,
+        uoFilter,
         statusFilter,
         ordering,
 
@@ -84,6 +87,7 @@ export function useUsuariosList({ pageSize: _pageSize }: UseUsuariosListProps) {
         setSearchInput,
         setUnidadeFilter,
         setGrupoFilter,
+        setUoFilter,
         setStatusFilter,
         setOrdering,
     }

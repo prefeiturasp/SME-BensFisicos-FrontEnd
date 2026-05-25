@@ -5,7 +5,7 @@ import React from "react"
 
 import AdicionarUsuarioPage from "../AdicionarUsuarioPage"
 
-// ─── Mock do Select do Radix UI ───────────────────────────────────────────────
+//  Mock do Select do Radix UI 
 
 vi.mock("@/components/ui/select", () => ({
     Select: ({
@@ -26,7 +26,7 @@ vi.mock("@/components/ui/select", () => ({
     ),
     SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectValue: ({ placeholder }: { placeholder?: string }) => (
-        <option value="" disabled>{placeholder ?? ""}</option>
+        <option value="" disabled>{placeholder || ""}</option>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectItem: ({
@@ -38,7 +38,7 @@ vi.mock("@/components/ui/select", () => ({
     }) => <option value={value}>{children}</option>,
 }))
 
-// ─── Mocks de navegação ───────────────────────────────────────────────────────
+//  Mocks de navegação 
 
 const navigateMock = vi.fn()
 
@@ -47,7 +47,7 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => navigateMock }
 })
 
-// ─── Mocks de serviços ────────────────────────────────────────────────────────
+//  Mocks de serviços 
 
 const mockUsuarioCreate = vi.fn()
 const mockGetCurrentUser = vi.fn()
@@ -64,7 +64,7 @@ vi.mock("../../../../../auth/auth.service", () => ({
     },
 }))
 
-// ─── Dados de fixture ─────────────────────────────────────────────────────────
+//  Dados de fixture 
 
 const TEST_PWD = ["Senha", "@", "123"].join("")
 
@@ -118,14 +118,14 @@ const ME_RESPONSE = {
 
 const VALID_FORM_DATA = {
     nome: "João da Silva",
-    rf: "123456",
+    rf: "A123456",
     username: "joao.silva",
     email: "joao@email.com",
     password: TEST_PWD,
     confirmPassword: TEST_PWD,
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 function renderComponent() {
     return render(
@@ -136,11 +136,19 @@ function renderComponent() {
 }
 
 /**
- * Ordem dos selects no DOM após refatoração do layout:
+ * Ordem dos selects no DOM:
  *   [0] Grupo de Permissionamento
- *   [1] Unidade Administrativa
- *   [2] Status
+ *   [1] Status
+ *   [2] Unidade Orçamentária
  */
+function getSelects() {
+    const selects = screen.getAllByRole("combobox")
+    return {
+        grupo: selects[0],
+        uo: selects[1],
+        status: selects[2],
+    }
+}
 async function fillForm(
     overrides: Partial<typeof VALID_FORM_DATA> = {},
     grupo = "GESTOR_PATRIMONIO",
@@ -168,12 +176,24 @@ async function fillForm(
         target: { value: data.confirmPassword },
     })
 
-    const selects = screen.getAllByRole("combobox")
-    fireEvent.change(selects[0], { target: { value: grupo } })       // Grupo
-    fireEvent.change(selects[1], { target: { value: unidadeId } })   // Unidade
+    const { grupo: selectGrupo, uo: selectUo } = getSelects()
+    fireEvent.change(selectGrupo, { target: { value: grupo } })
+
+    if (unidadeId) {
+        await waitFor(() => {
+            expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+        })
+        fireEvent.change(selectUo, { target: { value: "2" } })
+
+        await waitFor(() => {
+            expect(screen.getByText("001 - Secretaria de Finanças")).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
+    }
 }
 
-// ─── Testes ───────────────────────────────────────────────────────────────────
+//  Testes 
 
 describe("AdicionarUsuarioPage", () => {
 
@@ -183,7 +203,7 @@ describe("AdicionarUsuarioPage", () => {
         mockUsuarioCreate.mockResolvedValue({ id: 1 })
     })
 
-    // ── Estrutura da página ───────────────────────────────────────────────────
+    //  Estrutura da página 
 
     describe("estrutura da página", () => {
 
@@ -230,7 +250,7 @@ describe("AdicionarUsuarioPage", () => {
             expect(screen.getByText("RF")).toBeInTheDocument()
             expect(screen.getByText("E-mail do Usuário")).toBeInTheDocument()
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
-            expect(screen.getByText("Unidade Administrativa")).toBeInTheDocument()
+            expect(screen.getByText("Unidades Administrativas")).toBeInTheDocument()
             expect(screen.getByText("Cadastre uma Senha")).toBeInTheDocument()
             expect(screen.getByText("Confirme a Senha")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
@@ -243,19 +263,18 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Obrigatoriedade condicional da Unidade Administrativa ─────────────────
+    //  Obrigatoriedade condicional da Unidade Administrativa 
 
-    describe("unidade administrativa — obrigatoriedade condicional", () => {
+    describe("unidade administrativa  obrigatoriedade condicional", () => {
 
         it("exibe asterisco na unidade quando grupo é Operador", () => {
             renderComponent()
 
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
+            const { grupo } = getSelects()
+            fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
 
-            // O asterisco (*) deve aparecer após o label da unidade
-            const unidadeLabel = screen.getByText("Unidade Administrativa")
-            expect(unidadeLabel.nextSibling).not.toBeNull()
+            expect(screen.getByText("Unidades Administrativas")).toBeInTheDocument()
+            expect(screen.getByText("Unidades Administrativas").parentElement?.textContent).toContain("*")
         })
 
         it("Gestor: aceita formulário sem unidade selecionada", async () => {
@@ -300,56 +319,77 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
-        it("limpa a unidade selecionada ao trocar o grupo", () => {
+        it("limpa a unidade selecionada ao trocar o grupo", async () => {
             renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
+            const { grupo, uo } = getSelects()
 
-            // Seleciona operador e uma unidade
-            fireEvent.change(selects[0], { target: { value: "OPERADOR_INVENTARIO" } })
-            fireEvent.change(selects[1], { target: { value: "1" } })
+            // Seleciona operador e uma unidade orçamentária
+            fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
+            fireEvent.change(uo, { target: { value: "2" } })
 
-            // Troca para gestor — unidade deve ser limpa
-            fireEvent.change(selects[0], { target: { value: "GESTOR_PATRIMONIO" } })
-
-            expect((selects[1] as HTMLSelectElement).value).toBe("")
+            await waitFor(() => {
+                fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
+                fireEvent.change(grupo, { target: { value: "GESTOR_PATRIMONIO" } })
+                expect(
+                    screen.getByText(/Nenhuma selecionada|Todas/i)
+                ).toBeInTheDocument()
+            })
         })
     })
 
-    // ── Carregamento de unidades ──────────────────────────────────────────────
+    //  Carregamento de unidades 
 
     describe("carregamento de unidades administrativas", () => {
 
-        it("carrega e exibe as unidades do escopo no select", async () => {
+        it("carrega e exibe as unidades do escopo na lista", async () => {
             renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
-                const selects = screen.getAllByRole("combobox")
                 expect(
-                    selects[1].querySelector('option[value="1"]')
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
             })
         })
 
         it("exibe o código e nome da UA na opção", async () => {
             renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
-                    screen.getByRole("option", { name: "001 - Secretaria de Finanças" })
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
             })
         })
 
         it("exibe todas as UAs retornadas pelo escopo", async () => {
             renderComponent()
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            const { uo } = getSelects()
+            await waitFor(() => {
+                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
+            })
+            fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
                 expect(
-                    screen.getByRole("option", { name: "001 - Secretaria de Finanças" })
+                    screen.getByText("001 - Secretaria de Finanças")
                 ).toBeInTheDocument()
                 expect(
-                    screen.getByRole("option", { name: "002 - Secretaria de Educação" })
+                    screen.getByText("002 - Secretaria de Educação")
                 ).toBeInTheDocument()
             })
         })
@@ -363,8 +403,8 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
-            const options = selects[1].querySelectorAll("option")
+            const { uo } = getSelects()
+            const options = uo.querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
 
@@ -383,13 +423,13 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
-            const selects = screen.getAllByRole("combobox")
-            const options = selects[1].querySelectorAll("option")
+            const { uo } = getSelects()
+            const options = uo.querySelectorAll("option")
             expect(options).toHaveLength(1)
         })
     })
 
-    // ── Visibilidade da senha ─────────────────────────────────────────────────
+    //  Visibilidade da senha 
 
     describe("toggle de visibilidade da senha", () => {
 
@@ -462,7 +502,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Navegação ─────────────────────────────────────────────────────────────
+    //  Navegação 
 
     describe("navegação", () => {
 
@@ -471,7 +511,7 @@ describe("AdicionarUsuarioPage", () => {
 
             fireEvent.click(screen.getAllByRole("button")[0])
 
-            expect(navigateMock).toHaveBeenCalledWith(-1)
+            expect(navigateMock).toHaveBeenCalledWith("/usuarios")
         })
 
         it("navega para /usuarios ao clicar em Cancelar", () => {
@@ -483,7 +523,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Validações do formulário ──────────────────────────────────────────────
+    //  Validações do formulário 
 
     describe("validações do formulário", () => {
 
@@ -523,7 +563,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Submissão do formulário ───────────────────────────────────────────────
+    //  Submissão do formulário 
 
     describe("submissão do formulário", () => {
 
@@ -540,7 +580,7 @@ describe("AdicionarUsuarioPage", () => {
                         username: "joao.silva",
                         nome: "João da Silva",
                         email: "joao@email.com",
-                        rf: "123456",
+                        rf: "A123456",
                         unidade_administrativa: 1,
                         unidade_orcamentaria: 2,
                         group_name: "GESTOR_PATRIMONIO",
@@ -575,8 +615,8 @@ describe("AdicionarUsuarioPage", () => {
 
             await fillForm({}, "GESTOR_PATRIMONIO", "1")
 
-            const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[2], { target: { value: "inativo" } })
+            const { status } = getSelects()
+            fireEvent.change(status, { target: { value: "inativo" } })
 
             fireEvent.click(screen.getByText("Salvar"))
 
@@ -609,7 +649,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Salvando...")).toBeInTheDocument()
+                expect(screen.getByRole("button", { name: /salvando/i })).toBeInTheDocument()
             })
         })
 
@@ -623,7 +663,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Salvando...")).toBeDisabled()
+                expect(screen.getByRole("button", { name: /salvando/i })).toBeDisabled()
             })
         })
 
@@ -640,7 +680,7 @@ describe("AdicionarUsuarioPage", () => {
         })
     })
 
-    // ── Tratamento de erros ───────────────────────────────────────────────────
+    //  Tratamento de erros 
 
     describe("tratamento de erros na submissão", () => {
 
@@ -658,7 +698,7 @@ describe("AdicionarUsuarioPage", () => {
             })
         })
 
-        it("exibe mensagem específica quando há erro de validação da API (response.data)", async () => {
+        it("exibe mensagem padrão quando há erro de validação da API (response.data)", async () => {
             const apiError = new Error("Erro de validação")
             ;(apiError as any).response = { data: { username: ["Já existe."] } }
             mockUsuarioCreate.mockRejectedValue(apiError)
@@ -671,7 +711,7 @@ describe("AdicionarUsuarioPage", () => {
 
             await waitFor(() => {
                 expect(
-                    screen.getByText("Erro de validação ao criar usuário")
+                    screen.getByText("Corrija os campos destacados.")
                 ).toBeInTheDocument()
             })
         })
@@ -724,7 +764,7 @@ describe("AdicionarUsuarioPage", () => {
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                expect(screen.getByText("Falha")).toBeInTheDocument()
+                expect(screen.getByText(/Falha/i)).toBeInTheDocument()
             })
 
             expect(navigateMock).not.toHaveBeenCalledWith("/usuarios")

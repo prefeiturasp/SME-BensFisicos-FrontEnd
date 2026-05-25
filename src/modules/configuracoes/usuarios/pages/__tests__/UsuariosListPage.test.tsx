@@ -51,6 +51,7 @@ vi.mock("react-router-dom", async () => {
 const setPageMock = vi.fn()
 const setSearchInputMock = vi.fn()
 const setUnidadeFilterMock = vi.fn()
+const setUoFilterMock = vi.fn()
 const setGrupoFilterMock = vi.fn()
 const setStatusFilterMock = vi.fn()
 const setOrderingMock = vi.fn()
@@ -63,11 +64,13 @@ const DEFAULT_HOOK_VALUES = {
     loading: false,
     searchInput: "",
     unidadeFilter: "todas",
+    uoFilter: "todas",
     grupoFilter: "todos",
     statusFilter: "todos",
     setPage: setPageMock,
     setSearchInput: setSearchInputMock,
     setUnidadeFilter: setUnidadeFilterMock,
+    setUoFilter: setUoFilterMock,
     setGrupoFilter: setGrupoFilterMock,
     setStatusFilter: setStatusFilterMock,
     setOrdering: setOrderingMock,
@@ -102,6 +105,9 @@ const USUARIO_FIXTURE: Usuario = {
     email: "joao@example.com",
     unidade_codigo: "001",
     unidade_nome: "Secretaria Teste",
+    unidade_orcamentaria: 2,
+    unidade_orcamentaria_codigo: "02.17.20",
+    unidade_orcamentaria_nome: "UO Teste",
     grupo_nome: "GESTOR_PATRIMONIO",
     status: "ativo",
     status_display: "Ativo",
@@ -237,7 +243,7 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("ID")).toBeInTheDocument()
             expect(screen.getByText("Usuário")).toBeInTheDocument()
             expect(screen.getByText("Nome do Usuário")).toBeInTheDocument()
-            expect(screen.getByText("Unidade Administrativa")).toBeInTheDocument()
+            expect(screen.getByText("Unidade Orçamentária")).toBeInTheDocument()
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
             expect(screen.getByText("Ações")).toBeInTheDocument()
@@ -288,7 +294,7 @@ describe("UsuariosListPage", () => {
         it("renderiza a unidade no formato 'codigo - nome'", () => {
             renderComponent()
 
-            expect(screen.getByText("001 - Secretaria Teste")).toBeInTheDocument()
+            expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
         })
 
         it("renderiza o nome do grupo", () => {
@@ -444,7 +450,7 @@ describe("UsuariosListPage", () => {
             await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
 
             const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[0], { target: { value: "001" } })
+            fireEvent.change(selects[1], { target: { value: "001" } })
 
             expect(setUnidadeFilterMock).toHaveBeenCalledWith("001")
             expect(setPageMock).toHaveBeenCalledWith(1)
@@ -454,7 +460,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[1], { target: { value: "GESTOR_PATRIMONIO" } })
+            fireEvent.change(selects[2], { target: { value: "GESTOR_PATRIMONIO" } })
 
             expect(setGrupoFilterMock).toHaveBeenCalledWith("GESTOR_PATRIMONIO")
             expect(setPageMock).toHaveBeenCalledWith(1)
@@ -464,7 +470,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[1], { target: { value: "OPERADOR_INVENTARIO" } })
+            fireEvent.change(selects[2], { target: { value: "OPERADOR_INVENTARIO" } })
 
             expect(setGrupoFilterMock).toHaveBeenCalledWith("OPERADOR_INVENTARIO")
         })
@@ -473,7 +479,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[2], { target: { value: "ativo" } })
+            fireEvent.change(selects[3], { target: { value: "ativo" } })
 
             expect(setStatusFilterMock).toHaveBeenCalledWith("ativo")
             expect(setPageMock).toHaveBeenCalledWith(1)
@@ -483,7 +489,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            fireEvent.change(selects[2], { target: { value: "inativo" } })
+            fireEvent.change(selects[3], { target: { value: "inativo" } })
 
             expect(setStatusFilterMock).toHaveBeenCalledWith("inativo")
         })
@@ -492,27 +498,25 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            expect(
-                within(selects[0]).getByRole("option", { name: "Todas" })
-            ).toBeInTheDocument()
+            expect(within(selects[1]).getByRole("option", { name: "Todas" })).toBeInTheDocument()
         })
 
         it("renderiza as opções 'Todos', 'Gestor' e 'Operador' no select de grupos", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            expect(within(selects[1]).getByRole("option", { name: "Todos" })).toBeInTheDocument()
-            expect(within(selects[1]).getByRole("option", { name: "Gestor" })).toBeInTheDocument()
-            expect(within(selects[1]).getByRole("option", { name: "Operador" })).toBeInTheDocument()
+            expect(within(selects[2]).getByRole("option", { name: "Todos" })).toBeInTheDocument()
+            expect(within(selects[2]).getByRole("option", { name: "Gestor" })).toBeInTheDocument()
+            expect(within(selects[2]).getByRole("option", { name: "Operador" })).toBeInTheDocument()
         })
 
         it("renderiza as opções 'Todos', 'Ativo' e 'Inativo' no select de status", () => {
             renderComponent()
 
             const selects = screen.getAllByRole("combobox")
-            expect(within(selects[2]).getByRole("option", { name: "Todos" })).toBeInTheDocument()
-            expect(within(selects[2]).getByRole("option", { name: "Ativo" })).toBeInTheDocument()
-            expect(within(selects[2]).getByRole("option", { name: "Inativo" })).toBeInTheDocument()
+            expect(within(selects[3]).getByRole("option", { name: "Todos" })).toBeInTheDocument()
+            expect(within(selects[3]).getByRole("option", { name: "Ativo" })).toBeInTheDocument()
+            expect(within(selects[3]).getByRole("option", { name: "Inativo" })).toBeInTheDocument()
         })
     })
 
@@ -553,12 +557,12 @@ describe("UsuariosListPage", () => {
             expect(resolveOrdering("")).toBe("nome")
         })
 
-        it("aplica 'unidade_administrativa__nome' ao ordenar por Unidade Administrativa", () => {
+        it("aplica 'unidade_orcamentaria__nome' ao ordenar por Unidade Orçamentária", () => {
             renderComponent()
 
-            fireEvent.click(screen.getByText("Unidade Administrativa"))
+            fireEvent.click(screen.getByText("Unidade Orçamentária"))
 
-            expect(resolveOrdering("")).toBe("unidade_administrativa__nome")
+            expect(resolveOrdering("")).toBe("unidade_orcamentaria__nome")
         })
 
         it("aplica 'grupo__nome' ao ordenar por Grupo de Permissionamento", () => {

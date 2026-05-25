@@ -6,7 +6,7 @@ export const editarUsuarioSchema = z.object({
   rf: z.string().min(1, "RF é obrigatório"),
   email: z.email("E-mail inválido"),
   grupo: z.string().min(1, "Grupo é obrigatório"),
-  unidade: z.string().optional(),
+  unidade: z.array(z.string()).default([]),
   status: z.enum(["ativo", "inativo"]),
   // Senha opcional na edição, mas quando preenchida, usa as mesmas regras da criação
   senha: z.union([
@@ -30,7 +30,7 @@ export const editarUsuarioSchema = z.object({
   (data) => {
     // Se grupo é OPERADOR_INVENTARIO, unidade é obrigatória
     if (data.grupo === "OPERADOR_INVENTARIO") {
-      return data.unidade && data.unidade.length > 0
+      return data.unidade.length > 0
     }
     return true
   },
