@@ -39,7 +39,17 @@ const usuarioMock = {
 
 const meMock = {
     data: {
+        id: 1,
+        username: "admin",
+        nome: "Administrador",
+        email: "admin@example.com",
+        rf: "000000",
         is_superuser: false,
+        is_gestor_patrimonio: false,
+        is_operador_inventario: false,
+        must_change_password: false,
+        uo_ativa: null,
+        ua_ativa: null,
         opcoes_escopo: {
             grupos: [
                 {
@@ -61,7 +71,11 @@ const meMock = {
             ],
         },
     },
-}
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config: {},
+} as Awaited<ReturnType<typeof authService.getCurrentUser>>
 
 const MOCK_PASSWORD = ["S@", "nh4", "@123!"].join("")
 
@@ -89,7 +103,7 @@ describe("EditarUsuarioPage", () => {
         vi.clearAllMocks()
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
         vi.mocked(authService.getCurrentUser).mockResolvedValue(meMock)
-        vi.mocked(usuarioService.partialUpdate).mockResolvedValue({})
+        vi.mocked(usuarioService.partialUpdate).mockResolvedValue(usuarioMock)
     })
 
     it("exibe spinner de carregamento enquanto busca os dados", () => {

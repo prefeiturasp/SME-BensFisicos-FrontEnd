@@ -19,7 +19,7 @@ export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
 
-type UseUsuarioFormStateOptions = {
+type UseUsuarioFormStateOptions<T extends Record<string, any> = Record<string, any>> = {
   gruposEscopo: EscopoGrupo[]
   uoSelecionadaId: number | null
   unidadesAdministrativas: EscopoUa[]
@@ -30,10 +30,10 @@ type UseUsuarioFormStateOptions = {
   setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>
   setFiltroUa: Dispatch<SetStateAction<string>>
   setTodasUnidades: Dispatch<SetStateAction<boolean>>
-  setValue: UseFormSetValue<Record<string, unknown>>
+  setValue: UseFormSetValue<T>
 }
 
-export function useUsuarioFormState({
+export function useUsuarioFormState<T extends Record<string, any> = Record<string, any>>({
   gruposEscopo,
   uoSelecionadaId,
   unidadesAdministrativas,
@@ -45,7 +45,7 @@ export function useUsuarioFormState({
   setFiltroUa,
   setTodasUnidades,
   setValue,
-}: UseUsuarioFormStateOptions) {
+}: UseUsuarioFormStateOptions<T>) {
   const idsSelecionados = useMemo(
     () => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)),
     [unidadesSelecionadas]
@@ -60,7 +60,7 @@ export function useUsuarioFormState({
 
   const syncFormUnidades = useCallback(
     (selecionadas: EscopoUa[]) => {
-      setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
+      setValue("unidade" as any, selecionadas.map((ua) => String(ua.unidade_administrativa_id)) as any, { shouldValidate: true })
     },
     [setValue]
   )
@@ -176,14 +176,14 @@ export function applyApiFieldErrors<T extends Record<string, unknown>>(
   return hasFieldError
 }
 
-export function buildGrupoChangeHandler(
-  setValue: UseFormSetValue<Record<string, unknown>>,
+export function buildGrupoChangeHandler<T extends Record<string, any>>(
+  setValue: UseFormSetValue<T>,
   setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>,
   syncFormUnidades: (selecionadas: EscopoUa[]) => void,
   setTodasUnidades: Dispatch<SetStateAction<boolean>>
 ) {
   return (value: string) => {
-    setValue("grupo", value, { shouldValidate: true })
+    setValue("grupo" as any, value as any, { shouldValidate: true })
     if (value === "GESTOR_PATRIMONIO") {
       setUnidadesSelecionadas([])
       syncFormUnidades([])
