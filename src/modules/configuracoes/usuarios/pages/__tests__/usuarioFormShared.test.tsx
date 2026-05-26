@@ -62,10 +62,12 @@ describe("usuarioFormShared helpers", () => {
     const setFiltroUa = vi.fn()
 
     const handler = buildToggleTodasHandler(
+      "GESTOR_PATRIMONIO",
       setTodasUnidades,
       setUnidadesSelecionadas,
       syncFormUnidades,
-      setFiltroUa
+      setFiltroUa,
+      []
     )
 
     handler()

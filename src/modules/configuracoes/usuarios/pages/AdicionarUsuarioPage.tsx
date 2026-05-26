@@ -84,17 +84,19 @@ export default function AdicionarUsuarioPage() {
     try {
       setLoading(true)
       setErrorMessage(null)
-      const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || unidadesSelecionadas.length === 0)
+      const isGestor = data.grupo === "GESTOR_PATRIMONIO"
+      const enviarTodasUas = isGestor && todasUnidades
+      const unidadesParaEnvio = enviarTodasUas ? unidadesAdministrativas : unidadesSelecionadas
 
       let unidadeOrcamentaria: number | null = null
       let unidadesAdministrativasIds: number[] = []
-      const unidadeAdministrativaPadrao = unidadesSelecionadas[0]?.unidade_administrativa_id ?? null
+      const unidadeAdministrativaPadrao = unidadesParaEnvio[0]?.unidade_administrativa_id ?? null
 
-      if (semSelecaoGestor) {
+      if (isGestor && !enviarTodasUas && unidadesParaEnvio.length === 0) {
         unidadeOrcamentaria = uoSelecionadaId ?? gestorUoId ?? null
       } else {
-        unidadeOrcamentaria = unidadesSelecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId ?? null
-        unidadesAdministrativasIds = unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)
+        unidadeOrcamentaria = unidadesParaEnvio[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? gestorUoId ?? null
+        unidadesAdministrativasIds = unidadesParaEnvio.map((ua) => ua.unidade_administrativa_id)
       }
 
       await usuarioService.create({
@@ -102,7 +104,7 @@ export default function AdicionarUsuarioPage() {
         nome: data.nome,
         email: data.email,
         rf: data.rf,
-        unidade_administrativa: semSelecaoGestor ? null : unidadeAdministrativaPadrao,
+        unidade_administrativa: unidadeAdministrativaPadrao,
         unidade_orcamentaria: unidadeOrcamentaria,
         unidades_administrativas: unidadesAdministrativasIds,
         group_name: data.grupo,
@@ -144,6 +146,7 @@ export default function AdicionarUsuarioPage() {
           usernameValue={watch("username")}
           emailValue={watch("email")}
           grupoValue={watch("grupo")}
+          statusValue={watch("status")}
           uoSelecionadaId={uoSelecionadaId}
           uosDisponiveis={uosDisponiveis}
           unidadeObrigatoria={unidadeObrigatoria}
@@ -163,13 +166,16 @@ export default function AdicionarUsuarioPage() {
             syncFormUnidades,
             setTodasUnidades
           )}
+          onStatusChange={(value) => setValue("status", value)}
           onUoChange={setUoSelecionadaId}
           onFiltroUaChange={setFiltroUa}
           onToggleTodasUnidades={buildToggleTodasHandler(
+            grupoSelecionado,
             setTodasUnidades,
             setUnidadesSelecionadas,
             syncFormUnidades,
-            setFiltroUa
+            setFiltroUa,
+            unidadesAdministrativas
           )}
           onToggleUa={toggleUa}
         />
@@ -184,8 +190,6 @@ export default function AdicionarUsuarioPage() {
           onToggleConfirmarSenha={() => setShowConfirmPassword((v) => !v)}
           senhaError={errors.password?.message}
           confirmarSenhaError={errors.confirmPassword?.message}
-          statusValue={watch("status")}
-          onStatusChange={(value) => setValue("status", value)}
         />
       </Card>
     </div>
