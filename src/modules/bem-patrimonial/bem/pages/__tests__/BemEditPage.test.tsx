@@ -67,6 +67,12 @@ const bemFormatoAntigoMock = {
   numero_formato_antigo: true,
 }
 
+const userGestorAutorizado = {
+  is_gestor_patrimonio: true,
+  ua_ativa: { codigo: '001' },
+  uo_ativa: { nome: 'Financeiro' },
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/bens-patrimoniais/1/editar']}>
@@ -211,7 +217,7 @@ describe('BemEditPage', () => {
       ...bemMock,
     } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -242,7 +248,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -269,7 +275,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -351,7 +357,7 @@ describe('BemEditPage', () => {
         },
       })
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -387,7 +393,7 @@ describe('BemEditPage', () => {
       ...bemMock,
     } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -414,7 +420,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -431,7 +437,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -449,7 +455,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -469,7 +475,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -492,7 +498,7 @@ describe('BemEditPage', () => {
       ...bemMock,
     } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -533,7 +539,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -567,7 +573,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -598,7 +604,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemSemNumeracaoMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -625,7 +631,7 @@ describe('BemEditPage', () => {
       .spyOn(bemServiceModule.bemService, 'update')
       .mockResolvedValue({ ...bemFormatoAntigoMock } as any)
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -651,7 +657,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()
@@ -670,7 +676,7 @@ describe('BemEditPage', () => {
       bemMock as any
     )
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorAutorizado,
     })
 
     renderPage()

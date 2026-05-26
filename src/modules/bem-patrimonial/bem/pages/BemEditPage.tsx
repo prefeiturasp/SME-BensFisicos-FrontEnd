@@ -340,6 +340,7 @@ export default function BemEditPage() {
                         ) : (
                           <Input
                             {...field}
+                            value={field.value ?? ''}
                             disabled={
                               !podeEditar ||
                               fieldName === 'numero_processo_baixa'
