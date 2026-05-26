@@ -187,23 +187,6 @@ export default function BemDetailPage() {
       </div>
     </div>
 
-          <HistoricoModal
-            bemId={bem.id}
-            open={openHistorico}
-            onClose={() => setOpenHistorico(false)}
-          />
-
-          <Button
-            variant="outline"
-            onClick={() => navigate('/bens-patrimoniais')}
-            className={`${ACTION_BUTTON_CLASS} px-6`}
-          >
-            <ArrowLeft size={16} className="mr-2" />
-            Voltar
-          </Button>
-        </div>
-      </div>
-
       <Card className="p-6 space-y-0">
         {/* STATUS */}
         <div className="flex justify-end">
@@ -305,7 +288,7 @@ export default function BemDetailPage() {
               id="descricao"
               value={bem.descricao ?? ''}
               disabled
-              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px] bg-gray-100"
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
             />
           </div>
 
@@ -361,15 +344,6 @@ export default function BemDetailPage() {
             />
           </div>
 
-      {/* METADADOS */}
-      <div className="border-t pt-6 text-xs text-gray-500">
-        Criado por: {bem.criado_por_nome} <br />
-        Criado em: {bem.criado_em}
-      </div>
-    </Card>
-  </div>
-)
-}
           {/* PROCESSO INCORPORAÇÃO */}
           <div>
             <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
@@ -405,7 +379,7 @@ export default function BemDetailPage() {
               id="observacao"
               value={bem.observacao ?? ''}
               disabled
-              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px] bg-gray-100"
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
             />
           </div>
 

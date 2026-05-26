@@ -228,6 +228,7 @@ export default function BemEditPage() {
                     <FormControl>
                       <Input
                         {...field}
+                        value={field.value ?? ''}
                         disabled={!podeEditar || numeroHook.disabled}
                         className={INPUT_CLASS}
                         onChange={(e) => {
@@ -290,7 +291,7 @@ export default function BemEditPage() {
                           checked={field.value}
                           onChange={(e) => {
                             field.onChange(e.target.checked)
-                            numeroHook.handleSemNumeracaoChange(e)
+                            numeroHook.handleSemNumeracaoChange(e.target.checked)
                           }}
                           disabled={!podeEditar}
                         />
@@ -334,7 +335,7 @@ export default function BemEditPage() {
                           <textarea
                             {...field}
                             disabled={!podeEditar}
-                            className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px]"
+                            className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
                           />
                         ) : (
                           <Input
@@ -354,16 +355,6 @@ export default function BemEditPage() {
               ))}
             </div>
 
-            <div className="flex justify-end pt-6 border-t">
-              <Button
-                type="submit"
-                disabled={!podeEditar || form.formState.isSubmitting}
-                className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Edição'}
-              </Button>
-            </div>
-
             <FormField
               control={form.control}
               name={'observacao' as any}
@@ -375,7 +366,7 @@ export default function BemEditPage() {
                       {...field}
                       disabled={!podeEditar}
                       placeholder="Observação"
-                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </FormControl>
                   <FormMessage />
@@ -404,8 +395,8 @@ export default function BemEditPage() {
                           ? 'Justificativa para a alteração'
                           : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
                       }
-                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
-                        form.formState.errors['justificativa' as any]
+                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        form.formState.errors.justificativa
                           ? 'border-red-500'
                           : 'border-gray-300'
                       }`}
