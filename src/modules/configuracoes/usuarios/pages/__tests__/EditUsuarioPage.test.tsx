@@ -31,6 +31,8 @@ const usuarioMock = {
     username: "joao.silva",
     email: "joao@example.com",
     grupo_nome: "GESTOR_PATRIMONIO",
+    unidade_orcamentaria: 20,
+    unidades_administrativas: [10],
     unidade_codigo: "UA001",
     unidade_nome: "Unidade Central",
     status: "ativo",
@@ -39,10 +41,24 @@ const usuarioMock = {
 
 const meMock = {
     data: {
+        id: 1,
+        username: "admin",
+        nome: "Administrador",
+        email: "admin@example.com",
+        rf: "000000",
         is_superuser: false,
+        is_gestor_patrimonio: false,
+        is_operador_inventario: false,
+        must_change_password: false,
+        uo_ativa: null,
+        ua_ativa: null,
         opcoes_escopo: {
             grupos: [
                 {
+                    uo: {
+                        id: 20,
+                        label: "20 - UO Central",
+                    },
                     uas: [
                         {
                             unidade_administrativa_id: 10,
@@ -52,7 +68,7 @@ const meMock = {
                         },
                         {
                             unidade_administrativa_id: 11,
-                            unidade_orcamentaria_id: 21,
+                            unidade_orcamentaria_id: 20,
                             codigo: "UA002",
                             nome: "Unidade Norte",
                         },
@@ -61,7 +77,11 @@ const meMock = {
             ],
         },
     },
-}
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config: {},
+} as Awaited<ReturnType<typeof authService.getCurrentUser>>
 
 const MOCK_PASSWORD = ["S@", "nh4", "@123!"].join("")
 
@@ -89,7 +109,7 @@ describe("EditarUsuarioPage", () => {
         vi.clearAllMocks()
         vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
         vi.mocked(authService.getCurrentUser).mockResolvedValue(meMock)
-        vi.mocked(usuarioService.partialUpdate).mockResolvedValue({})
+        vi.mocked(usuarioService.partialUpdate).mockResolvedValue(usuarioMock)
     })
 
     it("exibe spinner de carregamento enquanto busca os dados", () => {
@@ -116,6 +136,8 @@ describe("EditarUsuarioPage", () => {
         expect(screen.getByDisplayValue("João da Silva")).toBeInTheDocument()
         expect(screen.getByDisplayValue("123456")).toBeInTheDocument()
         expect(screen.getByDisplayValue("joao@example.com")).toBeInTheDocument()
+        expect(screen.getByText("Notificações das UAs")).toBeInTheDocument()
+        expect(screen.getByText("Gestor acessa todas UAs da UO")).toBeInTheDocument()
     })
 
     it("exibe erros ao tentar salvar com campos obrigatórios vazios", async () => {
@@ -288,6 +310,26 @@ describe("EditarUsuarioPage", () => {
                 expect.objectContaining({
                     password: MOCK_PASSWORD,
                     password_confirm: MOCK_PASSWORD,
+                })
+            )
+        })
+    })
+
+    it("quando Gestor marca Todas, envia todas as UAs no payload", async () => {
+        renderPage()
+        await aguardarCarregamento()
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("checkbox"))
+        await user.click(screen.getByRole("button", { name: /salvar/i }))
+
+        await waitFor(() => {
+            expect(usuarioService.partialUpdate).toHaveBeenCalledWith(
+                1,
+                expect.objectContaining({
+                    unidades_administrativas: [10, 11],
+                    unidade_administrativa: 10,
+                    unidade_orcamentaria: 20,
                 })
             )
         })

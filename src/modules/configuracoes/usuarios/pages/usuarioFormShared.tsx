@@ -4,6 +4,7 @@ import type { Dispatch, InputHTMLAttributes, ReactNode, SetStateAction } from "r
 import type { UseFormSetValue } from "react-hook-form"
 import type { EscopoGrupo, EscopoUa } from "../../../../auth/auth.service"
 
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 
@@ -13,13 +14,14 @@ export const INPUT_TEXT_CLASS =
   "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
 export const ACTION_BUTTON_CLASS =
   "h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
+export const GESTOR_BADGE_TEXT = "Gestor acessa todas UAs da UO"
 export const REQUIRED = <span className="text-red-500 ml-1">*</span>
 export const API_FIELD_PASSWORD = "password"
 export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
 
-type UseUsuarioFormStateOptions = {
+type UseUsuarioFormStateOptions<T extends Record<string, any> = Record<string, any>> = {
   gruposEscopo: EscopoGrupo[]
   uoSelecionadaId: number | null
   unidadesAdministrativas: EscopoUa[]
@@ -30,10 +32,10 @@ type UseUsuarioFormStateOptions = {
   setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>
   setFiltroUa: Dispatch<SetStateAction<string>>
   setTodasUnidades: Dispatch<SetStateAction<boolean>>
-  setValue: UseFormSetValue<Record<string, unknown>>
+  setValue: UseFormSetValue<T>
 }
 
-export function useUsuarioFormState({
+export function useUsuarioFormState<T extends Record<string, any> = Record<string, any>>({
   gruposEscopo,
   uoSelecionadaId,
   unidadesAdministrativas,
@@ -45,7 +47,7 @@ export function useUsuarioFormState({
   setFiltroUa,
   setTodasUnidades,
   setValue,
-}: UseUsuarioFormStateOptions) {
+}: UseUsuarioFormStateOptions<T>) {
   const idsSelecionados = useMemo(
     () => new Set(unidadesSelecionadas.map((ua) => ua.unidade_administrativa_id)),
     [unidadesSelecionadas]
@@ -60,7 +62,7 @@ export function useUsuarioFormState({
 
   const syncFormUnidades = useCallback(
     (selecionadas: EscopoUa[]) => {
-      setValue("unidade", selecionadas.map((ua) => String(ua.unidade_administrativa_id)), { shouldValidate: true })
+      setValue("unidade" as any, selecionadas.map((ua) => String(ua.unidade_administrativa_id)) as any, { shouldValidate: true })
     },
     [setValue]
   )
@@ -176,14 +178,14 @@ export function applyApiFieldErrors<T extends Record<string, unknown>>(
   return hasFieldError
 }
 
-export function buildGrupoChangeHandler(
-  setValue: UseFormSetValue<Record<string, unknown>>,
+export function buildGrupoChangeHandler<T extends Record<string, any>>(
+  setValue: UseFormSetValue<T>,
   setUnidadesSelecionadas: Dispatch<SetStateAction<EscopoUa[]>>,
   syncFormUnidades: (selecionadas: EscopoUa[]) => void,
   setTodasUnidades: Dispatch<SetStateAction<boolean>>
 ) {
   return (value: string) => {
-    setValue("grupo", value, { shouldValidate: true })
+    setValue("grupo" as any, value as any, { shouldValidate: true })
     if (value === "GESTOR_PATRIMONIO") {
       setUnidadesSelecionadas([])
       syncFormUnidades([])
@@ -252,6 +254,7 @@ type UserTopSectionProps = {
   usernameDisabled?: boolean
   emailValue?: string
   grupoValue?: string
+  statusValue: string
   uoSelecionadaId: number | null
   uosDisponiveis: UoOption[]
   unidadeObrigatoria?: boolean
@@ -266,6 +269,7 @@ type UserTopSectionProps = {
   onUsernameChange?: InputHTMLAttributes<HTMLInputElement>["onChange"]
   onEmailChange?: InputHTMLAttributes<HTMLInputElement>["onChange"]
   onGrupoChange: (value: string) => void
+  onStatusChange: (value: string) => void
   onUoChange: (value: number) => void
   onFiltroUaChange: (value: string) => void
   onToggleTodasUnidades: () => void
@@ -284,6 +288,7 @@ export function UserTopSection({
   usernameDisabled,
   emailValue,
   grupoValue,
+  statusValue,
   uoSelecionadaId,
   uosDisponiveis,
   unidadeObrigatoria,
@@ -298,6 +303,7 @@ export function UserTopSection({
   onUsernameChange,
   onEmailChange,
   onGrupoChange,
+  onStatusChange,
   onUoChange,
   onFiltroUaChange,
   onToggleTodasUnidades,
@@ -308,6 +314,7 @@ export function UserTopSection({
   emailError,
   grupoError,
 }: Readonly<UserTopSectionProps>) {
+  const isGestor = grupoValue === "GESTOR_PATRIMONIO"
   return (
     <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <FormTextField
@@ -343,12 +350,17 @@ export function UserTopSection({
         placeholder="Digite o e-mail"
         onChange={onEmailChange}
         error={emailError}
-      />
+      /> 
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="grupo" className="text-sm font-semibold text-gray-700">
-          Grupo de Permissionamento{REQUIRED}
-        </label>
+        <Label htmlFor="grupo" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-gray-700">
+          <span>Grupo de Permissionamento{REQUIRED}</span>
+          {isGestor ? (
+            <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+              {GESTOR_BADGE_TEXT}
+            </span>
+          ) : null}
+        </Label>
         <Select value={grupoValue} onValueChange={onGrupoChange}>
           <SelectTrigger id="grupo" className={INPUT_CLASS}>
             <SelectValue placeholder="Selecione os grupos" />
@@ -362,9 +374,24 @@ export function UserTopSection({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="uo" className="text-sm font-semibold text-gray-700">
-          Unidade Orçamentária{REQUIRED}
+        <label htmlFor="status" className="text-sm font-semibold text-gray-700">
+          Status{REQUIRED}
         </label>
+        <Select value={statusValue} onValueChange={onStatusChange}>
+          <SelectTrigger id="status" className={INPUT_CLASS}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativo">Ativo</SelectItem>
+            <SelectItem value="inativo">Inativo</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="uo" className="text-sm font-semibold text-gray-700">
+          Unidade Orçamentária{REQUIRED}
+        </Label>
         <Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => onUoChange(Number(value))}>
           <SelectTrigger id="uo" className={INPUT_CLASS}>
             <SelectValue placeholder="Selecione a UO" />
@@ -381,6 +408,7 @@ export function UserTopSection({
 
       <div>
         <UnidadesAdministrativasSelector
+          label={isGestor ? "Notificações das UAs" : "Unidades Administrativas"}
           unidadesListadas={unidadesListadas}
           isSelecionada={(uaId) => idsSelecionados.has(uaId)}
           todasUnidades={todasUnidades}
@@ -409,8 +437,6 @@ type PasswordStatusSectionProps = {
   onToggleConfirmarSenha: () => void
   senhaError?: string
   confirmarSenhaError?: string
-  statusValue: string
-  onStatusChange: (value: string) => void
 }
 
 export function PasswordStatusSection({
@@ -424,8 +450,6 @@ export function PasswordStatusSection({
   onToggleConfirmarSenha,
   senhaError,
   confirmarSenhaError,
-  statusValue,
-  onStatusChange,
 }: Readonly<PasswordStatusSectionProps>) {
   return (
     <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -459,34 +483,31 @@ export function PasswordStatusSection({
         </div>
         {confirmarSenhaError ? <span className="text-red-600 text-sm">{confirmarSenhaError}</span> : null}
       </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="status" className="text-sm font-semibold text-gray-700">
-          Status{REQUIRED}
-        </label>
-        <Select value={statusValue} onValueChange={onStatusChange}>
-          <SelectTrigger id="status" className={INPUT_CLASS}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ativo">Ativo</SelectItem>
-            <SelectItem value="inativo">Inativo</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
     </div>
   )
 }
 
 export function buildToggleTodasHandler(
+  grupoSelecionado: string,
   setTodasUnidades: (updater: (prev: boolean) => boolean) => void,
   setUnidadesSelecionadas: (value: UaOption[]) => void,
   syncFormUnidades: (selecionadas: UaOption[]) => void,
-  setFiltroUa: (value: string) => void
+  setFiltroUa: (value: string) => void,
+  unidadesDisponiveis: UaOption[]
 ) {
   return () => {
     setTodasUnidades((prev) => {
       const next = !prev
       if (next) {
+        if (grupoSelecionado === "GESTOR_PATRIMONIO") {
+          setUnidadesSelecionadas(unidadesDisponiveis)
+          syncFormUnidades(unidadesDisponiveis)
+        } else {
+          setUnidadesSelecionadas([])
+          syncFormUnidades([])
+        }
+        setFiltroUa("")
+      } else {
         setUnidadesSelecionadas([])
         syncFormUnidades([])
         setFiltroUa("")

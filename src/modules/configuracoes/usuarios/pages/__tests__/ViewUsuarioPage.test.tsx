@@ -93,8 +93,24 @@ describe("ViewUsuarioPage", () => {
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByText("Todas da UO")).toBeInTheDocument()
+            expect(screen.getByText("Nenhuma UA selecionada.")).toBeInTheDocument()
         })
+        expect(screen.queryByText("Todas selecionadas")).not.toBeInTheDocument()
+    })
+
+    it("exibe badge de gestor e troca a label para Notificações", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(
+                screen.getByText("Gestor acessa todas UAs da UO")
+            ).toBeInTheDocument()
+        })
+        expect(screen.getByText("Notificações das UAs")).toBeInTheDocument()
+        expect(screen.queryByText("Unidades Administrativas")).not.toBeInTheDocument()
+        expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
     })
 
     it("exibe labels de UAs a partir do escopo quando usuário tem unidades administrativas", async () => {
@@ -145,6 +161,60 @@ describe("ViewUsuarioPage", () => {
 
         await waitFor(() => {
             expect(screen.getByText("UA999 - Unidade Fallback")).toBeInTheDocument()
+        })
+    })
+
+    it("mantém Unidades Administrativas quando usuário não é gestor", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            grupo_nome: "OPERADOR_INVENTARIO",
+            unidades_administrativas: [1],
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("Unidades Administrativas")).toBeInTheDocument()
+        })
+        expect(screen.queryByText("Notificações")).not.toBeInTheDocument()
+        expect(screen.queryByText("Gestor acessa todas UAs da UO")).not.toBeInTheDocument()
+    })
+
+    it("exibe Todas selecionadas quando o gestor tiver todas as UAs marcadas", async () => {
+        vi.mocked(authService.getCurrentUser).mockResolvedValue({
+            data: {
+                opcoes_escopo: {
+                    grupos: [
+                        {
+                            uo: { id: 2, label: "02.17.20 - UO Teste" },
+                            uas: [
+                                {
+                                    unidade_administrativa_id: 1,
+                                    codigo: "001",
+                                    nome: "Secretaria Teste",
+                                },
+                                {
+                                    unidade_administrativa_id: 2,
+                                    codigo: "002",
+                                    nome: "Secretaria Teste 2",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        } as any)
+
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidades_administrativas: [1, 2],
+            unidade_orcamentaria: 2,
+        })
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("Todas selecionadas")).toBeInTheDocument()
         })
     })
 
