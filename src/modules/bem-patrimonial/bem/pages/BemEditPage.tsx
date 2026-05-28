@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { bemService, type Bem } from '../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -87,7 +88,18 @@ export default function BemEditPage() {
     }
 
     fetchBem()
-  }, [id])
+  }, [id, form, navigate])
+
+  const isGestor = user?.is_gestor_patrimonio
+  const isBaixaFisica = status === 'baixa_fisica'
+  const podeEditarEscopo = bem ? userHasAccessToBemUa(user, bem) : false
+  const podeEditar = !!isGestor && !isBaixaFisica && podeEditarEscopo
+
+  useEffect(() => {
+    if (!loading && bem && !podeEditar) {
+      navigate(`/bens-patrimoniais/${bem.id}`, { replace: true })
+    }
+  }, [loading, bem, podeEditar, navigate])
 
   if (loading) {
     return (
@@ -98,10 +110,6 @@ export default function BemEditPage() {
   }
 
   if (!bem) return null
-
-  const isGestor = user?.is_gestor_patrimonio
-  const isBaixaFisica = status === 'baixa_fisica'
-  const podeEditar = isGestor && !isBaixaFisica
 
   const onSubmit = async (values: Bem) => {
     const houveAlteracaoNumero =
@@ -213,6 +221,7 @@ export default function BemEditPage() {
                     <FormControl>
                       <Input
                         {...field}
+                        value={field.value ?? ''}
                         disabled={!podeEditar || numeroHook.disabled}
                         className={INPUT_CLASS}
                         onChange={(e) => {
@@ -275,7 +284,7 @@ export default function BemEditPage() {
                           checked={field.value}
                           onChange={(e) => {
                             field.onChange(e.target.checked)
-                            numeroHook.handleSemNumeracaoChange(e)
+                            numeroHook.handleSemNumeracaoChange(e.target.checked)
                           }}
                           disabled={!podeEditar}
                         />
@@ -319,11 +328,12 @@ export default function BemEditPage() {
                           <textarea
                             {...field}
                             disabled={!podeEditar}
-                            className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px]"
+                            className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
                           />
                         ) : (
                           <Input
                             {...field}
+                            value={field.value ?? ''}
                             disabled={
                               !podeEditar ||
                               fieldName === 'numero_processo_baixa'
@@ -350,7 +360,7 @@ export default function BemEditPage() {
                       {...field}
                       disabled={!podeEditar}
                       placeholder="Observação"
-                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </FormControl>
                   <FormMessage />
@@ -379,8 +389,8 @@ export default function BemEditPage() {
                           ? 'Justificativa para a alteração'
                           : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
                       }
-                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
-                        form.formState.errors['justificativa' as any]
+                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        form.formState.errors.justificativa
                           ? 'border-red-500'
                           : 'border-gray-300'
                       }`}
