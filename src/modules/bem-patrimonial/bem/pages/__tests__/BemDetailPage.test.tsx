@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemDetailPage from '../BemDetailPage'
@@ -69,6 +69,42 @@ const bemMock = {
   criado_em: '2024-01-01',
 }
 
+const bemUoAtivaMock = {
+  ...bemMock,
+  unidade_orcamentaria_nome: '01.16.10 - GABINETE DO SECRETARIO',
+}
+
+const userGestorComAcesso = {
+  is_gestor_patrimonio: true,
+  ua_ativa: null,
+  uo_ativa: null,
+  opcoes_escopo: {
+    grupos: [
+      {
+        uo: {
+          id: 10,
+          codigo: '01.16.10',
+          nome: 'GABINETE DO SECRETARIO',
+          label: '01.16.10 - GABINETE DO SECRETARIO',
+          selecionavel: true,
+          unidade_administrativa_id: null,
+          unidade_orcamentaria_id: 10,
+        },
+        uas: [
+          {
+            id: 1,
+            codigo: '001',
+            nome: 'Escola Central',
+            label: '001 - Escola Central',
+            unidade_administrativa_id: 1,
+            unidade_orcamentaria_id: 10,
+          },
+        ],
+      },
+    ],
+  },
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/bens-patrimoniais/1']}>
@@ -115,7 +151,9 @@ describe('BemDetailPage', () => {
     ;(useAuth as any).mockReturnValue({
       user: {
         is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
+        ua_ativa: null,
+        uo_ativa: null,
+        opcoes_escopo: userGestorComAcesso.opcoes_escopo,
       },
     })
 
@@ -139,10 +177,22 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: {
-        is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
-      },
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    expect(
+      await screen.findByText('Editar')
+    ).toBeInTheDocument()
+  })
+
+  it('deve exibir botão Editar quando gestor tem acesso à UA do bem', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemUoAtivaMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -209,14 +259,11 @@ describe('BemDetailPage', () => {
 
     renderPage()
 
-    // espera loader sumir
-    await screen.findByTestId('loader')
-
-    await new Promise(resolve => setTimeout(resolve, 0))
-
-    expect(
+    await waitFor(() => {
+      expect(
         screen.queryByText('Visualizar Cadastro do Bem Patrimonial')
-    ).not.toBeInTheDocument()
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('não deve exibir botão Editar se status for baixa_fisica mesmo sendo gestor', async () => {
@@ -227,7 +274,12 @@ describe('BemDetailPage', () => {
         } as any)
 
     ;(useAuth as any).mockReturnValue({
-        user: { is_gestor_patrimonio: true, ua_ativa: { codigo: '001' } },
+        user: {
+          is_gestor_patrimonio: true,
+          ua_ativa: null,
+          uo_ativa: null,
+          opcoes_escopo: userGestorComAcesso.opcoes_escopo,
+        },
     })
 
     renderPage()
@@ -255,12 +307,14 @@ describe('BemDetailPage', () => {
    
    it('deve navegar para edição ao clicar em Editar', async () => {
         vi.spyOn(bemServiceModule.bemService, 'retrieve')
-            .mockResolvedValue(bemMock as any)
+        .mockResolvedValue(bemMock as any)
 
         ;(useAuth as any).mockReturnValue({
             user: {
               is_gestor_patrimonio: true,
-              ua_ativa: { codigo: '001' },
+              ua_ativa: null,
+              uo_ativa: null,
+              opcoes_escopo: userGestorComAcesso.opcoes_escopo,
             },
         })
 
@@ -308,10 +362,7 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: {
-        is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
-      },
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -332,10 +383,7 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: {
-        is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
-      },
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -361,10 +409,7 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: {
-        is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
-      },
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -377,9 +422,10 @@ describe('BemDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
 
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await waitFor(() => {
+      expect(deleteSpyFn).toHaveBeenCalledWith(1)
+    })
 
-    expect(deleteSpyFn).toHaveBeenCalledWith(1)
     expect(toast.success).toHaveBeenCalledWith('Bem excluído com sucesso')
   })
 
@@ -391,10 +437,7 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: {
-        is_gestor_patrimonio: true,
-        ua_ativa: { codigo: '001' },
-      },
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -407,9 +450,10 @@ describe('BemDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
 
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao excluir bem')
+    })
 
-    expect(toast.error).toHaveBeenCalledWith('Erro ao excluir bem')
   })
 
 })

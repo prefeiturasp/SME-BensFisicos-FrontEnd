@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { bemService, type Bem } from '../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -91,15 +92,7 @@ export default function BemEditPage() {
 
   const isGestor = user?.is_gestor_patrimonio
   const isBaixaFisica = status === 'baixa_fisica'
-  const bemDaUaAtiva =
-    !!user?.ua_ativa?.codigo &&
-    !!bem?.unidade_administrativa_codigo &&
-    user.ua_ativa.codigo === bem.unidade_administrativa_codigo
-  const bemDaUoAtiva =
-    !!user?.uo_ativa?.nome &&
-    !!bem?.unidade_orcamentaria_nome &&
-    user?.uo_ativa?.nome === bem.unidade_orcamentaria_nome
-  const podeEditarEscopo = bemDaUaAtiva || (!user?.ua_ativa && bemDaUoAtiva)
+  const podeEditarEscopo = bem ? userHasAccessToBemUa(user, bem) : false
   const podeEditar = !!isGestor && !isBaixaFisica && podeEditarEscopo
 
   useEffect(() => {

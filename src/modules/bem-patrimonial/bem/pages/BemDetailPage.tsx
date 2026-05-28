@@ -10,6 +10,7 @@ import { useAuth } from '@/auth/useAuth'
 import HistoricoModal from '../modals/HistoricoModal'
 import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
 
 const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
@@ -63,18 +64,14 @@ export default function BemDetailPage() {
 
   if (!bem) return null
 
-  const bemDaUaAtiva =
-    !!user?.ua_ativa?.codigo && user.ua_ativa.codigo === bem.unidade_administrativa_codigo
-  const bemDaUoAtiva =
-    !!user?.uo_ativa?.nome && user.uo_ativa.nome === bem.unidade_orcamentaria_nome
-  const podeEditarEscopo = bemDaUaAtiva || (!user?.ua_ativa && bemDaUoAtiva)
+  const podeEditarEscopo = userHasAccessToBemUa(user, bem)
 
   const podeEditar =
     !!user?.is_gestor_patrimonio &&
     bem.status !== 'baixa_fisica' &&
     podeEditarEscopo
 
-  let motivoBloqueioEdicao = 'Edição bloqueada: você não pertence à Unidade Orçamentária deste bem.'
+  let motivoBloqueioEdicao = 'Edição bloqueada: seu perfil não tem acesso à Unidade Administrativa deste bem.'
   if (!user?.is_gestor_patrimonio) {
     motivoBloqueioEdicao = 'Somente Gestor de Patrimônio pode editar este bem.'
   } else if (bem.status === 'baixa_fisica') {
