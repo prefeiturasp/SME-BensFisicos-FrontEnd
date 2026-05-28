@@ -4,11 +4,16 @@ import { bemService, type Bem } from '../services/bem.service'
 
 interface UseBensListProps {
   pageSize: number
+  persistKey?: string
 }
 
 const SEARCH_DEBOUNCE_MS = 400
 
-export function useBensList({ pageSize }: UseBensListProps) {
+function parseBool(value: string | null): boolean {
+  return value === 'true'
+}
+
+export function useBensList({ pageSize, persistKey }: UseBensListProps) {
   const [bens, setBens] = useState<Bem[]>([])
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [page, setPage] = useState(1)
@@ -19,8 +24,14 @@ export function useBensList({ pageSize }: UseBensListProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [escopoFilter, setEscopoFilter] = useState<string>('todas')
-  const [baixadosAntigos, setBaixadosAntigos] = useState(false)
-  const [buscaGeralUos, setBuscaGeralUos] = useState(false)
+  const [baixadosAntigos, setBaixadosAntigos] = useState(() => {
+    if (!persistKey) return false
+    return parseBool(localStorage.getItem(`${persistKey}:baixadosAntigos`))
+  })
+  const [buscaGeralUos, setBuscaGeralUos] = useState(() => {
+    if (!persistKey) return false
+    return parseBool(localStorage.getItem(`${persistKey}:buscaGeralUos`))
+  })
   const [ordering, setOrdering] = useState<string>('')
 
   // debounce search
@@ -66,6 +77,22 @@ export function useBensList({ pageSize }: UseBensListProps) {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    if (!persistKey) return
+    setBaixadosAntigos(parseBool(localStorage.getItem(`${persistKey}:baixadosAntigos`)))
+    setBuscaGeralUos(parseBool(localStorage.getItem(`${persistKey}:buscaGeralUos`)))
+  }, [persistKey])
+
+  useEffect(() => {
+    if (!persistKey) return
+    localStorage.setItem(`${persistKey}:baixadosAntigos`, String(baixadosAntigos))
+  }, [persistKey, baixadosAntigos])
+
+  useEffect(() => {
+    if (!persistKey) return
+    localStorage.setItem(`${persistKey}:buscaGeralUos`, String(buscaGeralUos))
+  }, [persistKey, buscaGeralUos])
 
   const toggleSelect = (bem: Bem) => {
     if (bem.status !== 'aguardando_aprovacao') return

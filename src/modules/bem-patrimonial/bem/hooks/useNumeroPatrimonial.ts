@@ -11,12 +11,10 @@ export function useNumeroPatrimonial({
   formatoAntigoInicial,
   semNumeracaoInicial
 }: NumeroPatrimonialProps) {
-
   const [formatoAntigo, setFormatoAntigo] = useState(false)
   const [semNumeracao, setSemNumeracao] = useState(false)
 
   useEffect(() => {
-
     let sem = semNumeracaoInicial
     let formato = formatoAntigoInicial
 
@@ -26,7 +24,6 @@ export function useNumeroPatrimonial({
 
     setFormatoAntigo(formato)
     setSemNumeracao(sem)
-
   }, [formatoAntigoInicial, semNumeracaoInicial])
 
   function onlyDigits(str: string) {
@@ -58,8 +55,14 @@ export function useNumeroPatrimonial({
     setFormatoAntigo(false)
   }
 
-  const disabled =
-    semNumeracao && !formatoAntigo
+  function handleSemNumeracaoChange(checked: boolean) {
+    if (checked) {
+      setFormatoAntigo(false)
+    }
+    setSemNumeracao(checked)
+  }
+
+  const disabled = semNumeracao && !formatoAntigo
 
   return {
     formatoAntigo,
@@ -67,6 +70,7 @@ export function useNumeroPatrimonial({
     disabled,
     applyMask,
     ativarFormatoAntigo,
-    desativarFormatoAntigo
+    desativarFormatoAntigo,
+    handleSemNumeracaoChange,
   }
 }

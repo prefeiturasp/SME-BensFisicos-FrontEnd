@@ -8,12 +8,21 @@ export interface Bem {
   nome: string
   descricao: string
   numero_patrimonial: string | null
+  numero_formato_antigo: boolean
+  sem_numeracao: boolean
+  valor_unitario?: string | null
+  marca?: string | null
+  modelo?: string | null
   localizacao: string
+  numero_processo?: string | null
+  numero_processo_baixa?: string | null
   unidade_administrativa_codigo: string
   unidade_administrativa_nome: string
   unidade_orcamentaria_nome: string
   observacao?: string
   justificativa?: string
+  criado_por_nome?: string | null
+  criado_em?: string | null
 }
 export interface HistoricoAcao {
   campo: string
@@ -34,19 +43,27 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
+export interface BemListParams {
+  page?: number
+  search?: string
+  status?: string
+  unidade_administrativa?: string
+  unidade_orcamentaria?: string
+  busca_geral_uos?: boolean
+  baixados_mais_de_um_periodo?: boolean
+  ordering?: string
+}
+
 export const bemService = {
-  list: async (params = {}): Promise<PaginatedResponse<Bem>> => {
+  list: async (params: BemListParams = {}): Promise<PaginatedResponse<Bem>> => {
     try {
       const query = new URLSearchParams()
 
-      if (params.page)
-        query.append('page', String(params.page))
+      if (params.page) query.append('page', String(params.page))
 
-      if (params.search?.trim())
-        query.append('search', params.search.trim())
+      if (params.search?.trim()) query.append('search', params.search.trim())
 
-      if (params.status && params.status !== 'todos')
-        query.append('status', params.status)
+      if (params.status && params.status !== 'todos') query.append('status', params.status)
 
       if (params.unidade_administrativa && params.unidade_administrativa !== 'todas')
         query.append('unidade_administrativa', params.unidade_administrativa)
@@ -54,17 +71,12 @@ export const bemService = {
       if (params.unidade_orcamentaria)
         query.append('unidade_orcamentaria', params.unidade_orcamentaria)
 
-      if (params.busca_geral_uos)
-        query.append('busca_geral_uos', String(params.busca_geral_uos))
+      if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
 
       if (params.baixados_mais_de_um_periodo)
-        query.append(
-          'baixados_mais_de_um_periodo',
-          String(params.baixados_mais_de_um_periodo)
-        )
+        query.append('baixados_mais_de_um_periodo', String(params.baixados_mais_de_um_periodo))
 
-      if (params.ordering)
-        query.append('ordering', params.ordering)
+      if (params.ordering) query.append('ordering', params.ordering)
 
       const { data } = await api.get(`/bens/?${query.toString()}`)
       return data
@@ -117,6 +129,13 @@ export const bemService = {
       handleApiError(error, 'Erro ao criar bens')
     }
   },
+  delete: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/bens/${id}/`)
+    } catch (error) {
+      handleApiError(error, 'Erro ao excluir bem')
+    }
+  },
   gerarNbbpm: async (id: number): Promise<Blob> => {
     try {
       const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
@@ -129,11 +148,7 @@ export const bemService = {
   },
 }
 
-
-function handleApiError(
-  error: unknown,
-  defaultMessage: string
-): never {
+function handleApiError(error: unknown, defaultMessage: string): never {
   if (error instanceof AxiosError) {
     if (!error.response) {
       throw new Error('Erro de conexão com o servidor.')

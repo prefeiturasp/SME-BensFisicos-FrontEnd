@@ -1,7 +1,11 @@
-﻿import { X } from "lucide-react"
+import { X } from "lucide-react"
+
+import { Label } from "@/components/ui/label"
+
 import type { EscopoUa } from "../../../../auth/auth.service"
 
 type Props = Readonly<{
+  label: string
   unidadesListadas: EscopoUa[]
   isSelecionada: (uaId: number) => boolean
   todasUnidades: boolean
@@ -16,6 +20,7 @@ type Props = Readonly<{
 }>
 
 export function UnidadesAdministrativasSelector({
+  label,
   unidadesListadas,
   isSelecionada,
   todasUnidades,
@@ -34,10 +39,10 @@ export function UnidadesAdministrativasSelector({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-semibold text-gray-700">
-        Unidades Administrativas
+      <Label className="text-sm font-semibold text-gray-700">
+        {label}
         {requiredNode ?? null}
-      </span>
+      </Label>
       <div className={`border rounded-xs ${disabled ? "border-gray-200 bg-gray-100" : "border-gray-300 bg-white"}`}>
         <div className="p-2 border-b border-gray-200 flex items-center gap-2">
           <input
@@ -60,36 +65,36 @@ export function UnidadesAdministrativasSelector({
         </div>
         {!disabled && (
           <div className="max-h-32 overflow-y-auto">
-          {unidadesListadas.map((ua) => {
-            const selecionada = todasUnidades || isSelecionada(ua.unidade_administrativa_id)
-            return (
-              <div
-                key={ua.unidade_administrativa_id}
-                className={`flex items-center justify-between px-3 py-2 border-b border-gray-100 text-sm ${
-                  selecionada
-                    ? "bg-green-50 text-green-900"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <button
-                  type="button"
-                  className="flex-1 text-left"
-                  onClick={() => onToggleUa(ua)}
+            {unidadesListadas.map((ua) => {
+              const selecionada = todasUnidades || isSelecionada(ua.unidade_administrativa_id)
+              return (
+                <div
+                  key={ua.unidade_administrativa_id}
+                  className={`flex items-center justify-between px-3 py-2 border-b border-gray-100 text-sm ${
+                    selecionada
+                      ? "bg-green-50 text-green-900"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
                 >
-                  {ua.codigo} - {ua.nome}
-                </button>
-                {selecionada && (
                   <button
                     type="button"
+                    className="flex-1 text-left"
                     onClick={() => onToggleUa(ua)}
-                    className="text-gray-500 hover:text-red-600"
                   >
-                    <X size={16} />
+                    {ua.codigo} - {ua.nome}
                   </button>
-                )}
-              </div>
-            )
-          })}
+                  {selecionada && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleUa(ua)}
+                      className="text-gray-500 hover:text-red-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
         {disabled && (

@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, Network, Pencil } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Loader2, ArrowLeft, Network, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService, type Bem } from '../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import HistoricoModal from '../modals/HistoricoModal'
+import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
 
 const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
@@ -31,6 +34,8 @@ export default function BemDetailPage() {
   const [bem, setBem] = useState<Bem | null>(null)
   const [loading, setLoading] = useState(true)
   const [openHistorico, setOpenHistorico] = useState(false)
+  const [openExcluir, setOpenExcluir] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchBem()
@@ -40,7 +45,8 @@ export default function BemDetailPage() {
     try {
       const data = await bemService.retrieve(Number(id))
       setBem(data)
-    } catch {
+    } catch (error) {
+      console.error(error)
       toast.error('Erro ao carregar bem')
       navigate('/bens-patrimoniais')
     } finally {
@@ -58,62 +64,125 @@ export default function BemDetailPage() {
 
   if (!bem) return null
 
+  const podeEditarEscopo = userHasAccessToBemUa(user, bem)
+
   const podeEditar =
-    user?.is_gestor_patrimonio &&
-    bem.status !== 'baixa_fisica'
+    !!user?.is_gestor_patrimonio &&
+    bem.status !== 'baixa_fisica' &&
+    podeEditarEscopo
+
+  let motivoBloqueioEdicao = 'Edição bloqueada: seu perfil não tem acesso à Unidade Administrativa deste bem.'
+  if (!user?.is_gestor_patrimonio) {
+    motivoBloqueioEdicao = 'Somente Gestor de Patrimônio pode editar este bem.'
+  } else if (bem.status === 'baixa_fisica') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status de baixa física.'
+  }
 
   return (
-    <div className="p-8 space-y-6">
-      <AppBreadcrumb
-        items={[
-          { label: 'Bem Patrimonial', icon: Network },
-          { label: 'Bem Patrimonial', icon: Network, to: '/bens-patrimoniais' },
-          { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
-        ]}
-      />
+  <div className="p-8 space-y-6">
+    <AppBreadcrumb
+      items={[
+        { label: 'Bem Patrimonial', icon: Network },
+        { label: 'Bem Patrimonial', icon: Network, to: '/bens-patrimoniais' },
+        { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
+      ]}
+    />
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-tight text-gray-700">
-          Visualizar Cadastro do Bem Patrimonial
-        </h1>
+    {/* HEADER */}
+    <div className="flex justify-between items-center">
+      <h1 className="text-xl font-bold tracking-tight text-gray-700">
+        Visualizar Cadastro do Bem Patrimonial
+      </h1>
 
-        <div className="flex gap-3">
-          {podeEditar && (
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/bens-patrimoniais/${bem.id}/editar`)}
-              className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6`}
-            >
-              <Pencil size={16} />
-              Editar
-            </Button>
+      <div className="flex gap-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                disabled={!podeEditar}
+                onClick={() => navigate(`/bens-patrimoniais/${bem.id}/editar`)}
+                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Pencil size={16} />
+                Editar
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!podeEditar && (
+            <TooltipContent side="bottom" sideOffset={6}>
+              {motivoBloqueioEdicao}
+            </TooltipContent>
           )}
+        </Tooltip>
 
-          <Button
-            variant="outline"
-            onClick={() => setOpenHistorico(true)}
-            className={`${ACTION_BUTTON_CLASS} px-6`}
-          >
-            Histórico
-          </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                disabled={!podeEditar}
+                onClick={() => setOpenExcluir(true)}
+                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Trash2 size={16} />
+                Apagar
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!podeEditar && (
+            <TooltipContent side="bottom" sideOffset={6}>
+              {motivoBloqueioEdicao}
+            </TooltipContent>
+          )}
+        </Tooltip>
 
-          <HistoricoModal
-            bemId={bem.id}
-            open={openHistorico}
-            onClose={() => setOpenHistorico(false)}
+        <Button
+          variant="outline"
+          onClick={() => setOpenHistorico(true)}
+          className={`${ACTION_BUTTON_CLASS} px-6`}
+        >
+          Histórico
+        </Button>
+
+        <HistoricoModal
+          bemId={bem.id}
+          open={openHistorico}
+          onClose={() => setOpenHistorico(false)}
+        />
+
+        {openExcluir && (
+          <ExcluirBemModal
+            bem={bem}
+            deleting={deleting}
+            onClose={() => setOpenExcluir(false)}
+            onConfirm={async () => {
+              setDeleting(true)
+              try {
+                await bemService.delete(bem.id)
+                toast.success('Bem excluído com sucesso')
+                navigate('/bens-patrimoniais')
+              } catch (error) {
+                console.error(error)
+                toast.error('Erro ao excluir bem')
+              } finally {
+                setDeleting(false)
+                setOpenExcluir(false)
+              }
+            }}
           />
+        )}
 
-          <Button
-            variant="outline"
-            onClick={() => navigate('/bens-patrimoniais')}
-            className={`${ACTION_BUTTON_CLASS} px-6`}
-          >
-            <ArrowLeft size={16} className="mr-2" />
-            Voltar
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => navigate('/bens-patrimoniais')}
+          className={`${ACTION_BUTTON_CLASS} px-6`}
+        >
+          <ArrowLeft size={16} className="mr-2" />
+          Voltar
+        </Button>
       </div>
+    </div>
 
       <Card className="p-6 space-y-0">
         {/* STATUS */}
@@ -216,7 +285,7 @@ export default function BemDetailPage() {
               id="descricao"
               value={bem.descricao ?? ''}
               disabled
-              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px] bg-gray-100"
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
             />
           </div>
 
@@ -307,7 +376,7 @@ export default function BemDetailPage() {
               id="observacao"
               value={bem.observacao ?? ''}
               disabled
-              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-[140px] bg-gray-100"
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
             />
           </div>
 

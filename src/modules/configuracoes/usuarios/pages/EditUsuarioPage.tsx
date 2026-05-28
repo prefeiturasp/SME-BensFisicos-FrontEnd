@@ -43,6 +43,7 @@ function getIdsUsuario(dadosUsuario: any): number[] {
 function mountPayload(
   data: EditarUsuarioFormData,
   valoresOriginais: ValoresOriginais | null,
+  unidadesAdministrativas: EscopoUa[],
   selecionadas: EscopoUa[],
   todasUnidades: boolean,
   uoSelecionadaId: number | null
@@ -57,19 +58,21 @@ function mountPayload(
   const isActiveOriginal = valoresOriginais?.status === "ativo"
   if (isActiveAtual !== isActiveOriginal) payload.is_active = isActiveAtual
 
-  const semSelecaoGestor = data.grupo === "GESTOR_PATRIMONIO" && (todasUnidades || selecionadas.length === 0)
-  const idsAtuais = selecionadas.map((ua) => ua.unidade_administrativa_id).sort((a, b) => a - b)
+  const isGestor = data.grupo === "GESTOR_PATRIMONIO"
+  const enviarTodasUas = isGestor && todasUnidades
+  const unidadesParaEnvio = enviarTodasUas ? unidadesAdministrativas : selecionadas
+  const idsAtuais = unidadesParaEnvio.map((ua) => ua.unidade_administrativa_id).sort((a, b) => a - b)
   const idsOriginais = [...(valoresOriginais?.unidadeIds ?? [])].sort((a, b) => a - b)
   const houveMudancaUo = (uoSelecionadaId ?? null) !== (valoresOriginais?.unidadeOrcamentariaId ?? null)
   if (JSON.stringify(idsAtuais) !== JSON.stringify(idsOriginais) || houveMudancaUo) {
-    if (semSelecaoGestor) {
+    if (isGestor && !enviarTodasUas && unidadesParaEnvio.length === 0) {
       payload.unidades_administrativas = []
       payload.unidade_administrativa = null
       payload.unidade_orcamentaria = uoSelecionadaId ?? null
     } else {
       payload.unidades_administrativas = idsAtuais
-      payload.unidade_administrativa = idsAtuais[0] ?? null
-      payload.unidade_orcamentaria = selecionadas[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null
+      payload.unidade_administrativa = unidadesParaEnvio[0]?.unidade_administrativa_id ?? null
+      payload.unidade_orcamentaria = unidadesParaEnvio[0]?.unidade_orcamentaria_id ?? uoSelecionadaId ?? null
     }
   }
 
@@ -149,11 +152,13 @@ export default function EditarUsuarioPage() {
         const selecionadas = uas.filter((ua) => idsUsuario.includes(ua.unidade_administrativa_id))
         setUnidadesSelecionadas(selecionadas)
         syncFormUnidades(selecionadas)
-        setTodasUnidades((dadosUsuario.grupo_nome ?? "") === "GESTOR_PATRIMONIO" && idsUsuario.length === 0)
 
         const uoUsuarioId = typeof dadosUsuario.unidade_orcamentaria === "number" ? dadosUsuario.unidade_orcamentaria : null
         const uoInicial = uoUsuarioId ?? selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null
         setUoSelecionadaId(uoInicial)
+        const uasDaUoInicial = uas.filter((ua) => ua.unidade_orcamentaria_id === uoInicial)
+        const isGestor = (dadosUsuario.grupo_nome ?? "") === "GESTOR_PATRIMONIO"
+        setTodasUnidades(isGestor && uasDaUoInicial.length > 0 && selecionadas.filter((ua) => ua.unidade_orcamentaria_id === uoInicial).length === uasDaUoInicial.length)
 
         setValoresOriginais({
           nome: dadosUsuario.nome ?? "",
@@ -196,7 +201,7 @@ export default function EditarUsuarioPage() {
     try {
       setLoadingSalvar(true)
       setErrorMessage(null)
-      const payload = mountPayload(data, valoresOriginais, unidadesSelecionadas, todasUnidades, uoSelecionadaId)
+      const payload = mountPayload(data, valoresOriginais, unidadesAdministrativas, unidadesSelecionadas, todasUnidades, uoSelecionadaId)
       await usuarioService.partialUpdate(Number(id), payload)
       navigate(`/usuarios/${id}`)
     } catch (error: any) {
@@ -237,6 +242,7 @@ export default function EditarUsuarioPage() {
           usernameDisabled
           emailValue={watch("email")}
           grupoValue={watch("grupo")}
+          statusValue={statusSelecionado}
           uoSelecionadaId={uoSelecionadaId}
           uosDisponiveis={uosDisponiveis}
           unidadeObrigatoria={unidadeObrigatoria}
@@ -256,13 +262,16 @@ export default function EditarUsuarioPage() {
             syncFormUnidades,
             setTodasUnidades
           )}
+          onStatusChange={(v) => setValue("status", v as "ativo" | "inativo", { shouldValidate: true })}
           onUoChange={setUoSelecionadaId}
           onFiltroUaChange={setFiltroUa}
           onToggleTodasUnidades={buildToggleTodasHandler(
+            grupoSelecionado,
             setTodasUnidades,
             setUnidadesSelecionadas,
             syncFormUnidades,
-            setFiltroUa
+            setFiltroUa,
+            unidadesAdministrativas
           )}
           onToggleUa={toggleUa}
           nomeError={errors.nome?.message}
@@ -283,8 +292,6 @@ export default function EditarUsuarioPage() {
           onToggleConfirmarSenha={() => setMostrarConfirmarSenha((v) => !v)}
           senhaError={errors.senha?.message}
           confirmarSenhaError={errors.confirmarSenha?.message}
-          statusValue={statusSelecionado}
-          onStatusChange={(v) => setValue("status", v as "ativo" | "inativo", { shouldValidate: true })}
         />
       </Card>
     </div>

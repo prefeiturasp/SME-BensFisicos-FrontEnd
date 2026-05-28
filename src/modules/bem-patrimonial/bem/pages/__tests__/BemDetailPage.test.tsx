@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemDetailPage from '../BemDetailPage'
@@ -13,6 +13,7 @@ vi.mock('@/auth/useAuth', () => ({
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
+    success: vi.fn(),
   },
 }))
 
@@ -23,6 +24,24 @@ vi.mock(
       open ? (
         <div data-testid="modal-historico">
           Modal Histórico
+        </div>
+      ) : null,
+  })
+)
+
+vi.mock(
+  '@/modules/bem-patrimonial/bem/components/ExcluirBemModal',
+  () => ({
+    default: ({ bem, deleting, onClose, onConfirm }: any) =>
+      bem ? (
+        <div data-testid="modal-excluir">
+          <div>{bem.nome}</div>
+          <button onClick={onClose} disabled={deleting}>
+            Manter
+          </button>
+          <button onClick={onConfirm} disabled={deleting}>
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </button>
         </div>
       ) : null,
   })
@@ -45,8 +64,45 @@ const bemMock = {
   status_display: 'Ativo',
   unidade_administrativa_codigo: '001',
   unidade_administrativa_nome: 'Escola Central',
+  unidade_orcamentaria_nome: 'UO Central',
   criado_por_nome: 'Admin',
   criado_em: '2024-01-01',
+}
+
+const bemUoAtivaMock = {
+  ...bemMock,
+  unidade_orcamentaria_nome: '01.16.10 - GABINETE DO SECRETARIO',
+}
+
+const userGestorComAcesso = {
+  is_gestor_patrimonio: true,
+  ua_ativa: null,
+  uo_ativa: null,
+  opcoes_escopo: {
+    grupos: [
+      {
+        uo: {
+          id: 10,
+          codigo: '01.16.10',
+          nome: 'GABINETE DO SECRETARIO',
+          label: '01.16.10 - GABINETE DO SECRETARIO',
+          selecionavel: true,
+          unidade_administrativa_id: null,
+          unidade_orcamentaria_id: 10,
+        },
+        uas: [
+          {
+            id: 1,
+            codigo: '001',
+            nome: 'Escola Central',
+            label: '001 - Escola Central',
+            unidade_administrativa_id: 1,
+            unidade_orcamentaria_id: 10,
+          },
+        ],
+      },
+    ],
+  },
 }
 
 function renderPage() {
@@ -93,7 +149,12 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        uo_ativa: null,
+        opcoes_escopo: userGestorComAcesso.opcoes_escopo,
+      },
     })
 
     renderPage()
@@ -116,7 +177,22 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(bemMock as any)
 
     ;(useAuth as any).mockReturnValue({
-      user: { is_gestor_patrimonio: true },
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    expect(
+      await screen.findByText('Editar')
+    ).toBeInTheDocument()
+  })
+
+  it('deve exibir botão Editar quando gestor tem acesso à UA do bem', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemUoAtivaMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
     })
 
     renderPage()
@@ -138,9 +214,7 @@ describe('BemDetailPage', () => {
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-      screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
   })
 
   it('deve abrir modal de histórico ao clicar no botão', async () => {
@@ -185,14 +259,11 @@ describe('BemDetailPage', () => {
 
     renderPage()
 
-    // espera loader sumir
-    await screen.findByTestId('loader')
-
-    await new Promise(resolve => setTimeout(resolve, 0))
-
-    expect(
+    await waitFor(() => {
+      expect(
         screen.queryByText('Visualizar Cadastro do Bem Patrimonial')
-    ).not.toBeInTheDocument()
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('não deve exibir botão Editar se status for baixa_fisica mesmo sendo gestor', async () => {
@@ -203,16 +274,19 @@ describe('BemDetailPage', () => {
         } as any)
 
     ;(useAuth as any).mockReturnValue({
-        user: { is_gestor_patrimonio: true },
+        user: {
+          is_gestor_patrimonio: true,
+          ua_ativa: null,
+          uo_ativa: null,
+          opcoes_escopo: userGestorComAcesso.opcoes_escopo,
+        },
     })
 
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-        screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
    })
 
 
@@ -228,17 +302,20 @@ describe('BemDetailPage', () => {
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    expect(
-        screen.queryByText('Editar')
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
    })
    
    it('deve navegar para edição ao clicar em Editar', async () => {
         vi.spyOn(bemServiceModule.bemService, 'retrieve')
-            .mockResolvedValue(bemMock as any)
+        .mockResolvedValue(bemMock as any)
 
         ;(useAuth as any).mockReturnValue({
-            user: { is_gestor_patrimonio: true },
+            user: {
+              is_gestor_patrimonio: true,
+              ua_ativa: null,
+              uo_ativa: null,
+              opcoes_escopo: userGestorComAcesso.opcoes_escopo,
+            },
         })
 
         renderPage()
@@ -263,6 +340,120 @@ describe('BemDetailPage', () => {
     expect(
         await screen.findByText('Lista')
     ).toBeInTheDocument()
+  })
+
+  it('deve exibir botão Apagar e manter desabilitado se não for gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: { is_gestor_patrimonio: false },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    expect(screen.getByRole('button', { name: 'Apagar' })).toBeDisabled()
+  })
+
+  it('deve abrir modal de exclusão ao clicar em Apagar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    expect(
+      await screen.findByTestId('modal-excluir')
+    ).toBeInTheDocument()
+
+    expect(screen.getByText('Notebook Dell')).toBeInTheDocument()
+  })
+
+  it('deve fechar modal ao clicar em Manter', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manter' }))
+
+    expect(
+      screen.queryByTestId('modal-excluir')
+    ).not.toBeInTheDocument()
+  })
+
+  it('deve excluir bem ao clicar em Excluir no modal', async () => {
+    const deleteSpyFn = vi.spyOn(bemServiceModule.bemService, 'delete')
+      .mockResolvedValue(undefined)
+
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    await waitFor(() => {
+      expect(deleteSpyFn).toHaveBeenCalledWith(1)
+    })
+
+    expect(toast.success).toHaveBeenCalledWith('Bem excluído com sucesso')
+  })
+
+  it('deve exibir toast de erro ao falhar na exclusão', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'delete')
+      .mockRejectedValue(new Error('Erro na API'))
+
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar' }))
+
+    await screen.findByTestId('modal-excluir')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao excluir bem')
+    })
+
   })
 
 })

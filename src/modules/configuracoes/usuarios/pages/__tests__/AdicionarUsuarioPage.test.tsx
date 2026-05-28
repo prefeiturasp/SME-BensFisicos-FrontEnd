@@ -125,6 +125,14 @@ const VALID_FORM_DATA = {
     confirmPassword: TEST_PWD,
 }
 
+function createDeferred<T>() {
+    let resolve!: (value: T) => void
+    const promise = new Promise<T>((res) => {
+        resolve = res
+    })
+    return { promise, resolve }
+}
+
 //  Helpers 
 
 function renderComponent() {
@@ -145,8 +153,8 @@ function getSelects() {
     const selects = screen.getAllByRole("combobox")
     return {
         grupo: selects[0],
-        uo: selects[1],
-        status: selects[2],
+        status: selects[1],
+        uo: selects[2],
     }
 }
 async function fillForm(
@@ -180,14 +188,8 @@ async function fillForm(
     fireEvent.change(selectGrupo, { target: { value: grupo } })
 
     if (unidadeId) {
-        await waitFor(() => {
-            expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
-        })
+        await screen.findByText("02.17.20 - UO Teste")
         fireEvent.change(selectUo, { target: { value: "2" } })
-
-        await waitFor(() => {
-            expect(screen.getByText("001 - Secretaria de Finanças")).toBeInTheDocument()
-        })
 
         fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
     }
@@ -279,9 +281,12 @@ describe("AdicionarUsuarioPage", () => {
 
         it("Gestor: aceita formulário sem unidade selecionada", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "GESTOR_PATRIMONIO", "")
+
+            expect(screen.getByText("Notificações das UAs")).toBeInTheDocument()
+            expect(screen.getByText("Gestor acessa todas UAs da UO")).toBeInTheDocument()
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
@@ -291,7 +296,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("Operador: exibe erro quando unidade não é selecionada", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "OPERADOR_INVENTARIO", "")
             fireEvent.click(screen.getByText("Salvar"))
@@ -307,7 +312,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("Operador: aceita formulário com unidade selecionada", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "OPERADOR_INVENTARIO", "1")
             fireEvent.click(screen.getByText("Salvar"))
@@ -321,20 +326,21 @@ describe("AdicionarUsuarioPage", () => {
 
         it("limpa a unidade selecionada ao trocar o grupo", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
-            const { grupo, uo } = getSelects()
-
-            // Seleciona operador e uma unidade orçamentária
-            fireEvent.change(grupo, { target: { value: "OPERADOR_INVENTARIO" } })
-            fireEvent.change(uo, { target: { value: "2" } })
+            await fillForm({}, "OPERADOR_INVENTARIO", "1")
+            const { grupo } = getSelects()
+            fireEvent.change(grupo, { target: { value: "GESTOR_PATRIMONIO" } })
+            fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
-                fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
-                fireEvent.change(grupo, { target: { value: "GESTOR_PATRIMONIO" } })
-                expect(
-                    screen.getByText(/Nenhuma selecionada|Todas/i)
-                ).toBeInTheDocument()
+                expect(mockUsuarioCreate).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        group_name: "GESTOR_PATRIMONIO",
+                        unidade_administrativa: null,
+                        unidades_administrativas: [],
+                    })
+                )
             })
         })
     })
@@ -345,11 +351,9 @@ describe("AdicionarUsuarioPage", () => {
 
         it("carrega e exibe as unidades do escopo na lista", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
             const { uo } = getSelects()
-            await waitFor(() => {
-                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
-            })
+            await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
@@ -361,11 +365,9 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe o código e nome da UA na opção", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
             const { uo } = getSelects()
-            await waitFor(() => {
-                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
-            })
+            await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
@@ -377,11 +379,9 @@ describe("AdicionarUsuarioPage", () => {
 
         it("exibe todas as UAs retornadas pelo escopo", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
             const { uo } = getSelects()
-            await waitFor(() => {
-                expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
-            })
+            await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
 
             await waitFor(() => {
@@ -400,8 +400,7 @@ describe("AdicionarUsuarioPage", () => {
             })
 
             renderComponent()
-
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             const { uo } = getSelects()
             const options = uo.querySelectorAll("option")
@@ -420,8 +419,7 @@ describe("AdicionarUsuarioPage", () => {
             })
 
             renderComponent()
-
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             const { uo } = getSelects()
             const options = uo.querySelectorAll("option")
@@ -569,9 +567,10 @@ describe("AdicionarUsuarioPage", () => {
 
         it("chama usuarioService.create com o payload correto (Gestor)", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "GESTOR_PATRIMONIO", "1")
+            fireEvent.click(screen.getByRole("checkbox"))
             fireEvent.click(screen.getByText("Salvar"))
 
             await waitFor(() => {
@@ -583,6 +582,7 @@ describe("AdicionarUsuarioPage", () => {
                         rf: "A123456",
                         unidade_administrativa: 1,
                         unidade_orcamentaria: 2,
+                        unidades_administrativas: [1, 2],
                         group_name: "GESTOR_PATRIMONIO",
                         password: TEST_PWD,
                         password_confirm: TEST_PWD,
@@ -594,7 +594,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("chama usuarioService.create com o payload correto (Operador)", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "OPERADOR_INVENTARIO", "1")
             fireEvent.click(screen.getByText("Salvar"))
@@ -611,7 +611,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("envia is_active=false quando status é 'inativo'", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm({}, "GESTOR_PATRIMONIO", "1")
 
@@ -629,7 +629,7 @@ describe("AdicionarUsuarioPage", () => {
 
         it("navega para /usuarios após salvar com sucesso", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -640,10 +640,11 @@ describe("AdicionarUsuarioPage", () => {
         })
 
         it("exibe 'Salvando...' durante a requisição", async () => {
-            mockUsuarioCreate.mockReturnValue(new Promise(() => {}))
+            const deferred = createDeferred<{ id: number }>()
+            mockUsuarioCreate.mockReturnValue(deferred.promise)
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -651,13 +652,16 @@ describe("AdicionarUsuarioPage", () => {
             await waitFor(() => {
                 expect(screen.getByRole("button", { name: /salvando/i })).toBeInTheDocument()
             })
+
+            deferred.resolve({ id: 1 })
         })
 
         it("desabilita o botão Salvar durante a requisição", async () => {
-            mockUsuarioCreate.mockReturnValue(new Promise(() => {}))
+            const deferred = createDeferred<{ id: number }>()
+            mockUsuarioCreate.mockReturnValue(deferred.promise)
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -665,11 +669,13 @@ describe("AdicionarUsuarioPage", () => {
             await waitFor(() => {
                 expect(screen.getByRole("button", { name: /salvando/i })).toBeDisabled()
             })
+
+            deferred.resolve({ id: 1 })
         })
 
         it("reabilita o botão Salvar após a requisição concluir", async () => {
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -688,7 +694,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(new Error("Erro ao criar usuário"))
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -704,7 +710,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(apiError)
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -722,7 +728,7 @@ describe("AdicionarUsuarioPage", () => {
                 .mockResolvedValueOnce({ id: 1 })
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
@@ -744,7 +750,7 @@ describe("AdicionarUsuarioPage", () => {
             mockUsuarioCreate.mockRejectedValue(new Error("Falha"))
 
             renderComponent()
-            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+            expect(mockGetCurrentUser).toHaveBeenCalled()
 
             await fillForm()
             fireEvent.click(screen.getByText("Salvar"))
