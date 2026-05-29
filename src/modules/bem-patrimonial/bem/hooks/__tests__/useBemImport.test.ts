@@ -3,10 +3,6 @@ import { renderHook, act } from '@testing-library/react'
 import { useBemImport } from '../useBemImport'
 import { bemService } from '../../services/bem.service'
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
 const mockNavigate = vi.fn()
 
 vi.mock('react-router-dom', () => ({
@@ -18,10 +14,6 @@ vi.mock('../../services/bem.service', () => ({
     importar: vi.fn(),
   },
 }))
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function makeFile(name = 'planilha.xlsx'): File {
   return new File(['conteudo'], name, {
@@ -39,9 +31,15 @@ function makeResultado(overrides = {}) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Suite principal
-// ---------------------------------------------------------------------------
+function makeErroLinha(overrides = {}) {
+  return {
+    linha: 1,
+    numero_patrimonial: '001.000000001-0',
+    campo: 'nome',
+    mensagem: 'Este campo é obrigatório.',
+    ...overrides,
+  }
+}
 
 describe('useBemImport', () => {
   beforeEach(() => {
@@ -96,7 +94,6 @@ describe('useBemImport', () => {
   it('removerArquivo limpa o value do inputRef se existir', () => {
     const { result } = renderHook(() => useBemImport())
 
-    // Simula um input com value preenchido
     const fakeInput = { value: 'arquivo.xlsx', click: vi.fn() } as any
     Object.defineProperty(result.current.inputRef, 'current', {
       writable: true,
@@ -129,7 +126,6 @@ describe('useBemImport', () => {
     expect(fakeInput.value).toBe('')
     expect(fakeInput.click).not.toHaveBeenCalled()
 
-    // Avança o setTimeout de 50ms
     act(() => vi.advanceTimersByTime(50))
     expect(fakeInput.click).toHaveBeenCalledOnce()
   })
@@ -137,7 +133,6 @@ describe('useBemImport', () => {
   it('novoUpload não quebra se inputRef.current for null', () => {
     const { result } = renderHook(() => useBemImport())
 
-    // inputRef.current é null por padrão no renderHook
     expect(() => {
       act(() => result.current.novoUpload())
       act(() => vi.advanceTimersByTime(50))
@@ -188,98 +183,19 @@ describe('useBemImport', () => {
   })
 
   // =========================================================================
-  // importar: 207 parcial — com erros_por_linha e erros_campos
+  // importar: 422 tudo com erro — novo formato de erros_por_linha
   // =========================================================================
 
-  it('importar 207 → estado erro_parcial com erros parseados de erros_por_linha', async () => {
-    vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 207,
-      data: makeResultado({
-        importados: 3,
-        ignorados_com_erro: 2,
-        erros_por_linha: [
-          'Linha 4 | Número Patrimonial: 001.000000001-0 | Erro: Número patrimonial já cadastrado no sistema.',
-          'Linha 7 | Número Patrimonial: - | Erro: Duplicado no arquivo.',
-        ],
-      }),
-    })
-
-    const { result } = renderHook(() => useBemImport())
-    act(() => result.current.selecionarArquivo(makeFile()))
-    await act(async () => { await result.current.importar() })
-
-    expect(result.current.estado.tipo).toBe('erro_parcial')
-    if (result.current.estado.tipo === 'erro_parcial') {
-      expect(result.current.estado.erros).toHaveLength(2)
-      expect(result.current.estado.erros[0].linha).toBe(4)
-      expect(result.current.estado.erros[0].numero_patrimonial).toBe('001.000000001-0')
-      expect(result.current.estado.erros[0].tipo_erro).toBe('Número patrimonial já cadastrado no sistema.')
-      expect(result.current.estado.erros[1].linha).toBe(7)
-      expect(result.current.estado.erros[1].numero_patrimonial).toBe('-')
-    }
-  })
-
-  it('importar 207 → erros de erros_campos também são parseados', async () => {
-    vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 207,
-      data: makeResultado({
-        importados: 1,
-        ignorados_com_erro: 1,
-        erros_campos: [
-          { linha: 2, erros: { nome: ['Este campo é obrigatório.'], marca: ['Campo inválido.'] } },
-        ],
-      }),
-    })
-
-    const { result } = renderHook(() => useBemImport())
-    act(() => result.current.selecionarArquivo(makeFile()))
-    await act(async () => { await result.current.importar() })
-
-    expect(result.current.estado.tipo).toBe('erro_parcial')
-    if (result.current.estado.tipo === 'erro_parcial') {
-      expect(result.current.estado.erros).toHaveLength(2)
-      expect(result.current.estado.erros[0].linha).toBe(2)
-      expect(result.current.estado.erros[0].numero_patrimonial).toBe('-')
-      expect(result.current.estado.erros[0].tipo_erro).toBe('nome: Este campo é obrigatório.')
-      expect(result.current.estado.erros[1].tipo_erro).toBe('marca: Campo inválido.')
-    }
-  })
-
-  it('importar 207 → erros_por_linha e erros_campos são combinados', async () => {
-    vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 207,
-      data: makeResultado({
-        importados: 1,
-        ignorados_com_erro: 2,
-        erros_por_linha: ['Linha 1 | Número Patrimonial: 001.000000001-0 | Erro: Duplicado.'],
-        erros_campos: [{ linha: 3, erros: { nome: ['Obrigatório.'] } }],
-      }),
-    })
-
-    const { result } = renderHook(() => useBemImport())
-    act(() => result.current.selecionarArquivo(makeFile()))
-    await act(async () => { await result.current.importar() })
-
-    expect(result.current.estado.tipo).toBe('erro_parcial')
-    if (result.current.estado.tipo === 'erro_parcial') {
-      expect(result.current.estado.erros).toHaveLength(2)
-    }
-  })
-
-  // =========================================================================
-  // importar: 422 tudo com erro
-  // =========================================================================
-
-  it('importar 422 → estado erro_total com erros parseados', async () => {
+  it('importar 422 → estado erro_total com erros parseados do novo formato', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
       status: 422,
       data: makeResultado({
         importados: 0,
-        ignorados_com_erro: 5,
+        ignorados_com_erro: 2,
         detail: 'Nenhum bem foi importado.',
         erros_por_linha: [
-          'Linha 1 | Número Patrimonial: AAA | Erro: Já cadastrado.',
-          'Linha 2 | Número Patrimonial: BBB | Erro: Duplicado no arquivo.',
+          makeErroLinha({ linha: 1, numero_patrimonial: 'AAA', campo: 'nome', mensagem: 'Obrigatório.' }),
+          makeErroLinha({ linha: 2, numero_patrimonial: 'BBB', campo: 'marca', mensagem: 'Inválido.' }),
         ],
       }),
     })
@@ -292,16 +208,40 @@ describe('useBemImport', () => {
     if (result.current.estado.tipo === 'erro_total') {
       expect(result.current.estado.detail).toBe('Nenhum bem foi importado.')
       expect(result.current.estado.erros).toHaveLength(2)
+      expect(result.current.estado.erros[0].linha).toBe(1)
+      expect(result.current.estado.erros[0].numero_patrimonial).toBe('AAA')
+      expect(result.current.estado.erros[0].campo).toBe('nome')
+      expect(result.current.estado.erros[0].tipo_erro).toBe('nome: Obrigatório.')
+      expect(result.current.estado.erros[1].linha).toBe(2)
+      expect(result.current.estado.erros[1].numero_patrimonial).toBe('BBB')
+      expect(result.current.estado.erros[1].campo).toBe('marca')
+      expect(result.current.estado.erros[1].tipo_erro).toBe('marca: Inválido.')
     }
   })
 
-  it('importar 422 → erros_campos também são incluídos', async () => {
+  it('importar 422 → numero_patrimonial ausente usa "-"', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
       status: 422,
       data: makeResultado({
-        importados: 0,
-        erros_campos: [{ linha: 1, erros: { nome: ['Obrigatório.'] } }],
+        erros_por_linha: [
+          makeErroLinha({ numero_patrimonial: '', campo: 'nome', mensagem: 'Vazio.' }),
+        ],
       }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    if (result.current.estado.tipo === 'erro_total') {
+      expect(result.current.estado.erros[0].numero_patrimonial).toBe('-')
+    }
+  })
+
+  it('importar 422 → erros_por_linha ausente resulta em array vazio', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 422,
+      data: makeResultado({ importados: 0, detail: 'Falha total.' }),
     })
 
     const { result } = renderHook(() => useBemImport())
@@ -310,8 +250,27 @@ describe('useBemImport', () => {
 
     expect(result.current.estado.tipo).toBe('erro_total')
     if (result.current.estado.tipo === 'erro_total') {
-      expect(result.current.estado.erros).toHaveLength(1)
-      expect(result.current.estado.erros[0].tipo_erro).toBe('nome: Obrigatório.')
+      expect(result.current.estado.erros).toHaveLength(0)
+    }
+  })
+
+  // =========================================================================
+  // importar: sem estado erro_parcial — 207 cai no fallback
+  // =========================================================================
+
+  it('importar 207 → erro_request (sem importação parcial)', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 207,
+      data: makeResultado({ detail: 'Parcial inesperado.' }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe('Parcial inesperado.')
     }
   })
 
@@ -410,7 +369,7 @@ describe('useBemImport', () => {
   // importar: status desconhecido (ex: 409)
   // =========================================================================
 
-  it('importar status desconhecido → erro_request com detail ou fallback', async () => {
+  it('importar status desconhecido → erro_request com detail', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
       status: 409,
       data: makeResultado({ detail: 'Conflito inesperado.' }),
@@ -426,7 +385,7 @@ describe('useBemImport', () => {
     }
   })
 
-  it('importar status desconhecido sem detail → "Erro desconhecido."', async () => {
+  it('importar status desconhecido sem detail → "Erro desconhecido. Nenhum bem foi importado."', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
       status: 409,
       data: { detail: undefined } as any,
@@ -438,12 +397,12 @@ describe('useBemImport', () => {
 
     expect(result.current.estado.tipo).toBe('erro_request')
     if (result.current.estado.tipo === 'erro_request') {
-      expect(result.current.estado.mensagem).toBe('Erro desconhecido.')
+      expect(result.current.estado.mensagem).toBe('Erro desconhecido. Nenhum bem foi importado.')
     }
   })
 
   // =========================================================================
-  // importar: exceção (erro de rede / servidor)
+  // importar: exceção
   // =========================================================================
 
   it('importar com Error lançado → erro_request com message do erro', async () => {
@@ -495,14 +454,16 @@ describe('useBemImport', () => {
   })
 
   // =========================================================================
-  // parseErrosPorLinha — via estado do hook (linha número inválido → 0)
+  // parseErrosPorLinha — tipo_erro montado como "campo: mensagem"
   // =========================================================================
 
-  it('linha com número inválido na string de erro → linha = 0', async () => {
+  it('tipo_erro é montado como "campo: mensagem"', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
       status: 422,
       data: makeResultado({
-        erros_por_linha: ['Linha XYZ | Número Patrimonial: 001.000000001-0 | Erro: Teste.'],
+        erros_por_linha: [
+          makeErroLinha({ campo: 'numero_patrimonial', mensagem: 'Já cadastrado no sistema.' }),
+        ],
       }),
     })
 
@@ -511,24 +472,7 @@ describe('useBemImport', () => {
     await act(async () => { await result.current.importar() })
 
     if (result.current.estado.tipo === 'erro_total') {
-      expect(result.current.estado.erros[0].linha).toBe(0)
-    }
-  })
-
-  it('string de erro sem partes suficientes → tipo_erro usa a string original', async () => {
-    vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 422,
-      data: makeResultado({
-        erros_por_linha: ['mensagem sem pipe'],
-      }),
-    })
-
-    const { result } = renderHook(() => useBemImport())
-    act(() => result.current.selecionarArquivo(makeFile()))
-    await act(async () => { await result.current.importar() })
-
-    if (result.current.estado.tipo === 'erro_total') {
-      expect(result.current.estado.erros[0].tipo_erro).toBe('mensagem sem pipe')
+      expect(result.current.estado.erros[0].tipo_erro).toBe('numero_patrimonial: Já cadastrado no sistema.')
     }
   })
 })

@@ -38,7 +38,7 @@ vi.mock('lucide-react', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Helper: monta o hook com o estado desejado
+// Helper
 // ---------------------------------------------------------------------------
 
 function makeHookMock(overrides: Partial<ReturnType<typeof useBemImportModule.useBemImport>> = {}) {
@@ -72,7 +72,9 @@ describe('BemImportPage — estado idle', () => {
 
   it('renderiza o título da página', () => {
     render(<BemImportPage />)
-    expect(screen.getByRole('heading', { name: 'Importar Bens Patrimoniais' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Importação de carga de Bens Patrimoniais' })
+    ).toBeInTheDocument()
   })
 
   it('renderiza o breadcrumb com os itens corretos', () => {
@@ -80,7 +82,7 @@ describe('BemImportPage — estado idle', () => {
     const breadcrumb = screen.getByTestId('breadcrumb')
     expect(breadcrumb).toHaveTextContent('Bem Patrimonial')
     expect(breadcrumb).toHaveTextContent('Bens Patrimoniais')
-    expect(breadcrumb).toHaveTextContent('Importar Bens Patrimoniais')
+    expect(breadcrumb).toHaveTextContent('Importação de carga de Bens Patrimoniais')
   })
 
   it('botão Importar está desabilitado quando não há arquivo', () => {
@@ -119,10 +121,9 @@ describe('BemImportPage — estado idle', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('clique no botão de download do modelo chama baixarTemplate', async () => {
+  it('botão de download do modelo existe e é clicável', () => {
     render(<BemImportPage />)
     const btn = screen.getByText('[clique aqui para baixar o modelo]')
-    // baixarTemplate usa URL.createObjectURL — verifica apenas que o botão existe e é clicável
     expect(btn).toBeInTheDocument()
     expect((btn as HTMLButtonElement).type).toBe('button')
   })
@@ -172,7 +173,6 @@ describe('BemImportPage — estado arquivo_selecionado', () => {
 
   it('não exibe botão Anexar Documento (exibe ArquivoAnexado)', () => {
     render(<BemImportPage />)
-    // O botão Anexar não aparece, mas o nome do arquivo sim
     expect(screen.queryByText('Anexar Documento')).not.toBeInTheDocument()
     expect(screen.getByText('bens.xlsx')).toBeInTheDocument()
   })
@@ -236,7 +236,7 @@ describe('BemImportPage — estado sucesso', () => {
 
   it('não exibe tabela de erros', () => {
     render(<BemImportPage />)
-    expect(screen.queryByText('Foram identificados os seguintes erros na planilha')).not.toBeInTheDocument()
+    expect(screen.queryByText('Foram identificados erros na planilha')).not.toBeInTheDocument()
   })
 })
 
@@ -246,8 +246,8 @@ describe('BemImportPage — estado sucesso', () => {
 
 describe('BemImportPage — estado erro_total', () => {
   const erros = [
-    { linha: 1, numero_patrimonial: '001.000000001-0', tipo_erro: 'Número patrimonial já cadastrado.' },
-    { linha: 3, numero_patrimonial: '-', tipo_erro: 'Duplicado no arquivo. Primeira ocorrência na linha 1.' },
+    { linha: 1, numero_patrimonial: '001.000000001-0', campo: 'nome', tipo_erro: 'nome: Número patrimonial já cadastrado.' },
+    { linha: 3, numero_patrimonial: '-', campo: 'marca', tipo_erro: 'marca: Duplicado no arquivo.' },
   ]
 
   beforeEach(() => {
@@ -274,7 +274,7 @@ describe('BemImportPage — estado erro_total', () => {
 
   it('exibe cabeçalho de erros', () => {
     render(<BemImportPage />)
-    expect(screen.getByText('Foram identificados os seguintes erros na planilha')).toBeInTheDocument()
+    expect(screen.getByText('Foram identificados erros na planilha')).toBeInTheDocument()
   })
 
   it('exibe botão Anexar Documento na tabela de erros', () => {
@@ -285,16 +285,23 @@ describe('BemImportPage — estado erro_total', () => {
   it('exibe todas as linhas de erro na tabela', () => {
     render(<BemImportPage />)
     expect(screen.getByText('001.000000001-0')).toBeInTheDocument()
-    expect(screen.getByText('Número patrimonial já cadastrado.')).toBeInTheDocument()
+    expect(screen.getByText('nome: Número patrimonial já cadastrado.')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Duplicado no arquivo. Primeira ocorrência na linha 1.')).toBeInTheDocument()
+    expect(screen.getByText('marca: Duplicado no arquivo.')).toBeInTheDocument()
   })
 
-  it('exibe cabeçalhos da tabela', () => {
+  it('exibe cabeçalhos da tabela incluindo Campo', () => {
     render(<BemImportPage />)
     expect(screen.getByText('Linha do Arquivo')).toBeInTheDocument()
     expect(screen.getByText('Número Patrimonial')).toBeInTheDocument()
+    expect(screen.getByText('Campo')).toBeInTheDocument()
     expect(screen.getByText('Tipo de erro')).toBeInTheDocument()
+  })
+
+  it('exibe valores da coluna Campo', () => {
+    render(<BemImportPage />)
+    expect(screen.getByText('nome')).toBeInTheDocument()
+    expect(screen.getByText('marca')).toBeInTheDocument()
   })
 
   it('botão Importar está desabilitado (sem arquivo selecionado)', () => {
@@ -323,50 +330,12 @@ describe('BemImportPage — estado erro_total', () => {
     render(<BemImportPage />)
 
     const inputs = document.querySelectorAll('input[type="file"]')
-    // O input na TabelaErros é o segundo input (primeiro está no AnexarDocumento fora da tabela)
     const inputTabela = inputs[inputs.length - 1] as HTMLInputElement
     const file = new File(['x'], 'novo.xlsx')
     Object.defineProperty(inputTabela, 'files', { value: [file], configurable: true })
     fireEvent.change(inputTabela)
 
     expect(selecionarArquivo).toHaveBeenCalledWith(file)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Estado erro_parcial
-// ---------------------------------------------------------------------------
-
-describe('BemImportPage — estado erro_parcial', () => {
-  const erros = [
-    { linha: 2, numero_patrimonial: '003.000000001-6', tipo_erro: 'Já cadastrado.' },
-  ]
-
-  beforeEach(() => {
-    mockHook({
-      estado: {
-        tipo: 'erro_parcial',
-        erros,
-        resultado: {
-          detail: '3 bens importados. 1 com erro.',
-          importados: 3,
-          ignorados_com_erro: 1,
-          total_linhas: 4,
-        },
-      },
-    })
-  })
-
-  it('exibe toast de erro com mensagem do resultado', () => {
-    render(<BemImportPage />)
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('3 bens importados. 1 com erro.')).toBeInTheDocument()
-  })
-
-  it('exibe tabela com os erros parciais', () => {
-    render(<BemImportPage />)
-    expect(screen.getByText('003.000000001-6')).toBeInTheDocument()
-    expect(screen.getByText('Já cadastrado.')).toBeInTheDocument()
   })
 })
 
@@ -392,7 +361,7 @@ describe('BemImportPage — estado erro_request', () => {
 
   it('não exibe tabela de erros', () => {
     render(<BemImportPage />)
-    expect(screen.queryByText('Foram identificados os seguintes erros na planilha')).not.toBeInTheDocument()
+    expect(screen.queryByText('Foram identificados erros na planilha')).not.toBeInTheDocument()
   })
 
   it('exibe botão Anexar Documento (card normal)', () => {
@@ -422,17 +391,6 @@ describe('bem.service.importar — cobertura adicional', async () => {
 
     expect(result.status).toBe(201)
     expect(result.data).toEqual(payload)
-  })
-
-  it('207 → retorna status e data sem lançar exceção', async () => {
-    const payload = { detail: 'Parcial', importados: 3, ignorados_com_erro: 2, total_linhas: 5 }
-    mock.onPost('/bens/importar/').reply(207, payload)
-
-    const file = new File(['x'], 'planilha.xlsx')
-    const result = await bemService.importar(file)
-
-    expect(result.status).toBe(207)
-    expect(result.data.importados).toBe(3)
   })
 
   it('422 → retorna status e data sem lançar exceção', async () => {
@@ -474,8 +432,6 @@ describe('bem.service.importar — cobertura adicional', async () => {
   })
 
   it('erro de rede → lança "Erro de conexão com o servidor."', async () => {
-    // networkError do MockAdapter não passa pelo handleApiError corretamente;
-    // usa vi.spyOn para simular AxiosError sem response (igual ao bem.service.test existente)
     const { AxiosError } = await import('axios')
     vi.spyOn(api, 'post').mockRejectedValueOnce(new AxiosError('Network Error'))
 
@@ -484,8 +440,6 @@ describe('bem.service.importar — cobertura adicional', async () => {
   })
 
   it('500 → lança "Erro ao importar bens"', async () => {
-    // O validateStatus (< 500) faz o axios lançar para 5xx como AxiosError com response;
-    // simula via vi.spyOn para garantir que handleApiError receba o erro corretamente
     const { AxiosError } = await import('axios')
     vi.spyOn(api, 'post').mockRejectedValueOnce(
       new AxiosError('Internal Server Error', '500', undefined, undefined, {
