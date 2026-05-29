@@ -38,6 +38,7 @@ import VerBaixaPage from '@/modules/bem-patrimonial/baixa-fisica/pages/VerBaixaP
 import UnidadesOrcamentariasListPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage';
 import UnidadesOrcamentariasCreatePage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage';
 import UnidadesOrcamentariasViewPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage';
+import BemImportPage from '@/modules/bem-patrimonial/bem/pages/BemImportPage';
 
 export default function AppRoutes() {
   return (
@@ -63,6 +64,7 @@ export default function AppRoutes() {
           <Route path='/bens-patrimoniais/novo' element={<BemCreatePage />} />
           <Route path='/bens-patrimoniais/:id' element={<BemDetailPage />} />
           <Route path='/bens-patrimoniais/:id/editar' element={<BemEditPage />} />
+          <Route path='/bens-patrimoniais/importar' element={<BemImportPage />} />
 
           {/* Submódulo: Movimentações */}
           <Route path='/movimentacoes' element={<MovimentacoesListPage />} />
