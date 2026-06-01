@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { bemService, ImportacaoResultado } from '../services/bem.service'
+import { bemService, type ImportacaoResultado } from '../services/bem.service'
 
 export interface ImportacaoErroLinha {
   linha: number
