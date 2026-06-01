@@ -31,7 +31,7 @@ const ACTION_BUTTON_CLASS = `
 const ORDERING_MAP: Record<string, string> = {
   numero_patrimonial: 'numero_patrimonial',
   nome: 'nome',
-  unidade_administrativa: 'unidade_administrativa__nome', 
+  unidade_administrativa: 'unidade_administrativa__nome',
   status: 'status',
 }
 
@@ -90,6 +90,10 @@ export default function BensListPage() {
 
   const handleDetalhar = (id: number) => {
     navigate(`/bens-patrimoniais/${id}`)
+  }
+
+  const handleImportar = () => {
+    navigate('/bens-patrimoniais/importar')
   }
 
   return (
@@ -151,6 +155,14 @@ export default function BensListPage() {
             Relatório
           </Button>
 
+          <Button
+            type='button'
+            onClick={() => handleImportar()}
+            className={ACTION_BUTTON_CLASS}
+          >
+            Importar Bens
+          </Button>
+
           <Button onClick={handleNovoCadastro} className={ACTION_BUTTON_CLASS}>
             Novo Cadastro
           </Button>
@@ -162,9 +174,9 @@ export default function BensListPage() {
         {/* FILTROS */}
         <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
           <div className='flex flex-col gap-2'>
-            <label 
-                htmlFor='search-bem'
-                className='text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='search-bem'
+              className='text-sm font-semibold text-gray-700'>
               Filtrar por Número, Nome do Bem
             </label>
             <input
@@ -246,19 +258,19 @@ export default function BensListPage() {
                 <span>Busca geral em todas as UOs</span>
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                id="baixados-antigos"
-                type="checkbox"
-                checked={baixadosAntigos}
-                onChange={e => {
-                  setBaixadosAntigos(e.target.checked)
-                  setPage(1)
-                }}
-                className="h-4 w-4 accent-[#00703C]"
-              />
-              <span>
-                Baixados há mais de um período
-              </span>
+                <input
+                  id="baixados-antigos"
+                  type="checkbox"
+                  checked={baixadosAntigos}
+                  onChange={e => {
+                    setBaixadosAntigos(e.target.checked)
+                    setPage(1)
+                  }}
+                  className="h-4 w-4 accent-[#00703C]"
+                />
+                <span>
+                  Baixados há mais de um período
+                </span>
               </label>
             </div>
           </div>
