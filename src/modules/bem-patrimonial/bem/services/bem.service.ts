@@ -54,6 +54,20 @@ export interface BemListParams {
   ordering?: string
 }
 
+export interface ImportacaoErroLinha {
+  linha: number
+  erros: Record<string, string[]>
+}
+
+export interface ImportacaoResultado {
+  detail: string
+  importados: number
+  ignorados_com_erro: number
+  total_linhas: number
+  erros_por_linha?: string[]
+  erros_campos?: ImportacaoErroLinha[]
+}
+
 export const bemService = {
   list: async (params: BemListParams = {}): Promise<PaginatedResponse<Bem>> => {
     try {
@@ -118,10 +132,12 @@ export const bemService = {
       handleApiError(error, 'Erro ao reprovar bens')
     }
   },
+
   async getHistorico(id: number) {
     const { data } = await api.get(`/bens/${id}/historico/`)
     return data
   },
+
   createMulti: async (payload: any): Promise<void> => {
     try {
       await api.post('/bens/multi/', payload)
@@ -129,6 +145,7 @@ export const bemService = {
       handleApiError(error, 'Erro ao criar bens')
     }
   },
+
   delete: async (id: number): Promise<void> => {
     try {
       await api.delete(`/bens/${id}/`)
@@ -136,6 +153,7 @@ export const bemService = {
       handleApiError(error, 'Erro ao excluir bem')
     }
   },
+
   gerarNbbpm: async (id: number): Promise<Blob> => {
     try {
       const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
@@ -144,6 +162,30 @@ export const bemService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao gerar PDF NBBPM')
+    }
+  },
+
+  /**
+   * Importa bens patrimoniais em lote a partir de uma planilha (XLSX, XLS ou CSV).
+   *
+   * Retorna o resultado mesmo em casos parciais (207) ou de erro (422),
+   * pois esses status carregam payload estruturado que a UI precisa exibir.
+   * Somente erros de infraestrutura (5xx, sem conexão) são lançados como exceção.
+   */
+  importar: async (arquivo: File): Promise<{ status: number; data: ImportacaoResultado }> => {
+    const formData = new FormData()
+    formData.append('arquivo', arquivo)
+
+    try {
+      const response = await api.post('/bens/importar/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // Não lançar automaticamente para status 4xx — o payload precisa chegar à UI
+        validateStatus: (status) => status < 500,
+      })
+
+      return { status: response.status, data: response.data }
+    } catch (error) {
+      handleApiError(error, 'Erro ao importar bens')
     }
   },
 }
