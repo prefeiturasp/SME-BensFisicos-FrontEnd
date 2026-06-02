@@ -455,3 +455,66 @@ describe('bem.service.importar — cobertura adicional', async () => {
     await expect(bemService.importar(file)).rejects.toThrow('Erro ao importar bens')
   })
 })
+
+// ---------------------------------------------------------------------------
+// baixarTemplate
+// ---------------------------------------------------------------------------
+
+describe('BemImportPage — baixarTemplate', () => {
+  beforeEach(() => mockHook())
+
+  it('cria elemento <a> com href e download corretos ao clicar no link do modelo', () => {
+    const anchorMock = { href: '', download: '', click: vi.fn() }
+
+    // Captura via prototype — imune a spies anteriores no document
+    const originalCreateElement = Document.prototype.createElement.bind(document)
+
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tag: string) =>
+        tag === 'a' ? (anchorMock as unknown as HTMLAnchorElement) : originalCreateElement(tag)
+      )
+
+    // render ANTES de mockar appendChild/removeChild
+    render(<BemImportPage />)
+
+    const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => anchorMock as any)
+
+    fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))
+
+    expect(anchorMock.download).toBe('template_importacao_bens.xlsx')
+    expect(anchorMock.href).toContain('/assets/template_importacao_bens.xlsx')
+    expect(anchorMock.click).toHaveBeenCalledOnce()
+    expect(appendChildSpy).toHaveBeenCalledWith(anchorMock)
+    expect(removeChildSpy).toHaveBeenCalledWith(anchorMock)
+
+    createElementSpy.mockRestore()
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
+  })
+
+  it('o clique no link do modelo não navega para outra página', () => {
+    const anchorMock = { href: '', download: '', click: vi.fn() }
+
+    const originalCreateElement = Document.prototype.createElement.bind(document)
+
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tag: string) =>
+        tag === 'a' ? (anchorMock as unknown as HTMLAnchorElement) : originalCreateElement(tag)
+      )
+
+    // render ANTES de mockar appendChild/removeChild
+    render(<BemImportPage />)
+
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => anchorMock as any)
+
+    expect(() =>
+      fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))
+    ).not.toThrow()
+
+    createElementSpy.mockRestore()
+  })
+})
