@@ -17,13 +17,16 @@ const BTN_OUTLINE =
 const BTN_ATTACH =
     'h-10 px-5 bg-[#2F7D57] hover:bg-[#1f5c3e] text-white font-semibold rounded-md flex items-center gap-2 transition-colors'
 
-const TEMPLATE_XLSX_FILE_PATH = 'assets/template_importacao_bens.xlsx'
+const TEMPLATE_XLSX_FILE_NAME = 'template_importacao_bens.xlsx'
 
 function baixarTemplate() {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '')
     const a = document.createElement('a')
-    a.href = TEMPLATE_XLSX_FILE_PATH
-    a.download = 'template_importacao_bens.xlsx'
+    a.href = `${base}/assets/${TEMPLATE_XLSX_FILE_NAME}`
+    a.download = TEMPLATE_XLSX_FILE_NAME
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
 }
 
 // ---------------------------------------------------------------------------
