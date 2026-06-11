@@ -367,6 +367,16 @@ export default function AdicionarMovimentacaoPage() {
     () => buildUaOptions(grupos, selectedUoNumericId, referenceUoId, originUaId),
     [grupos, originUaId, referenceUoId, selectedUoNumericId],
   )
+  let uaDestinoPlaceholder = 'Selecione a UO de destino primeiro'
+  if (selectedUoId) {
+    if (destinoSemPontoCentral) {
+      uaDestinoPlaceholder = 'Nenhuma UA disponível'
+    } else if (destinoMesmaUo) {
+      uaDestinoPlaceholder = 'Selecione a UA de destino'
+    } else {
+      uaDestinoPlaceholder = 'UA de destino definida pelo ponto central'
+    }
+  }
   const canSave =
     !!originUaId &&
     !!selectedUoNumericId &&
@@ -602,17 +612,7 @@ export default function AdicionarMovimentacaoPage() {
               disabled={!selectedUoId || !destinoMesmaUo}
             >
               <SelectTrigger id='ua-destino' className={INPUT_CLASS}>
-                <SelectValue
-                  placeholder={
-                    !selectedUoId
-                      ? 'Selecione a UO de destino primeiro'
-                      : destinoSemPontoCentral
-                        ? 'Nenhuma UA disponível'
-                        : destinoMesmaUo
-                          ? 'Selecione a UA de destino'
-                          : 'UA de destino definida pelo ponto central'
-                  }
-                />
+                <SelectValue placeholder={uaDestinoPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {uaOptions.length === 0 ? (
