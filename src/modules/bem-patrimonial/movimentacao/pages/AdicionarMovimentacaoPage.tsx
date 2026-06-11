@@ -139,6 +139,7 @@ function BemSelectorRow({
   isLast: boolean
 }>) {
   const [open, setOpen] = useState(false)
+  const [openUpwards, setOpenUpwards] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [results, setResults] = useState<Bem[]>([])
   const [loading, setLoading] = useState(false)
@@ -164,6 +165,16 @@ function BemSelectorRow({
     }
   }, [])
 
+  const updateDropdownDirection = () => {
+    if (!ref.current) return
+
+    const rect = ref.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+
+    setOpenUpwards(spaceBelow < 280 && spaceAbove > spaceBelow)
+  }
+
   const search = async (query: string) => {
     if (!originUaId) return
 
@@ -187,6 +198,7 @@ function BemSelectorRow({
     if (row.bem || !originUaId) return
 
     setOpen(true)
+    updateDropdownDirection()
     if (results.length === 0) {
       void search('')
     }
@@ -196,6 +208,7 @@ function BemSelectorRow({
     const value = event.target.value
     setInputValue(value)
     setOpen(true)
+    updateDropdownDirection()
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
@@ -296,7 +309,11 @@ function BemSelectorRow({
             />
 
             {open && !disabled ? (
-              <ul className='absolute top-full left-0 right-0 mt-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto'>
+              <ul
+                className={`absolute left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto pb-2 ${
+                  openUpwards ? 'bottom-full mb-1' : 'top-full mt-0'
+                }`}
+              >
                 {renderResults()}
               </ul>
             ) : null}
