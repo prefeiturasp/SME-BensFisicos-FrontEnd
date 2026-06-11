@@ -15,6 +15,7 @@ import BemCreatePage from '@/modules/bem-patrimonial/bem/pages/BemCreatePage';
 import BemEditPage from '@/modules/bem-patrimonial/bem/pages/BemEditPage';
 import BemDetailPage from '@/modules/bem-patrimonial/bem/pages/BemDetailPage';
 import MovimentacoesListPage from '@/modules/bem-patrimonial/movimentacao/pages/MovimentacoesListPage';
+import AdicionarMovimentacaoPage from '@/modules/bem-patrimonial/movimentacao/pages/AdicionarMovimentacaoPage';
 import BaixasListPage from '@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage';
 
 // Módulo: Inventário
@@ -68,6 +69,7 @@ export default function AppRoutes() {
 
           {/* Submódulo: Movimentações */}
           <Route path='/movimentacoes' element={<MovimentacoesListPage />} />
+          <Route path='/movimentacoes/novo' element={<AdicionarMovimentacaoPage />} />
           
           {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
