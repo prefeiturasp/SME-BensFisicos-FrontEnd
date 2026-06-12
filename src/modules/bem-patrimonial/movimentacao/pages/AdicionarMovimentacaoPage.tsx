@@ -432,10 +432,10 @@ export default function AdicionarMovimentacaoPage() {
   }, [selectedUoId, uoOptions])
 
   useEffect(() => {
-    if (uaOptions.length === 1 && !selectedUaId) {
+    if (destinoMesmaUo && uaOptions.length === 1 && !selectedUaId) {
       setSelectedUaId(String(uaOptions[0].id))
     }
-  }, [selectedUaId, uaOptions])
+  }, [destinoMesmaUo, selectedUaId, uaOptions])
 
   const allSelectedIds = rows.filter((row) => row.bem).map((row) => row.bem!.id)
 
