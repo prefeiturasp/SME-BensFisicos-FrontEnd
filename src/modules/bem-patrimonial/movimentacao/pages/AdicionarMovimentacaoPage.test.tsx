@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
 import AdicionarMovimentacaoPage from './AdicionarMovimentacaoPage'
 import { bemService } from '../../bem/services/bem.service'
+import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 
 const mockNavigate = vi.fn()
@@ -47,6 +48,12 @@ vi.mock('@/components/ui/select', () => ({
 
 vi.mock('../../bem/services/bem.service', () => ({
   bemService: {
+    list: vi.fn(),
+  },
+}))
+
+vi.mock('@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service', () => ({
+  unidadesAdministrativasService: {
     list: vi.fn(),
   },
 }))
@@ -239,6 +246,70 @@ describe('AdicionarMovimentacaoPage', () => {
       results: [makeBem()],
     })
 
+    vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
+      count: 4,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 10,
+          codigo: '001',
+          sigla: 'UA Origem',
+          nome: 'UA Origem',
+          status: 'ativa',
+          status_display: 'Ativa',
+          unidade_orcamentaria: 1000,
+          unidade_orcamentaria_codigo: '01.01',
+          unidade_orcamentaria_nome: 'UO Ativa',
+          unidade_orcamentaria_sigla: '01.01',
+          created_at: '2026-06-01T12:00:00Z',
+          updated_at: '2026-06-01T12:00:00Z',
+        },
+        {
+          id: 11,
+          codigo: '002',
+          sigla: 'UA Ativa 2',
+          nome: 'UA Ativa 2',
+          status: 'ativa',
+          status_display: 'Ativa',
+          unidade_orcamentaria: 1000,
+          unidade_orcamentaria_codigo: '01.01',
+          unidade_orcamentaria_nome: 'UO Ativa',
+          unidade_orcamentaria_sigla: '01.01',
+          created_at: '2026-06-01T12:00:00Z',
+          updated_at: '2026-06-01T12:00:00Z',
+        },
+        {
+          id: 12,
+          codigo: '003',
+          sigla: 'UA Oculta',
+          nome: 'UA Oculta',
+          status: 'ativa',
+          status_display: 'Ativa',
+          unidade_orcamentaria: 1000,
+          unidade_orcamentaria_codigo: '01.01',
+          unidade_orcamentaria_nome: 'UO Ativa',
+          unidade_orcamentaria_sigla: '01.01',
+          created_at: '2026-06-01T12:00:00Z',
+          updated_at: '2026-06-01T12:00:00Z',
+        },
+        {
+          id: 20,
+          codigo: '001',
+          sigla: 'UA Outra UO',
+          nome: 'UA Outra UO',
+          status: 'ativa',
+          status_display: 'Ativa',
+          unidade_orcamentaria: 200,
+          unidade_orcamentaria_codigo: '01.02',
+          unidade_orcamentaria_nome: 'UO Destino',
+          unidade_orcamentaria_sigla: '01.02',
+          created_at: '2026-06-01T12:00:00Z',
+          updated_at: '2026-06-01T12:00:00Z',
+        },
+      ],
+    })
+
     vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
       {
         id: 1000,
@@ -304,8 +375,12 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
     })
 
+    expect(unidadesAdministrativasService.list).toHaveBeenCalledWith({ pageSize: 1000 })
+
     expect(screen.queryByRole('option', { name: '001 - UA Origem' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: '002 - UA Ativa 2' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '003 - UA Oculta' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '001 - UA Outra UO' })).not.toBeInTheDocument()
   })
 
   it('deve desabilitar a UA e permitir movimentação para outra UO com ponto central', async () => {

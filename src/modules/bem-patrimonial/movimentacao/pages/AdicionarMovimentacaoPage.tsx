@@ -11,16 +11,17 @@ import { toast } from 'sonner'
 import { ChevronDown, Network, Plus, Trash2, X } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
-import type { EscopoGrupo } from '@/auth/auth.service'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { bemService, type Bem } from '../../bem/services/bem.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoUoCadastroOption } from '../types/movimentacao.types'
+import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
 
 type ItemRow = {
   id: string
@@ -30,6 +31,7 @@ type ItemRow = {
 type UaOption = {
   id: number
   label: string
+  unidade_orcamentaria_id: number
 }
 
 type UoOption = {
@@ -58,32 +60,20 @@ function createEmptyRow(): ItemRow {
   return { id: crypto.randomUUID(), bem: null }
 }
 
-function findGrupoDestino(grupos: EscopoGrupo[] | null | undefined, uoId: number | null) {
-  if (!uoId) return null
-  return (grupos ?? []).find((item) => item?.uo?.id === uoId) ?? null
-}
-
 function buildUaOptions(
-  grupos: EscopoGrupo[] | null | undefined,
+  unidadesAdministrativas: UnidadeAdministrativa[],
   uoId: number | null,
-  uoReferenciaId: number | null,
   uaOrigemId: number | null,
 ): UaOption[] {
   if (!uoId) return []
 
-  const grupo = findGrupoDestino(grupos, uoId)
-  const uas = grupo?.uas ?? []
-  const destinoMesmaUo = uoReferenciaId !== null && uoId === uoReferenciaId
-
-  if (!destinoMesmaUo) {
-    return []
-  }
-
-  return uas
-    .filter((ua) => ua.unidade_administrativa_id !== uaOrigemId)
+  return unidadesAdministrativas
+    .filter((ua) => ua.unidade_orcamentaria === uoId)
+    .filter((ua) => ua.id !== uaOrigemId)
     .map((ua) => ({
-      id: ua.unidade_administrativa_id,
-      label: ua.label ?? ua.nome ?? `UA ${ua.unidade_administrativa_id}`,
+      id: ua.id,
+      label: `${ua.codigo} - ${ua.sigla || ua.nome}`,
+      unidade_orcamentaria_id: ua.unidade_orcamentaria,
     }))
 }
 
@@ -321,7 +311,6 @@ export default function AdicionarMovimentacaoPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const grupos = user?.opcoes_escopo?.grupos ?? []
   const originUaId = user?.ua_ativa?.id ?? null
   const referenceUoId = user?.uo_ativa?.id ?? null
   const originUaLabel = user?.ua_ativa?.label ?? user?.ua_ativa?.codigo ?? '-'
@@ -333,6 +322,9 @@ export default function AdicionarMovimentacaoPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>(
+    [],
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -355,7 +347,20 @@ export default function AdicionarMovimentacaoPage() {
       }
     }
 
+    const loadUnidadesAdministrativas = async () => {
+      try {
+        const response = await unidadesAdministrativasService.list({ pageSize: 1000 })
+        if (!isMounted) return
+
+        setUnidadesAdministrativas(response.results)
+      } catch {
+        if (!isMounted) return
+        setUnidadesAdministrativas([])
+      }
+    }
+
     void loadOptions()
+    void loadUnidadesAdministrativas()
 
     return () => {
       isMounted = false
@@ -377,8 +382,8 @@ export default function AdicionarMovimentacaoPage() {
     selectedUoOption !== null &&
     !selectedUoOption.tem_ponto_central
   const uaOptions = useMemo(
-    () => buildUaOptions(grupos, selectedUoNumericId, referenceUoId, originUaId),
-    [grupos, originUaId, referenceUoId, selectedUoNumericId],
+    () => buildUaOptions(unidadesAdministrativas, selectedUoNumericId, originUaId),
+    [originUaId, selectedUoNumericId, unidadesAdministrativas],
   )
   let uaDestinoPlaceholder = 'Selecione a UO de destino primeiro'
   if (selectedUoId) {
