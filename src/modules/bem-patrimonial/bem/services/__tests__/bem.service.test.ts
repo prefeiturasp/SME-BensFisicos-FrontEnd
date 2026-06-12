@@ -31,6 +31,7 @@ describe('bem.service', () => {
   it('deve listar bens com parâmetros corretamente', async () => {
     mock.onGet(/\/bens\/\?/).reply((config) => {
       expect(config.url).toContain('page=1');
+      expect(config.url).toContain('page_size=25');
       expect(config.url).toContain('search=Notebook');
       expect(config.url).toContain('status=aprovado');
       expect(config.url).toContain('unidade_administrativa=001');
@@ -49,6 +50,7 @@ describe('bem.service', () => {
 
     const result = await bemService.list({
       page: 1,
+      pageSize: 25,
       search: '  Notebook  ',
       status: 'aprovado',
       unidade_administrativa: '001',
