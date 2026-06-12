@@ -5,6 +5,7 @@ import type {
   MovimentacaoBemPatrimonialDetail,
   MovimentacaoBemPatrimonialListItem,
   MovimentacaoBemPatrimonialListParams,
+  MovimentacaoUoCadastroOption,
   PaginatedResponse,
 } from '../types/movimentacao.types'
 
@@ -92,6 +93,15 @@ export const movimentacaoService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao criar movimentação')
+    }
+  },
+
+  async listOpcoesCadastro(): Promise<MovimentacaoUoCadastroOption[]> {
+    try {
+      const { data } = await api.get('/movimentacoes/opcoes-cadastro/')
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao carregar opções de movimentação')
     }
   },
 }

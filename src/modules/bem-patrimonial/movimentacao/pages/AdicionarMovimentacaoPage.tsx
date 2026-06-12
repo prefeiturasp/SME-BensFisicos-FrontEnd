@@ -20,20 +20,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { bemService, type Bem } from '../../bem/services/bem.service'
 import { movimentacaoService } from '../services/movimentacao.service'
+import type { MovimentacaoUoCadastroOption } from '../types/movimentacao.types'
 
 type ItemRow = {
   id: string
   bem: Bem | null
 }
 
-type UoOption = {
+type UaOption = {
   id: number
   label: string
 }
 
-type UaOption = {
+type UoOption = {
   id: number
   label: string
+  tem_ponto_central: boolean
 }
 
 const INPUT_CLASS =
@@ -49,32 +51,11 @@ const PRIMARY_BUTTON_CLASS =
   'h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
 
 const PAGE_SIZE_BENS = 20
-const CODIGO_UA_PONTO_CENTRAL = '001'
 const MENSAGEM_SEM_PONTO_CENTRAL =
   'Não há ponto central cadastrado na Unidade Orçamentária de destino. Por favor, entrar em contato com o gestor.'
 
 function createEmptyRow(): ItemRow {
   return { id: crypto.randomUUID(), bem: null }
-}
-
-function buildUoOptions(grupos: EscopoGrupo[] | null | undefined): UoOption[] {
-  const seen = new Map<number, UoOption>()
-
-  for (const grupo of grupos ?? []) {
-    const uo = grupo?.uo
-    if (!uo?.id || seen.has(uo.id)) continue
-
-    seen.set(uo.id, {
-      id: uo.id,
-      label: uo.label ?? uo.nome ?? `UO ${uo.id}`,
-    })
-  }
-
-  return [...seen.values()]
-}
-
-function isUaPontoCentral(codigo?: string | null) {
-  return codigo === CODIGO_UA_PONTO_CENTRAL || codigo?.endsWith(`.${CODIGO_UA_PONTO_CENTRAL}`)
 }
 
 function findGrupoDestino(grupos: EscopoGrupo[] | null | undefined, uoId: number | null) {
@@ -94,27 +75,16 @@ function buildUaOptions(
   const uas = grupo?.uas ?? []
   const destinoMesmaUo = uoReferenciaId !== null && uoId === uoReferenciaId
 
-  if (destinoMesmaUo) {
-    return uas
-      .filter((ua) => ua.unidade_administrativa_id !== uaOrigemId)
-      .map((ua) => ({
-        id: ua.unidade_administrativa_id,
-        label: ua.label ?? ua.nome ?? `UA ${ua.unidade_administrativa_id}`,
-      }))
+  if (!destinoMesmaUo) {
+    return []
   }
 
-  const uaPontoCentral = uas.find((ua) => isUaPontoCentral(ua.codigo))
-  if (!uaPontoCentral) return []
-
-  return [
-    {
-      id: uaPontoCentral.unidade_administrativa_id,
-      label:
-        uaPontoCentral.label ??
-        uaPontoCentral.nome ??
-        `UA ${uaPontoCentral.unidade_administrativa_id}`,
-    },
-  ]
+  return uas
+    .filter((ua) => ua.unidade_administrativa_id !== uaOrigemId)
+    .map((ua) => ({
+      id: ua.unidade_administrativa_id,
+      label: ua.label ?? ua.nome ?? `UA ${ua.unidade_administrativa_id}`,
+    }))
 }
 
 function BemSelectorRow({
@@ -356,30 +326,56 @@ export default function AdicionarMovimentacaoPage() {
   const referenceUoId = user?.uo_ativa?.id ?? null
   const originUaLabel = user?.ua_ativa?.label ?? user?.ua_ativa?.codigo ?? '-'
 
-  const uoOptions = useMemo(() => buildUoOptions(grupos), [grupos])
-
   const [selectedUoId, setSelectedUoId] = useState('')
   const [selectedUaId, setSelectedUaId] = useState('')
   const [observacao, setObservacao] = useState('')
   const [rows, setRows] = useState<ItemRow[]>([createEmptyRow()])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uoOptions, setUoOptions] = useState<UoOption[]>([])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadOptions = async () => {
+      try {
+        const options = await movimentacaoService.listOpcoesCadastro()
+        if (!isMounted) return
+
+        setUoOptions(
+          options.map((uo: MovimentacaoUoCadastroOption) => ({
+            id: uo.id,
+            label: uo.label ?? (uo.codigo && uo.nome ? `${uo.codigo} - ${uo.nome}` : uo.nome),
+            tem_ponto_central: uo.tem_ponto_central,
+          })),
+        )
+      } catch {
+        if (!isMounted) return
+        setUoOptions([])
+      }
+    }
+
+    void loadOptions()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const selectedUoNumericId = selectedUoId ? Number(selectedUoId) : null
-  const grupoDestino = useMemo(
-    () => findGrupoDestino(grupos, selectedUoNumericId),
-    [grupos, selectedUoNumericId],
-  )
   const destinoMesmaUo =
     referenceUoId !== null &&
     selectedUoNumericId !== null &&
     selectedUoNumericId === referenceUoId
-  const uaPontoCentralDestino = useMemo(
-    () => grupoDestino?.uas.find((ua) => isUaPontoCentral(ua.codigo)) ?? null,
-    [grupoDestino],
+  const selectedUoOption = useMemo(
+    () => uoOptions.find((uo) => uo.id === selectedUoNumericId) ?? null,
+    [selectedUoNumericId, uoOptions],
   )
   const destinoSemPontoCentral =
-    !!selectedUoNumericId && !destinoMesmaUo && !uaPontoCentralDestino
+    !!selectedUoNumericId &&
+    !destinoMesmaUo &&
+    selectedUoOption !== null &&
+    !selectedUoOption.tem_ponto_central
   const uaOptions = useMemo(
     () => buildUaOptions(grupos, selectedUoNumericId, referenceUoId, originUaId),
     [grupos, originUaId, referenceUoId, selectedUoNumericId],
@@ -397,8 +393,7 @@ export default function AdicionarMovimentacaoPage() {
   const canSave =
     !!originUaId &&
     !!selectedUoNumericId &&
-    !!selectedUaId &&
-    !destinoSemPontoCentral &&
+    (destinoMesmaUo ? !!selectedUaId : Boolean(selectedUoOption?.tem_ponto_central)) &&
     rows.some((row) => row.bem) &&
     !submitting
 
@@ -415,14 +410,6 @@ export default function AdicionarMovimentacaoPage() {
       return
     }
 
-    if (uaPontoCentralDestino) {
-      const centralId = String(uaPontoCentralDestino.unidade_administrativa_id)
-      if (selectedUaId !== centralId) {
-        setSelectedUaId(centralId)
-      }
-      return
-    }
-
     if (selectedUaId) {
       setSelectedUaId('')
     }
@@ -431,7 +418,6 @@ export default function AdicionarMovimentacaoPage() {
     selectedUoId,
     selectedUaId,
     uaOptions,
-    uaPontoCentralDestino,
   ])
 
   useEffect(() => {
@@ -491,7 +477,7 @@ export default function AdicionarMovimentacaoPage() {
       return
     }
 
-    if (!selectedUaId) {
+    if (destinoMesmaUo && !selectedUaId) {
       setError('Selecione a Unidade Administrativa de destino.')
       return
     }
@@ -507,12 +493,16 @@ export default function AdicionarMovimentacaoPage() {
 
     setSubmitting(true)
     try {
-      await movimentacaoService.create({
+      const payload = {
         unidade_administrativa_origem: originUaId,
         unidade_orcamentaria_destino: selectedUoNumericId,
-        unidade_administrativa_destino: Number(selectedUaId),
         observacao,
         itens,
+        ...(destinoMesmaUo ? { unidade_administrativa_destino: Number(selectedUaId) } : {}),
+      }
+
+      await movimentacaoService.create({
+        ...payload,
       })
 
       toast.success(

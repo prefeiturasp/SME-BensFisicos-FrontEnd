@@ -53,6 +53,7 @@ vi.mock('../../bem/services/bem.service', () => ({
 
 vi.mock('../services/movimentacao.service', () => ({
   movimentacaoService: {
+    listOpcoesCadastro: vi.fn(),
     create: vi.fn(),
   },
 }))
@@ -138,56 +139,6 @@ function makeUser() {
             },
           ],
         },
-        {
-          uo: {
-            id: 200,
-            codigo: '01.02',
-            nome: 'UO Destino',
-            label: '01.02 - UO Destino',
-            selecionavel: true,
-            unidade_administrativa_id: null,
-            unidade_orcamentaria_id: 200,
-          },
-          uas: [
-            {
-              id: 20,
-              codigo: '001',
-              nome: 'UA Destino Central',
-              label: '001 - UA Destino Central',
-              unidade_administrativa_id: 20,
-              unidade_orcamentaria_id: 200,
-            },
-            {
-              id: 21,
-              codigo: '010',
-              nome: 'UA Destino 2',
-              label: '010 - UA Destino 2',
-              unidade_administrativa_id: 21,
-              unidade_orcamentaria_id: 200,
-            },
-          ],
-        },
-        {
-          uo: {
-            id: 201,
-            codigo: '01.03',
-            nome: 'UO Reserva',
-            label: '01.03 - UO Reserva',
-            selecionavel: true,
-            unidade_administrativa_id: null,
-            unidade_orcamentaria_id: 201,
-          },
-          uas: [
-            {
-              id: 30,
-              codigo: '010',
-              nome: 'UA Reserva',
-              label: '010 - UA Reserva',
-              unidade_administrativa_id: 30,
-              unidade_orcamentaria_id: 201,
-            },
-          ],
-        },
       ],
     },
   }
@@ -258,6 +209,13 @@ function renderPage() {
   )
 }
 
+async function waitForUoOptions() {
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '01.03 - UO Reserva' })).toBeInTheDocument()
+  })
+}
+
 describe('AdicionarMovimentacaoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -280,10 +238,35 @@ describe('AdicionarMovimentacaoPage', () => {
       previous: null,
       results: [makeBem()],
     })
+
+    vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
+      {
+        id: 1000,
+        codigo: '01.01',
+        nome: 'UO Ativa',
+        label: '01.01 - UO Ativa',
+        tem_ponto_central: false,
+      },
+      {
+        id: 200,
+        codigo: '01.02',
+        nome: 'UO Destino',
+        label: '01.02 - UO Destino',
+        tem_ponto_central: true,
+      },
+      {
+        id: 201,
+        codigo: '01.03',
+        nome: 'UO Reserva',
+        label: '01.03 - UO Reserva',
+        tem_ponto_central: false,
+      },
+    ])
   })
 
-  it('deve renderizar título, breadcrumb e a UA de origem fixa', () => {
+  it('deve renderizar título, breadcrumb e a UA de origem fixa', async () => {
     renderPage()
+    await waitForUoOptions()
 
     expect(
       screen.getByRole('heading', { name: /adicionar movimentação de bem patrimonial/i }),
@@ -292,16 +275,18 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(screen.getByDisplayValue('001 - UA Origem')).toBeInTheDocument()
   })
 
-  it('deve manter a UA de destino desabilitada até selecionar a UO', () => {
+  it('deve manter a UA de destino desabilitada até selecionar a UO', async () => {
     renderPage()
+    await waitForUoOptions()
 
     const selects = screen.getAllByRole('combobox')
     expect(selects).toHaveLength(2)
     expect(selects[1]).toBeDisabled()
   })
 
-  it('deve navegar para a listagem ao clicar em Cancelar', () => {
+  it('deve navegar para a listagem ao clicar em Cancelar', async () => {
     renderPage()
+    await waitForUoOptions()
 
     fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
 
@@ -310,6 +295,8 @@ describe('AdicionarMovimentacaoPage', () => {
 
   it('deve permitir seleção manual quando a UO de destino é a mesma da referência', async () => {
     renderPage()
+
+    await waitForUoOptions()
 
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
 
@@ -321,21 +308,22 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(screen.getByRole('option', { name: '002 - UA Ativa 2' })).toBeInTheDocument()
   })
 
-  it('deve auto-selecionar o ponto central e desabilitar a UA quando a UO de destino for diferente', async () => {
+  it('deve desabilitar a UA e permitir movimentação para outra UO com ponto central', async () => {
     renderPage()
+
+    await waitForUoOptions()
 
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
 
     await waitFor(() => {
       expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
     })
-
-    expect(screen.getAllByRole('combobox')[1]).toHaveValue('20')
-    expect(screen.getByRole('option', { name: '001 - UA Destino Central' })).toBeInTheDocument()
   })
 
   it('deve mostrar mensagem quando a UO selecionada não tiver ponto central', async () => {
     renderPage()
+
+    await waitForUoOptions()
 
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '201' } })
 
@@ -376,6 +364,8 @@ describe('AdicionarMovimentacaoPage', () => {
     const saveButton = screen.getByRole('button', { name: /^salvar$/i })
     expect(saveButton).toBeDisabled()
 
+    await waitForUoOptions()
+
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
 
     await waitFor(() => {
@@ -405,6 +395,8 @@ describe('AdicionarMovimentacaoPage', () => {
 
     renderPage()
 
+    await waitForUoOptions()
+
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
     await waitFor(() => {
       expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
@@ -431,11 +423,12 @@ describe('AdicionarMovimentacaoPage', () => {
 
     renderPage()
 
+    await waitForUoOptions()
+
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
 
     await waitFor(() => {
       expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
-      expect(screen.getAllByRole('combobox')[1]).toHaveValue('20')
     })
 
     fireEvent.change(screen.getByPlaceholderText('Digite uma observação'), {
@@ -465,7 +458,6 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(movimentacaoService.create).toHaveBeenCalledWith({
         unidade_administrativa_origem: 10,
         unidade_orcamentaria_destino: 200,
-        unidade_administrativa_destino: 20,
         observacao: 'Movimentação interna',
         itens: [{ bem: 1 }],
       })

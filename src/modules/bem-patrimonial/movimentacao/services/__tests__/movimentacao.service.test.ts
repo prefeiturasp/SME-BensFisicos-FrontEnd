@@ -82,6 +82,33 @@ describe('movimentacaoService', () => {
     expect(api.post).toHaveBeenCalledWith('/movimentacoes/', payload)
   })
 
+  it('deve listar opções de cadastro de movimentação', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: [
+        {
+          id: 20,
+          codigo: '01.02',
+          nome: 'UO Destino',
+          label: '01.02 - UO Destino',
+          tem_ponto_central: true,
+        },
+      ],
+    })
+
+    const result = await movimentacaoService.listOpcoesCadastro()
+
+    expect(api.get).toHaveBeenCalledWith('/movimentacoes/opcoes-cadastro/')
+    expect(result).toEqual([
+      {
+        id: 20,
+        codigo: '01.02',
+        nome: 'UO Destino',
+        label: '01.02 - UO Destino',
+        tem_ponto_central: true,
+      },
+    ])
+  })
+
   it('deve lançar mensagem de detalhe da API ao falhar create', async () => {
     vi.mocked(api.post).mockRejectedValue(makeAxiosError(400, { detail: 'Erro customizado' }))
 

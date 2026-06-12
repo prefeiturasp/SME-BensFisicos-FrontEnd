@@ -13,6 +13,14 @@ export interface MovimentacaoUnidadeOrcamentaria {
   ativa?: boolean
 }
 
+export interface MovimentacaoUoCadastroOption {
+  id: number
+  codigo: string
+  nome: string
+  label: string
+  tem_ponto_central: boolean
+}
+
 export interface MovimentacaoUnidadeAdministrativa {
   id: number
   codigo: string
@@ -80,7 +88,7 @@ export interface MovimentacaoBemItemPayload {
 export interface MovimentacaoBemPatrimonialCreatePayload {
   unidade_administrativa_origem: number
   unidade_orcamentaria_destino: number
-  unidade_administrativa_destino: number
+  unidade_administrativa_destino?: number
   observacao: string
   itens: MovimentacaoBemItemPayload[]
 }
