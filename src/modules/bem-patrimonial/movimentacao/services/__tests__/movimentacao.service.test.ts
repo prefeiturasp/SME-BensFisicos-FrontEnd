@@ -63,6 +63,21 @@ describe('movimentacaoService', () => {
     expect(url).toContain('ordering=-criado_em')
   })
 
+  it('deve enviar status múltiplos e filtro de atraso na listagem', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { count: 0, next: null, previous: null, results: [] },
+    })
+
+    await movimentacaoService.list({
+      status: ['enviada', 'aceita'],
+      atrasada: 'true',
+    })
+
+    const [url] = vi.mocked(api.get).mock.calls[0]
+    expect(url).toContain('status=enviada%2Caceita')
+    expect(url).toContain('atrasada=true')
+  })
+
   it('deve criar movimentação com o payload correto', async () => {
     vi.mocked(api.post).mockResolvedValue({
       data: { id: 1, status: 'enviada' },
@@ -107,6 +122,17 @@ describe('movimentacaoService', () => {
         tem_ponto_central: true,
       },
     ])
+  })
+
+  it('deve buscar uma movimentação pelo id', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { id: 9, status: 'enviada' },
+    })
+
+    const result = await movimentacaoService.retrieve(9)
+
+    expect(api.get).toHaveBeenCalledWith('/movimentacoes/9/')
+    expect(result).toEqual({ id: 9, status: 'enviada' })
   })
 
   it('deve lançar mensagem de detalhe da API ao falhar create', async () => {

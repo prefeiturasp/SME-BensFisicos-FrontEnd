@@ -97,9 +97,10 @@ export interface MovimentacaoBemPatrimonialListParams {
   page?: number
   pageSize?: number
   search?: string
-  status?: string
+  status?: string | string[]
   unidade_administrativa_origem?: number
   unidade_administrativa_destino?: number
   numero_cimbpm?: string
+  atrasada?: string
   ordering?: string
 }
