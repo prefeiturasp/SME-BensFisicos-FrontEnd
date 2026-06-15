@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/api/http'
 import { movimentacaoService } from '../movimentacao.service'
@@ -50,9 +50,8 @@ describe('movimentacaoService', () => {
       ordering: '-criado_em',
     })
 
-    expect(api.get).toHaveBeenCalledWith(expect.stringContaining('/movimentacoes/?'))
-
     const [url] = vi.mocked(api.get).mock.calls[0]
+    expect(url).toContain('/movimentacoes/?')
     expect(url).toContain('page=2')
     expect(url).toContain('page_size=30')
     expect(url).toContain('search=Notebook')
@@ -76,6 +75,27 @@ describe('movimentacaoService', () => {
     const [url] = vi.mocked(api.get).mock.calls[0]
     expect(url).toContain('status=enviada%2Caceita')
     expect(url).toContain('atrasada=true')
+  })
+
+  it('deve ignorar filtros vazios ou com valor todos na listagem', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { count: 0, next: null, previous: null, results: [] },
+    })
+
+    await movimentacaoService.list({
+      page: 0,
+      pageSize: 0,
+      search: '   ',
+      status: ['todos', ''],
+      unidade_administrativa_origem: 0,
+      unidade_administrativa_destino: 0,
+      numero_cimbpm: '   ',
+      atrasada: 'todos',
+      ordering: '',
+    })
+
+    const [url] = vi.mocked(api.get).mock.calls[0]
+    expect(url).toBe('/movimentacoes/?')
   })
 
   it('deve criar movimentação com o payload correto', async () => {
@@ -135,6 +155,24 @@ describe('movimentacaoService', () => {
     expect(result).toEqual({ id: 9, status: 'enviada' })
   })
 
+  it('deve tratar erro ao listar opções de cadastro', async () => {
+    vi.mocked(api.get).mockRejectedValue(
+      makeAxiosError(400, { detail: 'Falha ao carregar opções' }),
+    )
+
+    await expect(movimentacaoService.listOpcoesCadastro()).rejects.toThrow(
+      'Falha ao carregar opções',
+    )
+  })
+
+  it('deve tratar erro ao buscar uma movimentação pelo id', async () => {
+    vi.mocked(api.get).mockRejectedValue(makeNetworkError())
+
+    await expect(movimentacaoService.retrieve(9)).rejects.toThrow(
+      'Erro de conexão com o servidor.',
+    )
+  })
+
   it('deve lançar mensagem de detalhe da API ao falhar create', async () => {
     vi.mocked(api.post).mockRejectedValue(makeAxiosError(400, { detail: 'Erro customizado' }))
 
@@ -165,7 +203,7 @@ describe('movimentacaoService', () => {
     ).rejects.toThrow('Selecione ao menos um bem')
   })
 
-  it('deve lançar mensagem padrão em erro sem detail', async () => {
+  it('deve lançar mensagem padrão em erro sem detail ao criar', async () => {
     vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
 
     await expect(
@@ -191,5 +229,13 @@ describe('movimentacaoService', () => {
     vi.mocked(api.get).mockRejectedValue(makeAxiosError(400, { detail: ['Falha ao listar'] }))
 
     await expect(movimentacaoService.list()).rejects.toThrow('Falha ao listar')
+  })
+
+  it('deve usar a primeira mensagem disponível em objetos de erro ao listar', async () => {
+    vi.mocked(api.get).mockRejectedValue(
+      makeAxiosError(400, { itens: ['Mensagem aninhada'], other: ['Outra'] }),
+    )
+
+    await expect(movimentacaoService.list()).rejects.toThrow('Mensagem aninhada')
   })
 })

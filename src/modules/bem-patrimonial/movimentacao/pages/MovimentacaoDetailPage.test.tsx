@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -6,6 +6,7 @@ import MovimentacaoDetailPage from './MovimentacaoDetailPage'
 import { movimentacaoService } from '../services/movimentacao.service'
 
 const mockNavigate = vi.fn()
+const toastError = vi.fn()
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -14,6 +15,12 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   }
 })
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: (...args: unknown[]) => toastError(...args),
+  },
+}))
 
 vi.mock('@/components/AppBreadcrumb', () => ({
   AppBreadcrumb: () => <nav data-testid='breadcrumb' />,
@@ -25,7 +32,7 @@ vi.mock('../services/movimentacao.service', () => ({
   },
 }))
 
-function makeMovimentacao() {
+function makeMovimentacao(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     status: 'enviada',
@@ -84,7 +91,18 @@ function makeMovimentacao() {
     url_cancelar: null,
     url_historico: null,
     url_documento_cimbpm: null,
+    ...overrides,
   }
+}
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/movimentacoes/1']}>
+      <Routes>
+        <Route path='/movimentacoes/:id' element={<MovimentacaoDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 describe('MovimentacaoDetailPage', () => {
@@ -93,20 +111,63 @@ describe('MovimentacaoDetailPage', () => {
     vi.mocked(movimentacaoService.retrieve).mockResolvedValue(makeMovimentacao())
   })
 
-  it('deve carregar e exibir a movimentação', async () => {
-    render(
-      <MemoryRouter initialEntries={['/movimentacoes/1']}>
-        <Routes>
-          <Route path='/movimentacoes/:id' element={<MovimentacaoDetailPage />} />
-        </Routes>
-      </MemoryRouter>,
+  it('deve mostrar loader enquanto carrega', () => {
+    vi.mocked(movimentacaoService.retrieve).mockReturnValue(
+      new Promise(() => undefined),
     )
+
+    renderPage()
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument()
+  })
+
+  it('deve carregar e exibir a movimentação', async () => {
+    renderPage()
 
     expect(await screen.findByText('Visualizar Movimentação de Bem Patrimonial')).toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument()
     expect(screen.getByText('Enviada')).toBeInTheDocument()
     expect(screen.getByText('Solicitante Exemplo')).toBeInTheDocument()
     expect(screen.getByText('Notebook')).toBeInTheDocument()
+    expect(screen.getByText('CIMBPM-1')).toBeInTheDocument()
     expect(movimentacaoService.retrieve).toHaveBeenCalledWith(1)
+  })
+
+  it('deve voltar para a listagem ao clicar em voltar', async () => {
+    renderPage()
+
+    await screen.findByText('Visualizar Movimentação de Bem Patrimonial')
+    fireEvent.click(screen.getByRole('button', { name: /voltar/i }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
+  })
+
+  it('deve navegar para a listagem quando falhar o carregamento', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(movimentacaoService.retrieve).mockRejectedValueOnce(new Error('falhou'))
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Erro ao carregar movimentação')
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('deve exibir traços para campos vazios', async () => {
+    vi.mocked(movimentacaoService.retrieve).mockResolvedValueOnce(
+      makeMovimentacao({
+        numero_cimbpm: null,
+        observacao: '',
+        itens: [],
+      }),
+    )
+
+    renderPage()
+
+    await screen.findByText('Visualizar Movimentação de Bem Patrimonial')
+    expect(screen.getAllByText('-')).toHaveLength(2)
+    expect(screen.getByText('Nenhum item encontrado.')).toBeInTheDocument()
   })
 })
