@@ -39,6 +39,11 @@ type StatusOption = {
   label: string
 }
 
+type SelectOption = {
+  value: string
+  label: string
+}
+
 const PAGE_SIZE = 10
 
 const ACTION_BUTTON_CLASS = `
@@ -211,6 +216,39 @@ function StatusMultiSelect(props: Readonly<{
   )
 }
 
+function FilterSelect(props: Readonly<{
+  label: string
+  value: string
+  placeholder: string
+  options: SelectOption[]
+  onChange: (value: string) => void
+}>) {
+  const { label, value, placeholder, options, onChange } = props
+
+  return (
+    <label className='space-y-2 text-sm font-semibold text-gray-700'>
+      <span>{label}</span>
+      <Select
+        value={value}
+        onValueChange={(nextValue) => {
+          onChange(nextValue)
+        }}
+      >
+        <SelectTrigger className={INPUT_CLASS}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
 export default function MovimentacoesListPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -231,6 +269,23 @@ export default function MovimentacoesListPage() {
   const uoOptions = useMemo(
     () => buildUaOptions(user?.opcoes_escopo?.grupos),
     [user?.opcoes_escopo?.grupos],
+  )
+
+  const unidadeOptions = useMemo<SelectOption[]>(
+    () => [{ value: 'todas', label: 'Todas' }, ...uoOptions.map((option) => ({
+      value: String(option.id),
+      label: option.label,
+    }))],
+    [uoOptions],
+  )
+
+  const atrasadaOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: 'todos', label: 'Todos' },
+      { value: 'sim', label: 'Sim' },
+      { value: 'nao', label: 'Não' },
+    ],
+    [],
   )
 
   const { pages, totalPages } = usePagination({
@@ -440,51 +495,27 @@ export default function MovimentacoesListPage() {
             </div>
           </label>
 
-          <label className='space-y-2 text-sm font-semibold text-gray-700'>
-            <span>Filtrar por Unidade de Origem</span>
-            <Select
-              value={unidadeOrigemFilter}
-              onValueChange={(value) => {
-                setUnidadeOrigemFilter(value)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder='Selecione uma unidade' />
-              </SelectTrigger>
-              <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-                <SelectItem value='todas'>Todas</SelectItem>
-                {uoOptions.map((option) => (
-                  <SelectItem key={option.id} value={String(option.id)}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
+          <FilterSelect
+            label='Filtrar por Unidade de Origem'
+            value={unidadeOrigemFilter}
+            placeholder='Selecione uma unidade'
+            options={unidadeOptions}
+            onChange={(value) => {
+              setUnidadeOrigemFilter(value)
+              setPage(1)
+            }}
+          />
 
-          <label className='space-y-2 text-sm font-semibold text-gray-700'>
-            <span>Filtrar por Unidade de Destino</span>
-            <Select
-              value={unidadeDestinoFilter}
-              onValueChange={(value) => {
-                setUnidadeDestinoFilter(value)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder='Selecione uma unidade' />
-              </SelectTrigger>
-              <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-                <SelectItem value='todas'>Todas</SelectItem>
-                {uoOptions.map((option) => (
-                  <SelectItem key={option.id} value={String(option.id)}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
+          <FilterSelect
+            label='Filtrar por Unidade de Destino'
+            value={unidadeDestinoFilter}
+            placeholder='Selecione uma unidade'
+            options={unidadeOptions}
+            onChange={(value) => {
+              setUnidadeDestinoFilter(value)
+              setPage(1)
+            }}
+          />
 
           <label className='space-y-2 text-sm font-semibold text-gray-700'>
             <span>Filtrar por Status</span>
@@ -497,25 +528,16 @@ export default function MovimentacoesListPage() {
             />
           </label>
 
-          <label className='space-y-2 text-sm font-semibold text-gray-700'>
-            <span>Movimentação Atrasada</span>
-            <Select
-              value={atrasadaFilter}
-              onValueChange={(value) => {
-                setAtrasadaFilter(value as StatusFilterValue)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder='Todos' />
-              </SelectTrigger>
-              <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-                <SelectItem value='todos'>Todos</SelectItem>
-                <SelectItem value='sim'>Sim</SelectItem>
-                <SelectItem value='nao'>Não</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
+          <FilterSelect
+            label='Movimentação Atrasada'
+            value={atrasadaFilter}
+            placeholder='Todos'
+            options={atrasadaOptions}
+            onChange={(value) => {
+              setAtrasadaFilter(value as StatusFilterValue)
+              setPage(1)
+            }}
+          />
         </div>
 
         <h2 className='text-sm font-semibold text-[#00703C]'>

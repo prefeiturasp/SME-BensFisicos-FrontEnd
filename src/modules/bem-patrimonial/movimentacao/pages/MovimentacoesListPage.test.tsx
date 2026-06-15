@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuth } from '@/auth/useAuth'
 import MovimentacoesListPage from './MovimentacoesListPage'
@@ -156,6 +156,18 @@ function makeMovimentacao(id: number, overrides: Record<string, unknown> = {}) {
   }
 }
 
+function mockListResponse(
+  results: ReturnType<typeof makeMovimentacao>[],
+  count = results.length,
+) {
+  vi.mocked(movimentacaoService.list).mockResolvedValue({
+    count,
+    next: null,
+    previous: null,
+    results,
+  })
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -167,6 +179,7 @@ function renderPage() {
 describe('MovimentacoesListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     vi.mocked(useAuth).mockReturnValue({
       user: makeUser(),
       isLoading: false,
@@ -179,15 +192,14 @@ describe('MovimentacoesListPage', () => {
       loginAsync: vi.fn(),
     })
 
-    vi.mocked(movimentacaoService.list).mockResolvedValue({
-      count: 2,
-      next: null,
-      previous: null,
-      results: [
-        makeMovimentacao(1),
-        makeMovimentacao(2, { status: 'aceita', status_display: 'Aceita' }),
-      ],
-    })
+    mockListResponse([
+      makeMovimentacao(1),
+      makeMovimentacao(2, { status: 'aceita', status_display: 'Aceita' }),
+    ], 2)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('deve renderizar o título, breadcrumb e botões principais', async () => {
@@ -290,5 +302,41 @@ describe('MovimentacoesListPage', () => {
         }),
       )
     })
+  })
+
+  it('deve aplicar a busca com debounce', async () => {
+    renderPage()
+
+    await screen.findAllByText('Solicitante Exemplo')
+    fireEvent.change(screen.getByPlaceholderText('Pesquise por termo específico'), {
+      target: { value: 'cimbpm' },
+    })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    })
+
+    await waitFor(() => {
+      expect(movimentacaoService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          search: 'cimbpm',
+        }),
+      )
+    })
+  })
+
+  it('deve exibir mensagem quando não houver movimentações', async () => {
+    vi.mocked(movimentacaoService.list).mockResolvedValue({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    })
+
+    renderPage()
+
+    expect(
+      await screen.findByText('Nenhuma movimentação encontrada.'),
+    ).toBeInTheDocument()
   })
 })
