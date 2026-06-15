@@ -46,6 +46,9 @@ vi.mock('@/modules/bem-patrimonial/movimentacao/pages/MovimentacoesListPage', ()
 vi.mock('@/modules/bem-patrimonial/movimentacao/pages/AdicionarMovimentacaoPage', () => ({
   default: () => <div data-testid='movimentacao-create'>Movimentacao Create</div>,
 }));
+vi.mock('@/modules/bem-patrimonial/movimentacao/pages/MovimentacaoDetailPage', () => ({
+  default: () => <div data-testid='movimentacao-detail'>Movimentacao Detail</div>,
+}));
 vi.mock('@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage', () => ({
   default: () => <div data-testid='baixas-list'>Baixas List</div>,
 }));
@@ -313,6 +316,15 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('movimentacao-create')).toBeInTheDocument();
+    });
+
+    it('deve navegar para visualização de movimentação', () => {
+      render(
+        <MemoryRouter initialEntries={['/movimentacoes/10']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('movimentacao-detail')).toBeInTheDocument();
     });
 
     it('deve navegar para baixas', () => {

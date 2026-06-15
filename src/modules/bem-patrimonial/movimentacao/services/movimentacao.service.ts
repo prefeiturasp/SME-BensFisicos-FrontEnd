@@ -61,12 +61,18 @@ function buildQuery(params: MovimentacaoBemPatrimonialListParams = {}) {
   if (params.page) query.append('page', String(params.page))
   if (params.pageSize) query.append('page_size', String(params.pageSize))
   if (params.search?.trim()) query.append('search', params.search.trim())
-  if (params.status && params.status !== 'todos') query.append('status', params.status)
+  if (Array.isArray(params.status)) {
+    const values = params.status.filter((item) => item && item !== 'todos')
+    if (values.length > 0) query.append('status', values.join(','))
+  } else if (params.status && params.status !== 'todos') {
+    query.append('status', params.status)
+  }
   if (params.unidade_administrativa_origem)
     query.append('unidade_administrativa_origem', String(params.unidade_administrativa_origem))
   if (params.unidade_administrativa_destino)
     query.append('unidade_administrativa_destino', String(params.unidade_administrativa_destino))
   if (params.numero_cimbpm?.trim()) query.append('numero_cimbpm', params.numero_cimbpm.trim())
+  if (params.atrasada && params.atrasada !== 'todos') query.append('atrasada', params.atrasada)
   if (params.ordering) query.append('ordering', params.ordering)
 
   return query
@@ -102,6 +108,15 @@ export const movimentacaoService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao carregar opções de movimentação')
+    }
+  },
+
+  async retrieve(id: number): Promise<MovimentacaoBemPatrimonialDetail> {
+    try {
+      const { data } = await api.get(`/movimentacoes/${id}/`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao carregar movimentação')
     }
   },
 }
