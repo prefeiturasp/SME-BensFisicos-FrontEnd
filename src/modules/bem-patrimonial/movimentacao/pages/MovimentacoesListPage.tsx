@@ -346,7 +346,7 @@ export default function MovimentacoesListPage() {
         </div>
       </div>
 
-      <Card className='p-6 space-y-6'>
+      <Card className='p-6 space-y-1'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
           <label className='space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
             <span>Pesquisa Geral</span>
@@ -440,14 +440,9 @@ export default function MovimentacoesListPage() {
           </label>
         </div>
 
-        <div className='space-y-1'>
           <h2 className='text-sm font-semibold text-[#00703C]'>
             Bens Patrimoniais Movimentados
           </h2>
-          <p className='text-sm text-gray-500'>
-            A listagem abaixo reúne as movimentações cadastradas no sistema.
-          </p>
-        </div>
 
         <div className='overflow-x-auto'>
           <table className='w-full text-sm'>
