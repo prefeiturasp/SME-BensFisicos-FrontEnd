@@ -205,7 +205,7 @@ describe('MovimentacoesListPage', () => {
   it('deve renderizar o título, breadcrumb e botões principais', async () => {
     renderPage()
 
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
 
     expect(
       screen.getByRole('heading', {
@@ -223,7 +223,7 @@ describe('MovimentacoesListPage', () => {
   it('deve voltar para a home ao clicar em voltar', async () => {
     renderPage()
 
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
     fireEvent.click(screen.getByRole('button', { name: /voltar/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/home')
@@ -232,15 +232,16 @@ describe('MovimentacoesListPage', () => {
   it('deve listar as movimentações recebidas do serviço', async () => {
     renderPage()
 
-    expect(await screen.findAllByText('Solicitante Exemplo')).toHaveLength(2)
+    await screen.findByText('Enviada')
     expect(screen.getByText('Enviada')).toBeInTheDocument()
     expect(screen.getByText('Aceita')).toBeInTheDocument()
+    expect(screen.queryByText('Solicitante Exemplo')).not.toBeInTheDocument()
   })
 
   it('deve navegar para cadastro ao clicar em adicionar movimentação', async () => {
     renderPage()
 
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
     fireEvent.click(screen.getByRole('button', { name: /adicionar moviment/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes/novo')
@@ -257,7 +258,7 @@ describe('MovimentacoesListPage', () => {
 
   it('deve filtrar por unidade de origem e destino', async () => {
     renderPage()
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
 
     const selects = screen.getAllByTestId('select')
     fireEvent.change(selects[0], { target: { value: '10' } })
@@ -275,7 +276,7 @@ describe('MovimentacoesListPage', () => {
 
   it('deve permitir filtrar por status em multisseleção', async () => {
     renderPage()
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
 
     fireEvent.click(screen.getByRole('button', { name: /filtrar por status/i }))
     fireEvent.click(screen.getAllByRole('checkbox')[0])
@@ -291,14 +292,14 @@ describe('MovimentacoesListPage', () => {
 
   it('deve permitir filtrar movimentação atrasada', async () => {
     renderPage()
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
 
-    fireEvent.change(screen.getAllByTestId('select')[2], { target: { value: 'sim' } })
+    fireEvent.change(screen.getAllByTestId('select')[2], { target: { value: 'false' } })
 
     await waitFor(() => {
       expect(movimentacaoService.list).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          atrasada: 'true',
+          atrasada: 'false',
         }),
       )
     })
@@ -307,7 +308,7 @@ describe('MovimentacoesListPage', () => {
   it('deve aplicar a busca com debounce', async () => {
     renderPage()
 
-    await screen.findAllByText('Solicitante Exemplo')
+    await screen.findByText('Enviada')
     fireEvent.change(screen.getByPlaceholderText('Pesquise por termo específico'), {
       target: { value: 'cimbpm' },
     })

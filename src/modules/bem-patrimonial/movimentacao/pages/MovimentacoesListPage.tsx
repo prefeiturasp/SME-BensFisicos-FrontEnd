@@ -32,7 +32,7 @@ type UaOption = {
   label: string
 }
 
-type StatusFilterValue = 'todos' | 'sim' | 'nao'
+type StatusFilterValue = 'todos' | 'true' | 'false'
 
 type StatusOption = {
   value: string
@@ -86,24 +86,6 @@ function resolveUaLabel(
   unidade: MovimentacaoBemPatrimonialListItem['unidade_administrativa_origem'],
 ) {
   return `${unidade.codigo} - ${unidade.sigla || unidade.nome}`
-}
-
-function resolveSolicitante(
-  usuario: MovimentacaoBemPatrimonialListItem['solicitado_por'],
-) {
-  return usuario.nome_completo ?? usuario.username
-}
-
-function isAtrasada(movimentacao: MovimentacaoBemPatrimonialListItem) {
-  if (movimentacao.status !== 'enviada') return false
-
-  const dataCriacao = new Date(movimentacao.criado_em)
-  if (Number.isNaN(dataCriacao.getTime())) return false
-
-  const limite = new Date()
-  limite.setDate(limite.getDate() - 7)
-
-  return dataCriacao <= limite
 }
 
 function buildUaOptions(
@@ -282,8 +264,8 @@ export default function MovimentacoesListPage() {
   const atrasadaOptions = useMemo<SelectOption[]>(
     () => [
       { value: 'todos', label: 'Todos' },
-      { value: 'sim', label: 'Sim' },
-      { value: 'nao', label: 'Não' },
+      { value: 'true', label: 'Sim' },
+      { value: 'false', label: 'Não' },
     ],
     [],
   )
@@ -318,7 +300,7 @@ export default function MovimentacoesListPage() {
             unidadeOrigemFilter !== 'todas' ? Number(unidadeOrigemFilter) : undefined,
           unidade_administrativa_destino:
             unidadeDestinoFilter !== 'todas' ? Number(unidadeDestinoFilter) : undefined,
-          atrasada: atrasadaFilter === 'sim' ? 'true' : undefined,
+          atrasada: atrasadaFilter === 'todos' ? undefined : atrasadaFilter,
           ordering: '-criado_em',
         })
 
@@ -349,11 +331,6 @@ export default function MovimentacoesListPage() {
     atrasadaFilter,
   ])
 
-  const movimentacoesVisiveis = useMemo(() => {
-    if (atrasadaFilter !== 'nao') return movimentacoes
-    return movimentacoes.filter((movimentacao) => !isAtrasada(movimentacao))
-  }, [movimentacoes, atrasadaFilter])
-
   const handleVisualizar = (id: number) => {
     navigate(`/movimentacoes/${id}`)
   }
@@ -382,7 +359,7 @@ export default function MovimentacoesListPage() {
 
   let tableBody = (
     <tr>
-      <td colSpan={6} className='py-10 text-center text-gray-400'>
+      <td colSpan={5} className='py-10 text-center text-gray-400'>
         Nenhuma movimentação encontrada.
       </td>
     </tr>
@@ -391,15 +368,15 @@ export default function MovimentacoesListPage() {
   if (loading) {
     tableBody = (
       <tr>
-        <td colSpan={6} className='py-10 text-center text-gray-500'>
+        <td colSpan={5} className='py-10 text-center text-gray-500'>
           Carregando...
         </td>
       </tr>
     )
-  } else if (movimentacoesVisiveis.length > 0) {
+  } else if (movimentacoes.length > 0) {
     tableBody = (
       <>
-        {movimentacoesVisiveis.map((movimentacao) => (
+        {movimentacoes.map((movimentacao) => (
           <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
             <td className='p-3'>
               {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
@@ -407,7 +384,6 @@ export default function MovimentacoesListPage() {
             <td className='p-3'>
               {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
             </td>
-            <td className='p-3'>{resolveSolicitante(movimentacao.solicitado_por)}</td>
             <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
             <td className='p-3'>
               <StatusBadge
@@ -550,7 +526,6 @@ export default function MovimentacoesListPage() {
               <tr className='text-left font-semibold text-gray-600'>
                 <th className='p-3'>Unidade Administrativa de Origem</th>
                 <th className='p-3'>Unidade Administrativa de Destino</th>
-                <th className='p-3'>Solicitado Por</th>
                 <th className='p-3'>Atualizado em</th>
                 <th className='p-3'>Status</th>
                 <th className='p-3 text-center'>Ações</th>

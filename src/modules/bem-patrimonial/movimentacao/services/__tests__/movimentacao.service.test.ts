@@ -77,6 +77,19 @@ describe('movimentacaoService', () => {
     expect(url).toContain('atrasada=true')
   })
 
+  it('deve enviar o filtro de não atrasadas na listagem', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { count: 0, next: null, previous: null, results: [] },
+    })
+
+    await movimentacaoService.list({
+      atrasada: 'false',
+    })
+
+    const [url] = vi.mocked(api.get).mock.calls[0]
+    expect(url).toContain('atrasada=false')
+  })
+
   it('deve ignorar filtros vazios ou com valor todos na listagem', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: { count: 0, next: null, previous: null, results: [] },

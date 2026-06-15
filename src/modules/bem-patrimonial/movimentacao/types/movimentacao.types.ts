@@ -101,6 +101,6 @@ export interface MovimentacaoBemPatrimonialListParams {
   unidade_administrativa_origem?: number
   unidade_administrativa_destino?: number
   numero_cimbpm?: string
-  atrasada?: string
+  atrasada?: 'todos' | 'true' | 'false'
   ordering?: string
 }
