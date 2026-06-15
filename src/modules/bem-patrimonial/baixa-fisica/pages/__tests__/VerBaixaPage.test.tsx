@@ -337,7 +337,25 @@ describe("VerBaixaPage", () => {
     // Status / edição
     // =====================
 
-    it("botão Salvar Edição desabilitado para status aceita", async () => {
+    // O botão "Salvar Edição" SOME completamente para status diferentes de "aguardando_envio",
+    // mas é renderizado como disabled (sem hasChanges). Verificamos que está presente mas disabled.
+
+    it("botão Salvar Edição presente e desabilitado para status aguardando_envio sem alterações", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                status: "aguardando_envio",
+                status_display: "Aguardando Envio",
+            })
+        )
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByText("Salvar Edição")).toBeDisabled()
+        })
+    })
+
+    it("botão Salvar Edição desabilitado para status aceita (renderizado como fallback)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({
                 status: "aceita",
@@ -958,8 +976,6 @@ describe("VerBaixaPage", () => {
     })
 
     it("digitar no input dispara busca com debounce", async () => {
-        // Testa apenas que o input chama bemService.list após interação —
-        // sem fake timers para não contaminar os outros testes.
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ itens: [] })
         )
@@ -972,7 +988,6 @@ describe("VerBaixaPage", () => {
 
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
 
-        // focus já dispara search("") — confirma que list foi chamado
         await waitFor(() => {
             expect(vi.mocked(bemService.list).mock.calls.length).toBeGreaterThan(listCallsBefore)
         })
@@ -1114,6 +1129,25 @@ describe("VerBaixaPage", () => {
 
         await waitFor(() => {
             expect(screen.getByText(/SEM-NUMERO-99/)).toBeInTheDocument()
+        })
+    })
+
+    it("botão Salvar Edição não aparece quando status não é aguardando_envio mas fallback disabled está presente", async () => {
+        // Para status != aguardando_envio, o componente renderiza o branch `else`
+        // com um <button disabled>. Confirmamos que o botão existe mas está desabilitado.
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                status: "solicitada",
+                status_display: "Solicitada",
+            })
+        )
+
+        renderPage()
+
+        await waitFor(() => {
+            const btn = screen.getByText("Salvar Edição")
+            expect(btn).toBeInTheDocument()
+            expect(btn).toBeDisabled()
         })
     })
 })

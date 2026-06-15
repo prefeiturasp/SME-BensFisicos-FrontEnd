@@ -210,8 +210,7 @@ export default function AdicionarBaixaPage() {
     const navigate = useNavigate()
 
     const [unidade, setUnidade] = useState("")
-    const [numeroProcesso, setNumeroProcesso] = useState("")
-    const [dataBaixa, setDataBaixa] = useState("")
+    // REMOVIDO: numeroProcesso e dataBaixa não fazem parte do novo fluxo
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -219,7 +218,6 @@ export default function AdicionarBaixaPage() {
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
     const unidadeId = unidade ? Number(unidade) : null
 
-    // Limpa os itens quando a UA muda
     const handleUnidadeChange = (value: string) => {
         setUnidade(value)
         setRows([{ rowId: nextRowId++, bem: null }])
@@ -244,12 +242,12 @@ export default function AdicionarBaixaPage() {
         setRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSubmit = async () => {
+    // ALTERADO: era handleSubmit com "Salvar". Agora é handleSolicitar com "Solicitar".
+    // Não envia mais numero_processo_baixa nem data_baixa.
+    const handleSolicitar = async () => {
         setError(null)
 
         if (!unidade) return setError("Selecione a unidade administrativa.")
-        if (!numeroProcesso.trim()) return setError("Informe o número do processo.")
-        if (!dataBaixa) return setError("Informe a data da baixa.")
 
         const itens = rows.filter(r => r.bem)
         if (itens.length === 0) return setError("Adicione ao menos um item.")
@@ -258,13 +256,11 @@ export default function AdicionarBaixaPage() {
         try {
             await baixaFisicaService.create({
                 unidade_administrativa_origem: Number(unidade),
-                numero_processo_baixa: numeroProcesso.trim(),
-                data_baixa: dataBaixa,
                 itens: itens.map(r => ({ bem: r.bem!.id })),
             })
             navigate(-1)
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Erro ao salvar."
+            const message = err instanceof Error ? err.message : "Erro ao solicitar."
             setError(message)
         } finally {
             setSubmitting(false)
@@ -292,12 +288,13 @@ export default function AdicionarBaixaPage() {
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={18} />
                     </Button>
+                    {/* ALTERADO: "Salvar" → "Solicitar" */}
                     <Button
-                        onClick={handleSubmit}
+                        onClick={handleSolicitar}
                         disabled={submitting}
                         className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947]"
                     >
-                        {submitting ? "Salvando..." : "Salvar"}
+                        {submitting ? "Solicitando..." : "Solicitar"}
                     </Button>
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
                         Cancelar
@@ -313,9 +310,9 @@ export default function AdicionarBaixaPage() {
 
             <Card className="p-6 space-y-6">
 
-                {/* CAMPOS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
+                {/* CAMPOS — apenas Unidade Administrativa */}
+                {/* REMOVIDO: campos "Número do Processo de Baixa" e "Data da Baixa" */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                         <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
                             Unidade Administrativa *
@@ -324,32 +321,6 @@ export default function AdicionarBaixaPage() {
                             value={unidade}
                             onChange={handleUnidadeChange}
                             className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white"
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="numero-processo" className="text-sm font-semibold text-gray-700">
-                            Número do Processo de Baixa
-                        </label>
-                        <input
-                            id="numero-processo"
-                            value={numeroProcesso}
-                            onChange={(e) => setNumeroProcesso(e.target.value)}
-                            placeholder="Digite o número do processo"
-                            className={INPUT_CLASS}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="data-baixa" className="text-sm font-semibold text-gray-700">
-                            Data da Baixa
-                        </label>
-                        <input
-                            id="data-baixa"
-                            type="date"
-                            value={dataBaixa}
-                            onChange={(e) => setDataBaixa(e.target.value)}
-                            className={INPUT_CLASS}
                         />
                     </div>
                 </div>

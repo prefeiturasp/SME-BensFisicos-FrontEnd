@@ -76,16 +76,6 @@ function renderPage() {
     )
 }
 
-async function fillForm({
-    unidade = "1",
-    processo = "PROC-001",
-    data = "2024-01-15",
-} = {}) {
-    fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: unidade } })
-    fireEvent.change(screen.getByPlaceholderText("Digite o número do processo"), { target: { value: processo } })
-    fireEvent.change(screen.getByLabelText("Data da Baixa"), { target: { value: data } })
-}
-
 async function selectUA() {
     fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
 }
@@ -113,59 +103,47 @@ describe("AdicionarBaixaPage", () => {
         expect(screen.getByText("Adicionar Baixa Física de Bem Patrimonial")).toBeInTheDocument()
     })
 
-    it("renderiza os campos do formulário", () => {
+    it("renderiza o campo de unidade administrativa", () => {
         renderPage()
         expect(screen.getByTestId("unidade-select")).toBeInTheDocument()
-        expect(screen.getByPlaceholderText("Digite o número do processo")).toBeInTheDocument()
-        expect(screen.getByLabelText("Data da Baixa")).toBeInTheDocument()
     })
 
-    it("renderiza linha inicial de bem vazia", () => {
+    it("renderiza linha inicial de bem vazia após selecionar UA", async () => {
         renderPage()
-        // Sem UA selecionada, o placeholder muda — seleciona UA primeiro
-        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
+        await selectUA()
         expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
     })
 
-    it("renderiza botões Salvar e Cancelar", () => {
+    it("renderiza botões Solicitar e Cancelar", () => {
         renderPage()
-        expect(screen.getByText("Salvar")).toBeInTheDocument()
+        expect(screen.getByText("Solicitar")).toBeInTheDocument()
         expect(screen.getByText("Cancelar")).toBeInTheDocument()
+    })
+
+    it("não renderiza campo de número do processo", () => {
+        renderPage()
+        expect(screen.queryByPlaceholderText("Digite o número do processo")).not.toBeInTheDocument()
+    })
+
+    it("não renderiza campo de data da baixa", () => {
+        renderPage()
+        expect(screen.queryByLabelText("Data da Baixa")).not.toBeInTheDocument()
     })
 
     // --- Validações ---
 
-    it("exibe erro se tentar salvar sem unidade", async () => {
+    it("exibe erro se tentar solicitar sem unidade", async () => {
         renderPage()
-        fireEvent.click(screen.getByText("Salvar"))
+        fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
             expect(screen.getByText("Selecione a unidade administrativa.")).toBeInTheDocument()
         })
     })
 
-    it("exibe erro se tentar salvar sem número do processo", async () => {
+    it("exibe erro se tentar solicitar sem itens", async () => {
         renderPage()
-        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
-        fireEvent.click(screen.getByText("Salvar"))
-        await waitFor(() => {
-            expect(screen.getByText("Informe o número do processo.")).toBeInTheDocument()
-        })
-    })
-
-    it("exibe erro se tentar salvar sem data da baixa", async () => {
-        renderPage()
-        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
-        fireEvent.change(screen.getByPlaceholderText("Digite o número do processo"), { target: { value: "PROC-001" } })
-        fireEvent.click(screen.getByText("Salvar"))
-        await waitFor(() => {
-            expect(screen.getByText("Informe a data da baixa.")).toBeInTheDocument()
-        })
-    })
-
-    it("exibe erro se tentar salvar sem itens", async () => {
-        renderPage()
-        await fillForm()
-        fireEvent.click(screen.getByText("Salvar"))
+        await selectUA()
+        fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
             expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument()
         })
@@ -271,32 +249,28 @@ describe("AdicionarBaixaPage", () => {
 
     // --- Submit ---
 
-    it("chama baixaFisicaService.create com dados corretos", async () => {
+    it("chama baixaFisicaService.create com dados corretos (sem processo e data)", async () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
 
         renderPage()
-        await fillForm()
         await selectBem()
 
-        fireEvent.click(screen.getByText("Salvar"))
+        fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith({
                 unidade_administrativa_origem: 1,
-                numero_processo_baixa: "PROC-001",
-                data_baixa: "2024-01-15",
                 itens: [{ bem: 1 }],
             })
         })
     })
 
-    it("navega para trás após salvar com sucesso", async () => {
+    it("navega para trás após solicitar com sucesso", async () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
 
         renderPage()
-        await fillForm()
         await selectBem()
-        fireEvent.click(screen.getByText("Salvar"))
+        fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith(-1)
@@ -307,25 +281,23 @@ describe("AdicionarBaixaPage", () => {
         vi.mocked(baixaFisicaService.create).mockRejectedValue(new Error("Erro de servidor"))
 
         renderPage()
-        await fillForm()
         await selectBem()
-        fireEvent.click(screen.getByText("Salvar"))
+        fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
             expect(screen.getByText("Erro de servidor")).toBeInTheDocument()
         })
     })
 
-    it("exibe 'Salvando...' durante o submit", async () => {
+    it("exibe 'Solicitando...' durante o submit", async () => {
         vi.mocked(baixaFisicaService.create).mockReturnValue(new Promise(() => {}))
 
         renderPage()
-        await fillForm()
         await selectBem()
-        fireEvent.click(screen.getByText("Salvar"))
+        fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
-            expect(screen.getByText("Salvando...")).toBeInTheDocument()
+            expect(screen.getByText("Solicitando...")).toBeInTheDocument()
         })
     })
 
@@ -333,5 +305,32 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         fireEvent.click(screen.getByText("Cancelar"))
         expect(mockNavigate).toHaveBeenCalledWith(-1)
+    })
+
+    it("placeholder muda quando nenhuma unidade está selecionada", () => {
+        renderPage()
+        expect(
+            screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
+        ).toBeInTheDocument()
+    })
+
+    it("input de bem fica desabilitado sem unidade selecionada", () => {
+        renderPage()
+        const input = screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
+        expect(input).toBeDisabled()
+    })
+
+    it("troca de unidade administrativa reseta os itens", async () => {
+        renderPage()
+        await selectBem()
+        await waitFor(() => screen.getByText("Cadeira Escritório"))
+
+        // Troca a UA — deve resetar os itens
+        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "" } })
+        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
     })
 })
