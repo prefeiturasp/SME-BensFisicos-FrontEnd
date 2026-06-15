@@ -119,7 +119,9 @@ function buildUaOptions(
   return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label))
 }
 
-function StatusBadge({ status, statusDisplay }: { status: string; statusDisplay: string }) {
+function StatusBadge(props: Readonly<{ status: string; statusDisplay: string }>) {
+  const { status, statusDisplay } = props
+
   return (
     <span className={`text-sm font-semibold ${STATUS_BADGE_CLASS[status] ?? 'text-gray-600'}`}>
       {statusDisplay}
@@ -127,13 +129,11 @@ function StatusBadge({ status, statusDisplay }: { status: string; statusDisplay:
   )
 }
 
-function StatusMultiSelect({
-  value,
-  onChange,
-}: Readonly<{
+function StatusMultiSelect(props: Readonly<{
   value: string[]
   onChange: (value: string[]) => void
 }>) {
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -155,7 +155,11 @@ function StatusMultiSelect({
       .map((status) => STATUS_OPTIONS.find((option) => option.value === status)?.label)
       .filter(Boolean)
 
-    return labels.length > 0 ? labels.join(', ') : 'Todos'
+    if (labels.length > 0) {
+      return labels.join(', ')
+    }
+
+    return 'Todos'
   }, [value])
 
   const toggleStatus = (status: string) => {
@@ -299,6 +303,80 @@ export default function MovimentacoesListPage() {
     navigate(`/movimentacoes/${id}`)
   }
 
+  const renderPaginationItem = (item: number | '...', index: number) => {
+    if (item === '...') {
+      return (
+        <span key={`${item}-${index}`} className='px-2 text-sm text-gray-500'>
+          ...
+        </span>
+      )
+    }
+
+    return (
+      <Button
+        key={item}
+        size='sm'
+        variant='outline'
+        onClick={() => setPage(Number(item))}
+        className={page === item ? 'border-[#00703C] bg-[#00703C] text-white' : ''}
+      >
+        {item}
+      </Button>
+    )
+  }
+
+  let tableBody = (
+    <tr>
+      <td colSpan={6} className='py-10 text-center text-gray-400'>
+        Nenhuma movimentação encontrada.
+      </td>
+    </tr>
+  )
+
+  if (loading) {
+    tableBody = (
+      <tr>
+        <td colSpan={6} className='py-10 text-center text-gray-500'>
+          Carregando...
+        </td>
+      </tr>
+    )
+  } else if (movimentacoesVisiveis.length > 0) {
+    tableBody = (
+      <>
+        {movimentacoesVisiveis.map((movimentacao) => (
+          <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
+            <td className='p-3'>
+              {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
+            </td>
+            <td className='p-3'>
+              {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
+            </td>
+            <td className='p-3'>{resolveSolicitante(movimentacao.solicitado_por)}</td>
+            <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
+            <td className='p-3'>
+              <StatusBadge
+                status={movimentacao.status}
+                statusDisplay={movimentacao.status_display}
+              />
+            </td>
+            <td className='p-3 text-center'>
+              <Button
+                type='button'
+                size='icon'
+                variant='ghost'
+                aria-label={`Visualizar movimentação ${movimentacao.id}`}
+                onClick={() => handleVisualizar(movimentacao.id)}
+              >
+                <Eye size={18} />
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </>
+    )
+  }
+
   return (
     <div className='p-8 space-y-4'>
       <AppBreadcrumb
@@ -316,7 +394,7 @@ export default function MovimentacoesListPage() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className={ACTION_BUTTON_CLASS}
             aria-label='Voltar'
           >
@@ -346,7 +424,7 @@ export default function MovimentacoesListPage() {
         </div>
       </div>
 
-      <Card className='p-6 space-y-1'>
+      <Card className='space-y-1 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
           <label className='space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
             <span>Pesquisa Geral</span>
@@ -440,14 +518,14 @@ export default function MovimentacoesListPage() {
           </label>
         </div>
 
-          <h2 className='text-sm font-semibold text-[#00703C]'>
-            Bens Patrimoniais Movimentados
-          </h2>
+        <h2 className='text-sm font-semibold text-[#00703C]'>
+          Bens Patrimoniais Movimentados
+        </h2>
 
         <div className='overflow-x-auto'>
           <table className='w-full text-sm'>
-            <thead className='bg-[#F5F5F5] border-b'>
-              <tr className='text-left text-gray-600 font-semibold'>
+            <thead className='border-b bg-[#F5F5F5]'>
+              <tr className='text-left font-semibold text-gray-600'>
                 <th className='p-3'>Unidade Administrativa de Origem</th>
                 <th className='p-3'>Unidade Administrativa de Destino</th>
                 <th className='p-3'>Solicitado Por</th>
@@ -457,51 +535,7 @@ export default function MovimentacoesListPage() {
               </tr>
             </thead>
 
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className='py-10 text-center text-gray-500'>
-                    Carregando...
-                  </td>
-                </tr>
-              ) : movimentacoesVisiveis.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className='py-10 text-center text-gray-400'>
-                    Nenhuma movimentação encontrada.
-                  </td>
-                </tr>
-              ) : (
-                movimentacoesVisiveis.map((movimentacao) => (
-                  <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
-                    <td className='p-3'>
-                      {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
-                    </td>
-                    <td className='p-3'>
-                      {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
-                    </td>
-                    <td className='p-3'>{resolveSolicitante(movimentacao.solicitado_por)}</td>
-                    <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
-                    <td className='p-3'>
-                      <StatusBadge
-                        status={movimentacao.status}
-                        statusDisplay={movimentacao.status_display}
-                      />
-                    </td>
-                    <td className='p-3 text-center'>
-                      <Button
-                        type='button'
-                        size='icon'
-                        variant='ghost'
-                        aria-label={`Visualizar movimentação ${movimentacao.id}`}
-                        onClick={() => handleVisualizar(movimentacao.id)}
-                      >
-                        <Eye size={18} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
+            <tbody>{tableBody}</tbody>
           </table>
         </div>
 
@@ -516,25 +550,7 @@ export default function MovimentacoesListPage() {
             ‹
           </Button>
 
-          {pages.map((item, index) =>
-            item === '...' ? (
-              <span key={`${item}-${index}`} className='px-2 text-sm text-gray-500'>
-                ...
-              </span>
-            ) : (
-              <Button
-                key={item}
-                size='sm'
-                variant='outline'
-                onClick={() => setPage(Number(item))}
-                className={
-                  page === item ? 'border-[#00703C] bg-[#00703C] text-white' : ''
-                }
-              >
-                {item}
-              </Button>
-            ),
-          )}
+          {pages.map((item, index) => renderPaginationItem(item, index))}
 
           <Button
             size='icon'

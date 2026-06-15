@@ -183,21 +183,38 @@ describe('MovimentacoesListPage', () => {
       count: 2,
       next: null,
       previous: null,
-      results: [makeMovimentacao(1), makeMovimentacao(2, { status: 'aceita', status_display: 'Aceita' })],
+      results: [
+        makeMovimentacao(1),
+        makeMovimentacao(2, { status: 'aceita', status_display: 'Aceita' }),
+      ],
     })
   })
 
-  it('deve renderizar título, breadcrumb e botões principais', async () => {
+  it('deve renderizar o título, breadcrumb e botões principais', async () => {
     renderPage()
 
     await screen.findAllByText('Solicitante Exemplo')
 
     expect(
-      screen.getByRole('heading', { name: /movimentações de bem patrimonial/i }),
+      screen.getByRole('heading', {
+        name: 'Movimentações de Bem Patrimonial',
+        level: 1,
+      }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /adicionar movimentação/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /adicionar moviment/i }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument()
+  })
+
+  it('deve voltar para a home ao clicar em voltar', async () => {
+    renderPage()
+
+    await screen.findAllByText('Solicitante Exemplo')
+    fireEvent.click(screen.getByRole('button', { name: /voltar/i }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/home')
   })
 
   it('deve listar as movimentações recebidas do serviço', async () => {
@@ -212,7 +229,7 @@ describe('MovimentacoesListPage', () => {
     renderPage()
 
     await screen.findAllByText('Solicitante Exemplo')
-    fireEvent.click(screen.getByRole('button', { name: /adicionar movimentação/i }))
+    fireEvent.click(screen.getByRole('button', { name: /adicionar moviment/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes/novo')
   })
