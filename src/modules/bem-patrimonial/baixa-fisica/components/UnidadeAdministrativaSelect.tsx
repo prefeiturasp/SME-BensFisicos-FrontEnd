@@ -30,7 +30,7 @@ interface UnidadeAdministrativaSelectProps {
 }
 
 // ============================================================================
-// HOOK INTERNO — UAs do escopo do usuário logado
+// HOOK INTERNO — UAs do escopo do usuário logado (/me)
 // ============================================================================
 
 function useUnidadesDoEscopo(): UnidadeAdministrativa[] {
@@ -39,13 +39,11 @@ function useUnidadesDoEscopo(): UnidadeAdministrativa[] {
     return useMemo(() => {
         const grupos = user?.opcoes_escopo?.grupos ?? []
 
-        // Cada grupo tem uma UO e uma lista de UAs.
-        // Extraímos todas as UAs de todos os grupos e removemos duplicatas por id.
         const todas = grupos.flatMap(grupo =>
             grupo.uas.map(ua => ({
                 id: ua.unidade_administrativa_id,
                 nome: ua.nome,
-                sigla: ua.label,   // label já vem como "CODIGO - SIGLA"
+                sigla: ua.label,
                 codigo: ua.codigo,
             }))
         )
@@ -64,15 +62,18 @@ function useUnidadesDoEscopo(): UnidadeAdministrativa[] {
 // HOOK INTERNO — Todas as UAs via serviço (filtros gerais/admin)
 // ============================================================================
 
-function useTodasUnidades(): UnidadeAdministrativa[] {
+function useTodasUnidades(enabled: boolean): UnidadeAdministrativa[] {
     const [unidades, setUnidades] = useState<UnidadeAdministrativa[]>([])
 
     useEffect(() => {
+        // CORRIGIDO: só faz o request quando habilitado (scopedToUser=false)
+        if (!enabled) return
+
         unidadesAdministrativasService
             .list({ pageSize: 200 })
             .then((res: { results: UnidadeAdministrativa[] }) => setUnidades(res.results))
             .catch(() => {})
-    }, [])
+    }, [enabled])
 
     return unidades
 }
@@ -90,12 +91,10 @@ export function UnidadeAdministrativaSelect({
     includeAll = false,
     scopedToUser = false,
 }: UnidadeAdministrativaSelectProps) {
-    // Cada hook é chamado sempre — a condicional é apenas no uso do resultado.
     const unidadesEscopo = useUnidadesDoEscopo()
-    const todasUnidades = useTodasUnidades()
+    // Passa enabled=false quando scopedToUser=true — nenhum request é feito
+    const todasUnidades = useTodasUnidades(!scopedToUser)
 
-    // Se scopedToUser, usa os dados do /me (sem request extra).
-    // Caso contrário, usa a listagem completa.
     const unidades = scopedToUser ? unidadesEscopo : todasUnidades
 
     const handleChange = (val: string) => {
