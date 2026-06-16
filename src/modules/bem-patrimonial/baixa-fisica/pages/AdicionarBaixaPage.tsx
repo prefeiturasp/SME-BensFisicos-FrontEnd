@@ -210,7 +210,6 @@ export default function AdicionarBaixaPage() {
     const navigate = useNavigate()
 
     const [unidade, setUnidade] = useState("")
-    // REMOVIDO: numeroProcesso e dataBaixa não fazem parte do novo fluxo
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -242,8 +241,6 @@ export default function AdicionarBaixaPage() {
         setRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    // ALTERADO: era handleSubmit com "Salvar". Agora é handleSolicitar com "Solicitar".
-    // Não envia mais numero_processo_baixa nem data_baixa.
     const handleSolicitar = async () => {
         setError(null)
 
@@ -288,7 +285,6 @@ export default function AdicionarBaixaPage() {
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={18} />
                     </Button>
-                    {/* ALTERADO: "Salvar" → "Solicitar" */}
                     <Button
                         onClick={handleSolicitar}
                         disabled={submitting}
@@ -310,16 +306,16 @@ export default function AdicionarBaixaPage() {
 
             <Card className="p-6 space-y-6">
 
-                {/* CAMPOS — apenas Unidade Administrativa */}
-                {/* REMOVIDO: campos "Número do Processo de Baixa" e "Data da Baixa" */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-2">
                         <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
                             Unidade Administrativa *
                         </label>
+                        {/* ALTERADO: scopedToUser=true filtra pelo escopo do operador logado */}
                         <UnidadeAdministrativaSelect
                             value={unidade}
                             onChange={handleUnidadeChange}
+                            scopedToUser={true}
                             className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white"
                         />
                     </div>

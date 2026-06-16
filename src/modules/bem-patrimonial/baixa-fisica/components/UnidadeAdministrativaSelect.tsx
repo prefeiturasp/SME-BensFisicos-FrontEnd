@@ -16,6 +16,11 @@ interface UnidadeAdministrativaSelectProps {
     readonly placeholder?: string
     readonly className?: string
     readonly includeAll?: boolean
+    /**
+     * Quando true, retorna apenas as unidades acessíveis ao usuário logado
+     * (escopo do operador). Default: false — retorna todas (uso em filtros/relatórios).
+     */
+    readonly scopedToUser?: boolean
 }
 
 export function UnidadeAdministrativaSelect({
@@ -25,15 +30,22 @@ export function UnidadeAdministrativaSelect({
     placeholder = "Selecione uma unidade",
     className = "h-10 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white",
     includeAll = false,
+    scopedToUser = false,  // ADICIONADO
 }: UnidadeAdministrativaSelectProps) {
     const [unidades, setUnidades] = useState<UnidadeAdministrativa[]>([])
 
     useEffect(() => {
         unidadesAdministrativasService
-            .list({ pageSize: 200 })
+            .list({
+                pageSize: 200,
+                // ADICIONADO: quando scopedToUser=true, restringe ao escopo do operador.
+                // Confirmar com o backend o nome exato do parâmetro
+                // (opções comuns: minha_unidade, escopo, apenas_minhas).
+                ...(scopedToUser ? { minha_unidade: true } : {}),
+            })
             .then((res: { results: SetStateAction<UnidadeAdministrativa[]> }) => setUnidades(res.results))
             .catch(() => {})
-    }, [])
+    }, [scopedToUser])
 
     const handleChange = (val: string) => {
         onChange(val === "__all__" ? "" : val)
