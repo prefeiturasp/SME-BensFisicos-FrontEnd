@@ -24,13 +24,25 @@ const INPUT_SEARCH_CLASS =
 
 // ===================== COMPONENTS =====================
 
-// Fix: props readonly
 interface StatusBadgeProps {
+    readonly status: string
     readonly statusDisplay: string
 }
 
-function StatusBadge({ statusDisplay }: StatusBadgeProps) {
-    return <span className="text-xs text-gray-700">{statusDisplay}</span>
+function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
+    const colorMap: Record<string, string> = {
+        // "aguardando_envio" é exibido como "Em elaboração"
+        aguardando_envio: "text-yellow-700",
+        solicitada: "text-blue-700",
+        aceita: "text-[#2F7D57]",
+        recusada: "text-red-600",
+        cancelada: "text-gray-500",
+    }
+
+    // O backend já retorna "Em elaboração" no status_display após a alteração
+    // em constants.py, então usamos statusDisplay diretamente.
+    const cls = colorMap[status] ?? "text-gray-600"
+    return <span className={`text-xs font-medium ${cls}`}>{statusDisplay}</span>
 }
 
 // ===================== PAGE =====================
@@ -73,7 +85,8 @@ export default function BaixasListPage() {
 
     // ===================== SELECTION =====================
 
-    const aguardandoEnvioIds = baixas
+    // Status "aguardando_envio" agora é chamado "Em elaboração" na UI
+    const emElaboracaoIds = baixas
         .filter(b => b.status === "aguardando_envio")
         .map(b => b.id)
 
@@ -81,7 +94,7 @@ export default function BaixasListPage() {
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
-    const allSelectableIds = [...aguardandoEnvioIds, ...solicitadaIds]
+    const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
 
     const allSelected =
         allSelectableIds.length > 0 &&
@@ -98,7 +111,7 @@ export default function BaixasListPage() {
         )
     }
 
-    const selectedAguardandoEnvio = selectedIds.filter(id => aguardandoEnvioIds.includes(id))
+    const selectedEmElaboracao = selectedIds.filter(id => emElaboracaoIds.includes(id))
     const selectedSolicitadas = selectedIds.filter(id => solicitadaIds.includes(id))
 
     // ===================== HANDLERS =====================
@@ -114,10 +127,8 @@ export default function BaixasListPage() {
             ordering: appliedFilters.ordering,
             search: searchInput.trim() || undefined,
             status: statusInput || undefined,
-            // se "Aprovadas" marcado → filtra por data_aprovacao
             data_aprovacao__gte: dateTypeAprovadas ? dateFrom : undefined,
             data_aprovacao__lte: dateTypeAprovadas ? dateTo : undefined,
-            // se "Solicitadas" marcado (ou nenhum marcado → comportamento padrão) → filtra por data_criacao
             data_criacao__gte: !dateTypeAprovadas || dateTypeSolicitadas ? dateFrom : undefined,
             data_criacao__lte: !dateTypeAprovadas || dateTypeSolicitadas ? dateTo : undefined,
         })
@@ -146,11 +157,12 @@ export default function BaixasListPage() {
         }
     }
 
+    // Chama o endpoint /solicitar/ para baixas "Em elaboração"
     const handleSolicitar = async () => {
-        if (selectedAguardandoEnvio.length === 0) return
+        if (selectedEmElaboracao.length === 0) return
         setActionLoading(true)
         try {
-            await Promise.all(selectedAguardandoEnvio.map(id => baixaFisicaService.enviarSolicitacao(id)))
+            await Promise.all(selectedEmElaboracao.map(id => baixaFisicaService.enviarSolicitacao(id)))
             setSelectedIds([])
             fetchBaixas()
         } catch {
@@ -200,12 +212,11 @@ export default function BaixasListPage() {
         return `${day}/${month}/${year} - ${hours}:${minutes}`
     }
 
-    // Fix: extrair conteúdo do tbody para evitar ternário aninhado
     const renderTableBody = () => {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={8} className="text-center py-10 text-gray-500">
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -214,7 +225,7 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={8} className="text-center py-10 text-gray-400">
+                    <td colSpan={7} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
@@ -244,19 +255,17 @@ export default function BaixasListPage() {
                             />
                         )}
                     </td>
-                    <td className="p-3">{b.numero_processo_baixa || "-"}</td>
-                    <td className="p-3">{b.unidade_administrativa_origem.sigla}</td>
+                    <td className="p-3 text-sm text-gray-700">
+                        {b.unidade_administrativa_origem.sigla}
+                    </td>
                     <td className="p-3">
-                        <StatusBadge statusDisplay={b.status_display} />
+                        <StatusBadge status={b.status} statusDisplay={b.status_display} />
                     </td>
-                    <td className="p-3 text-xs">
-                        <p>Solicitado por: {b.criado_por.nome_completo}</p>
-                        <p>Em: {formatDateTimeBR(b.data_criacao)}</p>
+                    <td className="p-3 text-xs text-gray-600">
+                        {b.criado_por.nome_completo}
                     </td>
-                    <td className="p-3 text-xs">
-                        {b.aprovado_por
-                            ? `${b.aprovado_por.nome_completo} em ${formatDateTimeBR(b.data_aprovacao ?? "")}`
-                            : "-"}
+                    <td className="p-3 text-xs text-gray-500">
+                        {formatDateTimeBR(b.data_criacao)}
                     </td>
                     <td className="p-3 text-center">
                         <Link to={`/baixas-fisicas/${b.id}`}>
@@ -291,13 +300,14 @@ export default function BaixasListPage() {
                         <ArrowLeft size={16} />
                     </Button>
 
-                    {selectedAguardandoEnvio.length > 0 && (
+                    {/* Botão "Solicitar" aparece para baixas "Em elaboração" selecionadas */}
+                    {selectedEmElaboracao.length > 0 && (
                         <Button
                             onClick={handleSolicitar}
                             disabled={actionLoading}
                             className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
                         >
-                            Solicitar ({selectedAguardandoEnvio.length})
+                            Solicitar ({selectedEmElaboracao.length})
                         </Button>
                     )}
 
@@ -334,15 +344,14 @@ export default function BaixasListPage() {
 
                 {/* FILTROS */}
                 <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-                    {/* Fix: label associado via htmlFor + id no componente filho */}
                     <div className="flex-1 min-w-[200px]">
-                        <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
+                        <label htmlFor="search-bem" className="text-sm font-semibold text-gray-700">
                             Buscar por Número/Nome do Bem ou NBBPM
                         </label>
                         <div className="relative mt-1">
                             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
                             <input
-                                id="search-processo"
+                                id="search-bem"
                                 value={searchInput}
                                 onChange={(e) => setSearchInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -353,7 +362,7 @@ export default function BaixasListPage() {
                     </div>
 
                     <div className="flex-1 min-w-[200px]">
-                        <label htmlFor="search-processo" className="text-sm font-semibold text-gray-700">
+                        <label htmlFor="status-select" className="text-sm font-semibold text-gray-700">
                             Filtrar por status
                         </label>
                         <div className="relative mt-1">
@@ -367,14 +376,15 @@ export default function BaixasListPage() {
                                 <option value="aceita">Aceita</option>
                                 <option value="recusada">Recusada</option>
                                 <option value="solicitada">Solicitada</option>
-                                <option value="aguardando_envio">Aguardando Envio</option>
+                                {/* Valor da API continua "aguardando_envio"; label atualizado */}
+                                <option value="aguardando_envio">Em elaboração</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
                         <label htmlFor="date-range-picker" className="text-sm font-semibold text-gray-700">
-                            Filtro por periodo
+                            Filtro por período
                         </label>
                         <div className="mt-1">
                             <DateRangePicker
@@ -418,19 +428,22 @@ export default function BaixasListPage() {
                                         className="accent-[#00703C] cursor-pointer"
                                     />
                                 </th>
-                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("numero_processo_baixa")}>
-                                    <div className="flex gap-2 items-center">
-                                        Processo <ArrowUpDown size={14} />
-                                    </div>
-                                </th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("unidade_administrativa_origem__sigla")}>
                                     <div className="flex gap-2 items-center">
-                                        Unidade <ArrowUpDown size={14} />
+                                        Unidade Administrativa <ArrowUpDown size={14} />
                                     </div>
                                 </th>
                                 <th className="p-3">Status</th>
-                                <th className="p-3">Solicitação</th>
-                                <th className="p-3">Aceite/Recusa</th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
+                                    <div className="flex gap-2 items-center">
+                                        Usuário que solicitou a Baixa <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("data_criacao")}>
+                                    <div className="flex gap-2 items-center">
+                                        Atualização <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
                                 <th className="p-3 text-center">Ações</th>
                             </tr>
                         </thead>

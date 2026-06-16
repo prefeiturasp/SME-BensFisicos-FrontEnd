@@ -36,7 +36,7 @@ export interface BaixaFisicaItem {
 
 export interface BaixaFisica {
     id: number
-    numero_processo_baixa: string
+    numero_processo_baixa: string | null  // ALTERADO: era string
     numero_nbbpm: string | null
     unidade_administrativa_origem: UnidadeAdministrativaSimple
     status: string
@@ -45,7 +45,7 @@ export interface BaixaFisica {
     data_criacao: string
     aprovado_por: UsuarioSimple | null
     data_aprovacao: string | null
-    data_baixa: string
+    data_baixa: string | null             // ALTERADO: era string
     total_itens: number
 }
 
@@ -66,15 +66,15 @@ export interface BaixaFisicaItemPayload {
 }
 
 export interface BaixaFisicaCreatePayload {
-    numero_processo_baixa: string
+    numero_processo_baixa: string | null  // ALTERADO: era string
     unidade_administrativa_origem: number
-    data_baixa: string
+    data_baixa: string | null             // ALTERADO: era string
     itens: BaixaFisicaItemPayload[]
 }
 
 export interface BaixaFisicaUpdatePayload {
-    numero_processo_baixa?: string
-    data_baixa?: string
+    numero_processo_baixa?: string | null  // ALTERADO: era string?
+    data_baixa?: string | null             // ALTERADO: era string?
     itens: BaixaFisicaItemPayload[]
 }
 
