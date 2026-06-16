@@ -45,10 +45,11 @@ export interface PaginatedResponse<T> {
 
 export interface BemListParams {
   page?: number
+  pageSize?: number
   search?: string
   status?: string
-  unidade_administrativa?: string
-  unidade_orcamentaria?: string
+  unidade_administrativa?: string | number
+  unidade_orcamentaria?: string | number
   busca_geral_uos?: boolean
   baixados_mais_de_um_periodo?: boolean
   ordering?: string
@@ -74,16 +75,17 @@ export const bemService = {
       const query = new URLSearchParams()
 
       if (params.page) query.append('page', String(params.page))
+      if (params.pageSize) query.append('page_size', String(params.pageSize))
 
       if (params.search?.trim()) query.append('search', params.search.trim())
 
       if (params.status && params.status !== 'todos') query.append('status', params.status)
 
       if (params.unidade_administrativa && params.unidade_administrativa !== 'todas')
-        query.append('unidade_administrativa', params.unidade_administrativa)
+        query.append('unidade_administrativa', String(params.unidade_administrativa))
 
       if (params.unidade_orcamentaria)
-        query.append('unidade_orcamentaria', params.unidade_orcamentaria)
+        query.append('unidade_orcamentaria', String(params.unidade_orcamentaria))
 
       if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
 
