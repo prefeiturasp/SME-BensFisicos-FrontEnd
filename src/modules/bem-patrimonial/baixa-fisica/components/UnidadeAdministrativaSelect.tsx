@@ -1,8 +1,7 @@
-import { useMemo } from "react"
+import { useMemo, useEffect, useState } from "react"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { useAuth } from "@/auth/useAuth"
 import { unidadesAdministrativasService } from "../../../configuracoes/unidades-administrativas/services/unidades-administrativas.service"
-import { useEffect, useState } from "react"
 
 // ============================================================================
 // TYPES
