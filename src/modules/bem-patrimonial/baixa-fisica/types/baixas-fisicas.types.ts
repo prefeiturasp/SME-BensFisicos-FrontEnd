@@ -36,7 +36,7 @@ export interface BaixaFisicaItem {
 
 export interface BaixaFisica {
     id: number
-    numero_processo_baixa: string | null  // ALTERADO: era string
+    numero_processo_baixa: string | null
     numero_nbbpm: string | null
     unidade_administrativa_origem: UnidadeAdministrativaSimple
     status: string
@@ -45,15 +45,27 @@ export interface BaixaFisica {
     data_criacao: string
     aprovado_por: UsuarioSimple | null
     data_aprovacao: string | null
-    data_baixa: string | null             // ALTERADO: era string
+    data_baixa: string | null
     total_itens: number
 }
 
+/**
+ * CORRIGIDO — os nomes dos campos url_* abaixo foram alinhados ao
+ * serializer real do backend (BaixaFisicaBemPatrimonialDetailSerializer):
+ *   - url_enviar_solicitacao → url_solicitar
+ *   - url_cancelar           → url_recusar
+ * Também adicionado url_solicitar_correcao (novo endpoint).
+ */
 export interface BaixaFisicaDetail extends Omit<BaixaFisica, 'total_itens'> {
     itens: BaixaFisicaItem[]
-    url_enviar_solicitacao: string | null
+    url_solicitar: string | null
     url_aprovar: string | null
-    url_cancelar: string | null
+    url_recusar: string | null
+    /**
+     * NOVO — presente apenas quando status === "solicitada" e o usuário
+     * logado é Gestor. Aponta para o endpoint de solicitação de correção.
+     */
+    url_solicitar_correcao: string | null
     url_gerar_nbbpm: string | null
 }
 
@@ -66,20 +78,34 @@ export interface BaixaFisicaItemPayload {
 }
 
 export interface BaixaFisicaCreatePayload {
-    numero_processo_baixa: string | null  // ALTERADO: era string
+    numero_processo_baixa: string | null
     unidade_administrativa_origem: number
-    data_baixa: string | null             // ALTERADO: era string
+    data_baixa: string | null
     itens: BaixaFisicaItemPayload[]
 }
 
 export interface BaixaFisicaUpdatePayload {
-    numero_processo_baixa?: string | null  // ALTERADO: era string?
-    data_baixa?: string | null             // ALTERADO: era string?
+    numero_processo_baixa?: string | null
+    data_baixa?: string | null
     itens: BaixaFisicaItemPayload[]
 }
 
-export interface BaixaFisicaCancelarPayload {
+/**
+ * Payload do endpoint /recusar/. `motivo` é opcional aqui (regra do
+ * backend real — ver BaixaFisicaCancelarSerializer).
+ */
+export interface BaixaFisicaRecusarPayload {
     motivo?: string
+}
+
+/**
+ * NOVO — Payload do endpoint dedicado /solicitar-correcao/.
+ * Diferente de recusar(): `motivo` é OBRIGATÓRIO aqui.
+ * Endpoint backend: POST /baixa-fisica/{id}/solicitar-correcao/
+ * Ver BaixaFisicaSolicitarCorrecaoSerializer (patch enviado).
+ */
+export interface BaixaFisicaSolicitarCorrecaoPayload {
+    motivo: string
 }
 
 // ============================================================================

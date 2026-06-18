@@ -41,6 +41,7 @@ import UnidadesOrcamentariasListPage from '@/modules/configuracoes/unidades-orca
 import UnidadesOrcamentariasCreatePage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage';
 import UnidadesOrcamentariasViewPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage';
 import BemImportPage from '@/modules/bem-patrimonial/bem/pages/BemImportPage';
+import SolicitarCorrecaoPage from '@/modules/bem-patrimonial/baixa-fisica/pages/SolicitarCorrecaoPage';
 
 export default function AppRoutes() {
   return (
@@ -77,6 +78,7 @@ export default function AppRoutes() {
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
           <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
           <Route path='/baixas-fisicas/:id' element={<VerBaixaPage />} />
+          <Route path='/baixas-fisicas/:id/solicitar-correcao' element={<SolicitarCorrecaoPage />} />
 
           {/* Módulo: Inventário */}
           <Route path='/inventarios' element={<InventarioListPage />} />

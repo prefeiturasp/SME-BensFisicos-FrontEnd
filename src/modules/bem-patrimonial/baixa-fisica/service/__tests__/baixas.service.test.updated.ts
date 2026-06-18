@@ -90,7 +90,7 @@ describe("baixaFisicaService", () => {
                 data_aprovacao__lte: "2024-02-28",
             })
 
-            const url = vi.mocked(api.get).mock.calls[0][0] as string // NOSONAR
+            const url = vi.mocked(api.get).mock.calls[0][0] as string
 
             expect(url).toContain("page=2")
             expect(url).toContain("search=PROC-001")
@@ -108,7 +108,7 @@ describe("baixaFisicaService", () => {
 
             await baixaFisicaService.list({ search: "   ", status: "todos" })
 
-            const url = vi.mocked(api.get).mock.calls[0][0] as string // NOSONAR
+            const url = vi.mocked(api.get).mock.calls[0][0] as string
             expect(url).not.toContain("search")
             expect(url).not.toContain("status")
         })
@@ -384,7 +384,7 @@ describe("baixaFisicaService", () => {
                 unidade_administrativa_origem: 5,
             })
 
-            const url = vi.mocked(api.get).mock.calls[0][0] as string  // NOSONAR
+            const url = vi.mocked(api.get).mock.calls[0][0] as string
             expect(url).toContain("ids=1%2C2%2C3")
             expect(url).toContain("status=aceita")
             expect(url).toContain("unidade_administrativa_origem=5")

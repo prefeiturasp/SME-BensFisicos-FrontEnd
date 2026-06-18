@@ -1,3 +1,19 @@
+// pages/BaixasListPage.tsx
+//
+// ALTERAÇÃO — Aprovar/Recusar como atalho de navegação:
+// ─────────────────────────────────────────────────────────────────────────
+// Os botões "Aprovar" e "Recusar" permanecem na listagem para baixas com
+// status "solicitada", mas NÃO chamam mais a API diretamente em lote.
+// Em vez disso, funcionam como um atalho: ao clicar em qualquer um dos
+// dois, o usuário é levado para a tela "Validar Baixa" da baixa
+// selecionada, onde a revisão item a item é obrigatória antes de
+// confirmar o aceite ou solicitar correção.
+//
+// Por isso, a seleção para Aprovar/Recusar agora é de UMA baixa por vez
+// (não em lote) — múltiplas baixas "solicitada" não fazem sentido para
+// um atalho de navegação, já que a tela de destino é por ID.
+// ─────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useCallback } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import {
@@ -157,7 +173,8 @@ export default function BaixasListPage() {
         }
     }
 
-    // Chama o endpoint /solicitar/ para baixas "Em elaboração"
+    // Chama o endpoint /solicitar/ para baixas "Em elaboração" — fluxo do
+    // solicitante, sem alteração.
     const handleSolicitar = async () => {
         if (selectedEmElaboracao.length === 0) return
         setActionLoading(true)
@@ -172,32 +189,13 @@ export default function BaixasListPage() {
         }
     }
 
-    const handleAprovar = async () => {
-        if (selectedSolicitadas.length === 0) return
-        setActionLoading(true)
-        try {
-            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.aprovar(id)))
-            setSelectedIds([])
-            fetchBaixas()
-        } catch {
-            alert("Erro ao aprovar baixas.")
-        } finally {
-            setActionLoading(false)
-        }
-    }
-
-    const handleRecusar = async () => {
-        if (selectedSolicitadas.length === 0) return
-        setActionLoading(true)
-        try {
-            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.recusar(id)))
-            setSelectedIds([])
-            fetchBaixas()
-        } catch {
-            alert("Erro ao recusar baixas.")
-        } finally {
-            setActionLoading(false)
-        }
+    // "Aprovar"/"Recusar" são atalhos: levam à tela "Validar Baixa" da
+    // primeira (e única, na prática) baixa selecionada, onde a revisão
+    // item a item é obrigatória antes de qualquer decisão.
+    const handleIrParaValidacao = () => {
+        const [primeiraSelecionada] = selectedSolicitadas
+        if (!primeiraSelecionada) return
+        navigate(`/baixas-fisicas/${primeiraSelecionada}`)
     }
 
     function formatDateTimeBR(dateString: string): string {
@@ -216,7 +214,7 @@ export default function BaixasListPage() {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-500">
+                    <td colSpan={6} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -225,7 +223,7 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-400">
+                    <td colSpan={6} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
@@ -269,7 +267,7 @@ export default function BaixasListPage() {
                     </td>
                     <td className="p-3 text-center">
                         <Link to={`/baixas-fisicas/${b.id}`}>
-                            <Button size="icon" variant="ghost">
+                            <Button size="icon" variant="ghost" aria-label="Visualizar">
                                 <Eye size={18} />
                             </Button>
                         </Link>
@@ -300,7 +298,8 @@ export default function BaixasListPage() {
                         <ArrowLeft size={16} />
                     </Button>
 
-                    {/* Botão "Solicitar" aparece para baixas "Em elaboração" selecionadas */}
+                    {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
+                        solicitante, em lote, sem alteração) */}
                     {selectedEmElaboracao.length > 0 && (
                         <Button
                             onClick={handleSolicitar}
@@ -311,21 +310,24 @@ export default function BaixasListPage() {
                         </Button>
                     )}
 
+                    {/* "Aprovar"/"Recusar" — atalho para a tela "Validar Baixa".
+                        Como o destino é uma única baixa, ambos os botões levam
+                        ao mesmo lugar: a primeira baixa "solicitada" selecionada. */}
                     {selectedSolicitadas.length > 0 && (
                         <>
                             <Button
-                                onClick={handleAprovar}
-                                disabled={actionLoading}
+                                onClick={handleIrParaValidacao}
                                 className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                                title="Abrir a tela de validação para aprovar"
                             >
-                                Aprovar ({selectedSolicitadas.length})
+                                Aprovar
                             </Button>
                             <Button
-                                onClick={handleRecusar}
-                                disabled={actionLoading}
+                                onClick={handleIrParaValidacao}
                                 className="h-10 px-6 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors"
+                                title="Abrir a tela de validação para recusar/solicitar correção"
                             >
-                                Recusar ({selectedSolicitadas.length})
+                                Recusar
                             </Button>
                         </>
                     )}

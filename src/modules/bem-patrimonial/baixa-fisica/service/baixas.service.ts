@@ -5,7 +5,8 @@ import type {
     BaixaFisicaDetail,
     BaixaFisicaCreatePayload,
     BaixaFisicaUpdatePayload,
-    BaixaFisicaCancelarPayload,
+    BaixaFisicaRecusarPayload,
+    BaixaFisicaSolicitarCorrecaoPayload,
     BaixaFisicaListParams,
     PaginatedResponse,
 } from '../types/baixas-fisicas.types'
@@ -115,7 +116,7 @@ export const baixaFisicaService = {
         }
     },
 
-    recusar: async (id: number, payload: { motivo?: string } = {}): Promise<BaixaFisicaDetail> => {
+    recusar: async (id: number, payload: BaixaFisicaRecusarPayload = {}): Promise<BaixaFisicaDetail> => {
         try {
             const { data } = await api.post(`/baixa-fisica/${id}/recusar/`, payload)
             return data
@@ -125,13 +126,16 @@ export const baixaFisicaService = {
         }
     },
 
-    cancelar: async (id: number, payload: BaixaFisicaCancelarPayload = {}): Promise<BaixaFisicaDetail> => {
+    solicitarCorrecao: async (
+        id: number,
+        payload: BaixaFisicaSolicitarCorrecaoPayload
+    ): Promise<BaixaFisicaDetail> => {
         try {
-            const { data } = await api.post(`/baixa-fisica/${id}/cancelar/`, payload)
+            const { data } = await api.post(`/baixa-fisica/${id}/solicitar-correcao/`, payload)
             return data
 
         } catch (error) {
-            handleApiError(error, 'Erro ao cancelar baixa física')
+            handleApiError(error, 'Erro ao solicitar correção da baixa física')
         }
     },
 
