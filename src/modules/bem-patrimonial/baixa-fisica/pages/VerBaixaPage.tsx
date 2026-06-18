@@ -36,7 +36,7 @@ const ACTION_BUTTON_CLASS =
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return "-"
+    if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
         month: "long",
@@ -47,7 +47,7 @@ function formatDateBR(dateString: string | null | undefined): string {
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return "-"
+    if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleString("pt-BR")
 }
 

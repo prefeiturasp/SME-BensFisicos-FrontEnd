@@ -81,21 +81,21 @@ export function useUnidadesListQuery<TItem, TStatus extends string, TParams>({
   const [nomeOuSiglaFilter, setNomeOuSiglaFilter] = useState('');
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       setCodigoFilter(normalizeTextFilter(codigoInput));
       setPage(1);
     }, SEARCH_DEBOUNCE_MS);
 
-    return () => window.clearTimeout(timeout);
+    return () => globalThis.clearTimeout(timeout);
   }, [codigoInput]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       setNomeOuSiglaFilter(normalizeTextFilter(nomeOuSiglaInput));
       setPage(1);
     }, SEARCH_DEBOUNCE_MS);
 
-    return () => window.clearTimeout(timeout);
+    return () => globalThis.clearTimeout(timeout);
   }, [nomeOuSiglaInput]);
 
   const params = useMemo(

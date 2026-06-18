@@ -68,7 +68,7 @@ function formatDisplayDate(date: Date) {
 }
 
 function maskDate(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const digits = value.replaceAll(/\D/g, '').slice(0, 8);
   const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
   return parts.join('/');
 }
@@ -203,7 +203,7 @@ function DateInput({
                     isSelected
                       ? 'bg-[#2F7D57] text-white'
                       : 'text-gray-700 hover:bg-[#EAF5EF] hover:text-[#2F7D57]'
-                  } ${!isCurrentMonth ? 'text-gray-300' : ''} ${
+                  } ${isCurrentMonth ? '' : 'text-gray-300'} ${
                     isToday && !isSelected ? 'border border-[#2F7D57]' : ''
                   }`}
                   onClick={() => selectDate(date)}
@@ -278,7 +278,7 @@ export function ParametroConciliacaoForm({
                     disabled={disabled || submitting}
                     value={field.value}
                     onChange={(event) =>
-                      field.onChange(event.target.value.replace(/\D/g, '').slice(0, 4))
+                      field.onChange(event.target.value.replaceAll(/\D/g, '').slice(0, 4))
                     }
                   />
                 </FormControl>

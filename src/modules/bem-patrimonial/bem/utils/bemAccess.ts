@@ -2,7 +2,7 @@ import type { User } from '@/auth/auth.service'
 import type { Bem } from '../services/bem.service'
 
 const normalizeText = (value?: string | null) =>
-  value?.trim().toLowerCase().replace(/\s+/g, ' ') ?? ''
+  value?.trim().toLowerCase().replaceAll(/\s+/g, ' ') ?? ''
 
 const buildBemCandidates = (
   bem: Pick<Bem, 'unidade_administrativa_codigo' | 'unidade_administrativa_nome'>,

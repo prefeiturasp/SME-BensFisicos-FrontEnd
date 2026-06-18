@@ -24,7 +24,7 @@ const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 bg-white px-4 text-sm text-gray-700';
 
 function formatCodigoUO(value: string) {
-  const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+  const digitsOnly = value.replaceAll(/\D/g, '').slice(0, 6);
 
   if (digitsOnly.length <= 2) {
     return digitsOnly;
@@ -38,7 +38,7 @@ function formatCodigoUO(value: string) {
 }
 
 function formatCodigoOrgao(value: string) {
-  const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
+  const digitsOnly = value.replaceAll(/\D/g, '').slice(0, 4);
 
   if (digitsOnly.length <= 2) {
     return digitsOnly;

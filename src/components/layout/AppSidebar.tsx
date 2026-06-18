@@ -123,7 +123,16 @@ export function AppSidebar() {
           'flex h-[88px] bg-[#267A55] items-center justify-center p-5',
         )}
       >
-        {!isCollapsed ? (
+        {isCollapsed ? (
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={toggleSidebar}
+            className='text-white hover:bg-white/10 gap-4'
+          >
+            <Menu className='size-6' />
+          </Button>
+        ) : (
           <div className='flex justify-between items-start w-full'>
             <span className='text-white font-bold text-base leading-tight max-w-[160px]'>
               Sistema de Gestão de Bens Patrimoniais
@@ -137,15 +146,6 @@ export function AppSidebar() {
               <X className='size-6' />
             </Button>
           </div>
-        ) : (
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={toggleSidebar}
-            className='text-white hover:bg-white/10 gap-4'
-          >
-            <Menu className='size-6' />
-          </Button>
         )}
       </SidebarHeader>
 

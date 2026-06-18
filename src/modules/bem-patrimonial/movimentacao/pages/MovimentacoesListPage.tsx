@@ -297,9 +297,9 @@ export default function MovimentacoesListPage() {
           search: search || undefined,
           status: statusFilter.length > 0 ? statusFilter : undefined,
           unidade_administrativa_origem:
-            unidadeOrigemFilter !== 'todas' ? Number(unidadeOrigemFilter) : undefined,
+            unidadeOrigemFilter === 'todas' ? undefined : Number(unidadeOrigemFilter),
           unidade_administrativa_destino:
-            unidadeDestinoFilter !== 'todas' ? Number(unidadeDestinoFilter) : undefined,
+            unidadeDestinoFilter === 'todas' ? undefined : Number(unidadeDestinoFilter),
           atrasada: atrasadaFilter === 'todos' ? undefined : atrasadaFilter,
           ordering: '-criado_em',
         })

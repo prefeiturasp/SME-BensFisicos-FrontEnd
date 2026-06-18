@@ -7,8 +7,8 @@ const STORAGE_KEY = 'escopo-ativo';
 
 function canUseStorage(): boolean {
   try {
-    if (typeof window === 'undefined') return false;
-    const storage = window.localStorage;
+    if (typeof globalThis.window === 'undefined') return false;
+    const storage = globalThis.localStorage;
     const testKey = '__escopo_test__';
     storage.setItem(testKey, 'ok');
     storage.removeItem(testKey);
@@ -25,7 +25,7 @@ function normalizeId(value: unknown): number | null {
 
 export function getEscopoStorage(): EscopoStorage | null {
   if (!canUseStorage()) return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = globalThis.localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
 
   try {
@@ -47,11 +47,11 @@ export function setEscopoStorage(escopo: EscopoStorage) {
   if (!canUseStorage()) return;
 
   if (!escopo.uoId && !escopo.uaId) {
-    window.localStorage.removeItem(STORAGE_KEY);
+    globalThis.localStorage.removeItem(STORAGE_KEY);
     return;
   }
 
-  window.localStorage.setItem(
+  globalThis.localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
       uoId: escopo.uoId ?? null,
@@ -62,5 +62,5 @@ export function setEscopoStorage(escopo: EscopoStorage) {
 
 export function clearEscopoStorage() {
   if (!canUseStorage()) return;
-  window.localStorage.removeItem(STORAGE_KEY);
+  globalThis.localStorage.removeItem(STORAGE_KEY);
 }

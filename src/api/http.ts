@@ -25,7 +25,7 @@ export const setAuthToken = (token: string | null) => {
 };
 
 function getBaseUrl() {
-  const runtimeUrl = window.__APP_CONFIG__?.VITE_API_URL;
+  const runtimeUrl = globalThis.__APP_CONFIG__?.VITE_API_URL;
   const buildUrl = import.meta.env.VITE_API_URL;
   if (runtimeUrl && runtimeUrl !== '__VITE_API_URL__') return runtimeUrl;
   return buildUrl;
@@ -84,7 +84,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       const url = originalRequest.url ?? '';
       if (url.includes('auth/login') || url.includes('token/refresh')) {
-        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+        throw error instanceof Error ? error : new Error(String(error));
       }
 
       if (isRefreshing) {
@@ -114,12 +114,10 @@ api.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         setAuthToken(null);
-        return Promise.reject(
-          refreshError instanceof Error ? refreshError : new Error(String(refreshError)),
-        );
+        throw refreshError instanceof Error ? refreshError : new Error(String(refreshError));
       }
     }
 
-    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    throw error instanceof Error ? error : new Error(String(error));
   },
 );

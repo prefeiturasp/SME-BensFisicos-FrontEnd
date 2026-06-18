@@ -22,6 +22,20 @@ hover:text-white font-semibold rounded-md transition-colors
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
 
+// ===================== HELPERS =====================
+
+function formatDateTimeBR(dateString: string): string {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return ""
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
 // ===================== COMPONENTS =====================
 
 interface StatusBadgeProps {
@@ -200,18 +214,6 @@ export default function BaixasListPage() {
         }
     }
 
-    function formatDateTimeBR(dateString: string): string {
-        if (!dateString) return ""
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return ""
-        const day = String(date.getDate()).padStart(2, "0")
-        const month = String(date.getMonth() + 1).padStart(2, "0")
-        const year = date.getFullYear()
-        const hours = String(date.getHours()).padStart(2, "0")
-        const minutes = String(date.getMinutes()).padStart(2, "0")
-        return `${day}/${month}/${year} - ${hours}:${minutes}`
-    }
-
     const renderTableBody = () => {
         if (loading) {
             return (
@@ -296,7 +298,7 @@ export default function BaixasListPage() {
                     Baixa Física de Bens Patrimoniais
                 </h1>
                 <div className="flex gap-3 items-center">
-                    <Button onClick={() => window.history.back()} className={ACTION_BUTTON_CLASS}>
+                    <Button onClick={() => globalThis.history.back()} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={16} />
                     </Button>
 
