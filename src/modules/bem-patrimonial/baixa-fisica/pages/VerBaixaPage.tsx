@@ -1,22 +1,3 @@
-// pages/VerBaixaPage.tsx
-//
-// ALTERAÇÕES — tela "Validar Baixa" (status "solicitada"):
-// ─────────────────────────────────────────────────────────────────────────
-// • Filtro por Número Patrimonial ou Nome do Bem
-// • Tabela com coluna "Validação" (checkbox), "Número Patrimonial" e
-//   "Nome do Bem" — os checkboxes são SOMENTE estado local de UI, não
-//   são persistidos no backend em nenhum momento
-// • Botão "Aceitar": desabilitado até todos os itens serem marcados.
-//   Ao clicar (já habilitado), chama diretamente aprovar() — sem
-//   nenhum endpoint intermediário de validação — e navega para a
-//   própria tela de visualização, sem toast
-// • Botão "Solicitar correção": some quando todos os itens já estão
-//   marcados (replica o protótipo). Ao clicar, navega para a página
-//   própria /baixas-fisicas/:id/solicitar-correcao
-// • Modo edição (status "aguardando_envio") mantido sem alterações
-// • Modo somente leitura para demais status (aceita, recusada)
-// ─────────────────────────────────────────────────────────────────────────
-
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import {
