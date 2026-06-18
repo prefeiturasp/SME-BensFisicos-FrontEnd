@@ -7,7 +7,7 @@ const STORAGE_KEY = 'escopo-ativo';
 
 function canUseStorage(): boolean {
   try {
-    if (typeof globalThis.window === 'undefined') return false;
+    if (globalThis.window === undefined) return false;
     const storage = globalThis.localStorage;
     const testKey = '__escopo_test__';
     storage.setItem(testKey, 'ok');
