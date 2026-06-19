@@ -29,7 +29,7 @@ export function ParametrosConciliacaoFilters({
           inputMode='numeric'
           maxLength={4}
           value={ano}
-          onChange={(event) => onAnoChange(event.target.value.replace(/\D/g, '').slice(0, 4))}
+          onChange={(event) => onAnoChange(event.target.value.replaceAll(/\D/g, '').slice(0, 4))}
           placeholder='Digite o ano de referência'
           className='h-10 w-full rounded-xs border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-[#2F7D57]'
         />

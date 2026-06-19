@@ -30,7 +30,7 @@ const PRIMARY_SAVE_BUTTON_CLASS =
 
 function extractCodigoFinal(codigoCompleto: string): string {
   const codigoFinal = codigoCompleto.split('.').at(-1) ?? '';
-  return codigoFinal.replace(/\D/g, '').slice(-3);
+  return codigoFinal.replaceAll(/\D/g, '').slice(-3);
 }
 
 function buildUpdatePayload(

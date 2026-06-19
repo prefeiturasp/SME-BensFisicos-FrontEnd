@@ -44,7 +44,7 @@ export function useEscopoSelector({ user }: UseEscopoSelectorParams) {
     });
 
     if (import.meta.env.MODE !== 'test') {
-      window.location.reload();
+      globalThis.location.reload();
     }
   };
 

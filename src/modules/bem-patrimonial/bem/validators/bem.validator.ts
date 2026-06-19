@@ -42,7 +42,7 @@ export function validateBem(data: BemFormData): ValidationErrors {
   // 📌 Valor deve ser número positivo
   if (data.valor_unitario !== undefined && data.valor_unitario !== '') {
     const valor = Number(data.valor_unitario)
-    if (isNaN(valor) || valor < 0) {
+    if (Number.isNaN(valor) || valor < 0) {
       errors.valor_unitario = 'Valor unitário deve ser um número positivo.'
     }
   }
