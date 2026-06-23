@@ -1,6 +1,7 @@
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 
 import { useAuth } from '@/auth/useAuth'
 import MovimentacoesListPage from './MovimentacoesListPage'
@@ -39,18 +40,32 @@ vi.mock('@/components/ui/select', () => ({
 }))
 
 vi.mock('@/components/ui/checkbox', () => ({
-  Checkbox: ({ checked, onCheckedChange }: any) => (
+  Checkbox: ({ checked, onCheckedChange, ...props }: any) => (
     <input
       type='checkbox'
       checked={!!checked}
-      onChange={(event) => onCheckedChange?.(event.target.checked)}
+      onChange={(event) => {
+        if (props.disabled) return
+        onCheckedChange?.(event.target.checked)
+      }}
+      {...props}
     />
   ),
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }))
 
 vi.mock('../services/movimentacao.service', () => ({
   movimentacaoService: {
     list: vi.fn(),
+    aprovar: vi.fn(),
+    rejeitar: vi.fn(),
+    cancelar: vi.fn(),
   },
 }))
 
@@ -168,6 +183,12 @@ function mockListResponse(
   })
 }
 
+function mockActionResponses() {
+  vi.mocked(movimentacaoService.aprovar).mockResolvedValue(makeMovimentacao())
+  vi.mocked(movimentacaoService.rejeitar).mockResolvedValue(makeMovimentacao({ status: 'rejeitada', status_display: 'Rejeitada' }))
+  vi.mocked(movimentacaoService.cancelar).mockResolvedValue(makeMovimentacao({ status: 'cancelada', status_display: 'Cancelada' }))
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -176,26 +197,31 @@ function renderPage() {
   )
 }
 
+function mockAuthenticatedUser(user: ReturnType<typeof makeUser>) {
+  vi.mocked(useAuth).mockReturnValue({
+    user,
+    isLoading: false,
+    isAuthenticated: true,
+    mustChangePassword: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    isLoggingIn: false,
+    loginError: null,
+    loginAsync: vi.fn(),
+  })
+}
+
 describe('MovimentacoesListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
-    vi.mocked(useAuth).mockReturnValue({
-      user: makeUser(),
-      isLoading: false,
-      isAuthenticated: true,
-      mustChangePassword: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      isLoggingIn: false,
-      loginError: null,
-      loginAsync: vi.fn(),
-    })
+    mockAuthenticatedUser(makeUser())
 
     mockListResponse([
       makeMovimentacao(1),
       makeMovimentacao(2, { status: 'aceita', status_display: 'Aceita' }),
     ], 2)
+    mockActionResponses()
   })
 
   afterEach(() => {
@@ -218,6 +244,9 @@ describe('MovimentacoesListPage', () => {
       screen.getByRole('button', { name: /adicionar moviment/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /aprovar/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /rejeitar/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
   })
 
   it('deve voltar para a home ao clicar em voltar', async () => {
@@ -235,7 +264,117 @@ describe('MovimentacoesListPage', () => {
     await screen.findByText('Enviada')
     expect(screen.getByText('Enviada')).toBeInTheDocument()
     expect(screen.getByText('Aceita')).toBeInTheDocument()
-    expect(screen.queryByText('Solicitante Exemplo')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Selecionar movimentação 1')).toBeEnabled()
+    expect(screen.getByLabelText('Selecionar movimentação 2')).toBeDisabled()
+  })
+
+  it('deve selecionar apenas movimentações elegíveis ao marcar selecionar todas', async () => {
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar todas as movimentações elegíveis'))
+
+    expect(screen.getByLabelText('Selecionar movimentação 1')).toBeChecked()
+    expect(screen.getByLabelText('Selecionar movimentação 2')).toBeDisabled()
+    expect(screen.getByRole('button', { name: /aprovar/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /rejeitar/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeEnabled()
+  })
+
+  it('deve aprovar a movimentação selecionada', async () => {
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 1'))
+    fireEvent.click(screen.getByRole('button', { name: /aprovar/i }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.aprovar).toHaveBeenCalledWith(1)
+      expect(toast.success).toHaveBeenCalledWith(
+        'Movimentação #0001 aprovada com sucesso. Bens desbloqueados.',
+      )
+    })
+  })
+
+  it('deve cancelar a movimentação selecionada', async () => {
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 1'))
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.cancelar).toHaveBeenCalledWith(1)
+      expect(toast.success).toHaveBeenCalledWith(
+        'Movimentação #0001 cancelada com sucesso. Bens desbloqueados.',
+      )
+    })
+  })
+
+  it('deve exibir apenas cancelar quando o usuário for operador', async () => {
+    mockAuthenticatedUser({
+      ...makeUser(),
+      is_gestor_patrimonio: false,
+      is_operador_inventario: true,
+    })
+
+    renderPage()
+
+    await screen.findByText('Enviada')
+
+    expect(screen.queryByRole('button', { name: /aprovar/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /rejeitar/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
+  })
+
+  it('deve impedir operador de selecionar movimentação que não está enviada', async () => {
+    mockAuthenticatedUser({
+      ...makeUser(),
+      is_gestor_patrimonio: false,
+      is_operador_inventario: true,
+    })
+
+    renderPage()
+
+    await screen.findByText('Aceita')
+
+    expect(screen.getByLabelText('Selecionar movimentação 1')).toBeEnabled()
+    expect(screen.getByLabelText('Selecionar movimentação 2')).toBeDisabled()
+
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 2'))
+    expect(screen.getByLabelText('Selecionar movimentação 2')).not.toBeChecked()
+  })
+
+  it('deve exibir erro da api ao aprovar movimentação', async () => {
+    vi.mocked(movimentacaoService.aprovar).mockRejectedValueOnce(
+      new Error('Erro ao aprovar movimentação'),
+    )
+
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 1'))
+    fireEvent.click(screen.getByRole('button', { name: /aprovar/i }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao aprovar movimentação')
+    })
+  })
+
+  it('deve exibir erro da api ao cancelar movimentação', async () => {
+    vi.mocked(movimentacaoService.cancelar).mockRejectedValueOnce(
+      new Error('Erro ao cancelar movimentação'),
+    )
+
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 1'))
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao cancelar movimentação')
+    })
   })
 
   it('deve navegar para cadastro ao clicar em adicionar movimentação', async () => {
