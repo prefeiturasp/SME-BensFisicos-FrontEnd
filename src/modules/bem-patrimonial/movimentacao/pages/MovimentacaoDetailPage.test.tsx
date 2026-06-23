@@ -208,6 +208,19 @@ describe('MovimentacaoDetailPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
   })
 
+  it('deve exibir a mensagem padrão ao falhar no cancelamento sem Error', async () => {
+    vi.mocked(movimentacaoService.cancelar).mockRejectedValueOnce('falha no cancelamento')
+
+    renderPage()
+
+    await screen.findByRole('heading', { name: /visualizar movimenta/i })
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Erro ao cancelar movimentação')
+    })
+  })
+
   it('deve abrir o documento CIMBPM em nova guia', async () => {
     renderPage()
 
@@ -219,6 +232,19 @@ describe('MovimentacaoDetailPage', () => {
       expect(URL.createObjectURL).toHaveBeenCalled()
     })
     expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('deve exibir a mensagem padrão ao falhar no download do CIMBPM sem Error', async () => {
+    vi.mocked(movimentacaoService.baixarDocumentoCimbpm).mockRejectedValueOnce('falha no blob')
+
+    renderPage()
+
+    await screen.findByRole('heading', { name: /visualizar movimenta/i })
+    fireEvent.click(screen.getByRole('button', { name: /baixar documento cimbpm/i }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Erro ao baixar documento CIMBPM')
+    })
   })
 
   it('deve impedir operador de cancelar movimentação de outro usuário', async () => {

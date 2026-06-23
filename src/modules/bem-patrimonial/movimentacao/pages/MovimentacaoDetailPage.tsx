@@ -1,5 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowLeft, ChevronDown, History, Loader2, Minus, Network, Pencil } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Download,
+  History,
+  Loader2,
+  Minus,
+  Network,
+  Pencil,
+} from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -276,7 +285,7 @@ export default function MovimentacaoDetailPage() {
                   onClick={() => void handleAbrirDocumentoCimbpm()}
                   className='inline-flex items-center gap-2 text-[#0070C0] hover:underline'
                 >
-                  <span aria-hidden='true'>📄</span>
+                  <Download className='size-4 shrink-0' aria-hidden='true' />
                   Baixar Documento CIMBPM
                 </button>
               ) : (
