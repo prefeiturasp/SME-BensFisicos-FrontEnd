@@ -74,6 +74,41 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   cancelada: 'text-gray-500',
 }
 
+function getActionErrorMessage(action: MovimentacaoAction) {
+  if (action === 'aprovar') return 'Erro ao aprovar movimentações'
+  if (action === 'rejeitar') return 'Erro ao rejeitar movimentações'
+  return 'Erro ao cancelar movimentações'
+}
+
+function getActionSuccessMessage(action: MovimentacaoAction, ids: number[]) {
+  const firstId = String(ids[0]).padStart(4, '0')
+  const quantity = ids.length
+
+  if (quantity === 1) {
+    if (action === 'aprovar') {
+      return `Movimentação #${firstId} aprovada com sucesso. Bens desbloqueados.`
+    }
+    if (action === 'rejeitar') {
+      return `Movimentação #${firstId} rejeitada com sucesso. Bens desbloqueados.`
+    }
+    return `Movimentação #${firstId} cancelada com sucesso. Bens desbloqueados.`
+  }
+
+  if (action === 'aprovar') {
+    return `${quantity} movimentações aprovadas com sucesso. Bens desbloqueados.`
+  }
+  if (action === 'rejeitar') {
+    return `${quantity} movimentações rejeitadas com sucesso. Bens desbloqueados.`
+  }
+  return `${quantity} movimentações canceladas com sucesso. Bens desbloqueados.`
+}
+
+function getActionFn(action: MovimentacaoAction) {
+  if (action === 'aprovar') return movimentacaoService.aprovar
+  if (action === 'rejeitar') return movimentacaoService.rejeitar
+  return movimentacaoService.cancelar
+}
+
 function formatDateTimeBR(dateString: string) {
   const date = new Date(dateString)
   if (Number.isNaN(date.getTime())) return '-'
@@ -419,44 +454,6 @@ export default function MovimentacoesListPage() {
   useEffect(() => {
     setSelectedIds([])
   }, [page, search, statusFilter, unidadeOrigemFilter, unidadeDestinoFilter, atrasadaFilter])
-
-  function getActionErrorMessage(action: MovimentacaoAction) {
-    if (action === 'aprovar') return 'Erro ao aprovar movimentações'
-    if (action === 'rejeitar') return 'Erro ao rejeitar movimentações'
-    return 'Erro ao cancelar movimentações'
-  }
-
-  function getActionSuccessMessage(
-    action: MovimentacaoAction,
-    ids: number[],
-  ) {
-    const firstId = String(ids[0]).padStart(4, '0')
-    const quantity = ids.length
-
-    if (quantity === 1) {
-      if (action === 'aprovar') {
-        return `Movimentação #${firstId} aprovada com sucesso. Bens desbloqueados.`
-      }
-      if (action === 'rejeitar') {
-        return `Movimentação #${firstId} rejeitada com sucesso. Bens desbloqueados.`
-      }
-      return `Movimentação #${firstId} cancelada com sucesso. Bens desbloqueados.`
-    }
-
-    if (action === 'aprovar') {
-      return `${quantity} movimentações aprovadas com sucesso. Bens desbloqueados.`
-    }
-    if (action === 'rejeitar') {
-      return `${quantity} movimentações rejeitadas com sucesso. Bens desbloqueados.`
-    }
-    return `${quantity} movimentações canceladas com sucesso. Bens desbloqueados.`
-  }
-
-  function getActionFn(action: MovimentacaoAction) {
-    if (action === 'aprovar') return movimentacaoService.aprovar
-    if (action === 'rejeitar') return movimentacaoService.rejeitar
-    return movimentacaoService.cancelar
-  }
 
   function getSelectedEligibleIds() {
     return selectedIds.filter((id) => eligibleIds.includes(id))

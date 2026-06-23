@@ -311,6 +311,21 @@ describe('MovimentacoesListPage', () => {
     })
   })
 
+  it('deve rejeitar a movimentação selecionada', async () => {
+    renderPage()
+
+    await screen.findByText('Enviada')
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 1'))
+    fireEvent.click(screen.getByRole('button', { name: /rejeitar/i }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.rejeitar).toHaveBeenCalledWith(1)
+      expect(toast.success).toHaveBeenCalledWith(
+        'Movimentação #0001 rejeitada com sucesso. Bens desbloqueados.',
+      )
+    })
+  })
+
   it('deve exibir apenas cancelar quando o usuário for operador', async () => {
     mockAuthenticatedUser({
       ...makeUser(),
