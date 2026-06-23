@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   Eye,
   FileText,
   Network,
+  Minus,
   Search,
+  X,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -44,6 +47,8 @@ type SelectOption = {
   label: string
 }
 
+type MovimentacaoAction = 'aprovar' | 'rejeitar' | 'cancelar'
+
 const PAGE_SIZE = 10
 
 const ACTION_BUTTON_CLASS = `
@@ -67,6 +72,72 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   aceita: 'text-blue-700',
   rejeitada: 'text-red-600',
   cancelada: 'text-gray-500',
+}
+
+function getActionErrorMessage(action: MovimentacaoAction) {
+  if (action === 'aprovar') return 'Erro ao aprovar movimentações'
+  if (action === 'rejeitar') return 'Erro ao rejeitar movimentações'
+  return 'Erro ao cancelar movimentações'
+}
+
+function getActionSuccessMessage(action: MovimentacaoAction, ids: number[]) {
+  const firstId = String(ids[0]).padStart(4, '0')
+  const quantity = ids.length
+
+  if (quantity === 1) {
+    if (action === 'aprovar') {
+      return `Movimentação #${firstId} aprovada com sucesso. Bens desbloqueados.`
+    }
+    if (action === 'rejeitar') {
+      return `Movimentação #${firstId} rejeitada com sucesso. Bens desbloqueados.`
+    }
+    return `Movimentação #${firstId} cancelada com sucesso. Bens desbloqueados.`
+  }
+
+  if (action === 'aprovar') {
+    return `${quantity} movimentações aprovadas com sucesso. Bens desbloqueados.`
+  }
+  if (action === 'rejeitar') {
+    return `${quantity} movimentações rejeitadas com sucesso. Bens desbloqueados.`
+  }
+  return `${quantity} movimentações canceladas com sucesso. Bens desbloqueados.`
+}
+
+function getActionFn(action: MovimentacaoAction) {
+  if (action === 'aprovar') return movimentacaoService.aprovar
+  if (action === 'rejeitar') return movimentacaoService.rejeitar
+  return movimentacaoService.cancelar
+}
+
+function canSelectMovimentacaoForUser(
+  user:
+    | {
+        id?: number
+        is_gestor_patrimonio?: boolean
+        is_operador_inventario?: boolean
+        is_superuser?: boolean
+      }
+    | null
+    | undefined,
+  movimentacao: MovimentacaoBemPatrimonialListItem,
+) {
+  if (movimentacao.status !== 'enviada') {
+    return false
+  }
+
+  if (!user) {
+    return false
+  }
+
+  if (user.is_gestor_patrimonio || user.is_superuser) {
+    return true
+  }
+
+  if (user.is_operador_inventario) {
+    return movimentacao.solicitado_por.id === user.id
+  }
+
+  return false
 }
 
 function formatDateTimeBR(dateString: string) {
@@ -113,6 +184,52 @@ function StatusBadge(props: Readonly<{ status: string; statusDisplay: string }>)
     <span className={`text-sm font-semibold ${STATUS_BADGE_CLASS[status] ?? 'text-gray-600'}`}>
       {statusDisplay}
     </span>
+  )
+}
+
+type MovimentacaoTableRowProps = Readonly<{
+  movimentacao: MovimentacaoBemPatrimonialListItem
+  selected: boolean
+  disabled: boolean
+  onToggleSelected: (id: number) => void
+  onVisualizar: (id: number) => void
+}>
+
+function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
+  const { movimentacao, selected, disabled, onToggleSelected, onVisualizar } = props
+
+  return (
+    <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
+      <td className='p-3 align-middle'>
+        <Checkbox
+          checked={selected}
+          disabled={disabled}
+          aria-label={`Selecionar movimentação ${movimentacao.id}`}
+          onCheckedChange={() => onToggleSelected(movimentacao.id)}
+        />
+      </td>
+      <td className='p-3'>{movimentacao.numero_cimbpm ?? '-'}</td>
+      <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_origem)}</td>
+      <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_destino)}</td>
+      <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
+      <td className='p-3'>
+        <StatusBadge
+          status={movimentacao.status}
+          statusDisplay={movimentacao.status_display}
+        />
+      </td>
+      <td className='p-3 text-center'>
+        <Button
+          type='button'
+          size='icon'
+          variant='ghost'
+          aria-label={`Visualizar movimentação ${movimentacao.id}`}
+          onClick={() => onVisualizar(movimentacao.id)}
+        >
+          <Eye size={18} />
+        </Button>
+      </td>
+    </tr>
   )
 }
 
@@ -247,6 +364,9 @@ export default function MovimentacoesListPage() {
   const [unidadeDestinoFilter, setUnidadeDestinoFilter] = useState('todas')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [atrasadaFilter, setAtrasadaFilter] = useState<StatusFilterValue>('todos')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [actionLoading, setActionLoading] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   const uoOptions = useMemo(
     () => buildUaOptions(user?.opcoes_escopo?.grupos),
@@ -269,6 +389,31 @@ export default function MovimentacoesListPage() {
     ],
     [],
   )
+
+  const eligibleMovimentacoes = useMemo(
+    () => movimentacoes.filter((movimentacao) => canSelectMovimentacaoForUser(user, movimentacao)),
+    [movimentacoes, user],
+  )
+
+  const eligibleIds = useMemo(
+    () => eligibleMovimentacoes.map((movimentacao) => movimentacao.id),
+    [eligibleMovimentacoes],
+  )
+
+  const selectedEligibleIds = useMemo(
+    () => selectedIds.filter((id) => eligibleIds.includes(id)),
+    [eligibleIds, selectedIds],
+  )
+
+  const allEligibleSelected =
+    eligibleIds.length > 0 &&
+    eligibleIds.every((id) => selectedEligibleIds.includes(id))
+
+  const canUseSelection = selectedEligibleIds.length > 0 && !actionLoading
+  const isGestor = !!user?.is_gestor_patrimonio
+  const isOperador = !!user?.is_operador_inventario
+  const isSuperuser = !!user?.is_superuser
+  const canCancelMovimentacoes = isGestor || isOperador || isSuperuser
 
   const { pages, totalPages } = usePagination({
     page,
@@ -329,10 +474,52 @@ export default function MovimentacoesListPage() {
     unidadeOrigemFilter,
     unidadeDestinoFilter,
     atrasadaFilter,
+    refreshToken,
   ])
+
+  useEffect(() => {
+    setSelectedIds([])
+  }, [page, search, statusFilter, unidadeOrigemFilter, unidadeDestinoFilter, atrasadaFilter])
+
+  function getSelectedEligibleIds() {
+    return selectedIds.filter((id) => eligibleIds.includes(id))
+  }
+
+  async function handleAction(action: MovimentacaoAction) {
+    const ids = getSelectedEligibleIds()
+    if (ids.length === 0) return
+
+    setActionLoading(true)
+    try {
+      const actionFn = getActionFn(action)
+      await Promise.all(ids.map((id) => actionFn(id)))
+      toast.success(getActionSuccessMessage(action, ids))
+      setSelectedIds([])
+      setRefreshToken((current) => current + 1)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : getActionErrorMessage(action)
+      toast.error(message || getActionErrorMessage(action))
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const handleVisualizar = (id: number) => {
     navigate(`/movimentacoes/${id}`)
+  }
+
+  function toggleSelectedId(id: number) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id],
+    )
+  }
+
+  function toggleAllEligibleSelection() {
+    if (eligibleIds.length === 0 || actionLoading) return
+
+    setSelectedIds((current) =>
+      allEligibleSelected ? current.filter((id) => !eligibleIds.includes(id)) : [...new Set([...current, ...eligibleIds])],
+    )
   }
 
   const renderPaginationItem = (item: number | '...', index: number) => {
@@ -359,7 +546,7 @@ export default function MovimentacoesListPage() {
 
   let tableBody = (
     <tr>
-      <td colSpan={5} className='py-10 text-center text-gray-400'>
+      <td colSpan={7} className='py-10 text-center text-gray-400'>
         Nenhuma movimentação encontrada.
       </td>
     </tr>
@@ -368,7 +555,7 @@ export default function MovimentacoesListPage() {
   if (loading) {
     tableBody = (
       <tr>
-        <td colSpan={5} className='py-10 text-center text-gray-500'>
+        <td colSpan={7} className='py-10 text-center text-gray-500'>
           Carregando...
         </td>
       </tr>
@@ -377,32 +564,14 @@ export default function MovimentacoesListPage() {
     tableBody = (
       <>
         {movimentacoes.map((movimentacao) => (
-          <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
-            <td className='p-3'>
-              {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
-            </td>
-            <td className='p-3'>
-              {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
-            </td>
-            <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
-            <td className='p-3'>
-              <StatusBadge
-                status={movimentacao.status}
-                statusDisplay={movimentacao.status_display}
-              />
-            </td>
-            <td className='p-3 text-center'>
-              <Button
-                type='button'
-                size='icon'
-                variant='ghost'
-                aria-label={`Visualizar movimentação ${movimentacao.id}`}
-                onClick={() => handleVisualizar(movimentacao.id)}
-              >
-                <Eye size={18} />
-              </Button>
-            </td>
-          </tr>
+          <MovimentacaoTableRow
+            key={movimentacao.id}
+            movimentacao={movimentacao}
+            selected={selectedIds.includes(movimentacao.id)}
+            disabled={!eligibleIds.includes(movimentacao.id) || actionLoading}
+            onToggleSelected={toggleSelectedId}
+            onVisualizar={handleVisualizar}
+          />
         ))}
       </>
     )
@@ -440,13 +609,41 @@ export default function MovimentacoesListPage() {
             Adicionar Movimentação
           </Button>
 
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            Aprovar
-          </Button>
+          {isGestor ? (
+            <>
+              <Button
+                type='button'
+                className={ACTION_BUTTON_CLASS}
+                disabled={!canUseSelection || actionLoading}
+                onClick={() => void handleAction('aprovar')}
+              >
+                <Check size={16} />
+                Aprovar
+              </Button>
 
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            Rejeitar
-          </Button>
+              <Button
+                type='button'
+                className={ACTION_BUTTON_CLASS}
+                disabled={!canUseSelection || actionLoading}
+                onClick={() => void handleAction('rejeitar')}
+              >
+                <X size={16} />
+                Rejeitar
+              </Button>
+            </>
+          ) : null}
+
+          {canCancelMovimentacoes ? (
+            <Button
+              type='button'
+              className={ACTION_BUTTON_CLASS}
+              disabled={!canUseSelection || actionLoading}
+              onClick={() => void handleAction('cancelar')}
+            >
+              <Minus size={16} />
+              Cancelar
+            </Button>
+          ) : null}
 
           <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
             <FileText size={16} />
@@ -524,6 +721,15 @@ export default function MovimentacoesListPage() {
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>
+                <th className='p-3'>
+                  <Checkbox
+                    checked={allEligibleSelected}
+                    disabled={eligibleIds.length === 0 || actionLoading}
+                    aria-label='Selecionar todas as movimentações elegíveis'
+                    onCheckedChange={toggleAllEligibleSelection}
+                  />
+                </th>
+                <th className='p-3'>CIMBPM</th>
                 <th className='p-3'>Unidade Administrativa de Origem</th>
                 <th className='p-3'>Unidade Administrativa de Destino</th>
                 <th className='p-3'>Atualizado em</th>
