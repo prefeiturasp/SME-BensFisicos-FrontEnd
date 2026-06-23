@@ -120,6 +120,17 @@ export const movimentacaoService = {
     }
   },
 
+  async baixarDocumentoCimbpm(id: number): Promise<Blob> {
+    try {
+      const { data } = await api.get(`/movimentacoes/${id}/documento-cimbpm/`, {
+        responseType: 'blob',
+      })
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao baixar documento CIMBPM')
+    }
+  },
+
   async aprovar(id: number): Promise<MovimentacaoBemPatrimonialDetail> {
     try {
       const { data } = await api.post(`/movimentacoes/${id}/aprovar/`)

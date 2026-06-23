@@ -264,6 +264,7 @@ describe('MovimentacoesListPage', () => {
     await screen.findByText('Enviada')
     expect(screen.getByText('Enviada')).toBeInTheDocument()
     expect(screen.getByText('Aceita')).toBeInTheDocument()
+    expect(screen.getByText('CIMBPM-1')).toBeInTheDocument()
     expect(screen.getByLabelText('Selecionar movimentação 1')).toBeEnabled()
     expect(screen.getByLabelText('Selecionar movimentação 2')).toBeDisabled()
   })
@@ -342,12 +343,87 @@ describe('MovimentacoesListPage', () => {
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
   })
 
+  it('deve exibir cancelar quando o usuário for gestor', async () => {
+    mockAuthenticatedUser({
+      ...makeUser(),
+      is_gestor_patrimonio: true,
+      is_operador_inventario: false,
+    })
+
+    renderPage()
+
+    await screen.findByText('Enviada')
+
+    expect(screen.getByRole('button', { name: /aprovar/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /rejeitar/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
+  })
+
+  it('deve impedir operador de selecionar movimentações de outro usuário', async () => {
+    mockAuthenticatedUser({
+      ...makeUser(),
+      id: 10,
+      is_gestor_patrimonio: false,
+      is_operador_inventario: true,
+    })
+
+    mockListResponse([
+      makeMovimentacao(1, {
+        solicitado_por: {
+          id: 10,
+          username: 'operador',
+          nome_completo: 'Operador Exemplo',
+          email: 'operador@example.com',
+        },
+      }),
+      makeMovimentacao(2, {
+        solicitado_por: {
+          id: 99,
+          username: 'outro',
+          nome_completo: 'Outro Usuário',
+          email: 'outro@example.com',
+        },
+      }),
+    ], 2)
+
+    renderPage()
+
+    await screen.findByLabelText('Selecionar movimentação 1')
+
+    expect(screen.getByLabelText('Selecionar movimentação 1')).toBeEnabled()
+    expect(screen.getByLabelText('Selecionar movimentação 2')).toBeDisabled()
+
+    fireEvent.click(screen.getByLabelText('Selecionar movimentação 2'))
+    expect(screen.getByLabelText('Selecionar movimentação 2')).not.toBeChecked()
+  })
+
   it('deve impedir operador de selecionar movimentação que não está enviada', async () => {
     mockAuthenticatedUser({
       ...makeUser(),
       is_gestor_patrimonio: false,
       is_operador_inventario: true,
     })
+
+    mockListResponse([
+      makeMovimentacao(1, {
+        solicitado_por: {
+          id: 1,
+          username: 'operador',
+          nome_completo: 'Operador Exemplo',
+          email: 'operador@example.com',
+        },
+      }),
+      makeMovimentacao(2, {
+        status: 'aceita',
+        status_display: 'Aceita',
+        solicitado_por: {
+          id: 1,
+          username: 'operador',
+          nome_completo: 'Operador Exemplo',
+          email: 'operador@example.com',
+        },
+      }),
+    ], 2)
 
     renderPage()
 

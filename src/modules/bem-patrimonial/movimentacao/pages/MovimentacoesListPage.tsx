@@ -109,6 +109,37 @@ function getActionFn(action: MovimentacaoAction) {
   return movimentacaoService.cancelar
 }
 
+function canSelectMovimentacaoForUser(
+  user:
+    | {
+        id?: number
+        is_gestor_patrimonio?: boolean
+        is_operador_inventario?: boolean
+        is_superuser?: boolean
+      }
+    | null
+    | undefined,
+  movimentacao: MovimentacaoBemPatrimonialListItem,
+) {
+  if (movimentacao.status !== 'enviada') {
+    return false
+  }
+
+  if (!user) {
+    return false
+  }
+
+  if (user.is_gestor_patrimonio || user.is_superuser) {
+    return true
+  }
+
+  if (user.is_operador_inventario) {
+    return movimentacao.solicitado_por.id === user.id
+  }
+
+  return false
+}
+
 function formatDateTimeBR(dateString: string) {
   const date = new Date(dateString)
   if (Number.isNaN(date.getTime())) return '-'
@@ -177,6 +208,7 @@ function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
           onCheckedChange={() => onToggleSelected(movimentacao.id)}
         />
       </td>
+      <td className='p-3'>{movimentacao.numero_cimbpm ?? '-'}</td>
       <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_origem)}</td>
       <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_destino)}</td>
       <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
@@ -359,8 +391,8 @@ export default function MovimentacoesListPage() {
   )
 
   const eligibleMovimentacoes = useMemo(
-    () => movimentacoes.filter((movimentacao) => movimentacao.status === 'enviada'),
-    [movimentacoes],
+    () => movimentacoes.filter((movimentacao) => canSelectMovimentacaoForUser(user, movimentacao)),
+    [movimentacoes, user],
   )
 
   const eligibleIds = useMemo(
@@ -368,17 +400,9 @@ export default function MovimentacoesListPage() {
     [eligibleMovimentacoes],
   )
 
-  const selectedMovimentacoes = useMemo(
-    () => movimentacoes.filter((movimentacao) => selectedIds.includes(movimentacao.id)),
-    [movimentacoes, selectedIds],
-  )
-
   const selectedEligibleIds = useMemo(
-    () =>
-      selectedMovimentacoes
-        .filter((movimentacao) => movimentacao.status === 'enviada')
-        .map((movimentacao) => movimentacao.id),
-    [selectedMovimentacoes],
+    () => selectedIds.filter((id) => eligibleIds.includes(id)),
+    [eligibleIds, selectedIds],
   )
 
   const allEligibleSelected =
@@ -386,8 +410,10 @@ export default function MovimentacoesListPage() {
     eligibleIds.every((id) => selectedEligibleIds.includes(id))
 
   const canUseSelection = selectedEligibleIds.length > 0 && !actionLoading
-  const isGestor = !!user?.is_gestor_patrimonio || !!user?.is_superuser
-  const isOperador = !!user?.is_operador_inventario || !!user?.is_superuser
+  const isGestor = !!user?.is_gestor_patrimonio
+  const isOperador = !!user?.is_operador_inventario
+  const isSuperuser = !!user?.is_superuser
+  const canCancelMovimentacoes = isGestor || isOperador || isSuperuser
 
   const { pages, totalPages } = usePagination({
     page,
@@ -520,7 +546,7 @@ export default function MovimentacoesListPage() {
 
   let tableBody = (
     <tr>
-      <td colSpan={6} className='py-10 text-center text-gray-400'>
+      <td colSpan={7} className='py-10 text-center text-gray-400'>
         Nenhuma movimentação encontrada.
       </td>
     </tr>
@@ -529,7 +555,7 @@ export default function MovimentacoesListPage() {
   if (loading) {
     tableBody = (
       <tr>
-        <td colSpan={6} className='py-10 text-center text-gray-500'>
+        <td colSpan={7} className='py-10 text-center text-gray-500'>
           Carregando...
         </td>
       </tr>
@@ -542,7 +568,7 @@ export default function MovimentacoesListPage() {
             key={movimentacao.id}
             movimentacao={movimentacao}
             selected={selectedIds.includes(movimentacao.id)}
-            disabled={movimentacao.status !== 'enviada' || actionLoading}
+            disabled={!eligibleIds.includes(movimentacao.id) || actionLoading}
             onToggleSelected={toggleSelectedId}
             onVisualizar={handleVisualizar}
           />
@@ -607,7 +633,7 @@ export default function MovimentacoesListPage() {
             </>
           ) : null}
 
-          {isOperador ? (
+          {canCancelMovimentacoes ? (
             <Button
               type='button'
               className={ACTION_BUTTON_CLASS}
@@ -703,6 +729,7 @@ export default function MovimentacoesListPage() {
                     onCheckedChange={toggleAllEligibleSelection}
                   />
                 </th>
+                <th className='p-3'>CIMBPM</th>
                 <th className='p-3'>Unidade Administrativa de Origem</th>
                 <th className='p-3'>Unidade Administrativa de Destino</th>
                 <th className='p-3'>Atualizado em</th>
