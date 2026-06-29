@@ -117,14 +117,28 @@ export default function BaixasListPage() {
         allSelectableIds.every(id => selectedIds.includes(id))
 
     const toggleSelectAll = () => {
-        if (allSelected) setSelectedIds([])
-        else setSelectedIds(allSelectableIds)
+        if (allSelected) {
+            setSelectedIds([])
+        } else {
+            // Seleciona todas em elaboração, mas apenas a primeira solicitada
+            const primeiraSolicitada = solicitadaIds.length > 0 ? [solicitadaIds[0]] : []
+            setSelectedIds([...emElaboracaoIds, ...primeiraSolicitada])
+        }
     }
 
     const toggleSelect = (id: number) => {
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        )
+        const b = baixas.find(x => x.id === id)
+        const isSolicitada = b?.status === "solicitada"
+
+        setSelectedIds(prev => {
+            if (prev.includes(id)) return prev.filter(x => x !== id)
+            // Baixas "solicitada" só permitem 1 selecionada por vez
+            if (isSolicitada) {
+                const semSolicitadas = prev.filter(x => !solicitadaIds.includes(x))
+                return [...semSolicitadas, id]
+            }
+            return [...prev, id]
+        })
     }
 
     const selectedEmElaboracao = selectedIds.filter(id => emElaboracaoIds.includes(id))

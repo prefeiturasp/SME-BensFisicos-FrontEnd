@@ -47,6 +47,9 @@ export default function SolicitarCorrecaoPage() {
         try {
             await baixaFisicaService.solicitarCorrecao(baixa.id, { motivo: motivo.trim() })
             setShowToast(true)
+            setTimeout(() => {
+                navigate(-1)
+            }, 1500)
         } catch (err) {
             console.error(err)
             setError(
@@ -109,6 +112,12 @@ export default function SolicitarCorrecaoPage() {
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
                     {error}
                 </div>
+            )}
+
+            {showToast && (
+                <output className="block text-sm text-green-700 bg-green-50 border border-green-200 rounded px-4 py-2">
+                    Correção solicitada com sucesso! Redirecionando...
+                </output>
             )}
 
             <div className="bg-white border border-gray-200 rounded-md shadow-sm">
