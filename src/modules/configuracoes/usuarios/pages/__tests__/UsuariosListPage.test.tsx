@@ -56,6 +56,10 @@ const setGrupoFilterMock = vi.fn()
 const setStatusFilterMock = vi.fn()
 const setOrderingMock = vi.fn()
 const mockGetCurrentUser = vi.fn()
+const mockExportUsuarios = vi.fn()
+const downloadBlobFileMock = vi.fn()
+const toastSuccessMock = vi.fn()
+const toastErrorMock = vi.fn()
 
 const DEFAULT_HOOK_VALUES = {
     usuarios: [] as Usuario[],
@@ -92,6 +96,25 @@ vi.mock("../../hooks/usePagination", () => ({
 vi.mock("../../../../../auth/auth.service", () => ({
     authService: {
         getCurrentUser: () => mockGetCurrentUser(),
+    },
+}))
+
+vi.mock("../../service/usuario.service", () => ({
+    usuarioService: {
+        exportar: (...args: unknown[]) => mockExportUsuarios(...args),
+    },
+}))
+
+vi.mock("@/lib/unidades-list-page", () => ({
+    downloadBlobFile: (...args: unknown[]) => downloadBlobFileMock(...args),
+    getErrorMessage: (error: unknown, fallback: string) =>
+        error instanceof Error ? error.message : fallback,
+}))
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: (...args: unknown[]) => toastSuccessMock(...args),
+        error: (...args: unknown[]) => toastErrorMock(...args),
     },
 }))
 
@@ -161,6 +184,14 @@ const ME_RESPONSE = {
     },
 }
 
+const OPERADOR_RESPONSE = {
+    data: {
+        ...ME_RESPONSE.data,
+        is_gestor_patrimonio: false,
+        is_superuser: false,
+    },
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function renderComponent() {
@@ -192,6 +223,12 @@ describe("UsuariosListPage", () => {
         vi.clearAllMocks()
         hookOverrides = {}
         mockGetCurrentUser.mockResolvedValue(ME_RESPONSE)
+        mockExportUsuarios.mockResolvedValue({
+            blob: new Blob(["xlsx-content"]),
+            fileName: "usuarios.xlsx",
+            contentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
     })
 
     // ── Estrutura da página ───────────────────────────────────────────────────
@@ -220,6 +257,18 @@ describe("UsuariosListPage", () => {
 
             expect(screen.getByText("Relatório")).toBeInTheDocument()
             expect(screen.getByText("Adicionar Usuário")).toBeInTheDocument()
+        })
+
+        it("não exibe relatório para operador", async () => {
+            mockGetCurrentUser.mockResolvedValueOnce(OPERADOR_RESPONSE)
+
+            renderComponent()
+
+            await waitFor(() => {
+                expect(
+                    screen.queryByRole("button", { name: /Relatório/i })
+                ).not.toBeInTheDocument()
+            })
         })
 
         it("renderiza os campos de filtro", () => {
@@ -368,6 +417,38 @@ describe("UsuariosListPage", () => {
             fireEvent.click(screen.getByText("Adicionar Usuário"))
 
             expect(navigateMock).toHaveBeenCalledWith("/usuarios/novo")
+        })
+    })
+
+    describe("relatório", () => {
+
+        it("baixa o relatório ao clicar no botão", async () => {
+            renderComponent()
+
+            fireEvent.click(screen.getByRole("button", { name: "Relatório" }))
+
+            await waitFor(() => {
+                expect(mockExportUsuarios).toHaveBeenCalledTimes(1)
+                expect(downloadBlobFileMock).toHaveBeenCalledWith(
+                    expect.any(Blob),
+                    "usuarios.xlsx"
+                )
+                expect(toastSuccessMock).toHaveBeenCalledWith(
+                    "Relatório exportado com sucesso."
+                )
+            })
+        })
+
+        it("exibe erro quando a exportação falha", async () => {
+            mockExportUsuarios.mockRejectedValueOnce(new Error("Falha ao exportar"))
+
+            renderComponent()
+
+            fireEvent.click(screen.getByRole("button", { name: "Relatório" }))
+
+            await waitFor(() => {
+                expect(toastErrorMock).toHaveBeenCalledWith("Falha ao exportar")
+            })
         })
     })
 

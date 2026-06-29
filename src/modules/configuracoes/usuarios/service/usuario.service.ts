@@ -1,5 +1,6 @@
-import { api } from '@/api/http'
+﻿import { api } from '@/api/http'
 import { AxiosError } from 'axios'
+import { parseFileNameFromContentDisposition } from '@/lib/unidades-list-service'
 
 export interface Usuario {
     id: number
@@ -39,6 +40,12 @@ export interface PaginatedResponse<T> {
     results: T[]
 }
 
+export interface UsuarioExportResult {
+    blob: Blob
+    fileName: string
+    contentType: string | null
+}
+
 export const usuarioService = {
 
     list: async (params: any = {}): Promise<PaginatedResponse<Usuario>> => {
@@ -62,7 +69,7 @@ export const usuarioService = {
                 query.append('group_name', params.grupo)
 
             if (params.status && params.status !== 'todos')
-                query.append('is_active', params.status === "ativo" ? "true" : "false")
+                query.append('is_active', params.status === 'ativo' ? 'true' : 'false')
 
             if (params.ordering)
                 query.append('ordering', params.ordering)
@@ -129,6 +136,27 @@ export const usuarioService = {
 
         } catch (error) {
             handleApiError(error, 'Erro ao remover usuário')
+        }
+    },
+
+    exportar: async (): Promise<UsuarioExportResult> => {
+        try {
+            const response = await api.get(`/user/exportar/`, {
+                responseType: 'blob',
+            })
+
+            const contentDisposition = response.headers['content-disposition']
+            const contentType = response.headers['content-type'] ?? null
+
+            return {
+                blob: response.data,
+                fileName:
+                    parseFileNameFromContentDisposition(contentDisposition) ??
+                    'usuarios.xlsx',
+                contentType,
+            }
+        } catch (error) {
+            handleApiError(error, 'Erro ao exportar usuários')
         }
     },
 }
