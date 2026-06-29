@@ -533,9 +533,7 @@ export default function VerBaixaPage() {
             await baixaFisicaService.aprovar(baixa.id)
             setShowConfirmarAceite(false)
             setSuccessMessage("Baixa física aceita com sucesso!")
-            setTimeout(() => {
-                navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
-            }, 1500)
+            navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
         } catch (err) {
             console.error(err)
             setActionError(
