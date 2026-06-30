@@ -48,11 +48,11 @@ describe('GerenciamentoConciliacoesListPage', () => {
     expect(navigateMock).toHaveBeenCalledWith('/conciliacoes/novo');
   });
 
-  it('executa voltar ao acionar o botao de voltar', () => {
+  it('volta para a home ao acionar o botao de voltar', () => {
     renderComponent();
 
     fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
 
-    expect(navigateMock).toHaveBeenCalledWith(-1);
+    expect(navigateMock).toHaveBeenCalledWith('/home');
   });
 });

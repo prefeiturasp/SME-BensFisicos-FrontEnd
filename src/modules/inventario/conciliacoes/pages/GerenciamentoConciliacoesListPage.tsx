@@ -38,7 +38,7 @@ export default function GerenciamentoConciliacoesListPage() {
           <Button
             type='button'
             aria-label='Voltar'
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className={ICON_BUTTON_CLASS}
           >
             <ArrowLeft size={18} />
