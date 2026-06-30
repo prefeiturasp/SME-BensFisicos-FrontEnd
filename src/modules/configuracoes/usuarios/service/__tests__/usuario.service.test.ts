@@ -664,4 +664,56 @@ describe("usuarioService", () => {
             await expect(usuarioService.delete(1)).rejects.toThrow("Falha genérica")
         })
     })
+
+    // ── exportar ─────────────────────────────────────────────────────────────
+
+    describe("exportar", () => {
+
+        it("chama GET /user/exportar/ e retorna blob e nome do arquivo", async () => {
+            const blob = new Blob(["xlsx-content"], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+
+            mockGet.mockResolvedValueOnce({
+                data: blob,
+                headers: {
+                    "content-disposition": 'attachment; filename="usuarios.xlsx"',
+                    "content-type":
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                },
+            })
+
+            const result = await usuarioService.exportar()
+
+            expect(mockGet).toHaveBeenCalledWith("/user/exportar/", {
+                responseType: "blob",
+            })
+            expect(result.blob).toBe(blob)
+            expect(result.fileName).toBe("usuarios.xlsx")
+            expect(result.contentType).toBe(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        })
+
+        it("usa nome padrao quando backend nao envia content-disposition", async () => {
+            const blob = new Blob(["xlsx-content"])
+
+            mockGet.mockResolvedValueOnce({
+                data: blob,
+                headers: {},
+            })
+
+            const result = await usuarioService.exportar()
+
+            expect(result.fileName).toBe("usuarios.xlsx")
+        })
+
+        it("lança mensagem padrao em erro de exportacao", async () => {
+            mockGet.mockRejectedValueOnce(makeAxiosError(500))
+
+            await expect(usuarioService.exportar()).rejects.toThrow(
+                "Erro ao exportar usuários"
+            )
+        })
+    })
 })
