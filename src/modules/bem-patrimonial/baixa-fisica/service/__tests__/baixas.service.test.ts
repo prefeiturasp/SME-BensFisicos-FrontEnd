@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { baixaFisicaService, downloadBlob } from "../baixas.service"
-import { api } from "@/api/http"
 import { AxiosError } from "axios"
+
+import { api } from "@/api/http"
+import { baixaFisicaService, downloadBlob } from "../baixas.service"
 
 // ===================== MOCKS =====================
 
@@ -18,7 +19,13 @@ vi.mock("@/api/http", () => ({
 
 function makeAxiosError(status: number, data: unknown = {}) {
     const error = new AxiosError("error")
-    error.response = { status, data, headers: {}, config: {} as never, statusText: "" }
+    error.response = {
+        status,
+        data,
+        headers: {},
+        config: {} as never,
+        statusText: "",
+    }
     return error
 }
 
@@ -29,14 +36,21 @@ function makeAxiosNetworkError() {
 }
 
 function makePaginatedResponse(results: unknown[] = []) {
-    return { data: { results, count: results.length, next: null, previous: null } }
+    return {
+        data: {
+            results,
+            count: results.length,
+            next: null,
+            previous: null,
+        },
+    }
 }
 
 function makeBaixaDetail(overrides = {}) {
     return {
         id: 1,
         status: "aguardando_envio",
-        status_display: "Aguardando Envio",
+        status_display: "Em elaboração",
         numero_processo_baixa: "PROC-001",
         itens: [],
         ...overrides,
@@ -46,12 +60,9 @@ function makeBaixaDetail(overrides = {}) {
 // ===================== TESTS =====================
 
 describe("baixaFisicaService", () => {
-
     beforeEach(() => {
         vi.clearAllMocks()
     })
-
-    // ------------------------------------------------------------------ list
 
     describe("list", () => {
         it("retorna dados paginados", async () => {
@@ -59,132 +70,149 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.get).mockResolvedValue(mockData)
 
             const result = await baixaFisicaService.list()
+
             expect(result).toEqual(mockData.data)
             expect(api.get).toHaveBeenCalledWith("/baixa-fisica/?")
         })
 
-        it("passa parâmetro page", async () => {
+        it("monta query string com os filtros válidos", async () => {
             vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ page: 2 })
-            expect(api.get).toHaveBeenCalledWith(expect.stringContaining("page=2"))
-        })
 
-        it("passa parâmetro search", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ search: "PROC" })
-            expect(api.get).toHaveBeenCalledWith(expect.stringContaining("search=PROC"))
-        })
+            await baixaFisicaService.list({
+                page: 2,
+                search: " PROC-001 ",
+                status: "solicitada",
+                unidade_administrativa_origem: 5,
+                ordering: "-data_criacao",
+                data_criacao__gte: "2024-01-01",
+                data_criacao__lte: "2024-12-31",
+                data_aprovacao__gte: "2024-02-01",
+                data_aprovacao__lte: "2024-02-28",
+            })
 
-        it("não passa search quando vazio", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ search: "  " })
-            expect(api.get).toHaveBeenCalledWith(expect.not.stringContaining("search"))
-        })
+            const url = vi.mocked(api.get).mock.calls[0][0] as string // NOSONAR
 
-        it("não passa status 'todos'", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ status: "todos" })
-            expect(api.get).toHaveBeenCalledWith(expect.not.stringContaining("status"))
-        })
-
-        it("passa status quando não é 'todos'", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ status: "solicitada" })
-            expect(api.get).toHaveBeenCalledWith(expect.stringContaining("status=solicitada"))
-        })
-
-        it("passa unidade_administrativa_origem", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ unidade_administrativa_origem: 5 })
-            expect(api.get).toHaveBeenCalledWith(expect.stringContaining("unidade_administrativa_origem=5"))
-        })
-
-        it("passa ordering", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ ordering: "-data_criacao" })
-            expect(api.get).toHaveBeenCalledWith(expect.stringContaining("ordering=-data_criacao"))
-        })
-
-        it("passa data_criacao__gte e data_criacao__lte", async () => {
-            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
-            await baixaFisicaService.list({ data_criacao__gte: "2024-01-01", data_criacao__lte: "2024-12-31" })
-            const url = vi.mocked(api.get).mock.calls[0][0] as string
+            expect(url).toContain("page=2")
+            expect(url).toContain("search=PROC-001")
+            expect(url).toContain("status=solicitada")
+            expect(url).toContain("unidade_administrativa_origem=5")
+            expect(url).toContain("ordering=-data_criacao")
             expect(url).toContain("data_criacao__gte=2024-01-01")
             expect(url).toContain("data_criacao__lte=2024-12-31")
+            expect(url).toContain("data_aprovacao__gte=2024-02-01")
+            expect(url).toContain("data_aprovacao__lte=2024-02-28")
+        })
+
+        it("não envia search vazio nem status todos", async () => {
+            vi.mocked(api.get).mockResolvedValue(makePaginatedResponse())
+
+            await baixaFisicaService.list({ search: "   ", status: "todos" })
+
+            const url = vi.mocked(api.get).mock.calls[0][0] as string // NOSONAR
+            expect(url).not.toContain("search")
+            expect(url).not.toContain("status")
         })
 
         it("lança erro de conexão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosNetworkError())
-            await expect(baixaFisicaService.list()).rejects.toThrow("Erro de conexão com o servidor.")
+
+            await expect(baixaFisicaService.list()).rejects.toThrow(
+                "Erro de conexão com o servidor."
+            )
         })
 
-        it("lança erro com detail da API", async () => {
-            vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, { detail: "Erro interno" }))
+        it("lança erro usando detail retornado pela API", async () => {
+            vi.mocked(api.get).mockRejectedValue(
+                makeAxiosError(500, { detail: "Erro interno" })
+            )
+
             await expect(baixaFisicaService.list()).rejects.toThrow("Erro interno")
         })
 
-        it("lança erro padrão em outros status", async () => {
+        it("lança erro padrão quando API não retorna detail", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.list()).rejects.toThrow("Erro ao listar baixas físicas")
+
+            await expect(baixaFisicaService.list()).rejects.toThrow(
+                "Erro ao listar baixas físicas"
+            )
         })
     })
-
-    // --------------------------------------------------------------- retrieve
 
     describe("retrieve", () => {
         it("retorna baixa pelo id", async () => {
             const detail = makeBaixaDetail()
             vi.mocked(api.get).mockResolvedValue({ data: detail })
+
             const result = await baixaFisicaService.retrieve(1)
+
             expect(result).toEqual(detail)
             expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/")
         })
 
-        it("lança erro de conexão", async () => {
-            vi.mocked(api.get).mockRejectedValue(makeAxiosNetworkError())
-            await expect(baixaFisicaService.retrieve(1)).rejects.toThrow("Erro de conexão com o servidor.")
-        })
-
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(404, {}))
-            await expect(baixaFisicaService.retrieve(1)).rejects.toThrow("Erro ao buscar baixa física")
+
+            await expect(baixaFisicaService.retrieve(1)).rejects.toThrow(
+                "Erro ao buscar baixa física"
+            )
         })
     })
-
-    // ----------------------------------------------------------------- create
 
     describe("create", () => {
         it("cria baixa e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
+            const payload = {
+                unidade_administrativa_origem: 1,
+                numero_processo_baixa: "P-001",
+                data_baixa: "2024-01-01",
+                itens: [],
+            }
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
-            const payload = { unidade_administrativa_origem: 1, numero_processo_baixa: "P-001", data_baixa: "2024-01-01", itens: [] }
             const result = await baixaFisicaService.create(payload)
 
             expect(result).toEqual(detail)
             expect(api.post).toHaveBeenCalledWith("/baixa-fisica/", payload)
         })
 
-        it("lança AxiosError 400 diretamente", async () => {
+        it("relança AxiosError 400 para tratamento de validação no formulário", async () => {
             const axiosErr = makeAxiosError(400, { campo: ["Obrigatório"] })
             vi.mocked(api.post).mockRejectedValue(axiosErr)
-            await expect(baixaFisicaService.create({ unidade_administrativa_origem: 1, numero_processo_baixa: "", data_baixa: "", itens: [] })).rejects.toThrow(AxiosError)
+
+            await expect(
+                baixaFisicaService.create({
+                    unidade_administrativa_origem: 1,
+                    numero_processo_baixa: "",
+                    data_baixa: "",
+                    itens: [],
+                })
+            ).rejects.toThrow(AxiosError)
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.create({ unidade_administrativa_origem: 1, numero_processo_baixa: "", data_baixa: "", itens: [] })).rejects.toThrow("Erro ao criar baixa física")
+
+            await expect(
+                baixaFisicaService.create({
+                    unidade_administrativa_origem: 1,
+                    numero_processo_baixa: "",
+                    data_baixa: "",
+                    itens: [],
+                })
+            ).rejects.toThrow("Erro ao criar baixa física")
         })
     })
-
-    // ----------------------------------------------------------------- update
 
     describe("update", () => {
         it("atualiza baixa e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
+            const payload = {
+                numero_processo_baixa: "P-002",
+                data_baixa: "2024-02-01",
+                itens: [],
+            }
             vi.mocked(api.put).mockResolvedValue({ data: detail })
 
-            const payload = { numero_processo_baixa: "P-002", data_baixa: "2024-02-01", itens: [] }
             const result = await baixaFisicaService.update(1, payload)
 
             expect(result).toEqual(detail)
@@ -193,25 +221,29 @@ describe("baixaFisicaService", () => {
 
         it("lança erro padrão", async () => {
             vi.mocked(api.put).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.update(1, { numero_processo_baixa: "", data_baixa: "", itens: [] })).rejects.toThrow("Erro ao atualizar baixa física")
+
+            await expect(
+                baixaFisicaService.update(1, {
+                    numero_processo_baixa: "",
+                    data_baixa: "",
+                    itens: [],
+                })
+            ).rejects.toThrow("Erro ao atualizar baixa física")
         })
     })
-
-    // ---------------------------------------------------------- partialUpdate
 
     describe("partialUpdate", () => {
         it("faz patch e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
+            const payload = { numero_processo_baixa: "P-003" }
             vi.mocked(api.patch).mockResolvedValue({ data: detail })
 
-            const result = await baixaFisicaService.partialUpdate(1, { numero_processo_baixa: "P-003" })
+            const result = await baixaFisicaService.partialUpdate(1, payload)
 
             expect(result).toEqual(detail)
-            expect(api.patch).toHaveBeenCalledWith("/baixa-fisica/1/", { numero_processo_baixa: "P-003" })
+            expect(api.patch).toHaveBeenCalledWith("/baixa-fisica/1/", payload)
         })
     })
-
-    // -------------------------------------------------------- enviarSolicitacao
 
     describe("enviarSolicitacao", () => {
         it("envia solicitação e retorna detalhe", async () => {
@@ -219,17 +251,19 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
             const result = await baixaFisicaService.enviarSolicitacao(1)
+
             expect(result).toEqual(detail)
             expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/solicitar/")
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.enviarSolicitacao(1)).rejects.toThrow("Erro ao enviar solicitação de baixa física")
+
+            await expect(baixaFisicaService.enviarSolicitacao(1)).rejects.toThrow(
+                "Erro ao enviar solicitação de baixa física"
+            )
         })
     })
-
-    // --------------------------------------------------------------- aprovar
 
     describe("aprovar", () => {
         it("aprova e retorna detalhe", async () => {
@@ -237,17 +271,19 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
             const result = await baixaFisicaService.aprovar(1)
+
             expect(result).toEqual(detail)
             expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/aprovar/")
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.aprovar(1)).rejects.toThrow("Erro ao aprovar baixa física")
+
+            await expect(baixaFisicaService.aprovar(1)).rejects.toThrow(
+                "Erro ao aprovar baixa física"
+            )
         })
     })
-
-    // ---------------------------------------------------------------- recusar
 
     describe("recusar", () => {
         it("recusa sem payload e retorna detalhe", async () => {
@@ -255,41 +291,54 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
             const result = await baixaFisicaService.recusar(1)
+
             expect(result).toEqual(detail)
             expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/recusar/", {})
         })
 
         it("recusa com motivo", async () => {
             vi.mocked(api.post).mockResolvedValue({ data: makeBaixaDetail() })
+
             await baixaFisicaService.recusar(1, { motivo: "Inválido" })
-            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/recusar/", { motivo: "Inválido" })
+
+            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/recusar/", {
+                motivo: "Inválido",
+            })
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.recusar(1)).rejects.toThrow("Erro ao recusar baixa física")
+
+            await expect(baixaFisicaService.recusar(1)).rejects.toThrow(
+                "Erro ao recusar baixa física"
+            )
         })
     })
 
-    // --------------------------------------------------------------- cancelar
-
-    describe("cancelar", () => {
-        it("cancela e retorna detalhe", async () => {
-            const detail = makeBaixaDetail({ status: "cancelada" })
+    describe("solicitarCorrecao", () => {
+        it("solicita correção e retorna detalhe", async () => {
+            const detail = makeBaixaDetail({ status: "aguardando_envio" })
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
-            const result = await baixaFisicaService.cancelar(1)
+            const result = await baixaFisicaService.solicitarCorrecao(1, {
+                motivo: "Corrigir item PAT-001",
+            })
+
             expect(result).toEqual(detail)
-            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/cancelar/", {})
+            expect(api.post).toHaveBeenCalledWith(
+                "/baixa-fisica/1/solicitar-correcao/",
+                { motivo: "Corrigir item PAT-001" }
+            )
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.cancelar(1)).rejects.toThrow("Erro ao cancelar baixa física")
+
+            await expect(
+                baixaFisicaService.solicitarCorrecao(1, { motivo: "Corrigir" })
+            ).rejects.toThrow("Erro ao solicitar correção da baixa física")
         })
     })
-
-    // ------------------------------------------------------------- gerarNbbpm
 
     describe("gerarNbbpm", () => {
         it("retorna blob", async () => {
@@ -297,17 +346,21 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.get).mockResolvedValue({ data: blob })
 
             const result = await baixaFisicaService.gerarNbbpm(1)
+
             expect(result).toBe(blob)
-            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-nbbpm/", { responseType: "blob" })
+            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-nbbpm/", {
+                responseType: "blob",
+            })
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.gerarNbbpm(1)).rejects.toThrow("Erro ao gerar NBBPM")
+
+            await expect(baixaFisicaService.gerarNbbpm(1)).rejects.toThrow(
+                "Erro ao gerar NBBPM"
+            )
         })
     })
-
-    // ---------------------------------------------------------- exportarExcel
 
     describe("exportarExcel", () => {
         it("retorna blob sem parâmetros", async () => {
@@ -315,62 +368,83 @@ describe("baixaFisicaService", () => {
             vi.mocked(api.get).mockResolvedValue({ data: blob })
 
             const result = await baixaFisicaService.exportarExcel()
+
             expect(result).toBe(blob)
-            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/exportar-excel/?", { responseType: "blob" })
+            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/exportar-excel/?", {
+                responseType: "blob",
+            })
         })
 
-        it("passa ids e unidade_administrativa_origem", async () => {
+        it("monta query com ids, status e unidade administrativa", async () => {
             vi.mocked(api.get).mockResolvedValue({ data: new Blob() })
-            await baixaFisicaService.exportarExcel({ ids: "1,2,3", unidade_administrativa_origem: 5 })
-            const url = vi.mocked(api.get).mock.calls[0][0] as string
+
+            await baixaFisicaService.exportarExcel({
+                ids: "1,2,3",
+                status: "aceita",
+                unidade_administrativa_origem: 5,
+            })
+
+            const url = vi.mocked(api.get).mock.calls[0][0] as string  // NOSONAR
             expect(url).toContain("ids=1%2C2%2C3")
+            expect(url).toContain("status=aceita")
             expect(url).toContain("unidade_administrativa_origem=5")
         })
 
-        it("não passa status 'todos'", async () => {
+        it("não envia status todos", async () => {
             vi.mocked(api.get).mockResolvedValue({ data: new Blob() })
+
             await baixaFisicaService.exportarExcel({ status: "todos" })
+
             expect(vi.mocked(api.get).mock.calls[0][0]).not.toContain("status")
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.exportarExcel()).rejects.toThrow("Erro ao exportar Excel")
+
+            await expect(baixaFisicaService.exportarExcel()).rejects.toThrow(
+                "Erro ao exportar Excel"
+            )
         })
     })
 
-    // --------------------------------------------------------------- historico
-
     describe("historico", () => {
         it("retorna dados do histórico", async () => {
-            const entries = [{ id: 1, campo: "status", valor_antigo: "rascunho", valor_novo: "solicitada" }]
+            const entries = [
+                {
+                    id: 1,
+                    campo: "status",
+                    valor_antigo: "aguardando_envio",
+                    valor_novo: "solicitada",
+                },
+            ]
             vi.mocked(api.get).mockResolvedValue({ data: entries })
 
             const result = await baixaFisicaService.historico(1)
+
             expect(result).toEqual(entries)
             expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/historico/")
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
-            await expect(baixaFisicaService.historico(1)).rejects.toThrow("Erro ao buscar histórico")
+
+            await expect(baixaFisicaService.historico(1)).rejects.toThrow(
+                "Erro ao buscar histórico"
+            )
         })
     })
 
-    // ---------------------------------------------------------- erro não-Axios
-
-    describe("handleApiError — erro não-Axios", () => {
+    describe("erro não-Axios", () => {
         it("relança erros que não são AxiosError", async () => {
             const genericError = new Error("Erro genérico")
             vi.mocked(api.get).mockRejectedValue(genericError)
-            await expect(baixaFisicaService.retrieve(1)).rejects.toThrow("Erro genérico")
+
+            await expect(baixaFisicaService.retrieve(1)).rejects.toThrow(
+                "Erro genérico"
+            )
         })
     })
 })
-
-// ============================================================================
-// downloadBlob
-// ============================================================================
 
 describe("downloadBlob", () => {
     it("cria link, faz click e revoga URL", () => {
@@ -380,7 +454,11 @@ describe("downloadBlob", () => {
 
         vi.stubGlobal("URL", { createObjectURL, revokeObjectURL })
 
-        const linkEl = { href: "", download: "", click } as unknown as HTMLAnchorElement
+        const linkEl = {
+            href: "",
+            download: "",
+            click,
+        } as unknown as HTMLAnchorElement
         vi.spyOn(document, "createElement").mockReturnValue(linkEl)
 
         const blob = new Blob(["data"])
