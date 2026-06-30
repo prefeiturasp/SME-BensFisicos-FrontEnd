@@ -20,7 +20,8 @@ import MovimentacaoDetailPage from '@/modules/bem-patrimonial/movimentacao/pages
 import BaixasListPage from '@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage';
 
 // Módulo: Inventário
-import InventarioListPage from '@/modules/inventario/pages/InventarioListPage';
+import AdicionarConciliacaoPage from '@/modules/inventario/conciliacoes/pages/AdicionarConciliacaoPage';
+import GerenciamentoConciliacoesListPage from '@/modules/inventario/conciliacoes/pages/GerenciamentoConciliacoesListPage';
 import ParametrosConciliacaoAnualListPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametrosConciliacaoAnualListPage';
 import ParametroConciliacaoAnualFormPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametroConciliacaoAnualFormPage';
 
@@ -72,27 +73,49 @@ export default function AppRoutes() {
           <Route path='/movimentacoes' element={<MovimentacoesListPage />} />
           <Route path='/movimentacoes/:id' element={<MovimentacaoDetailPage />} />
           <Route path='/movimentacoes/novo' element={<AdicionarMovimentacaoPage />} />
-          
+
           {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
           <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
           <Route path='/baixas-fisicas/:id' element={<VerBaixaPage />} />
 
           {/* Módulo: Inventário */}
-          <Route path='/inventarios' element={<InventarioListPage />} />
-          <Route path='/parametros-conciliacao-anual' element={<ParametrosConciliacaoAnualListPage />} />
-          <Route path='/parametros-conciliacao-anual/novo' element={<ParametroConciliacaoAnualFormPage />} />
-          <Route path='/parametros-conciliacao-anual/:id' element={<ParametroConciliacaoAnualFormPage />} />
-          <Route path='/parametros-conciliacao-anual/:id/editar' element={<ParametroConciliacaoAnualFormPage />} />
+          <Route path='/conciliacoes' element={<GerenciamentoConciliacoesListPage />} />
+          <Route path='/conciliacoes/novo' element={<AdicionarConciliacaoPage />} />
+          <Route
+            path='/parametros-conciliacao-anual'
+            element={<ParametrosConciliacaoAnualListPage />}
+          />
+          <Route
+            path='/parametros-conciliacao-anual/novo'
+            element={<ParametroConciliacaoAnualFormPage />}
+          />
+          <Route
+            path='/parametros-conciliacao-anual/:id'
+            element={<ParametroConciliacaoAnualFormPage />}
+          />
+          <Route
+            path='/parametros-conciliacao-anual/:id/editar'
+            element={<ParametroConciliacaoAnualFormPage />}
+          />
 
           {/* Módulo: Configurações */}
           {/* Submódulo: Unidades Administrativas */}
           <Route path='/unidades-administrativas' element={<UnidadesAdministrativasListPage />} />
-          <Route path='/unidades-administrativas/novo' element={<UnidadesAdministrativasCreatePage />} />
-          <Route path='/unidades-administrativas/:id' element={<UnidadesAdministrativasViewPage />} />
+          <Route
+            path='/unidades-administrativas/novo'
+            element={<UnidadesAdministrativasCreatePage />}
+          />
+          <Route
+            path='/unidades-administrativas/:id'
+            element={<UnidadesAdministrativasViewPage />}
+          />
           {/* Submódulo: Unidades Orçamentárias */}
           <Route path='/unidades-orcamentarias' element={<UnidadesOrcamentariasListPage />} />
-          <Route path='/unidades-orcamentarias/novo' element={<UnidadesOrcamentariasCreatePage />} />
+          <Route
+            path='/unidades-orcamentarias/novo'
+            element={<UnidadesOrcamentariasCreatePage />}
+          />
           <Route path='/unidades-orcamentarias/:id' element={<UnidadesOrcamentariasViewPage />} />
           {/* Submódulo: Usuários */}
           <Route path='/usuarios' element={<UsuariosListPage />} />
