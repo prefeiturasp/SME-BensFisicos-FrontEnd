@@ -29,9 +29,9 @@ const dashboardItems: DashboardItem[] = [
     href: '/baixas-fisicas',
   },
   {
-    title: 'Inventários Cadastrados',
+    title: 'Gerenciamento de Conciliações',
     icon: ListOrdered,
-    href: '/inventarios',
+    href: '/conciliacoes',
   },
   {
     title: 'Parâmetros de Conciliação Anual',
