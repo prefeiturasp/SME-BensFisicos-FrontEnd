@@ -292,4 +292,29 @@ describe('AdicionarConciliacaoPage', () => {
 
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled();
   });
+
+  it('usa a mensagem generica quando o erro lancado nao e AxiosError', async () => {
+    createMock.mockRejectedValueOnce({ unexpected: 'payload' });
+
+    render(
+      <MemoryRouter>
+        <AdicionarConciliacaoPage />
+      </MemoryRouter>,
+    );
+
+    fillPeriodoFinal();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        'Não foi possível criar a conciliação.',
+        expect.objectContaining({ description: 'Tente novamente em alguns instantes.' }),
+      );
+    });
+  });
 });
