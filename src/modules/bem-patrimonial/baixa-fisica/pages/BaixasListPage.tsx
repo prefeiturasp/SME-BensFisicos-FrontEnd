@@ -1,19 +1,3 @@
-// pages/BaixasListPage.tsx
-//
-// ALTERAÇÃO — Aprovar/Recusar como atalho de navegação:
-// ─────────────────────────────────────────────────────────────────────────
-// Os botões "Aprovar" e "Recusar" permanecem na listagem para baixas com
-// status "solicitada", mas NÃO chamam mais a API diretamente em lote.
-// Em vez disso, funcionam como um atalho: ao clicar em qualquer um dos
-// dois, o usuário é levado para a tela "Validar Baixa" da baixa
-// selecionada, onde a revisão item a item é obrigatória antes de
-// confirmar o aceite ou solicitar correção.
-//
-// Por isso, a seleção para Aprovar/Recusar agora é de UMA baixa por vez
-// (não em lote) — múltiplas baixas "solicitada" não fazem sentido para
-// um atalho de navegação, já que a tela de destino é por ID.
-// ─────────────────────────────────────────────────────────────────────────
-
 import { useState, useEffect, useCallback } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import {
@@ -124,6 +108,14 @@ export default function BaixasListPage() {
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
+    // NOVO — Baixas com status Aprovado (ACEITA) selecionáveis para a
+    // geração da NBBPM em lote. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na
+    // página, para não misturar as duas ações em lote.
+    const aceitaIds = new Set(
+        baixas.filter(b => b.status === "aceita").map(b => b.id)
+    )
+
     const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
 
     const allSelected =
@@ -157,6 +149,7 @@ export default function BaixasListPage() {
 
     const selectedEmElaboracao = selectedIds.filter(id => emElaboracaoIds.includes(id))
     const selectedSolicitadas = selectedIds.filter(id => solicitadaIds.includes(id))
+    const selectedAceitas = selectedIds.filter(id => aceitaIds.has(id))
 
     // ===================== HANDLERS =====================
 
@@ -226,6 +219,13 @@ export default function BaixasListPage() {
         navigate(`/baixas-fisicas/${primeiraSelecionada}`)
     }
 
+    // NOVO — leva para a tela de cadastro das informações básicas da
+    // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    const handleGerarNbbpm = () => {
+        if (selectedAceitas.length === 0) return
+        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas } })
+    }
+
     const renderTableBody = () => {
         if (loading) {
             return (
@@ -246,7 +246,7 @@ export default function BaixasListPage() {
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio"
+            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || b.status === "aceita"
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -346,6 +346,18 @@ export default function BaixasListPage() {
                                 Recusar
                             </Button>
                         </>
+                    )}
+
+                    {/* NOVO — "Gerar NBBPM": disponível quando há Baixas com status
+                        Aprovado selecionadas. Leva à tela de cadastro das
+                        informações básicas da NBBPM consolidada. */}
+                    {selectedAceitas.length > 0 && (
+                        <Button
+                            onClick={handleGerarNbbpm}
+                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                        >
+                            Gerar NBBPM ({selectedAceitas.length})
+                        </Button>
                     )}
 
                     <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>

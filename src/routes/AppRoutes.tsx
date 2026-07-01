@@ -43,6 +43,7 @@ import UnidadesOrcamentariasCreatePage from '@/modules/configuracoes/unidades-or
 import UnidadesOrcamentariasViewPage from '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage';
 import BemImportPage from '@/modules/bem-patrimonial/bem/pages/BemImportPage';
 import SolicitarCorrecaoPage from '@/modules/bem-patrimonial/baixa-fisica/pages/SolicitarCorrecaoPage';
+import GerarNBBPMPage from '@/modules/bem-patrimonial/baixa-fisica/pages/GerarNBBPMPage';
 
 export default function AppRoutes() {
   return (
@@ -78,6 +79,7 @@ export default function AppRoutes() {
           {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
           <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
+          <Route path='/baixas-fisicas/gerar-nbbpm' element={<GerarNBBPMPage />} />
           <Route path='/baixas-fisicas/:id' element={<VerBaixaPage />} />
           <Route path='/baixas-fisicas/:id/solicitar-correcao' element={<SolicitarCorrecaoPage />} />
 
