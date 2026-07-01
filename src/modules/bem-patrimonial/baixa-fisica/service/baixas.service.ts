@@ -151,6 +151,18 @@ export const baixaFisicaService = {
         }
     },
 
+    gerarLaudo: async (id: number): Promise<Blob> => {
+        try {
+            const { data } = await api.get(`/baixa-fisica/${id}/gerar-laudo/`, {
+                responseType: 'blob',
+            })
+            return data
+
+        } catch (error) {
+            handleApiError(error, 'Erro ao gerar Laudo de Avaliação')
+        }
+    },
+
     exportarExcel: async (params: Pick<BaixaFisicaListParams, 'ids' | 'status' | 'unidade_administrativa_origem'> = {}): Promise<Blob> => {
         try {
             const query = new URLSearchParams()

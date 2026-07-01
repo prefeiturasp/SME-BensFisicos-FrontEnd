@@ -38,6 +38,7 @@ vi.mock("../../service/baixas.service", () => ({
         update: vi.fn(),
         aprovar: vi.fn(),
         gerarNbbpm: vi.fn(),
+        gerarLaudo: vi.fn(),
         historico: vi.fn(),
     },
 }))
@@ -123,10 +124,12 @@ function makeBaixaDetail(overrides: Partial<BaixaFisicaDetail> = {}): BaixaFisic
             email: "joao@email.com",
         },
         itens: [],
-        url_enviar_solicitacao: null,
+        url_solicitar: null,
         url_aprovar: null,
-        url_cancelar: null,
+        url_recusar: null,
+        url_solicitar_correcao: null,
         url_gerar_nbbpm: null,
+        url_gerar_laudo: null,
         ...overrides,
     }
 }
@@ -1048,24 +1051,24 @@ describe("VerBaixaPage", () => {
     // Download NBBPM
     // ─────────────────────────────────────────────────────────────
 
-    it("exibe 'Baixar Laudo' quando url_gerar_nbbpm está preenchida (status aceita)", async () => {
+    it("exibe 'Baixar NBBPM' quando url_gerar_nbbpm está preenchida (status aceita)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/dl" })
         )
         renderPage()
-        await waitFor(() => expect(screen.getByText("Baixar Laudo")).toBeInTheDocument())
+        await waitFor(() => expect(screen.getByText("Baixar NBBPM")).toBeInTheDocument())
     })
 
-    it("não exibe 'Baixar Laudo' quando url_gerar_nbbpm é null", async () => {
+    it("não exibe 'Baixar NBBPM' quando url_gerar_nbbpm é null", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: null })
         )
         renderPage()
         await waitFor(() => screen.getByText(/Aceita/))
-        expect(screen.queryByText("Baixar Laudo")).not.toBeInTheDocument()
+        expect(screen.queryByText("Baixar NBBPM")).not.toBeInTheDocument()
     })
 
-    it("não exibe 'Baixar Laudo' no modo validar (solicitada)", async () => {
+    it("não exibe 'Baixar NBBPM' no modo validar (solicitada)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({
                 status: "solicitada",
@@ -1075,7 +1078,7 @@ describe("VerBaixaPage", () => {
         )
         renderPage()
         await waitFor(() => screen.getByText("Validar Baixa Física de Bem Patrimonial"))
-        expect(screen.queryByText("Baixar Laudo")).not.toBeInTheDocument()
+        expect(screen.queryByText("Baixar NBBPM")).not.toBeInTheDocument()
     })
 
     it("executa download do NBBPM com sucesso", async () => {
@@ -1092,8 +1095,8 @@ describe("VerBaixaPage", () => {
             return el
         })
         renderPage()
-        await waitFor(() => screen.getByText("Baixar Laudo"))
-        fireEvent.click(screen.getByText("Baixar Laudo"))
+        await waitFor(() => screen.getByText("Baixar NBBPM"))
+        fireEvent.click(screen.getByText("Baixar NBBPM"))
         await waitFor(() => {
             expect(baixaFisicaService.gerarNbbpm).toHaveBeenCalledWith(1)
             expect(clickMock).toHaveBeenCalled()
@@ -1115,8 +1118,8 @@ describe("VerBaixaPage", () => {
             return el
         })
         renderPage()
-        await waitFor(() => screen.getByText("Baixar Laudo"))
-        fireEvent.click(screen.getByText("Baixar Laudo"))
+        await waitFor(() => screen.getByText("Baixar NBBPM"))
+        fireEvent.click(screen.getByText("Baixar NBBPM"))
         await waitFor(() => expect(baixaFisicaService.gerarNbbpm).toHaveBeenCalledWith(42))
         spy.mockRestore()
     })
@@ -1128,8 +1131,98 @@ describe("VerBaixaPage", () => {
         )
         vi.mocked(baixaFisicaService.gerarNbbpm).mockRejectedValue(new Error("Erro download"))
         renderPage()
-        await waitFor(() => screen.getByText("Baixar Laudo"))
-        fireEvent.click(screen.getByText("Baixar Laudo"))
+        await waitFor(() => screen.getByText("Baixar NBBPM"))
+        fireEvent.click(screen.getByText("Baixar NBBPM"))
+        await waitFor(() => expect(consoleSpy).toHaveBeenCalled())
+        consoleSpy.mockRestore()
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // Download Laudo de Avaliação
+    // ─────────────────────────────────────────────────────────────
+
+    it("exibe 'Baixar Laudo de Avaliação' quando url_gerar_laudo está preenchida (status aceita)", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo" })
+        )
+        renderPage()
+        await waitFor(() => expect(screen.getByText("Baixar Laudo de Avaliação")).toBeInTheDocument())
+    })
+
+    it("não exibe 'Baixar Laudo de Avaliação' quando url_gerar_laudo é null", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: null })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText(/Aceita/))
+        expect(screen.queryByText("Baixar Laudo de Avaliação")).not.toBeInTheDocument()
+    })
+
+    it("não exibe 'Baixar Laudo de Avaliação' quando status é solicitada", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                status: "solicitada",
+                status_display: "Solicitada",
+                url_gerar_laudo: "/dl-laudo",
+            })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText("Validar Baixa Física de Bem Patrimonial"))
+        expect(screen.queryByText("Baixar Laudo de Avaliação")).not.toBeInTheDocument()
+    })
+
+    it("executa download do Laudo de Avaliação com sucesso", async () => {
+        const clickMock = vi.fn()
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo" })
+        )
+        vi.mocked(baixaFisicaService.gerarLaudo).mockResolvedValue(new Blob(["pdf"]))
+        vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+        const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag)
+            if (tag === "a") Object.defineProperty(el, "click", { value: clickMock })
+            return el
+        })
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
+        fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
+        await waitFor(() => {
+            expect(baixaFisicaService.gerarLaudo).toHaveBeenCalledWith(1)
+            expect(clickMock).toHaveBeenCalled()
+        })
+        spy.mockRestore()
+    })
+
+    it("download Laudo de Avaliação usa id quando numero_processo_baixa é nulo", async () => {
+        const clickMock = vi.fn()
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ id: 42, status: "aceita", status_display: "Aceita", numero_processo_baixa: null, url_gerar_laudo: "/dl-laudo" })
+        )
+        vi.mocked(baixaFisicaService.gerarLaudo).mockResolvedValue(new Blob(["pdf"]))
+        vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+        const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag)
+            if (tag === "a") Object.defineProperty(el, "click", { value: clickMock })
+            return el
+        })
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
+        fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
+        await waitFor(() => expect(baixaFisicaService.gerarLaudo).toHaveBeenCalledWith(42))
+        spy.mockRestore()
+    })
+
+    it("trata erro ao gerar Laudo de Avaliação sem quebrar a UI", async () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo" })
+        )
+        vi.mocked(baixaFisicaService.gerarLaudo).mockRejectedValue(new Error("Erro download laudo"))
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
+        fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
         await waitFor(() => expect(consoleSpy).toHaveBeenCalled())
         consoleSpy.mockRestore()
     })
