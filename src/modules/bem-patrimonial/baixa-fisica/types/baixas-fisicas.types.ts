@@ -67,6 +67,11 @@ export interface BaixaFisicaDetail extends Omit<BaixaFisica, 'total_itens'> {
      */
     url_solicitar_correcao: string | null
     url_gerar_nbbpm: string | null
+    /**
+     * Presente apenas quando status === "aceita".
+     * Aponta para o endpoint de geração do Laudo de Avaliação (PDF).
+     */
+    url_gerar_laudo: string | null
 }
 
 // ============================================================================

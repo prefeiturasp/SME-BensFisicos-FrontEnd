@@ -38,7 +38,7 @@ const ACTION_BUTTON_CLASS =
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
     const date = new Date(dateString)
-    if (Number.isNaN(date.getTime())) return "-"
+    if (isNaN(date.getTime())) return "-"
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
         month: "long",
@@ -49,7 +49,7 @@ function formatDateBR(dateString: string | null | undefined): string {
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
     const date = new Date(dateString)
-    if (Number.isNaN(date.getTime())) return "-"
+    if (isNaN(date.getTime())) return "-"
     return date.toLocaleString("pt-BR")
 }
 
@@ -591,6 +591,21 @@ export default function VerBaixaPage() {
         }
     }
 
+    const handleGerarLaudo = async () => {
+        if (!baixa) return
+        try {
+            const blob = await baixaFisicaService.gerarLaudo(baixa.id)
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `Laudo-Avaliacao-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     // ── Loading / not found ──────────────────────────────────────────────
 
     if (loading) {
@@ -681,10 +696,17 @@ export default function VerBaixaPage() {
                         </>
                     )}
 
-                    {!isEditing && !isValidando && baixa.url_gerar_nbbpm && (
+                    {baixa.status === "aceita" && baixa.url_gerar_laudo && (
+                        <button onClick={handleGerarLaudo} className={ACTION_BUTTON_CLASS}>
+                            <FileDown size={14} />
+                            Baixar Laudo de Avaliação
+                        </button>
+                    )}
+
+                    {baixa.status === "aceita" && baixa.url_gerar_nbbpm && (
                         <button onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
                             <FileDown size={14} />
-                            Baixar Laudo
+                            Baixar NBBPM
                         </button>
                     )}
 
