@@ -46,8 +46,8 @@ const menuItems = [
     icon: ListOrdered,
     items: [
       {
-        title: 'Cadastro de Inventário',
-        url: '/inventarios',
+        title: 'Gerenciamento de Conciliações',
+        url: '/conciliacoes',
       },
       {
         title: 'Parâmetros de Conciliação Anual',
@@ -86,7 +86,7 @@ export function AppSidebar() {
   const isCollapsed = state === 'collapsed';
   const canAccessParametros = canAccessParametrosConciliacao(user);
   const visibleMenuItems = menuItems.map((item) => {
-    if (item.items.some((subItem) => subItem.url === '/inventarios')) {
+    if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
       return {
         ...item,
         items: item.items.filter(

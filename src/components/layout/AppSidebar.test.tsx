@@ -166,7 +166,9 @@ describe('AppSidebar', () => {
 
       await user.click(screen.getByText('Configurações'));
 
-      expect(screen.queryByRole('link', { name: 'Unidades Orçamentárias' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Unidades Orçamentárias' }),
+      ).not.toBeInTheDocument();
     });
 
     it('oculta o atalho de Parâmetros de Conciliação Anual para operador', async () => {
@@ -247,7 +249,7 @@ describe('AppSidebar', () => {
             <MemoryRouter initialEntries={['/home']}>
               <Routes>
                 <Route path='/home' element={<AppSidebar />} />
-                <Route path='/inventarios' element={<div>Página de Inventários</div>} />
+                <Route path='/conciliacoes' element={<div>Página de Conciliações</div>} />
               </Routes>
             </MemoryRouter>
           </TooltipProvider>
@@ -255,10 +257,10 @@ describe('AppSidebar', () => {
       );
 
       await user.click(screen.getByText(/^Inventário$/));
-      const link = screen.getByRole('link', { name: 'Cadastro de Inventário' });
+      const link = screen.getByRole('link', { name: 'Gerenciamento de Conciliações' });
       await user.click(link);
 
-      expect(screen.getByText('Página de Inventários')).toBeInTheDocument();
+      expect(screen.getByText('Página de Conciliações')).toBeInTheDocument();
     });
   });
 

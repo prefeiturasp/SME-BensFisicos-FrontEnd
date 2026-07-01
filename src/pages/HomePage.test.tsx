@@ -19,7 +19,7 @@ describe('HomePage', () => {
     { title: 'Bens Patrimoniais', href: '/bens-patrimoniais' },
     { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
     { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
-    { title: 'Inventários Cadastrados', href: '/inventarios' },
+    { title: 'Gerenciamento de Conciliações', href: '/conciliacoes' },
     { title: 'Parâmetros de Conciliação Anual', href: '/parametros-conciliacao-anual' },
   ];
 
