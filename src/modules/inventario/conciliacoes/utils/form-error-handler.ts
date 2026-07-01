@@ -11,6 +11,20 @@ const FIELD_ERROR_MESSAGE = 'Data final do período da conciliação.';
 
 const ERROR_TOAST_TITLE = 'Não foi possível criar a conciliação.';
 
+const DUPLICATE_CONCILIACAO_BACKEND_SIGNATURE =
+  'Unidade Administrativa, Tipo e Período Final';
+
+const DUPLICATE_CONCILIACAO_MESSAGE =
+  'Já existe uma conciliação cadastrada para esta Unidade Administrativa, Tipo e Período Final.';
+
+function normalizeNonFieldMessage(message: string): string {
+  if (message.includes(DUPLICATE_CONCILIACAO_BACKEND_SIGNATURE)) {
+    return DUPLICATE_CONCILIACAO_MESSAGE;
+  }
+
+  return message;
+}
+
 function extractMessage(value: unknown): string | null {
   if (typeof value === 'string') return value;
   if (Array.isArray(value) && value.length > 0) return String(value[0]);
@@ -58,8 +72,9 @@ export function handleConciliacaoBadRequestError(
   const nonFieldMessage = extractMessage(obj.non_field_errors) || extractMessage(obj.detail);
 
   if (nonFieldMessage) {
-    form.setError('root.serverError', { type: 'server', message: nonFieldMessage });
-    return { handled: true, toastDescription: nonFieldMessage };
+    const displayMessage = normalizeNonFieldMessage(nonFieldMessage);
+    form.setError('root.serverError', { type: 'server', message: displayMessage });
+    return { handled: true, toastDescription: displayMessage };
   }
 
   return { handled: false, toastDescription: '' };
