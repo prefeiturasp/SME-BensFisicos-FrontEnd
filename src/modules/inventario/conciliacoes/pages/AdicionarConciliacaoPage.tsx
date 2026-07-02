@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
-import { useMemo } from 'react';
+import { isAfter, startOfDay, subDays } from 'date-fns';
+import { useCallback, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -64,6 +65,11 @@ export default function AdicionarConciliacaoPage() {
   const unidadeAdministrativaLabel = useMemo(
     () => buildUnidadeAdministrativaLabel(uaAtiva?.codigo, uaAtiva?.nome),
     [uaAtiva?.codigo, uaAtiva?.nome],
+  );
+
+  const isDateDisabled = useCallback(
+    (date: Date) => isAfter(date, subDays(startOfDay(new Date()), 1)),
+    [],
   );
 
   const periodoFinalValue = useWatch({ control: form.control, name: 'periodoFinal' });
@@ -153,6 +159,7 @@ export default function AdicionarConciliacaoPage() {
           tipoConciliacaoLabel={TIPO_CONCILIACAO}
           submitting={createConciliacao.isPending}
           disabled={isUaUnavailable}
+          isDateDisabled={isDateDisabled}
           onSubmit={handleSubmit}
         />
       </Card>
