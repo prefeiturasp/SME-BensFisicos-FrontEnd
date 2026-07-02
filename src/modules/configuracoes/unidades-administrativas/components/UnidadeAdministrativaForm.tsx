@@ -107,7 +107,7 @@ export function UnidadeAdministrativaForm({
                       disabled={disabled || submitting}
                       value={field.value}
                       onChange={(event) => {
-                        const digitsOnly = event.target.value.replace(/\D/g, '').slice(0, 3);
+                        const digitsOnly = event.target.value.replaceAll(/\D/g, '').slice(0, 3);
                         field.onChange(digitsOnly);
                       }}
                     />

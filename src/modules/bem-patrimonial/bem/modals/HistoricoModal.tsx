@@ -25,34 +25,34 @@ const STATUS_LABELS: Record<string, string> = {
     baixa_fisica: "Baixa Física",
 }
 
+function formatFieldName(field: string) {
+    if (FIELD_LABELS[field]) return FIELD_LABELS[field]
+
+    // fallback automático (transforma snake_case em Título)
+    return field
+        .replaceAll("_", " ")
+        .replaceAll(/\b\w/g, l => l.toUpperCase())
+}
+
+function translateValue(field: string, value: any) {
+    if (value === null || value === undefined || value === "")
+        return "-"
+
+    // Boolean
+    if (value === "True" || value === true) return "Sim"
+    if (value === "False" || value === false) return "Não"
+
+    // Status do Bem
+    if (field === "status" && STATUS_LABELS[value])
+        return STATUS_LABELS[value]
+
+    return value
+}
+
 export default function HistoricoModal({ bemId, open, onClose }: Props) {
     const [loading, setLoading] = useState(false)
     const [historico, setHistorico] = useState<any[]>([])
     const [selecionado, setSelecionado] = useState<number>(0)
-
-    function formatFieldName(field: string) {
-        if (FIELD_LABELS[field]) return FIELD_LABELS[field]
-
-        // fallback automático (transforma snake_case em Título)
-        return field
-            .replaceAll("_", " ")
-            .replace(/\b\w/g, l => l.toUpperCase())
-    }
-
-    function translateValue(field: string, value: any) {
-        if (value === null || value === undefined || value === "")
-            return "-"
-
-        // Boolean
-        if (value === "True" || value === true) return "Sim"
-        if (value === "False" || value === false) return "Não"
-
-        // Status do Bem
-        if (field === "status" && STATUS_LABELS[value])
-            return STATUS_LABELS[value]
-
-        return value
-    }
 
     useEffect(() => {
         if (!open) return

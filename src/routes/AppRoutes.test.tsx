@@ -52,8 +52,13 @@ vi.mock('@/modules/bem-patrimonial/movimentacao/pages/MovimentacaoDetailPage', (
 vi.mock('@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage', () => ({
   default: () => <div data-testid='baixas-list'>Baixas List</div>,
 }));
-vi.mock('@/modules/inventario/pages/InventarioListPage', () => ({
-  default: () => <div data-testid='inventario-list'>Inventario List</div>,
+vi.mock('@/modules/inventario/conciliacoes/pages/AdicionarConciliacaoPage', () => ({
+  default: () => <div data-testid='adicionar-conciliacao'>Adicionar Conciliação</div>,
+}));
+vi.mock('@/modules/inventario/conciliacoes/pages/GerenciamentoConciliacoesListPage', () => ({
+  default: () => (
+    <div data-testid='gerenciamento-conciliacoes-list'>Gerenciamento de Conciliações</div>
+  ),
 }));
 vi.mock(
   '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasListPage',
@@ -74,21 +79,31 @@ vi.mock(
 vi.mock(
   '@/modules/configuracoes/unidades-administrativas/pages/UnidadesAdministrativasViewPage',
   () => ({
-    default: () => <div data-testid='unidades-administrativas-view'>Unidades Administrativas View</div>,
+    default: () => (
+      <div data-testid='unidades-administrativas-view'>Unidades Administrativas View</div>
+    ),
   }),
 );
-vi.mock('@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage', () => ({
-  default: () => <div data-testid='unidades-orcamentarias-list'>Unidades Orçamentárias List</div>,
-}));
+vi.mock(
+  '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasListPage',
+  () => ({
+    default: () => <div data-testid='unidades-orcamentarias-list'>Unidades Orçamentárias List</div>,
+  }),
+);
 vi.mock(
   '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasCreatePage',
   () => ({
-    default: () => <div data-testid='unidades-orcamentarias-create'>Unidades Orçamentárias Create</div>,
+    default: () => (
+      <div data-testid='unidades-orcamentarias-create'>Unidades Orçamentárias Create</div>
+    ),
   }),
 );
-vi.mock('@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage', () => ({
-  default: () => <div data-testid='unidades-orcamentarias-view'>Unidades Orçamentárias View</div>,
-}));
+vi.mock(
+  '@/modules/configuracoes/unidades-orcamentarias/pages/UnidadesOrcamentariasViewPage',
+  () => ({
+    default: () => <div data-testid='unidades-orcamentarias-view'>Unidades Orçamentárias View</div>,
+  }),
+);
 
 describe('AppRoutes', () => {
   beforeEach(() => {
@@ -336,13 +351,22 @@ describe('AppRoutes', () => {
       expect(screen.getByTestId('baixas-list')).toBeInTheDocument();
     });
 
-    it('deve navegar para inventários', () => {
+    it('deve navegar para a tela de gerenciamento de conciliações', () => {
       render(
-        <MemoryRouter initialEntries={['/inventarios']}>
+        <MemoryRouter initialEntries={['/conciliacoes']}>
           <AppRoutes />
         </MemoryRouter>,
       );
-      expect(screen.getByTestId('inventario-list')).toBeInTheDocument();
+      expect(screen.getByTestId('gerenciamento-conciliacoes-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para a tela de adicionar conciliação', () => {
+      render(
+        <MemoryRouter initialEntries={['/conciliacoes/novo']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('adicionar-conciliacao')).toBeInTheDocument();
     });
 
     it('deve navegar para unidades administrativas', () => {

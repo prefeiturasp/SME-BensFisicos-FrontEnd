@@ -19,8 +19,8 @@ function useDebouncedValue(value: string, delay = 350) {
   const [debounced, setDebounced] = useState(value);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
+    const timer = globalThis.setTimeout(() => setDebounced(value), delay);
+    return () => globalThis.clearTimeout(timer);
   }, [delay, value]);
 
   return debounced;

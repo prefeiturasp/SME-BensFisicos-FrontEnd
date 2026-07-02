@@ -44,11 +44,11 @@ function groupByUser(entries: HistoricoEntry[]): GroupEntry[] {
 }
 
 function getGroupLabel(items: HistoricoEntry[]): string {
-    const campos = items.map(i => i.campo)
-    if (campos.includes("status") && items.find(i => i.campo === "status" && i.valor_novo === "Aceita")) return "Cadastro aceito"
-    if (campos.includes("status") && items.find(i => i.campo === "status" && i.valor_novo === "Solicitada")) return "Solicitação enviada"
-    if (campos.includes("status") && items.find(i => i.campo === "status" && i.valor_novo === "Recusada")) return "Cadastro recusado"
-    if (campos.includes("status") && items.find(i => i.campo === "status" && i.valor_novo === "Cancelada")) return "Cadastro cancelado"
+    const campos = new Set(items.map(i => i.campo))
+    if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Aceita")) return "Cadastro aceito"
+    if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Solicitada")) return "Solicitação enviada"
+    if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Recusada")) return "Cadastro recusado"
+    if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Cancelada")) return "Cadastro cancelado"
     if (items.some(i => i.justificativa?.toLowerCase().includes("cadastro"))) return "Cadastro realizado"
     return "Cadastro alterado"
 }

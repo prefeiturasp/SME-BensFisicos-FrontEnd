@@ -22,6 +22,20 @@ hover:text-white font-semibold rounded-md transition-colors
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
 
+// ===================== HELPERS =====================
+
+function formatDateTimeBR(dateString: string): string {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return ""
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
 // ===================== COMPONENTS =====================
 
 interface StatusBadgeProps {
@@ -94,6 +108,14 @@ export default function BaixasListPage() {
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
+    // NOVO — Baixas com status Aprovado (ACEITA) selecionáveis para a
+    // geração da NBBPM em lote. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na
+    // página, para não misturar as duas ações em lote.
+    const aceitaIds = new Set(
+        baixas.filter(b => b.status === "aceita").map(b => b.id)
+    )
+
     const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
 
     const allSelected =
@@ -101,18 +123,33 @@ export default function BaixasListPage() {
         allSelectableIds.every(id => selectedIds.includes(id))
 
     const toggleSelectAll = () => {
-        if (allSelected) setSelectedIds([])
-        else setSelectedIds(allSelectableIds)
+        if (allSelected) {
+            setSelectedIds([])
+        } else {
+            // Seleciona todas em elaboração, mas apenas a primeira solicitada
+            const primeiraSolicitada = solicitadaIds.length > 0 ? [solicitadaIds[0]] : []
+            setSelectedIds([...emElaboracaoIds, ...primeiraSolicitada])
+        }
     }
 
     const toggleSelect = (id: number) => {
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        )
+        const b = baixas.find(x => x.id === id)
+        const isSolicitada = b?.status === "solicitada"
+
+        setSelectedIds(prev => {
+            if (prev.includes(id)) return prev.filter(x => x !== id)
+            // Baixas "solicitada" só permitem 1 selecionada por vez
+            if (isSolicitada) {
+                const semSolicitadas = prev.filter(x => !solicitadaIds.includes(x))
+                return [...semSolicitadas, id]
+            }
+            return [...prev, id]
+        })
     }
 
     const selectedEmElaboracao = selectedIds.filter(id => emElaboracaoIds.includes(id))
     const selectedSolicitadas = selectedIds.filter(id => solicitadaIds.includes(id))
+    const selectedAceitas = selectedIds.filter(id => aceitaIds.has(id))
 
     // ===================== HANDLERS =====================
 
@@ -157,7 +194,8 @@ export default function BaixasListPage() {
         }
     }
 
-    // Chama o endpoint /solicitar/ para baixas "Em elaboração"
+    // Chama o endpoint /solicitar/ para baixas "Em elaboração" — fluxo do
+    // solicitante, sem alteração.
     const handleSolicitar = async () => {
         if (selectedEmElaboracao.length === 0) return
         setActionLoading(true)
@@ -172,51 +210,27 @@ export default function BaixasListPage() {
         }
     }
 
-    const handleAprovar = async () => {
-        if (selectedSolicitadas.length === 0) return
-        setActionLoading(true)
-        try {
-            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.aprovar(id)))
-            setSelectedIds([])
-            fetchBaixas()
-        } catch {
-            alert("Erro ao aprovar baixas.")
-        } finally {
-            setActionLoading(false)
-        }
+    // "Aprovar"/"Recusar" são atalhos: levam à tela "Validar Baixa" da
+    // primeira (e única, na prática) baixa selecionada, onde a revisão
+    // item a item é obrigatória antes de qualquer decisão.
+    const handleIrParaValidacao = () => {
+        const [primeiraSelecionada] = selectedSolicitadas
+        if (!primeiraSelecionada) return
+        navigate(`/baixas-fisicas/${primeiraSelecionada}`)
     }
 
-    const handleRecusar = async () => {
-        if (selectedSolicitadas.length === 0) return
-        setActionLoading(true)
-        try {
-            await Promise.all(selectedSolicitadas.map(id => baixaFisicaService.recusar(id)))
-            setSelectedIds([])
-            fetchBaixas()
-        } catch {
-            alert("Erro ao recusar baixas.")
-        } finally {
-            setActionLoading(false)
-        }
-    }
-
-    function formatDateTimeBR(dateString: string): string {
-        if (!dateString) return ""
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return ""
-        const day = String(date.getDate()).padStart(2, "0")
-        const month = String(date.getMonth() + 1).padStart(2, "0")
-        const year = date.getFullYear()
-        const hours = String(date.getHours()).padStart(2, "0")
-        const minutes = String(date.getMinutes()).padStart(2, "0")
-        return `${day}/${month}/${year} - ${hours}:${minutes}`
+    // NOVO — leva para a tela de cadastro das informações básicas da
+    // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    const handleGerarNbbpm = () => {
+        if (selectedAceitas.length === 0) return
+        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas } })
     }
 
     const renderTableBody = () => {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-500">
+                    <td colSpan={6} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -225,14 +239,14 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-400">
+                    <td colSpan={6} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio"
+            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || b.status === "aceita"
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -269,7 +283,7 @@ export default function BaixasListPage() {
                     </td>
                     <td className="p-3 text-center">
                         <Link to={`/baixas-fisicas/${b.id}`}>
-                            <Button size="icon" variant="ghost">
+                            <Button size="icon" variant="ghost" aria-label="Visualizar">
                                 <Eye size={18} />
                             </Button>
                         </Link>
@@ -296,11 +310,12 @@ export default function BaixasListPage() {
                     Baixa Física de Bens Patrimoniais
                 </h1>
                 <div className="flex gap-3 items-center">
-                    <Button onClick={() => window.history.back()} className={ACTION_BUTTON_CLASS}>
+                    <Button onClick={() => globalThis.history.back()} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={16} />
                     </Button>
 
-                    {/* Botão "Solicitar" aparece para baixas "Em elaboração" selecionadas */}
+                    {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
+                        solicitante, em lote, sem alteração) */}
                     {selectedEmElaboracao.length > 0 && (
                         <Button
                             onClick={handleSolicitar}
@@ -311,23 +326,38 @@ export default function BaixasListPage() {
                         </Button>
                     )}
 
+                    {/* "Aprovar"/"Recusar" — atalho para a tela "Validar Baixa".
+                        Como o destino é uma única baixa, ambos os botões levam
+                        ao mesmo lugar: a primeira baixa "solicitada" selecionada. */}
                     {selectedSolicitadas.length > 0 && (
                         <>
                             <Button
-                                onClick={handleAprovar}
-                                disabled={actionLoading}
+                                onClick={handleIrParaValidacao}
                                 className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                                title="Abrir a tela de validação para aprovar"
                             >
-                                Aprovar ({selectedSolicitadas.length})
+                                Aprovar
                             </Button>
                             <Button
-                                onClick={handleRecusar}
-                                disabled={actionLoading}
+                                onClick={handleIrParaValidacao}
                                 className="h-10 px-6 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors"
+                                title="Abrir a tela de validação para recusar/solicitar correção"
                             >
-                                Recusar ({selectedSolicitadas.length})
+                                Recusar
                             </Button>
                         </>
+                    )}
+
+                    {/* NOVO — "Gerar NBBPM": disponível quando há Baixas com status
+                        Aprovado selecionadas. Leva à tela de cadastro das
+                        informações básicas da NBBPM consolidada. */}
+                    {selectedAceitas.length > 0 && (
+                        <Button
+                            onClick={handleGerarNbbpm}
+                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                        >
+                            Gerar NBBPM ({selectedAceitas.length})
+                        </Button>
                     )}
 
                     <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>

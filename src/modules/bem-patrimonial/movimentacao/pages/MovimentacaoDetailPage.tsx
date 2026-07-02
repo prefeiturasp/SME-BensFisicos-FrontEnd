@@ -1,8 +1,18 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, Loader2, Network } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  Download,
+  History,
+  Loader2,
+  Minus,
+  Network,
+  Pencil,
+} from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { useAuth } from '@/auth/useAuth'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -30,25 +40,79 @@ function formatDateTimeBR(dateString: string | null | undefined) {
   })
 }
 
+function resolveUoLabel(
+  unidade: MovimentacaoBemPatrimonialDetail['unidade_orcamentaria_origem'],
+) {
+  return `${unidade.codigo} - ${unidade.sigla || unidade.nome}`
+}
+
 function resolveUaLabel(
   unidade: MovimentacaoBemPatrimonialDetail['unidade_administrativa_origem'],
 ) {
   return `${unidade.codigo} - ${unidade.sigla || unidade.nome}`
 }
 
-function resolveSolicitante(
-  usuario: MovimentacaoBemPatrimonialDetail['solicitado_por'],
+function resolveUsuario(
+  usuario:
+    | MovimentacaoBemPatrimonialDetail['solicitado_por']
+    | MovimentacaoBemPatrimonialDetail['aprovado_por']
+    | MovimentacaoBemPatrimonialDetail['rejeitado_por']
+    | MovimentacaoBemPatrimonialDetail['cancelado_por'],
 ) {
+  if (!usuario) return '-'
   return usuario.nome_completo ?? usuario.username
+}
+
+function resolveResponsavelLabel(movimentacao: MovimentacaoBemPatrimonialDetail) {
+  if (movimentacao.aprovado_por) return 'Aprovado por'
+  if (movimentacao.rejeitado_por) return 'Rejeitado por'
+  if (movimentacao.cancelado_por) return 'Cancelado por'
+  return 'Aprovado por'
+}
+
+function resolveResponsavelValue(movimentacao: MovimentacaoBemPatrimonialDetail) {
+  return (
+    movimentacao.aprovado_por ??
+    movimentacao.rejeitado_por ??
+    movimentacao.cancelado_por ??
+    null
+  )
+}
+
+function DetailField(props: Readonly<{
+  label: string
+  children: ReactNode
+}>) {
+  const { label, children } = props
+
+  return (
+    <div className='space-y-1'>
+      <span className='text-sm font-semibold text-gray-700'>{label}</span>
+      <div className='text-sm text-gray-700'>{children}</div>
+    </div>
+  )
+}
+
+function ItemRow(props: Readonly<{ label: string }>) {
+  const { label } = props
+
+  return (
+    <div className='flex items-center justify-between px-1 py-1.5 text-sm text-gray-700'>
+      <span className='truncate pr-4'>{label}</span>
+      <ChevronDown className='size-4 shrink-0 text-gray-400' />
+    </div>
+  )
 }
 
 export default function MovimentacaoDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [movimentacao, setMovimentacao] = useState<MovimentacaoBemPatrimonialDetail | null>(
     null,
   )
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -83,118 +147,207 @@ export default function MovimentacaoDetailPage() {
 
   if (!movimentacao) return null
 
+  const isGestor = !!user?.is_gestor_patrimonio
+  const isOperador = !!user?.is_operador_inventario
+  const isSuperuser = !!user?.is_superuser
+  const isOwner = movimentacao.solicitado_por.id === user?.id
+  const canCancelMovimentacao =
+    movimentacao.status === 'enviada' &&
+    (isGestor || isSuperuser || (isOperador && isOwner))
+
+  const responsavelLabel = resolveResponsavelLabel(movimentacao)
+  const responsavelValue = resolveUsuario(resolveResponsavelValue(movimentacao))
+
+  async function handleAbrirDocumentoCimbpm() {
+    try {
+      const blob = await movimentacaoService.baixarDocumentoCimbpm(movimentacao.id)
+      const url = URL.createObjectURL(blob)
+
+      const link = document.createElement('a')
+      link.href = url
+      link.target = '_blank'
+      link.rel = 'noreferrer'
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Erro ao baixar documento CIMBPM'
+      toast.error(message || 'Erro ao baixar documento CIMBPM')
+    }
+  }
+
+  async function handleCancelar() {
+    if (!canCancelMovimentacao || actionLoading) return
+
+    setActionLoading(true)
+    try {
+      await movimentacaoService.cancelar(movimentacao.id)
+      toast.success(
+        `Movimentação #${String(movimentacao.id).padStart(4, '0')} cancelada com sucesso. Bens desbloqueados.`,
+      )
+      navigate('/movimentacoes')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao cancelar movimentação'
+      toast.error(message || 'Erro ao cancelar movimentação')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   return (
     <div className='space-y-6 p-8'>
       <AppBreadcrumb
         items={[
           { label: 'Bem Patrimonial', icon: Network },
           { label: 'Movimentações de Bem Patrimonial', to: '/movimentacoes' },
-          { label: 'Visualizar Movimentação', isActive: true },
+          { label: 'Visualizar Movimentação de Bem Patrimonial', isActive: true },
         ]}
       />
 
-      <div className='flex items-center justify-between'>
+      <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>
           Visualizar Movimentação de Bem Patrimonial
         </h1>
 
-        <div className='flex gap-3'>
+        <div className='flex flex-wrap items-center justify-end gap-3'>
+          <Button
+            type='button'
+            className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
+            disabled
+          >
+            <Pencil size={16} />
+            Salvar Edição
+          </Button>
+
+          <Button
+            type='button'
+            className={ACTION_BUTTON_CLASS}
+            disabled={!canCancelMovimentacao || actionLoading}
+            onClick={() => void handleCancelar()}
+          >
+            <Minus size={16} />
+            {actionLoading ? 'Cancelando...' : 'Cancelar'}
+          </Button>
+
+          {movimentacao.url_historico ? (
+            <Button asChild className={ACTION_BUTTON_CLASS}>
+              <a href={movimentacao.url_historico} target='_blank' rel='noreferrer'>
+                <History size={16} />
+                Histórico
+              </a>
+            </Button>
+          ) : (
+            <Button
+              type='button'
+              className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
+              disabled
+            >
+              <History size={16} />
+              Histórico
+            </Button>
+          )}
+
           <Button
             type='button'
             onClick={() => navigate('/movimentacoes')}
             className={ACTION_BUTTON_CLASS}
           >
-            <ArrowLeft size={16} className='mr-2' />
+            <ArrowLeft size={16} />
             Voltar
           </Button>
         </div>
       </div>
 
-      <Card className='space-y-6 p-6'>
-        <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>Status</span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
-              {movimentacao.status_display}
-            </div>
-          </div>
+      <Card className='overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm'>
+        <div className='flex items-center justify-between border-b border-gray-200 px-6 py-3'>
+          <span className='text-sm font-bold text-[#2F7D57]'>
+            Solicitação #{String(movimentacao.id).padStart(4, '0')}
+          </span>
+          <span className='text-sm font-semibold text-[#00703C]'>
+            Status: {movimentacao.status_display}
+          </span>
+        </div>
 
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>Atualizado em</span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
-              {formatDateTimeBR(movimentacao.atualizado_em)}
-            </div>
-          </div>
-
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>
-              Unidade Administrativa de Origem
-            </span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
-              {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
-            </div>
-          </div>
-
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>
-              Unidade Administrativa de Destino
-            </span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
-              {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
-            </div>
-          </div>
-
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>Solicitado por</span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
-              {resolveSolicitante(movimentacao.solicitado_por)}
-            </div>
-          </div>
-
-          <div className='space-y-2'>
-            <span className='text-sm font-semibold text-gray-700'>Número CIMBPM</span>
-            <div className='rounded-xs border border-gray-300 bg-gray-50 px-4 py-2 text-sm text-gray-700'>
+        <div className='divide-y divide-gray-100'>
+          <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
+            <DetailField label='Número CIMBPM'>
               {movimentacao.numero_cimbpm ?? '-'}
+            </DetailField>
+
+            <DetailField label='Documento CIMBPM'>
+              {movimentacao.url_documento_cimbpm ? (
+                <button
+                  type='button'
+                  onClick={() => void handleAbrirDocumentoCimbpm()}
+                  className='inline-flex items-center gap-2 text-[#0070C0] hover:underline'
+                >
+                  <Download className='size-4 shrink-0' aria-hidden='true' />
+                  Baixar Documento CIMBPM
+                </button>
+              ) : (
+                'Número CIMBPM não gerado'
+              )}
+            </DetailField>
+          </div>
+
+          <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
+            <DetailField label='Solicitado por'>
+              <span className='text-[#2F7D57]'>{resolveUsuario(movimentacao.solicitado_por)}</span>
+            </DetailField>
+
+            <DetailField label={responsavelLabel}>
+              <span className='text-[#2F7D57]'>{responsavelValue}</span>
+            </DetailField>
+          </div>
+
+          <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
+            <DetailField label='Unidade orçamentária de origem'>
+              {resolveUoLabel(movimentacao.unidade_orcamentaria_origem)}
+            </DetailField>
+
+            <DetailField label='Unidade administrativa de origem'>
+              {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
+            </DetailField>
+          </div>
+
+          <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
+            <DetailField label='Unidade orçamentária de destino'>
+              {resolveUoLabel(movimentacao.unidade_orcamentaria_destino)}
+            </DetailField>
+
+            <DetailField label='Unidade administrativa de destino'>
+              {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
+            </DetailField>
+          </div>
+
+          <div className='space-y-1.5 px-6 py-2.5'>
+            <span className='text-sm font-semibold text-gray-700'>Observação</span>
+            <div className='min-h-16 text-sm text-gray-700'>
+              {movimentacao.observacao || '-'}
             </div>
           </div>
-        </div>
 
-        <div className='space-y-2'>
-          <span className='text-sm font-semibold text-gray-700'>Observação</span>
-          <div className='min-h-28 rounded-xs border border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700'>
-            {movimentacao.observacao || '-'}
-          </div>
-        </div>
+          <div className='space-y-1.5 px-6 py-2.5'>
+            <h2 className='text-sm font-semibold text-[#00703C]'>Itens de Movimentação</h2>
 
-        <div className='space-y-2'>
-          <h2 className='text-sm font-semibold text-[#00703C]'>Itens de Movimentação</h2>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead className='bg-[#F5F5F5] border-b'>
-                <tr className='text-left text-gray-600 font-semibold'>
-                  <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Nome do Bem</th>
-                  <th className='p-3'>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movimentacao.itens.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className='py-10 text-center text-gray-400'>
-                      Nenhum item encontrado.
-                    </td>
-                  </tr>
-                ) : (
-                  movimentacao.itens.map((item) => (
-                    <tr key={item.id ?? item.bem.id} className='border-b hover:bg-gray-50'>
-                      <td className='p-3'>{item.bem.numero_patrimonial ?? '-'}</td>
-                      <td className='p-3'>{item.bem.nome}</td>
-                      <td className='p-3'>{item.bem.status}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            {movimentacao.itens.length === 0 ? (
+              <div className='text-sm text-gray-400'>
+                Nenhum item encontrado.
+              </div>
+            ) : (
+              <div className='space-y-1'>
+                {movimentacao.itens.map((item) => (
+                  <ItemRow
+                    key={item.id ?? item.bem.id}
+                    label={`${item.bem.numero_patrimonial ?? '-'} ${item.bem.nome}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </Card>

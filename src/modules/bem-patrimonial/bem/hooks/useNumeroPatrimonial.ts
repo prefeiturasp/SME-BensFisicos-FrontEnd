@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react'
 
+function onlyDigits(str: string) {
+  return (str || '').replaceAll(/\D/g, '')
+}
+
+function formatNovoPadrao(digits: string) {
+  const d = digits.slice(0, 13)
+  const p1 = d.slice(0, 3)
+  const p2 = d.slice(3, 12)
+  const p3 = d.slice(12, 13)
+
+  if (d.length <= 3) return p1
+  if (d.length <= 12) return `${p1}.${p2}`
+  return `${p1}.${p2}-${p3}`
+}
+
 interface NumeroPatrimonialProps {
   valor: string
   formatoAntigoInicial: boolean
@@ -25,21 +40,6 @@ export function useNumeroPatrimonial({
     setFormatoAntigo(formato)
     setSemNumeracao(sem)
   }, [formatoAntigoInicial, semNumeracaoInicial])
-
-  function onlyDigits(str: string) {
-    return (str || '').replace(/\D/g, '')
-  }
-
-  function formatNovoPadrao(digits: string) {
-    const d = digits.slice(0, 13)
-    const p1 = d.slice(0, 3)
-    const p2 = d.slice(3, 12)
-    const p3 = d.slice(12, 13)
-
-    if (d.length <= 3) return p1
-    if (d.length <= 12) return `${p1}.${p2}`
-    return `${p1}.${p2}-${p3}`
-  }
 
   function applyMask(input: string) {
     if (formatoAntigo) return input

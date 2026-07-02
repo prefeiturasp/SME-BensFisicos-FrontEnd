@@ -119,4 +119,42 @@ export const movimentacaoService = {
       handleApiError(error, 'Erro ao carregar movimentação')
     }
   },
+
+  async baixarDocumentoCimbpm(id: number): Promise<Blob> {
+    try {
+      const { data } = await api.get(`/movimentacoes/${id}/documento-cimbpm/`, {
+        responseType: 'blob',
+      })
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao baixar documento CIMBPM')
+    }
+  },
+
+  async aprovar(id: number): Promise<MovimentacaoBemPatrimonialDetail> {
+    try {
+      const { data } = await api.post(`/movimentacoes/${id}/aprovar/`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao aprovar movimentação')
+    }
+  },
+
+  async rejeitar(id: number): Promise<MovimentacaoBemPatrimonialDetail> {
+    try {
+      const { data } = await api.post(`/movimentacoes/${id}/rejeitar/`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao rejeitar movimentação')
+    }
+  },
+
+  async cancelar(id: number): Promise<MovimentacaoBemPatrimonialDetail> {
+    try {
+      const { data } = await api.post(`/movimentacoes/${id}/cancelar/`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao cancelar movimentação')
+    }
+  },
 }

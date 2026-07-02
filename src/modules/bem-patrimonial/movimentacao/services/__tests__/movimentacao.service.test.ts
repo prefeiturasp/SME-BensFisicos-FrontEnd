@@ -168,6 +168,39 @@ describe('movimentacaoService', () => {
     expect(result).toEqual({ id: 9, status: 'enviada' })
   })
 
+  it('deve aprovar uma movimentação pelo endpoint correto', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { id: 9, status: 'aceita' },
+    })
+
+    const result = await movimentacaoService.aprovar(9)
+
+    expect(api.post).toHaveBeenCalledWith('/movimentacoes/9/aprovar/')
+    expect(result).toEqual({ id: 9, status: 'aceita' })
+  })
+
+  it('deve rejeitar uma movimentação pelo endpoint correto', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { id: 9, status: 'rejeitada' },
+    })
+
+    const result = await movimentacaoService.rejeitar(9)
+
+    expect(api.post).toHaveBeenCalledWith('/movimentacoes/9/rejeitar/')
+    expect(result).toEqual({ id: 9, status: 'rejeitada' })
+  })
+
+  it('deve cancelar uma movimentação pelo endpoint correto', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { id: 9, status: 'cancelada' },
+    })
+
+    const result = await movimentacaoService.cancelar(9)
+
+    expect(api.post).toHaveBeenCalledWith('/movimentacoes/9/cancelar/')
+    expect(result).toEqual({ id: 9, status: 'cancelada' })
+  })
+
   it('deve tratar erro ao listar opções de cadastro', async () => {
     vi.mocked(api.get).mockRejectedValue(
       makeAxiosError(400, { detail: 'Falha ao carregar opções' }),
@@ -184,6 +217,12 @@ describe('movimentacaoService', () => {
     await expect(movimentacaoService.retrieve(9)).rejects.toThrow(
       'Erro de conexão com o servidor.',
     )
+  })
+
+  it('deve tratar erro ao aprovar uma movimentação', async () => {
+    vi.mocked(api.post).mockRejectedValue(makeAxiosError(400, { detail: 'Não pode aprovar' }))
+
+    await expect(movimentacaoService.aprovar(9)).rejects.toThrow('Não pode aprovar')
   })
 
   it('deve lançar mensagem de detalhe da API ao falhar create', async () => {

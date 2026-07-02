@@ -46,8 +46,8 @@ const menuItems = [
     icon: ListOrdered,
     items: [
       {
-        title: 'Cadastro de Inventário',
-        url: '/inventarios',
+        title: 'Gerenciamento de Conciliações',
+        url: '/conciliacoes',
       },
       {
         title: 'Parâmetros de Conciliação Anual',
@@ -86,7 +86,7 @@ export function AppSidebar() {
   const isCollapsed = state === 'collapsed';
   const canAccessParametros = canAccessParametrosConciliacao(user);
   const visibleMenuItems = menuItems.map((item) => {
-    if (item.items.some((subItem) => subItem.url === '/inventarios')) {
+    if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
       return {
         ...item,
         items: item.items.filter(
@@ -123,7 +123,16 @@ export function AppSidebar() {
           'flex h-[88px] bg-[#267A55] items-center justify-center p-5',
         )}
       >
-        {!isCollapsed ? (
+        {isCollapsed ? (
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={toggleSidebar}
+            className='text-white hover:bg-white/10 gap-4'
+          >
+            <Menu className='size-6' />
+          </Button>
+        ) : (
           <div className='flex justify-between items-start w-full'>
             <span className='text-white font-bold text-base leading-tight max-w-[160px]'>
               Sistema de Gestão de Bens Patrimoniais
@@ -137,15 +146,6 @@ export function AppSidebar() {
               <X className='size-6' />
             </Button>
           </div>
-        ) : (
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={toggleSidebar}
-            className='text-white hover:bg-white/10 gap-4'
-          >
-            <Menu className='size-6' />
-          </Button>
         )}
       </SidebarHeader>
 
