@@ -84,7 +84,8 @@ vi.mock("@/components/AppBreadcrumb", () => ({
 // ===================== FACTORIES =====================
 
 function makeBem(overrides: Partial<Bem> = {}): Bem {
-    return {
+    // Mock de um bem patrimonial simples para testes
+    return { // NOSONAR
         id: 1,
         status: "aprovado",
         status_display: "Aprovado",
@@ -95,8 +96,10 @@ function makeBem(overrides: Partial<Bem> = {}): Bem {
         unidade_administrativa_codigo: "001",
         unidade_administrativa_nome: "Unidade 01",
         unidade_orcamentaria_nome: "UO-01",
+        numero_formato_antigo: false,
+        sem_numeracao: false,
         ...overrides,
-    }
+    } as Bem
 }
 
 function makeBaixaDetail(overrides: Partial<BaixaFisicaDetail> = {}): BaixaFisicaDetail {

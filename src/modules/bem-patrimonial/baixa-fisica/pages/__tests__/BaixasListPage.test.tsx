@@ -200,6 +200,23 @@ describe("BaixasListPage", () => {
         it("desabilita checkbox para status não selecionável", async () => {
             vi.mocked(baixaFisicaService.list).mockResolvedValue(
                 makePaginatedResponse([
+                    makeBaixa({ status: "recusada", status_display: "Recusada" }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("Recusada")).toBeInTheDocument()
+            })
+
+            const checkboxes = screen.getAllByRole("checkbox")
+            expect(checkboxes[1]).toBeDisabled()
+        })
+
+        it("habilita checkbox para status aceita (selecionável para geração de NBBPM)", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
                     makeBaixa({ status: "aceita", status_display: "Aceita" }),
                 ])
             )
@@ -207,11 +224,13 @@ describe("BaixasListPage", () => {
             renderPage()
 
             await waitFor(() => {
-                expect(screen.getByText("Aceita")).toBeInTheDocument()
+                expect(
+                    screen.getByText("Aceita", { selector: "span" })
+                ).toBeInTheDocument()
             })
 
             const checkboxes = screen.getAllByRole("checkbox")
-            expect(checkboxes[1]).toBeDisabled()
+            expect(checkboxes[1]).not.toBeDisabled()
         })
     })
 
@@ -372,6 +391,37 @@ describe("BaixasListPage", () => {
             fireEvent.click(screen.getByText("Adicionar Baixa"))
 
             expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/novo")
+        })
+
+        it("exibe o botão Gerar NBBPM ao selecionar baixas aprovadas e navega com os IDs selecionados", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita" }),
+                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita" }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(2)
+            })
+
+            expect(screen.queryByText(/Gerar NBBPM/)).not.toBeInTheDocument()
+
+            const checkboxes = screen.getAllByRole("checkbox")
+            fireEvent.click(checkboxes[1])
+            fireEvent.click(checkboxes[2])
+
+            expect(screen.getByText("Gerar NBBPM (2)")).toBeInTheDocument()
+
+            fireEvent.click(screen.getByText("Gerar NBBPM (2)"))
+
+            expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/gerar-nbbpm", {
+                state: { baixaIds: [10, 11] },
+            })
         })
     })
 

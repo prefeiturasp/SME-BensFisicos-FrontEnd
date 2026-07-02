@@ -113,6 +113,19 @@ export interface BaixaFisicaSolicitarCorrecaoPayload {
     motivo: string
 }
 
+/**
+ * NOVO — Payload do endpoint POST /baixa-fisica/gerar-nbbpm-lote/.
+ * Usado na tela "Gerar NBBPM", acionada a partir da seleção em lote de
+ * Baixas Físicas com status Aprovado (aceita) na listagem.
+ */
+export interface GerarNbbpmLotePayload {
+    baixas: number[]
+    numero_processo_baixa: string
+    data_autorizacao: string
+    responsavel: string
+    numero_processo_destinacao_final?: string
+}
+
 // ============================================================================
 // PARAMS
 // ============================================================================
