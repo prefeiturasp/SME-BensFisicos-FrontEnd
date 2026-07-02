@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { startOfDay } from 'date-fns';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -22,10 +23,12 @@ function TestForm({
   onSubmit = vi.fn(),
   unidadeAdministrativaLabel = '00.00.00.002 - COTIC',
   tipoConciliacaoLabel = 'Eventual',
+  isDateDisabled,
 }: Readonly<{
   onSubmit?: (values: ConciliacaoFormData) => void | Promise<void>;
   unidadeAdministrativaLabel?: string;
   tipoConciliacaoLabel?: string;
+  isDateDisabled?: (date: Date) => boolean;
 }>) {
   const form = useForm<ConciliacaoFormData>({
     resolver: zodResolver(conciliacaoFormSchema),
@@ -39,6 +42,7 @@ function TestForm({
       unidadeAdministrativaLabel={unidadeAdministrativaLabel}
       tipoConciliacaoLabel={tipoConciliacaoLabel}
       submitting={false}
+      isDateDisabled={isDateDisabled}
       onSubmit={onSubmit}
     />
   );
@@ -91,5 +95,17 @@ describe('ConciliacaoForm', () => {
 
     const uaInput = screen.getByLabelText('Unidade Administrativa') as HTMLInputElement;
     expect(uaInput.placeholder).toBe('Não disponível');
+  });
+
+  it('desabilita o botao Hoje quando isDateDisabled bloqueia a data atual', async () => {
+    render(
+      <TestForm isDateDisabled={(date) => date >= startOfDay(new Date())} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Selecionar data' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Hoje' })).toBeDisabled();
+    });
   });
 });
