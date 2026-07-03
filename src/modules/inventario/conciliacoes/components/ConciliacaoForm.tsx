@@ -1,5 +1,6 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import type { DatePickerDisabled } from '@/components/ui/date-picker';
 import { CampoReadonly } from './CampoReadonly';
 import { DatepickerConciliacao } from './DatepickerConciliacao';
 import type { ConciliacaoFormData } from '../validators/conciliacao-form.schema';
@@ -10,6 +11,7 @@ interface ConciliacaoFormProps {
   tipoConciliacaoLabel: string;
   submitting: boolean;
   disabled?: boolean;
+  isDateDisabled?: (date: Date) => boolean;
   onSubmit: (values: ConciliacaoFormData) => void | Promise<void>;
 }
 
@@ -21,9 +23,12 @@ export function ConciliacaoForm({
   tipoConciliacaoLabel,
   submitting,
   disabled = false,
+  isDateDisabled,
   onSubmit,
 }: Readonly<ConciliacaoFormProps>) {
   const rootError = form.formState.errors.root?.serverError?.message;
+  const periodoFinalDisabled: DatePickerDisabled =
+    disabled || submitting ? true : isDateDisabled ?? false;
 
   return (
     <Form {...form}>
@@ -56,7 +61,7 @@ export function ConciliacaoForm({
                     label='Período Final'
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={disabled || submitting}
+                    disabled={periodoFinalDisabled}
                     invalid={fieldState.invalid}
                     helperText={TOOLTIP_PERIODO_FINAL}
                   />

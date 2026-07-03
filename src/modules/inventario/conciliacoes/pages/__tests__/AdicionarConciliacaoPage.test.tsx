@@ -1,4 +1,5 @@
 import { AxiosError, AxiosHeaders } from 'axios';
+import { format, startOfDay, subDays } from 'date-fns';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,6 +34,9 @@ const toastErrorMock = vi.fn();
 const hookState = {
   isPending: false,
 };
+
+const YESTERDAY_DISPLAY = format(subDays(startOfDay(new Date()), 1), 'dd/MM/yyyy');
+const YESTERDAY_ISO = format(subDays(startOfDay(new Date()), 1), 'yyyy-MM-dd');
 
 function buildAxiosError(status: number, data: unknown, message = 'Request failed') {
   const error = new AxiosError(message);
@@ -83,7 +87,7 @@ vi.mock('sonner', () => ({
 
 function fillPeriodoFinal() {
   fireEvent.change(screen.getByLabelText('Período Final'), {
-    target: { value: '31/12/2025' },
+    target: { value: YESTERDAY_DISPLAY },
   });
 }
 
@@ -161,7 +165,7 @@ describe('AdicionarConciliacaoPage', () => {
     await waitFor(() => {
       expect(createMock).toHaveBeenCalledWith({
         unidade_administrativa: 7,
-        periodo_final: '2025-12-31',
+        periodo_final: YESTERDAY_ISO,
       });
       expect(toastSuccessMock).toHaveBeenCalledWith(
         'Cadastro realizado com sucesso!',

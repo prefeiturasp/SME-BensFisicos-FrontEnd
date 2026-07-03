@@ -1,21 +1,34 @@
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar, type DatePickerDisabled } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+export type { DatePickerDisabled } from '@/components/ui/calendar';
 
 export interface DatePickerProps {
   value?: Date;
   onChange?: (date: Date | undefined) => void;
   placeholder?: string;
-  disabled?: boolean;
+  disabled?: DatePickerDisabled;
   invalid?: boolean;
   className?: string;
   ariaLabel?: string;
   id?: string;
   showTodayButton?: boolean;
+}
+
+function isDateBlockedByPredicate(disabled: DatePickerDisabled, date: Date): boolean {
+  if (disabled === undefined || disabled === false) return false;
+  if (disabled === true) return true;
+  if (typeof disabled === 'function') return disabled(date);
+  if (disabled instanceof Date) return isSameDay(date, disabled);
+  if (Array.isArray(disabled)) {
+    return disabled.some((d) => (d instanceof Date ? isSameDay(d, date) : false));
+  }
+  return false;
 }
 
 export function DatePicker({
@@ -31,6 +44,7 @@ export function DatePicker({
 }: Readonly<DatePickerProps>) {
   const [open, setOpen] = React.useState(false);
   const labelText = value ? format(value, 'dd/MM/yyyy', { locale: ptBR }) : placeholder;
+  const isTodayBlocked = isDateBlockedByPredicate(disabled, new Date());
 
   const handleSelect = (date: Date | undefined) => {
     onChange?.(date);
@@ -38,6 +52,7 @@ export function DatePicker({
   };
 
   const handleTodayClick = () => {
+    if (isTodayBlocked) return;
     onChange?.(new Date());
     setOpen(false);
   };
@@ -48,7 +63,7 @@ export function DatePicker({
         <button
           id={id}
           type='button'
-          disabled={disabled}
+          disabled={disabled === true}
           aria-label={ariaLabel}
           aria-invalid={invalid || undefined}
           className={cn(
@@ -69,7 +84,11 @@ export function DatePicker({
             <button
               type='button'
               onClick={handleTodayClick}
-              className='cursor-pointer text-sm font-semibold text-[#00703C] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F7D57]/30 rounded-sm'
+              disabled={isTodayBlocked}
+              className={cn(
+                'cursor-pointer text-sm font-semibold text-[#00703C] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F7D57]/30 rounded-sm',
+                isTodayBlocked && 'cursor-not-allowed opacity-50 hover:no-underline',
+              )}
             >
               Hoje
             </button>
