@@ -19,7 +19,10 @@ const SITUACOES = [
 ] as const;
 
 const TRIGGER_CLASS =
-  'inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/40 data-[state=open]:border-gray-400 data-[state=open]:bg-gray-50';
+  'group inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/40 data-[state=open]:border-gray-400 data-[state=open]:bg-gray-50';
+
+const CHEVRON_CLASS =
+  'transition-transform duration-200 group-data-[state=open]:rotate-180';
 
 const CONTENT_CLASS = 'w-56 rounded-md border border-gray-200 bg-white p-3 text-gray-700 shadow-lg';
 
@@ -47,7 +50,7 @@ export function ConciliacoesItensExpander({
           data-testid='conciliacoes-itens-trigger'
         >
           <span>{totalItens} itens</span>
-          <ChevronDown size={14} />
+          <ChevronDown size={14} className={CHEVRON_CLASS} />
         </button>
       </PopoverTrigger>
 
