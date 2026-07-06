@@ -10,7 +10,7 @@ import { ConciliacaoStatusBadge } from './ConciliacaoStatusBadge';
 import { ConciliacaoTipoBadge } from './ConciliacaoTipoBadge';
 import type { Conciliacao, ConciliacaoSortableField } from '../types/conciliacoes.types';
 
-export type { ConciliacaoSortableField };
+export type { ConciliacaoSortableField } from '../types/conciliacoes.types';
 
 interface Props {
   conciliacoes: Conciliacao[];
@@ -69,9 +69,11 @@ export function ConciliacoesTable({
   const [openConciliacaoId, setOpenConciliacaoId] = useState<number | null>(null);
 
   const handleOpenChange = useCallback((conciliacaoId: number, open: boolean) => {
-    setOpenConciliacaoId((current) =>
-      open ? conciliacaoId : current === conciliacaoId ? null : current,
-    );
+    setOpenConciliacaoId((current) => {
+      if (open) return conciliacaoId;
+      if (current === conciliacaoId) return null;
+      return current;
+    });
   }, []);
 
   const columns = useMemo<ReadonlyArray<UnidadesListTableColumn<Conciliacao>>>(
