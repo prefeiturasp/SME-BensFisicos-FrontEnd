@@ -6,10 +6,12 @@ import { conciliacoesService } from '../conciliacoes.service';
 
 vi.mock('@/api/http', () => ({
   api: {
+    get: vi.fn(),
     post: vi.fn(),
   },
 }));
 
+const mockedGet = api.get as unknown as MockInstance;
 const mockedPost = api.post as unknown as MockInstance;
 
 const conciliacao = {
@@ -27,6 +29,14 @@ const conciliacao = {
   status: 'em_aberto' as const,
   status_display: 'Aberta',
   total_itens: 13,
+  resumo_situacoes: {
+    encontrados: 9,
+    nao_encontrados: 1,
+    divergentes: 1,
+    em_processo_baixa: 0,
+    baixa_fisica: 2,
+    encontrados_com_divergencia: 0,
+  },
   ano_vigencia: 2025,
   criado_em: '2025-01-15T10:00:00Z',
   criado_por: 5,
@@ -39,7 +49,7 @@ const conciliacao = {
   esta_aberto: true,
 };
 
-describe('conciliacoesService', () => {
+describe('conciliacoesService.create', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -119,5 +129,111 @@ describe('conciliacoesService', () => {
         periodo_final: '2025-12-31',
       }),
     ).rejects.toThrow(/cadastrar concilia/i);
+  });
+});
+
+describe('conciliacoesService.list', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('envia filtros convertidos para os nomes esperados pela API', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 1, next: null, previous: null, results: [conciliacao] },
+    });
+
+    await expect(
+      conciliacoesService.list({
+        page: 2,
+        pageSize: 10,
+        search: 'CONC-2025',
+        anoVigencia: '2025',
+        tipo: 'eventual',
+        status: 'em_aberto',
+        ordering: '-criado_em',
+      }),
+    ).resolves.toEqual({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [conciliacao],
+    });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/', {
+      params: {
+        page: 2,
+        page_size: 10,
+        search: 'CONC-2025',
+        ano_vigencia: '2025',
+        tipo: 'eventual',
+        status: 'em_aberto',
+        ordering: '-criado_em',
+      },
+    });
+  });
+
+  it('omite filtros quando o valor e vazio ou "todos"', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await expect(
+      conciliacoesService.list({
+        search: '   ',
+        anoVigencia: '',
+        tipo: 'todos',
+        status: 'todos',
+      }),
+    ).resolves.toEqual({ count: 0, next: null, previous: null, results: [] });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/', {
+      params: {},
+    });
+  });
+
+  it('faz requisicao sem parametros quando nenhum filtro e informado', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await conciliacoesService.list();
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/', {
+      params: {},
+    });
+  });
+
+  it('repassa detalhe de erro retornado pela API', async () => {
+    const error = new AxiosError('Forbidden', '403', undefined, undefined, {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Sem permissao para listar conciliacoes.' },
+    });
+    mockedGet.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.list()).rejects.toThrow(
+      'Sem permissao para listar conciliacoes.',
+    );
+  });
+
+  it('converte erro de conexao em mensagem amigavel', async () => {
+    mockedGet.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(conciliacoesService.list()).rejects.toThrow(/servidor/);
+  });
+
+  it('usa mensagem padrao para erros 500 sem detalhe', async () => {
+    const error = new AxiosError('Server Error', '500', undefined, undefined, {
+      status: 500,
+      statusText: 'Server Error',
+      headers: {},
+      config: {} as never,
+      data: {},
+    });
+    mockedGet.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.list()).rejects.toThrow(/listar concilia/i);
   });
 });
