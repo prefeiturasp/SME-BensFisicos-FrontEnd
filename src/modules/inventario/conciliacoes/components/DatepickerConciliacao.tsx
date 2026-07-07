@@ -1,5 +1,5 @@
 import { CircleHelp } from 'lucide-react';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePicker, type DatePickerDisabled } from '@/components/ui/date-picker';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +32,7 @@ interface DatepickerConciliacaoProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  disabled?: boolean;
+  disabled?: DatePickerDisabled;
   invalid?: boolean;
   ariaLabel?: string;
   placeholder?: string;
