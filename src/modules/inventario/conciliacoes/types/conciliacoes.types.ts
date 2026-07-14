@@ -75,3 +75,83 @@ export interface ConciliacoesListParams {
   status?: ConciliacaoStatusFilter;
   ordering?: string;
 }
+
+export type ConciliacaoItemSituacao =
+  | 'encontrado_sem_divergencia'
+  | 'encontrado'
+  | 'nao_encontrado'
+  | 'divergente'
+  | 'em_processo_de_baixa_fisica'
+  | 'baixa_fisica';
+
+export type ConciliacaoItemSituacaoFilter = 'todos' | ConciliacaoItemSituacao;
+
+export type ConciliacaoItemSortableField =
+  | 'id'
+  | 'atualizado_em'
+  | 'situacao'
+  | 'bem__numero_patrimonial'
+  | 'bem__nome';
+
+export interface ConciliacaoItemBem {
+  id: number;
+  numero_patrimonial: string;
+  nome: string;
+  descricao: string;
+  marca: string;
+  modelo: string;
+  valor_unitario: string;
+  status: string;
+  localizacao: string;
+  bloqueado_conciliacao: boolean;
+}
+
+export interface ConciliacaoItem {
+  id: number;
+  conciliacao: number;
+  conciliacao_numero: string;
+  conciliacao_status: ConciliacaoStatus;
+  unidade_administrativa: number;
+  unidade_administrativa_sigla: string;
+  bem: ConciliacaoItemBem;
+  situacao: ConciliacaoItemSituacao;
+  situacao_display: string;
+  observacao: string;
+  divergencia: string;
+  tem_ocorrencia: boolean;
+  permite_registrar_ocorrencia: boolean;
+  atualizado_por: number | null;
+  atualizado_por_nome: string;
+  atualizado_em: string;
+}
+
+export interface PaginatedConciliacaoItens {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: ConciliacaoItem[];
+}
+
+export interface ConciliacaoItensListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  numeroPatrimonial?: string;
+  nome?: string;
+  situacao?: ConciliacaoItemSituacaoFilter;
+  ordering?: string;
+}
+
+export interface ConciliacaoHistoricoAcao {
+  campo: string;
+  valor_antigo: string;
+  valor_novo: string;
+  justificativa: string;
+}
+
+export interface ConciliacaoHistoricoGrupo {
+  alterado_em: string;
+  alterado_por: number;
+  alterado_por_nome: string;
+  acoes: ConciliacaoHistoricoAcao[];
+}
