@@ -22,6 +22,7 @@ import BaixasListPage from '@/modules/bem-patrimonial/baixa-fisica/pages/BaixasL
 // Módulo: Inventário
 import AdicionarConciliacaoPage from '@/modules/inventario/conciliacoes/pages/AdicionarConciliacaoPage';
 import GerenciamentoConciliacoesListPage from '@/modules/inventario/conciliacoes/pages/GerenciamentoConciliacoesListPage';
+import VisualizarConciliacaoPage from '@/modules/inventario/conciliacoes/pages/VisualizarConciliacaoPage';
 import ParametrosConciliacaoAnualListPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametrosConciliacaoAnualListPage';
 import ParametroConciliacaoAnualFormPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametroConciliacaoAnualFormPage';
 
@@ -86,6 +87,7 @@ export default function AppRoutes() {
           {/* Módulo: Inventário */}
           <Route path='/conciliacoes' element={<GerenciamentoConciliacoesListPage />} />
           <Route path='/conciliacoes/novo' element={<AdicionarConciliacaoPage />} />
+          <Route path='/conciliacoes/:id' element={<VisualizarConciliacaoPage />} />
           <Route
             path='/parametros-conciliacao-anual'
             element={<ParametrosConciliacaoAnualListPage />}
