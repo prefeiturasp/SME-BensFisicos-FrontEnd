@@ -198,11 +198,11 @@ function VisualizarConciliacaoContent() {
     }
   }
 
-  const finalizarErrorMessage = !finalizarMutation.isError
-    ? null
-    : finalizarMutation.error instanceof Error
-      ? finalizarMutation.error.message
-      : 'Erro ao finalizar conciliação.';
+  const finalizarErrorMessage = (() => {
+    if (!finalizarMutation.isError) return null;
+    if (finalizarMutation.error instanceof Error) return finalizarMutation.error.message;
+    return 'Erro ao finalizar conciliação.';
+  })();
 
   return (
     <div className='space-y-4 p-8' data-testid='visualizar-conciliacao-page'>
