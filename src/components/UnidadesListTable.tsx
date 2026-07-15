@@ -32,6 +32,8 @@ interface UnidadesListTableProps<TItem, TField extends string> {
   onView: (item: TItem) => void;
   getRowKey: (item: TItem) => number | string;
   getViewAriaLabel: (item: TItem) => string;
+  renderActions?: (item: TItem) => ReactNode;
+  hideDefaultActions?: boolean;
 }
 
 const ACTIVE_PAGE_CLASS = 'border-[#00703C] bg-[#00703C] text-white hover:bg-[#00703C]';
@@ -52,7 +54,25 @@ export function UnidadesListTable<TItem, TField extends string>({
   onView,
   getRowKey,
   getViewAriaLabel,
+  renderActions,
+  hideDefaultActions = false,
 }: Readonly<UnidadesListTableProps<TItem, TField>>) {
+  const renderActionsCell = (item: TItem): ReactNode => {
+    if (renderActions) return renderActions(item);
+    if (hideDefaultActions) return null;
+    return (
+      <Button
+        type='button'
+        size='icon'
+        variant='ghost'
+        onClick={() => onView(item)}
+        aria-label={getViewAriaLabel(item)}
+      >
+        <Eye size={18} className='text-[#00703C]' />
+      </Button>
+    );
+  };
+
   return (
     <div className='space-y-4'>
       <p className='text-sm font-semibold text-[#00703C]'>{title}</p>
@@ -112,17 +132,7 @@ export function UnidadesListTable<TItem, TField extends string>({
                     </td>
                   ))}
                   <td className='p-3'>
-                    <div className='flex items-center justify-center'>
-                      <Button
-                        type='button'
-                        size='icon'
-                        variant='ghost'
-                        onClick={() => onView(item)}
-                        aria-label={getViewAriaLabel(item)}
-                      >
-                        <Eye size={18} className='text-[#00703C]' />
-                      </Button>
-                    </div>
+                    <div className='flex items-center justify-center'>{renderActionsCell(item)}</div>
                   </td>
                 </tr>
               ))}
