@@ -51,7 +51,7 @@ export interface BemListParams {
   unidade_administrativa?: string | number
   unidade_orcamentaria?: string | number
   busca_geral_uos?: boolean
-  baixados_mais_de_um_periodo?: boolean
+  bens_baixados?: boolean
   ordering?: string
 }
 
@@ -89,8 +89,8 @@ export const bemService = {
 
       if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
 
-      if (params.baixados_mais_de_um_periodo)
-        query.append('baixados_mais_de_um_periodo', String(params.baixados_mais_de_um_periodo))
+      if (params.bens_baixados)
+        query.append('bens_baixados', String(params.bens_baixados))
 
       if (params.ordering) query.append('ordering', params.ordering)
 

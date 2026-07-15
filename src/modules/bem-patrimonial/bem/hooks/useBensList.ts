@@ -24,9 +24,9 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [escopoFilter, setEscopoFilter] = useState<string>('todas')
-  const [baixadosAntigos, setBaixadosAntigos] = useState(() => {
+  const [bensBaixados, setBensBaixados] = useState(() => {
     if (!persistKey) return false
-    return parseBool(localStorage.getItem(`${persistKey}:baixadosAntigos`))
+    return parseBool(localStorage.getItem(`${persistKey}:bensBaixados`))
   })
   const [buscaGeralUos, setBuscaGeralUos] = useState(() => {
     if (!persistKey) return false
@@ -61,7 +61,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
             ? escopoFilter.replace('uo:', '')
             : undefined,
         busca_geral_uos: buscaGeralUos || undefined,
-        baixados_mais_de_um_periodo: baixadosAntigos || undefined,
+        bens_baixados: bensBaixados || undefined,
         ordering,
       })
 
@@ -72,7 +72,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, escopoFilter, baixadosAntigos, buscaGeralUos, ordering])
+  }, [page, search, statusFilter, escopoFilter, bensBaixados, buscaGeralUos, ordering])
 
   useEffect(() => {
     fetchData()
@@ -80,14 +80,14 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
 
   useEffect(() => {
     if (!persistKey) return
-    setBaixadosAntigos(parseBool(localStorage.getItem(`${persistKey}:baixadosAntigos`)))
+    setBensBaixados(parseBool(localStorage.getItem(`${persistKey}:bensBaixados`)))
     setBuscaGeralUos(parseBool(localStorage.getItem(`${persistKey}:buscaGeralUos`)))
   }, [persistKey])
 
   useEffect(() => {
     if (!persistKey) return
-    localStorage.setItem(`${persistKey}:baixadosAntigos`, String(baixadosAntigos))
-  }, [persistKey, baixadosAntigos])
+    localStorage.setItem(`${persistKey}:bensBaixados`, String(bensBaixados))
+  }, [persistKey, bensBaixados])
 
   useEffect(() => {
     if (!persistKey) return
@@ -130,7 +130,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     searchInput,
     statusFilter,
     escopoFilter,
-    baixadosAntigos,
+    bensBaixados,
     buscaGeralUos,
     ordering,
 
@@ -138,7 +138,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     setSearchInput,
     setStatusFilter,
     setEscopoFilter,
-    setBaixadosAntigos,
+    setBensBaixados,
     setBuscaGeralUos,
     setOrdering,
     toggleSelect,

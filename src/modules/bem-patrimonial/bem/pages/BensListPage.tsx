@@ -49,14 +49,14 @@ export default function BensListPage() {
     searchInput,
     statusFilter,
     escopoFilter,
-    baixadosAntigos,
+    bensBaixados,
     buscaGeralUos,
     ordering,
     setPage,
     setSearchInput,
     setStatusFilter,
     setEscopoFilter,
-    setBaixadosAntigos,
+    setBensBaixados,
     setBuscaGeralUos,
     setOrdering,
     toggleSelect,
@@ -259,17 +259,17 @@ export default function BensListPage() {
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
-                  id="baixados-antigos"
+                  id="bens-baixados"
                   type="checkbox"
-                  checked={baixadosAntigos}
+                  checked={bensBaixados}
                   onChange={e => {
-                    setBaixadosAntigos(e.target.checked)
+                    setBensBaixados(e.target.checked)
                     setPage(1)
                   }}
                   className="h-4 w-4 accent-[#00703C]"
                 />
                 <span>
-                  Baixados há mais de um período
+                  Bens Baixados
                 </span>
               </label>
             </div>
