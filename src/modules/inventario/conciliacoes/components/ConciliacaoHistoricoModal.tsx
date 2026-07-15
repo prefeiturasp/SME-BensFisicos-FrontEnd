@@ -76,11 +76,11 @@ export function ConciliacaoHistoricoModal({
         const data = await conciliacoesService.historico(conciliacaoId);
         if (cancelled) return;
         setEntries(data);
-      } catch (caught) {
+      } catch (error_) {
         if (cancelled) return;
         const message =
-          caught instanceof Error
-            ? caught.message
+          error_ instanceof Error
+            ? error_.message
             : 'Erro ao carregar o histórico da conciliação.';
         setError(message);
         setEntries([]);

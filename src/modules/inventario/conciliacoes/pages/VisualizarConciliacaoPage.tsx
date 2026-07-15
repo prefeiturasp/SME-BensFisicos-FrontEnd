@@ -160,7 +160,7 @@ function VisualizarConciliacaoContent() {
       link.click();
       link.remove();
 
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      globalThis.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       const message =
         error instanceof Error
@@ -197,6 +197,12 @@ function VisualizarConciliacaoContent() {
       toast.error(message);
     }
   }
+
+  const finalizarErrorMessage = !finalizarMutation.isError
+    ? null
+    : finalizarMutation.error instanceof Error
+      ? finalizarMutation.error.message
+      : 'Erro ao finalizar conciliação.';
 
   return (
     <div className='space-y-4 p-8' data-testid='visualizar-conciliacao-page'>
@@ -302,13 +308,7 @@ function VisualizarConciliacaoContent() {
         open={showFinalizar}
         conciliacaoId={conciliacao.id}
         loading={finalizarMutation.isPending}
-        errorMessage={
-          finalizarMutation.isError
-            ? (finalizarMutation.error instanceof Error
-                ? finalizarMutation.error.message
-                : 'Erro ao finalizar conciliação.')
-            : null
-        }
+        errorMessage={finalizarErrorMessage}
         onConfirm={handleConfirmarFinalizacao}
         onClose={closeFinalizar}
       />

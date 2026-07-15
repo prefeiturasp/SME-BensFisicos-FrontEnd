@@ -57,6 +57,22 @@ export function UnidadesListTable<TItem, TField extends string>({
   renderActions,
   hideDefaultActions = false,
 }: Readonly<UnidadesListTableProps<TItem, TField>>) {
+  const renderActionsCell = (item: TItem): ReactNode => {
+    if (renderActions) return renderActions(item);
+    if (hideDefaultActions) return null;
+    return (
+      <Button
+        type='button'
+        size='icon'
+        variant='ghost'
+        onClick={() => onView(item)}
+        aria-label={getViewAriaLabel(item)}
+      >
+        <Eye size={18} className='text-[#00703C]' />
+      </Button>
+    );
+  };
+
   return (
     <div className='space-y-4'>
       <p className='text-sm font-semibold text-[#00703C]'>{title}</p>
@@ -116,21 +132,7 @@ export function UnidadesListTable<TItem, TField extends string>({
                     </td>
                   ))}
                   <td className='p-3'>
-                    <div className='flex items-center justify-center'>
-                      {renderActions ? (
-                        renderActions(item)
-                      ) : hideDefaultActions ? null : (
-                        <Button
-                          type='button'
-                          size='icon'
-                          variant='ghost'
-                          onClick={() => onView(item)}
-                          aria-label={getViewAriaLabel(item)}
-                        >
-                          <Eye size={18} className='text-[#00703C]' />
-                        </Button>
-                      )}
-                    </div>
+                    <div className='flex items-center justify-center'>{renderActionsCell(item)}</div>
                   </td>
                 </tr>
               ))}
