@@ -29,14 +29,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
-import { bemService, type Bem } from '@/modules/bem-patrimonial/bem/services/bem.service'
+import { useBemSelectionRows } from '@/modules/bem-patrimonial/components/useBemSelectionRows'
+import { bemService } from '@/modules/bem-patrimonial/bem/services/bem.service'
 import { transferenciaService } from '../services/transferencia.service'
 import type { TransferenciaBemPatrimonialCreatePayload, TransferenciaUoCadastroOption } from '../types/transferencia.types'
-
-type ItemRow = {
-  id: string
-  bem: Bem | null
-}
 
 type UoOption = {
   id: number
@@ -66,10 +62,6 @@ const MENSAGEM_SEM_PONTO_CENTRAL =
   'Não há ponto central cadastrado na Unidade Orçamentária de destino. Por favor, entrar em contato com o gestor.'
 const TOOLTIP_TEXT =
   'Use este filtro para localizar bens de uma UA específica. Os bens já adicionados permanecem na lista mesmo quando o filtro mudar'
-
-function createEmptyRow(): ItemRow {
-  return { id: crypto.randomUUID(), bem: null }
-}
 
 function buildUaOptions(grupos: EscopoGrupo[] | null | undefined, originUoId: number | null): UaOption[] {
   if (!originUoId) return []
@@ -104,10 +96,20 @@ export default function AdicionarTransferenciaPage() {
   const [selectedUaFilterId, setSelectedUaFilterId] = useState('todas')
   const [numeroProcesso, setNumeroProcesso] = useState('')
   const [observacao, setObservacao] = useState('')
-  const [rows, setRows] = useState<ItemRow[]>([createEmptyRow()])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+  const {
+    rows,
+    allSelectedIds,
+    handleSelectBem,
+    handleClearBem,
+    handleRemoveBem,
+    handleAddBem,
+  } = useBemSelectionRows(clearError)
 
   useEffect(() => {
     let isMounted = true
@@ -184,34 +186,6 @@ export default function AdicionarTransferenciaPage() {
     rows.some((row) => row.bem) &&
     !submitting &&
     selectedUoHasPointCentral
-
-  const allSelectedIds = rows.filter((row) => row.bem).map((row) => row.bem!.id)
-
-  const handleSelectBem = (rowId: string, bem: Bem) => {
-    setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, bem } : row)))
-    setError(null)
-  }
-
-  const handleClearBem = (rowId: string) => {
-    setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, bem: null } : row)))
-    setError(null)
-  }
-
-  const handleRemoveBem = (rowId: string) => {
-    setRows((prev) => {
-      if (prev.length === 1) {
-        return [createEmptyRow()]
-      }
-
-      return prev.filter((row) => row.id !== rowId)
-    })
-    setError(null)
-  }
-
-  const handleAddBem = () => {
-    setRows((prev) => [...prev, createEmptyRow()])
-    setError(null)
-  }
 
   const handleSave = async () => {
     setError(null)

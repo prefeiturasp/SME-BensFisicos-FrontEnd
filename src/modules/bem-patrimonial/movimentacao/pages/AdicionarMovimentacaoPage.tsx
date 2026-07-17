@@ -16,16 +16,12 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
+import { useBemSelectionRows } from '@/modules/bem-patrimonial/components/useBemSelectionRows'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
-import { bemService, type Bem } from '../../bem/services/bem.service'
+import { bemService } from '../../bem/services/bem.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoUoCadastroOption } from '../types/movimentacao.types'
 import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
-
-type ItemRow = {
-  id: string
-  bem: Bem | null
-}
 
 type UaOption = {
   id: number
@@ -55,10 +51,6 @@ const PAGE_SIZE_BENS = 20
 const MENSAGEM_SEM_PONTO_CENTRAL =
   'Não há ponto central cadastrado na Unidade Orçamentária de destino. Por favor, entrar em contato com o gestor.'
 
-function createEmptyRow(): ItemRow {
-  return { id: crypto.randomUUID(), bem: null }
-}
-
 function buildUaOptions(
   unidadesAdministrativas: UnidadeAdministrativa[],
   uoId: number | null,
@@ -87,13 +79,23 @@ export default function AdicionarMovimentacaoPage() {
   const [selectedUoId, setSelectedUoId] = useState('')
   const [selectedUaId, setSelectedUaId] = useState('')
   const [observacao, setObservacao] = useState('')
-  const [rows, setRows] = useState<ItemRow[]>([createEmptyRow()])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>(
     [],
   )
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+  const {
+    rows,
+    allSelectedIds,
+    handleSelectBem,
+    handleClearBem,
+    handleRemoveBem,
+    handleAddBem,
+  } = useBemSelectionRows(clearError)
 
   useEffect(() => {
     let isMounted = true
@@ -219,33 +221,6 @@ export default function AdicionarMovimentacaoPage() {
       setSelectedUaId(String(uaOptions[0].id))
     }
   }, [destinoMesmaUo, selectedUaId, uaOptions])
-
-  const allSelectedIds = rows.filter((row) => row.bem).map((row) => row.bem!.id)
-
-  const handleSelectBem = (rowId: string, bem: Bem) => {
-    setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, bem } : row)))
-    setError(null)
-  }
-
-  const handleClearBem = (rowId: string) => {
-    setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, bem: null } : row)))
-    setError(null)
-  }
-
-  const handleRemoveBem = (rowId: string) => {
-    setRows((prev) => {
-      if (prev.length === 1) {
-        return [createEmptyRow()]
-      }
-      return prev.filter((row) => row.id !== rowId)
-    })
-    setError(null)
-  }
-
-  const handleAddBem = () => {
-    setRows((prev) => [...prev, createEmptyRow()])
-    setError(null)
-  }
 
   const handleSave = async () => {
     setError(null)
