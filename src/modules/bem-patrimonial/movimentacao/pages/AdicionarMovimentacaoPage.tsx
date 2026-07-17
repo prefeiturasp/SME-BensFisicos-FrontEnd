@@ -9,12 +9,10 @@ import { toast } from 'sonner'
 import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
-import { AppBreadcrumb } from '@/components/AppBreadcrumb'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { BemCadastroPageShell } from '@/modules/bem-patrimonial/components/BemCadastroPageShell'
 import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
 import { useBemSelectionRows } from '@/modules/bem-patrimonial/components/useBemSelectionRows'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
@@ -37,15 +35,6 @@ type UoOption = {
 
 const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white'
-
-const ACTION_BUTTON_CLASS = `
-  h-10 px-6 bg-white border border-[#2F7D57]
-  text-[#2F7D57] hover:bg-[#2F7D57]
-  hover:text-white font-semibold rounded-md transition-colors
-`
-
-const PRIMARY_BUTTON_CLASS =
-  'h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
 
 const PAGE_SIZE_BENS = 20
 const MENSAGEM_SEM_PONTO_CENTRAL =
@@ -282,49 +271,19 @@ export default function AdicionarMovimentacaoPage() {
   }
 
   return (
-    <div className='p-8 space-y-4'>
-      <AppBreadcrumb
-        items={[
-          { label: 'Bem Patrimonial', icon: Network },
-          { label: 'Movimentações de Bem Patrimonial', to: '/movimentacoes' },
-          { label: 'Adicionar Movimentação de Bem Patrimonial', isActive: true },
-        ]}
-      />
-
-      <div className='flex items-center justify-between gap-4'>
-        <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-          Adicionar Movimentação de Bem Patrimonial
-        </h1>
-
-        <div className='flex items-center gap-3'>
-          <Button
-            type='button'
-            onClick={() => navigate('/movimentacoes')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type='button'
-            onClick={handleSave}
-            disabled={!canSave}
-            className={`${PRIMARY_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {submitting ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </div>
-      </div>
-
-      {error ? (
-        <div
-          className='text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2'
-          role='alert'
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <Card className='p-6 space-y-4'>
+    <BemCadastroPageShell
+      breadcrumbItems={[
+        { label: 'Bem Patrimonial', icon: Network },
+        { label: 'Movimentações de Bem Patrimonial', to: '/movimentacoes' },
+        { label: 'Adicionar Movimentação de Bem Patrimonial', isActive: true },
+      ]}
+      title='Adicionar Movimentação de Bem Patrimonial'
+      onCancel={() => navigate('/movimentacoes')}
+      onSave={handleSave}
+      canSave={canSave}
+      submitting={submitting}
+      error={error}
+    >
         <div className='flex flex-col gap-2'>
           <label htmlFor='ua-origem' className='text-sm font-semibold text-gray-700'>
             Unidade Administrativa de Origem
@@ -450,7 +409,6 @@ export default function AdicionarMovimentacaoPage() {
             ))}
           </div>
         </div>
-      </Card>
-    </div>
+    </BemCadastroPageShell>
   )
 }
