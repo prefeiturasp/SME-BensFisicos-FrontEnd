@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
-  ChevronDown,
   Download,
   History,
   Loader2,
@@ -16,6 +15,7 @@ import { useAuth } from '@/auth/useAuth'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { BemDetailField, BemItemRow } from '@/modules/bem-patrimonial/components/BemDetailParts'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoBemPatrimonialDetail } from '../types/movimentacao.types'
 
@@ -76,31 +76,6 @@ function resolveResponsavelValue(movimentacao: MovimentacaoBemPatrimonialDetail)
     movimentacao.rejeitado_por ??
     movimentacao.cancelado_por ??
     null
-  )
-}
-
-function DetailField(props: Readonly<{
-  label: string
-  children: ReactNode
-}>) {
-  const { label, children } = props
-
-  return (
-    <div className='space-y-1'>
-      <span className='text-sm font-semibold text-gray-700'>{label}</span>
-      <div className='text-sm text-gray-700'>{children}</div>
-    </div>
-  )
-}
-
-function ItemRow(props: Readonly<{ label: string }>) {
-  const { label } = props
-
-  return (
-    <div className='flex items-center justify-between px-1 py-1.5 text-sm text-gray-700'>
-      <span className='truncate pr-4'>{label}</span>
-      <ChevronDown className='size-4 shrink-0 text-gray-400' />
-    </div>
   )
 }
 
@@ -274,11 +249,11 @@ export default function MovimentacaoDetailPage() {
 
         <div className='divide-y divide-gray-100'>
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <DetailField label='Número CIMBPM'>
+            <BemDetailField label='Número CIMBPM'>
               {movimentacao.numero_cimbpm ?? '-'}
-            </DetailField>
+            </BemDetailField>
 
-            <DetailField label='Documento CIMBPM'>
+            <BemDetailField label='Documento CIMBPM'>
               {movimentacao.url_documento_cimbpm ? (
                 <button
                   type='button'
@@ -291,37 +266,37 @@ export default function MovimentacaoDetailPage() {
               ) : (
                 'Número CIMBPM não gerado'
               )}
-            </DetailField>
+            </BemDetailField>
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <DetailField label='Solicitado por'>
+            <BemDetailField label='Solicitado por'>
               <span className='text-[#2F7D57]'>{resolveUsuario(movimentacao.solicitado_por)}</span>
-            </DetailField>
+            </BemDetailField>
 
-            <DetailField label={responsavelLabel}>
+            <BemDetailField label={responsavelLabel}>
               <span className='text-[#2F7D57]'>{responsavelValue}</span>
-            </DetailField>
+            </BemDetailField>
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <DetailField label='Unidade orçamentária de origem'>
+            <BemDetailField label='Unidade orçamentária de origem'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_origem)}
-            </DetailField>
+            </BemDetailField>
 
-            <DetailField label='Unidade administrativa de origem'>
+            <BemDetailField label='Unidade administrativa de origem'>
               {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
-            </DetailField>
+            </BemDetailField>
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <DetailField label='Unidade orçamentária de destino'>
+            <BemDetailField label='Unidade orçamentária de destino'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_destino)}
-            </DetailField>
+            </BemDetailField>
 
-            <DetailField label='Unidade administrativa de destino'>
+            <BemDetailField label='Unidade administrativa de destino'>
               {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
-            </DetailField>
+            </BemDetailField>
           </div>
 
           <div className='space-y-1.5 px-6 py-2.5'>
@@ -341,9 +316,10 @@ export default function MovimentacaoDetailPage() {
             ) : (
               <div className='space-y-1'>
                 {movimentacao.itens.map((item) => (
-                  <ItemRow
+                  <BemItemRow
                     key={item.id ?? item.bem.id}
                     label={`${item.bem.numero_patrimonial ?? '-'} ${item.bem.nome}`}
+                    showChevron
                   />
                 ))}
               </div>

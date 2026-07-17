@@ -1,4 +1,4 @@
-import { Settings, X, Menu, ChevronDown, Boxes, ListOrdered } from 'lucide-react';
+import { Settings, X, Menu, ChevronDown, Boxes, ListOrdered } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -13,13 +13,13 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   useSidebar,
-} from '@/components/ui/sidebar';
-import { useAuth } from '@/auth/useAuth';
-import { useLocation, Link } from 'react-router-dom';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions';
+} from '@/components/ui/sidebar'
+import { useAuth } from '@/auth/useAuth'
+import { useLocation, Link } from 'react-router-dom'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions'
 
 const menuItems = [
   {
@@ -34,6 +34,10 @@ const menuItems = [
       {
         title: 'Movimentações de Bem Patrimonial',
         url: '/movimentacoes',
+      },
+      {
+        title: 'Transferência de Bens Patrimoniais',
+        url: '/transferencias',
       },
       {
         title: 'Baixas Físicas de Bens Patrimoniais',
@@ -77,14 +81,14 @@ const menuItems = [
       },
     ],
   },
-];
+]
 
 export function AppSidebar() {
-  const location = useLocation();
-  const { user } = useAuth();
-  const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar();
-  const isCollapsed = state === 'collapsed';
-  const canAccessParametros = canAccessParametrosConciliacao(user);
+  const location = useLocation()
+  const { user } = useAuth()
+  const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar()
+  const isCollapsed = state === 'collapsed'
+  const canAccessParametros = canAccessParametrosConciliacao(user)
   const visibleMenuItems = menuItems.map((item) => {
     if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
       return {
@@ -92,11 +96,11 @@ export function AppSidebar() {
         items: item.items.filter(
           (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
         ),
-      };
+      }
     }
 
     if (item.title !== 'Configurações') {
-      return item;
+      return item
     }
 
     return {
@@ -104,16 +108,16 @@ export function AppSidebar() {
       items: item.items.filter(
         (subItem) => subItem.url !== '/unidades-orcamentarias' || Boolean(user?.is_superuser),
       ),
-    };
-  });
+    }
+  })
 
   const handleSubItemClick = () => {
     if (isMobile) {
-      setOpenMobile(false);
+      setOpenMobile(false)
     } else {
-      setOpen(false);
+      setOpen(false)
     }
-  };
+  }
 
   return (
     <Sidebar collapsible='icon' className='border-r-0'>
@@ -154,7 +158,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className={cn(isCollapsed ? 'gap-1' : 'gap-2')}>
               {visibleMenuItems.map((item) => {
-                const isActive = item.items?.some((sub) => location.pathname.startsWith(sub.url));
+                const isActive = item.items?.some((sub) => location.pathname.startsWith(sub.url))
 
                 if (isCollapsed) {
                   return (
@@ -170,7 +174,7 @@ export function AppSidebar() {
                         </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  );
+                  )
                 }
 
                 return (
@@ -195,7 +199,7 @@ export function AppSidebar() {
                               <SidebarMenuSubButton
                                 asChild
                                 isActive={location.pathname === subItem.url}
-                                className='text-[#595959] font-bold text-sm hover:text-[#267A55] hover:bg-gray-50 data-[active=true]:bg-gray-100 data-[active=true]:text-[#595959] min-h-[50px] py-2 px-3 border-t last:border-x-1 rounded-none !overflow-visible [&>span]:!overflow-visible [&>span]:!truncate-none [&>span]:!whitespace-normal [&>span]:!break-words [&>span]:leading-snug'
+                                className='text-[#595959] font-bold text-sm hover:text-[#267A55] hover:bg-gray-50 data-[active=true]:bg-gray-100 data-[active=true]:text-[#595959] min-h-[50px] py-2 px-3 border-t last:border-x-1 rounded-none !overflow-visible [&>span]:!overflow-visible [&>span]:!truncate-none [&>span]:!whitespace-normal [&>span]:!break-words [&>span]:!leading-snug'
                               >
                                 <Link to={subItem.url} onClick={handleSubItemClick}>
                                   <span>{subItem.title}</span>
@@ -207,7 +211,7 @@ export function AppSidebar() {
                       </CollapsibleContent>
                     </SidebarMenuItem>
                   </Collapsible>
-                );
+                )
               })}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -222,5 +226,5 @@ export function AppSidebar() {
         />
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

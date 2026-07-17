@@ -1,14 +1,12 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type ChangeEvent as ReactChangeEvent,
-  type MouseEvent as ReactMouseEvent,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ChevronDown, Network, Plus, Trash2, X } from 'lucide-react'
+import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -17,6 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { bemService, type Bem } from '../../bem/services/bem.service'
 import { movimentacaoService } from '../services/movimentacao.service'
@@ -75,236 +74,6 @@ function buildUaOptions(
       label: `${ua.codigo} - ${ua.sigla || ua.nome}`,
       unidade_orcamentaria_id: ua.unidade_orcamentaria,
     }))
-}
-
-function BemSelectorRow({
-  row,
-  originUaId,
-  allSelectedIds,
-  canRemove,
-  onSelect,
-  onClear,
-  onRemove,
-  onAdd,
-  isLast,
-}: Readonly<{
-  row: ItemRow
-  originUaId: number | null
-  allSelectedIds: number[]
-  canRemove: boolean
-  onSelect: (rowId: string, bem: Bem) => void
-  onClear: (rowId: string) => void
-  onRemove: (rowId: string) => void
-  onAdd: () => void
-  isLast: boolean
-}>) {
-  const [open, setOpen] = useState(false)
-  const [openUpwards, setOpenUpwards] = useState(false)
-  const [inputValue, setInputValue] = useState('')
-  const [results, setResults] = useState<Bem[]>([])
-  const [loading, setLoading] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-    }
-  }, [])
-
-  const updateDropdownDirection = () => {
-    if (!ref.current) return
-
-    const rect = ref.current.getBoundingClientRect()
-    const spaceBelow = window.innerHeight - rect.bottom
-    const spaceAbove = rect.top
-
-    setOpenUpwards(spaceBelow < 280 && spaceAbove > spaceBelow)
-  }
-
-  const search = async (query: string) => {
-    if (!originUaId) return
-
-    setLoading(true)
-    try {
-      const response = await bemService.list({
-        search: query,
-        status: 'aprovado',
-        unidade_administrativa: originUaId,
-        pageSize: PAGE_SIZE_BENS,
-      })
-      setResults(response.results)
-    } catch {
-      setResults([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleFocus = () => {
-    if (row.bem || !originUaId) return
-
-    setOpen(true)
-    updateDropdownDirection()
-    if (results.length === 0) {
-      void search('')
-    }
-  }
-
-  const handleInputChange = (event: ReactChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value
-    setInputValue(value)
-    setOpen(true)
-    updateDropdownDirection()
-
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-    }
-
-    debounceRef.current = setTimeout(() => {
-      void search(value)
-    }, 300)
-  }
-
-  const handleSelect = (bem: Bem) => {
-    onSelect(row.id, bem)
-    setInputValue('')
-    setOpen(false)
-  }
-
-  const handleClear = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    onClear(row.id)
-    setInputValue('')
-    setResults([])
-    setOpen(false)
-  }
-
-  const renderResults = () => {
-    if (loading) {
-      return <li className='px-3 py-2 text-sm text-gray-400'>Buscando...</li>
-    }
-
-    if (results.length === 0) {
-      return <li className='px-3 py-2 text-sm text-gray-400'>Nenhum bem encontrado.</li>
-    }
-
-    return results.map((bem) => {
-      const alreadyAdded = allSelectedIds.includes(bem.id)
-
-      return (
-        <li key={bem.id} className='border-b border-gray-100 last:border-0'>
-          <button
-            type='button'
-            disabled={alreadyAdded}
-            onClick={() => handleSelect(bem)}
-            className={`w-full text-left px-3 py-2 text-sm ${
-              alreadyAdded
-                ? 'text-gray-300 cursor-not-allowed bg-gray-50'
-                : 'hover:bg-[#2F7D57] hover:text-white cursor-pointer'
-            }`}
-          >
-            <span className='font-mono mr-2'>{bem.numero_patrimonial ?? '-'}</span>
-            {bem.nome}
-          </button>
-        </li>
-      )
-    })
-  }
-
-  const disabled = !originUaId
-
-  return (
-    <div className='flex items-center gap-2'>
-      <div className='flex-1 relative' ref={ref}>
-        {row.bem ? (
-          <div className='h-11 w-full rounded-xs border border-gray-300 px-3 bg-white flex items-center justify-between'>
-            <span className='text-sm text-gray-700 truncate'>
-              <span className='font-mono mr-2 text-gray-500'>
-                {row.bem.numero_patrimonial ?? '-'}
-              </span>
-              {row.bem.nome}
-            </span>
-            <div className='flex items-center gap-1 shrink-0 ml-2'>
-              <button
-                type='button'
-                onClick={handleClear}
-                className='text-gray-400 hover:text-gray-600 p-1'
-                aria-label='Limpar bem selecionado'
-              >
-                <X size={14} />
-              </button>
-              <ChevronDown size={14} className='text-gray-400' />
-            </div>
-          </div>
-        ) : (
-          <div className='relative'>
-            <Input
-              value={inputValue}
-              onChange={handleInputChange}
-              onFocus={handleFocus}
-              placeholder={disabled ? 'Aguarde a unidade de origem' : 'Buscar bem patrimonial'}
-              disabled={disabled}
-              className={`${INPUT_CLASS} pr-8 ${
-                disabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''
-              }`}
-              aria-label='Buscar bem patrimonial'
-            />
-            <ChevronDown
-              size={14}
-              className='absolute right-3 top-3.5 text-gray-400 pointer-events-none'
-            />
-
-            {open && !disabled ? (
-              <ul
-                className={`absolute left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto pb-2 ${
-                  openUpwards ? 'bottom-full mb-1' : 'top-full mt-0'
-                }`}
-              >
-                {renderResults()}
-              </ul>
-            ) : null}
-          </div>
-        )}
-      </div>
-
-      {isLast ? (
-        <button
-          type='button'
-          onClick={onAdd}
-          className='h-10 w-10 flex items-center justify-center rounded border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white transition-colors shrink-0'
-          aria-label='Adicionar item'
-        >
-          <Plus size={18} />
-        </button>
-      ) : (
-        <div className='w-10 shrink-0' />
-      )}
-
-      <button
-        type='button'
-        onClick={() => onRemove(row.id)}
-        disabled={!canRemove}
-        className='h-10 w-10 flex items-center justify-center rounded border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-[#2F7D57]'
-        aria-label='Remover item'
-      >
-        <Trash2 size={16} />
-      </button>
-    </div>
-  )
 }
 
 export default function AdicionarMovimentacaoPage() {
@@ -384,6 +153,20 @@ export default function AdicionarMovimentacaoPage() {
   const uaOptions = useMemo(
     () => buildUaOptions(unidadesAdministrativas, selectedUoNumericId, originUaId),
     [originUaId, selectedUoNumericId, unidadesAdministrativas],
+  )
+  const searchBens = useCallback(
+    async (query: string) => {
+      if (!originUaId) return []
+
+      const response = await bemService.list({
+        search: query,
+        status: 'aprovado',
+        unidade_administrativa: originUaId,
+        pageSize: PAGE_SIZE_BENS,
+      })
+      return response.results
+    },
+    [originUaId],
   )
   let uaDestinoPlaceholder = 'Selecione a UO de destino primeiro'
   if (selectedUoId) {
@@ -677,8 +460,9 @@ export default function AdicionarMovimentacaoPage() {
             {rows.map((row, index) => (
               <BemSelectorRow
                 key={row.id}
-                row={row}
-                originUaId={originUaId}
+                rowId={row.id}
+                bem={row.bem}
+                originDisabled={!originUaId}
                 allSelectedIds={allSelectedIds}
                 canRemove={rows.length > 1}
                 onSelect={handleSelectBem}
@@ -686,6 +470,7 @@ export default function AdicionarMovimentacaoPage() {
                 onRemove={handleRemoveBem}
                 onAdd={handleAddBem}
                 isLast={index === rows.length - 1}
+                searchBens={searchBens}
               />
             ))}
           </div>
