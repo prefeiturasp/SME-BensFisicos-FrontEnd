@@ -228,6 +228,19 @@ describe('AppSidebar', () => {
       expect(screen.getByRole('link', { name: 'Movimentações de Bem Patrimonial' })).toBeVisible();
     });
 
+    it('exibe o atalho de Transferências dentro de Bem Patrimonial', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Bem Patrimonial'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('link', { name: 'Transferência de Bens Patrimoniais' }),
+        ).toBeVisible();
+      });
+    });
+
     it('deve iniciar com submenu aberto se a rota ativa for de um subitem', () => {
       renderSidebar(['/bens-patrimoniais']);
       expect(screen.getByRole('link', { name: 'Bens Patrimoniais' })).toBeVisible();

@@ -151,6 +151,98 @@ describe('TransferenciasListPage', () => {
     })
   })
 
+  it('seleciona todas as transferências ao clicar no checkbox mestre', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']} >
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Selecionar todas as transferências')).toBeEnabled()
+    })
+
+    await user.click(screen.getByLabelText('Selecionar todas as transferências'))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Selecionar todas as transferências')).toBeChecked()
+      expect(screen.getByLabelText('Selecionar transferência 1')).toBeChecked()
+    })
+  })
+
+  it('navega para a visualização da transferência ao clicar no ícone', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <Routes>
+          <Route path='/transferencias' element={<TransferenciasListPage />} />
+          <Route path='/transferencias/:id' element={<div data-testid='transferencia-detail' />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByLabelText('Visualizar transferência 1'))
+
+    expect(screen.getByTestId('transferencia-detail')).toBeInTheDocument()
+  })
+
+  it('aplica filtros e paginação nas chamadas da API', async () => {
+    vi.mocked(transferenciaService.list).mockResolvedValue({
+      count: 100,
+      next: null,
+      previous: null,
+      results: [mockTransferencia],
+    } as never)
+
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('...')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText('Filtrar por NTBPM'), 'NTBPM-100')
+    await user.type(screen.getByLabelText('Filtrar por Número do Processo'), '54321')
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          numero_ntbpm: 'NTBPM-100',
+          numero_processo: '54321',
+          ordering: '-criado_em',
+        }),
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: '2' }))
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 2,
+          pageSize: 10,
+          numero_ntbpm: 'NTBPM-100',
+          numero_processo: '54321',
+          ordering: '-criado_em',
+        }),
+      )
+    })
+  })
+
   it('navega para a tela de cadastro ao clicar em adicionar', async () => {
     const user = userEvent.setup()
 

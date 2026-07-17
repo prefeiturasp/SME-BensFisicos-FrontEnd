@@ -116,6 +116,52 @@ function PaginationItem(props: Readonly<{
   )
 }
 
+type TransferenciasTableBodyProps = Readonly<{
+  loading: boolean
+  transferencias: TransferenciaBemPatrimonialListItem[]
+  selectedIds: number[]
+  onToggleSelected: (id: number) => void
+  onVisualizar: (id: number) => void
+}>
+
+function TransferenciasTableBody(props: TransferenciasTableBodyProps) {
+  const { loading, transferencias, selectedIds, onToggleSelected, onVisualizar } = props
+
+  if (loading) {
+    return (
+      <tr>
+        <td colSpan={6} className='py-10 text-center text-gray-500'>
+          Carregando...
+        </td>
+      </tr>
+    )
+  }
+
+  if (transferencias.length === 0) {
+    return (
+      <tr>
+        <td colSpan={6} className='py-10 text-center text-gray-400'>
+          Nenhuma transferência encontrada.
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <>
+      {transferencias.map((transferencia) => (
+        <TransferenciaTableRow
+          key={transferencia.id}
+          transferencia={transferencia}
+          selected={selectedIds.includes(transferencia.id)}
+          onToggleSelected={onToggleSelected}
+          onVisualizar={onVisualizar}
+        />
+      ))}
+    </>
+  )
+}
+
 export default function TransferenciasListPage() {
   const navigate = useNavigate()
 
@@ -209,42 +255,6 @@ export default function TransferenciasListPage() {
     setSelectedIds((current) => getNextSelectedIds(current, selectedAll, transferencias))
   }
 
-  const tableBody = useMemo(() => {
-    if (loading) {
-      return (
-        <tr>
-          <td colSpan={6} className='py-10 text-center text-gray-500'>
-            Carregando...
-          </td>
-        </tr>
-      )
-    }
-
-    if (transferencias.length === 0) {
-      return (
-        <tr>
-          <td colSpan={6} className='py-10 text-center text-gray-400'>
-            Nenhuma transferência encontrada.
-          </td>
-        </tr>
-      )
-    }
-
-    return (
-      <>
-        {transferencias.map((transferencia) => (
-          <TransferenciaTableRow
-            key={transferencia.id}
-            transferencia={transferencia}
-            selected={selectedIds.includes(transferencia.id)}
-            onToggleSelected={toggleSelectedId}
-            onVisualizar={(id) => navigate(`/transferencias/${id}`)}
-          />
-        ))}
-      </>
-    )
-  }, [loading, navigate, selectedIds, transferencias])
-
   return (
     <div className='p-8 space-y-4'>
       <AppBreadcrumb
@@ -286,11 +296,14 @@ export default function TransferenciasListPage() {
 
       <Card className='space-y-4 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-4'>
-          <label className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <span>Filtrar por NTBPM</span>
+          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
+            <label htmlFor='transferencias-filtro-ntbpm' className='block'>
+              Filtrar por NTBPM
+            </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
+                id='transferencias-filtro-ntbpm'
                 aria-label='Filtrar por NTBPM'
                 type='text'
                 value={numeroNtbpmInput}
@@ -299,13 +312,16 @@ export default function TransferenciasListPage() {
                 className={`${INPUT_CLASS} pl-10`}
               />
             </div>
-          </label>
+          </div>
 
-          <label className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <span>Filtrar por Número do Processo</span>
+          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
+            <label htmlFor='transferencias-filtro-numero-processo' className='block'>
+              Filtrar por Número do Processo
+            </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
+                id='transferencias-filtro-numero-processo'
                 aria-label='Filtrar por Número do Processo'
                 type='text'
                 value={numeroProcessoInput}
@@ -314,7 +330,7 @@ export default function TransferenciasListPage() {
                 className={`${INPUT_CLASS} pl-10`}
               />
             </div>
-          </label>
+          </div>
         </div>
 
         <h2 className='text-sm font-semibold text-[#00703C]'>
@@ -341,7 +357,15 @@ export default function TransferenciasListPage() {
               </tr>
             </thead>
 
-            <tbody>{tableBody}</tbody>
+            <tbody>
+              <TransferenciasTableBody
+                loading={loading}
+                transferencias={transferencias}
+                selectedIds={selectedIds}
+                onToggleSelected={toggleSelectedId}
+                onVisualizar={(id) => navigate(`/transferencias/${id}`)}
+              />
+            </tbody>
           </table>
         </div>
 

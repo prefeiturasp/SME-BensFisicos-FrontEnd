@@ -255,7 +255,9 @@ describe('AdicionarTransferenciaPage', () => {
       )
     })
 
-    expect(screen.getByTestId('transferencias-list')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('transferencias-list')).toBeInTheDocument()
+    })
   })
 
   it('exibe aviso quando a UO de destino não tiver ponto central', async () => {
@@ -287,5 +289,125 @@ describe('AdicionarTransferenciaPage', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+  })
+
+  it('mantém a lista vazia quando não consegue carregar as opções de cadastro', async () => {
+    vi.mocked(transferenciaService.listOpcoesCadastro).mockRejectedValueOnce(new Error('falha'))
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/novo']}>
+        <AdicionarTransferenciaPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma UO disponível')).toBeInTheDocument()
+    })
+  })
+
+  it('filtra bens por uma UA específica da unidade de origem', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/novo']}>
+        <AdicionarTransferenciaPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-item-20')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('select-item-20'))
+    await user.click(screen.getByTestId('select-item-101'))
+
+    const bemInput = screen.getByLabelText('Buscar bem patrimonial')
+    await user.type(bemInput, 'Note')
+
+    await waitFor(() => {
+      expect(bemService.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          search: 'Note',
+          status: 'aprovado',
+          unidade_administrativa: 101,
+          pageSize: 20,
+        }),
+      )
+    })
+  })
+
+  it('permite adicionar, limpar e remover linhas de itens', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/novo']}>
+        <AdicionarTransferenciaPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-item-20')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('select-item-20'))
+
+    const bemInput = screen.getByLabelText('Buscar bem patrimonial')
+    await user.type(bemInput, 'Note')
+
+    await waitFor(() => {
+      expect(bemService.list).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: /123 Notebook/i }))
+    await user.click(screen.getByRole('button', { name: 'Adicionar item' }))
+
+    expect(screen.getAllByLabelText('Remover item')).toHaveLength(2)
+
+    await user.click(screen.getByLabelText('Limpar bem selecionado'))
+
+    expect(screen.getAllByLabelText('Buscar bem patrimonial')).toHaveLength(2)
+
+    await user.click(screen.getAllByLabelText('Remover item')[1])
+
+    expect(screen.getAllByLabelText('Remover item')).toHaveLength(1)
+  })
+
+  it('exibe erro ao salvar quando a criação falhar', async () => {
+    const user = userEvent.setup()
+    vi.mocked(transferenciaService.create).mockRejectedValueOnce(new Error('Falha ao salvar'))
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/novo']}>
+        <AdicionarTransferenciaPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-item-20')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('select-item-20'))
+
+    const bemInput = screen.getByLabelText('Buscar bem patrimonial')
+    await user.type(bemInput, 'Note')
+
+    await waitFor(() => {
+      expect(bemService.list).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: /123 Notebook/i }))
+
+    await user.type(screen.getByLabelText('Número do Processo'), '12345')
+    await user.type(screen.getByLabelText('Observações'), 'Observação qualquer')
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Falha ao salvar')
+    })
   })
 })

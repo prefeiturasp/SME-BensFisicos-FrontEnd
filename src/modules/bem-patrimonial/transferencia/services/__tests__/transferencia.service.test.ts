@@ -176,6 +176,14 @@ describe('transferenciaService', () => {
     await expect(transferenciaService.list()).rejects.toThrow('Processo inválido')
   })
 
+  it('deve tratar erro ao baixar o documento NTBPM', async () => {
+    vi.mocked(api.get).mockRejectedValue(makeAxiosError(400, { detail: 'Falha ao baixar' }))
+
+    await expect(
+      transferenciaService.baixarDocumentoNtBpm('/api/documento-ntbpm/9/download/'),
+    ).rejects.toThrow('Falha ao baixar')
+  })
+
   it('deve lançar mensagem padrão ao carregar opções sem detail', async () => {
     vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
 
