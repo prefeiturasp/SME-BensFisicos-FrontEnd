@@ -62,6 +62,12 @@ export const usuarioService = {
             if (params.unidade && params.unidade !== 'todas')
                 query.append('unidade', params.unidade)
 
+            if (params.unidade_administrativa_id)
+                query.append('unidade_administrativa_id', String(params.unidade_administrativa_id))
+
+            if (params.page_size)
+                query.append('page_size', String(params.page_size))
+
             if (params.unidade_orcamentaria && params.unidade_orcamentaria !== 'todas')
                 query.append('unidade_orcamentaria', params.unidade_orcamentaria)
 
