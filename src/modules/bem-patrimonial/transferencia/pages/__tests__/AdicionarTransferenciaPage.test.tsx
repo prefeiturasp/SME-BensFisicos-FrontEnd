@@ -12,6 +12,8 @@ import { useAuth } from '@/auth/useAuth'
 import AdicionarTransferenciaPage from '../AdicionarTransferenciaPage'
 import { transferenciaService } from '../../services/transferencia.service'
 import { bemService } from '@/modules/bem-patrimonial/bem/services/bem.service'
+import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
+import { toast } from 'sonner'
 
 vi.mock('@/auth/useAuth')
 
@@ -25,6 +27,19 @@ vi.mock('../../services/transferencia.service', () => ({
 vi.mock('@/modules/bem-patrimonial/bem/services/bem.service', () => ({
   bemService: {
     list: vi.fn(),
+  },
+}))
+
+vi.mock('@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service', () => ({
+  unidadesAdministrativasService: {
+    list: vi.fn(),
+  },
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
   },
 }))
 
@@ -166,6 +181,56 @@ beforeEach(() => {
     },
   ] as never)
 
+  vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
+    count: 3,
+    next: null,
+    previous: null,
+    results: [
+      {
+        id: 100,
+        codigo: '01.16.10.001',
+        sigla: 'UA Origem',
+        nome: 'UA Origem',
+        status: 'ativa',
+        status_display: 'Ativa',
+        unidade_orcamentaria: 10,
+        unidade_orcamentaria_codigo: '01.16.10',
+        unidade_orcamentaria_nome: 'Secretaria',
+        unidade_orcamentaria_sigla: 'SME',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 101,
+        codigo: '01.16.10.002',
+        sigla: 'UA Segunda',
+        nome: 'UA Segunda',
+        status: 'ativa',
+        status_display: 'Ativa',
+        unidade_orcamentaria: 10,
+        unidade_orcamentaria_codigo: '01.16.10',
+        unidade_orcamentaria_nome: 'Secretaria',
+        unidade_orcamentaria_sigla: 'SME',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 200,
+        codigo: '99.99.99.001',
+        sigla: 'UA Externa',
+        nome: 'UA Externa',
+        status: 'ativa',
+        status_display: 'Ativa',
+        unidade_orcamentaria: 99,
+        unidade_orcamentaria_codigo: '99.99.99',
+        unidade_orcamentaria_nome: 'Outra UO',
+        unidade_orcamentaria_sigla: 'OUTRA',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ],
+  } as never)
+
   vi.mocked(bemService.list).mockResolvedValue({
     count: 1,
     next: null,
@@ -205,6 +270,9 @@ describe('AdicionarTransferenciaPage', () => {
     expect(screen.getByDisplayValue('01.16.10 - SME')).toBeInTheDocument()
     expect(screen.getByTestId('select-item-20')).toBeInTheDocument()
     expect(screen.queryByTestId('select-item-21')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-item-100')).toBeInTheDocument()
+    expect(screen.getByTestId('select-item-101')).toBeInTheDocument()
+    expect(screen.queryByTestId('select-item-200')).not.toBeInTheDocument()
   })
 
   it('permite selecionar destino, escolher bem e salvar a transferência', async () => {
@@ -246,7 +314,6 @@ describe('AdicionarTransferenciaPage', () => {
     await waitFor(() => {
       expect(transferenciaService.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          unidade_administrativa_origem: 10,
           unidade_orcamentaria_destino: 20,
           numero_processo: '12345',
           observacao: 'Observação qualquer',
@@ -254,6 +321,10 @@ describe('AdicionarTransferenciaPage', () => {
         }),
       )
     })
+
+    expect(toast.success).toHaveBeenCalledWith(
+      'Transferência cadastrada com sucesso. O bem foi transferido para a UA 001 da UO de destino.',
+    )
 
     await waitFor(() => {
       expect(screen.getByTestId('transferencias-list')).toBeInTheDocument()

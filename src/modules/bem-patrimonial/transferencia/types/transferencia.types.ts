@@ -71,7 +71,6 @@ export interface TransferenciaBemItemPayload {
 }
 
 export interface TransferenciaBemPatrimonialCreatePayload {
-  unidade_administrativa_origem: number
   unidade_orcamentaria_destino: number
   numero_processo: string
   observacao: string

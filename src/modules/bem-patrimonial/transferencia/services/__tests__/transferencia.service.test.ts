@@ -86,7 +86,6 @@ describe('transferenciaService', () => {
     })
 
     const payload = {
-      unidade_administrativa_origem: 10,
       unidade_orcamentaria_destino: 20,
       numero_processo: '12345',
       observacao: 'Transferência interna',
@@ -159,7 +158,6 @@ describe('transferenciaService', () => {
 
     await expect(
       transferenciaService.create({
-        unidade_administrativa_origem: 10,
         unidade_orcamentaria_destino: 20,
         numero_processo: '12345',
         observacao: '',

@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/auth/useAuth'
-import type { EscopoGrupo } from '@/auth/auth.service'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -29,6 +28,8 @@ import { BemCadastroPageShell } from '@/modules/bem-patrimonial/components/BemCa
 import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
 import { useBemSelectionRows } from '@/modules/bem-patrimonial/components/useBemSelectionRows'
 import { bemService } from '@/modules/bem-patrimonial/bem/services/bem.service'
+import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
+import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
 import { transferenciaService } from '../services/transferencia.service'
 import type { TransferenciaBemPatrimonialCreatePayload, TransferenciaUoCadastroOption } from '../types/transferencia.types'
 
@@ -52,17 +53,18 @@ const MENSAGEM_SEM_PONTO_CENTRAL =
 const TOOLTIP_TEXT =
   'Use este filtro para localizar bens de uma UA específica. Os bens já adicionados permanecem na lista mesmo quando o filtro mudar'
 
-function buildUaOptions(grupos: EscopoGrupo[] | null | undefined, originUoId: number | null): UaOption[] {
+function buildUaOptions(
+  unidadesAdministrativas: UnidadeAdministrativa[],
+  originUoId: number | null,
+): UaOption[] {
   if (!originUoId) return []
 
-  const options = (grupos ?? [])
-    .filter((grupo) => grupo.uo.id === originUoId || grupo.uo.unidade_orcamentaria_id === originUoId)
-    .flatMap((grupo) =>
-      (grupo.uas ?? []).map((ua) => ({
-        id: ua.unidade_administrativa_id,
-        label: ua.label ?? `${ua.codigo} - ${ua.nome}`,
-      })),
-    )
+  const options = unidadesAdministrativas
+    .filter((ua) => ua.unidade_orcamentaria === originUoId)
+    .map((ua) => ({
+      id: ua.id,
+      label: `${ua.codigo} - ${ua.sigla || ua.nome}`,
+    }))
 
   const unique = new Map<number, UaOption>()
   options.forEach((option) => {
@@ -73,7 +75,6 @@ function buildUaOptions(grupos: EscopoGrupo[] | null | undefined, originUoId: nu
 
   return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label))
 }
-
 export default function AdicionarTransferenciaPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -88,6 +89,7 @@ export default function AdicionarTransferenciaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>([])
   const clearError = useCallback(() => {
     setError(null)
   }, [])
@@ -123,7 +125,20 @@ export default function AdicionarTransferenciaPage() {
       }
     }
 
+    const loadUnidadesAdministrativas = async () => {
+      try {
+        const response = await unidadesAdministrativasService.list({ pageSize: 1000 })
+        if (!isMounted) return
+
+        setUnidadesAdministrativas(response.results)
+      } catch {
+        if (!isMounted) return
+        setUnidadesAdministrativas([])
+      }
+    }
+
     void loadOptions()
+    void loadUnidadesAdministrativas()
 
     return () => {
       isMounted = false
@@ -139,8 +154,8 @@ export default function AdicionarTransferenciaPage() {
   const destinoSemPontoCentral = !!selectedUoId && !selectedUoHasPointCentral
 
   const uaOptions = useMemo(
-    () => buildUaOptions(user?.opcoes_escopo?.grupos, originUoId),
-    [originUoId, user?.opcoes_escopo?.grupos],
+    () => buildUaOptions(unidadesAdministrativas, originUoId),
+    [originUoId, unidadesAdministrativas],
   )
 
   const searchBens = useCallback(
@@ -211,7 +226,6 @@ export default function AdicionarTransferenciaPage() {
     setSubmitting(true)
     try {
       const payload: TransferenciaBemPatrimonialCreatePayload = {
-        unidade_administrativa_origem: originUoId,
         unidade_orcamentaria_destino: selectedUoNumericId,
         numero_processo: numeroProcesso.trim(),
         observacao,
@@ -221,7 +235,7 @@ export default function AdicionarTransferenciaPage() {
       await transferenciaService.create(payload)
 
       toast.success(
-        'Cadastro realizado com sucesso - A transferência do bem foi cadastrada e enviada para aprovação.',
+        'Transferência cadastrada com sucesso. O bem foi transferido para a UA 001 da UO de destino.',
       )
       navigate('/transferencias')
     } catch (error: unknown) {
