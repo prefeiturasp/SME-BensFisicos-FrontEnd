@@ -2,12 +2,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useConciliacaoCreate } from '../useConciliacoes';
+import {
+  useConciliacaoById,
+  useConciliacaoCreate,
+  useConciliacaoFinalizar,
+  useConciliacaoItens,
+  useConciliacoesList,
+} from '../useConciliacoes';
 import { conciliacoesService } from '../../services/conciliacoes.service';
 
 vi.mock('../../services/conciliacoes.service', () => ({
   conciliacoesService: {
+    list: vi.fn(),
     create: vi.fn(),
+    retrieve: vi.fn(),
+    listItens: vi.fn(),
+    historico: vi.fn(),
+    exportar: vi.fn(),
+    finalizar: vi.fn(),
   },
 }));
 
@@ -28,6 +40,14 @@ const conciliacao = {
   status: 'em_aberto' as const,
   status_display: 'Aberta',
   total_itens: 13,
+  resumo_situacoes: {
+    encontrados: 9,
+    nao_encontrados: 1,
+    divergentes: 1,
+    em_processo_baixa: 0,
+    baixa_fisica: 2,
+    encontrados_com_divergencia: 0,
+  },
   ano_vigencia: 2025,
   criado_em: '2025-01-15T10:00:00Z',
   criado_por: 5,
@@ -48,8 +68,11 @@ function createWrapper() {
     },
   });
 
-  return function Wrapper({ children }: Readonly<{ children: ReactNode }>) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return {
+    queryClient,
+    Wrapper: function Wrapper({ children }: Readonly<{ children: ReactNode }>) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    },
   };
 }
 
@@ -60,9 +83,8 @@ describe('useConciliacaoCreate', () => {
   });
 
   it('envia payload para o service e retorna a conciliacao criada', async () => {
-    const { result } = renderHook(() => useConciliacaoCreate(), {
-      wrapper: createWrapper(),
-    });
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoCreate(), { wrapper: Wrapper });
 
     await act(async () => {
       const conciliacaoCriada = await result.current.mutateAsync({
@@ -79,14 +101,8 @@ describe('useConciliacaoCreate', () => {
   });
 
   it('invalida queries de conciliacoes apos sucesso', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
+    const { queryClient, Wrapper } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
-
-    function Wrapper({ children }: Readonly<{ children: ReactNode }>) {
-      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-    }
 
     const { result } = renderHook(() => useConciliacaoCreate(), { wrapper: Wrapper });
 
@@ -99,6 +115,436 @@ describe('useConciliacaoCreate', () => {
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacoes'] });
+    });
+  });
+});
+
+describe('useConciliacoesList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+    mockedService.list.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [conciliacao],
+    });
+  });
+
+  it('retorna lista apos fetching inicial', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.conciliacoes).toEqual([conciliacao]));
+
+    expect(result.current.count).toBe(1);
+    expect(result.current.loading).toBe(false);
+    expect(mockedService.list).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 10,
+      search: '',
+      anoVigencia: '',
+      tipo: 'todos',
+      status: 'todos',
+      ordering: '-criado_em',
+    });
+  });
+
+  it('envia filtros para o service e reinicia pagina ao alterar', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.conciliacoes).toHaveLength(1));
+
+    act(() => {
+      result.current.setPage(3);
+      result.current.setSearchInput('CONC');
+      result.current.setAnoVigenciaInput('2025');
+      result.current.setTipoFilter('eventual');
+      result.current.setStatusFilter('em_aberto');
+    });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+      expect(mockedService.list).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 10,
+        search: 'CONC',
+        anoVigencia: '2025',
+        tipo: 'eventual',
+        status: 'em_aberto',
+        ordering: '-criado_em',
+      });
+    });
+  });
+
+  it('aplica debounce de 500ms no campo de busca', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.conciliacoes).toHaveLength(1));
+
+    const callsBefore = mockedService.list.mock.calls.length;
+
+    act(() => {
+      result.current.setSearchInput('C');
+      result.current.setSearchInput('CO');
+      result.current.setSearchInput('CON');
+    });
+
+    expect(mockedService.list.mock.calls.length).toBe(callsBefore);
+
+    await waitFor(
+      () => {
+        const lastCall =
+          mockedService.list.mock.calls[mockedService.list.mock.calls.length - 1]?.[0];
+        expect(lastCall?.search).toBe('CON');
+      },
+      { timeout: 1500 },
+    );
+  });
+
+  it('aplica debounce de 500ms no campo de ano de vigencia', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.conciliacoes).toHaveLength(1));
+
+    act(() => {
+      result.current.setAnoVigenciaInput('2');
+      result.current.setAnoVigenciaInput('20');
+      result.current.setAnoVigenciaInput('2025');
+    });
+
+    await waitFor(
+      () => {
+        const lastCall =
+          mockedService.list.mock.calls[mockedService.list.mock.calls.length - 1]?.[0];
+        expect(lastCall?.anoVigencia).toBe('2025');
+      },
+      { timeout: 1500 },
+    );
+  });
+
+  it('suporta paginacao e ordering', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.conciliacoes).toHaveLength(1));
+
+    act(() => {
+      result.current.setPage(4);
+    });
+
+    await waitFor(() => {
+      const lastCall =
+        mockedService.list.mock.calls[mockedService.list.mock.calls.length - 1]?.[0];
+      expect(lastCall?.page).toBe(4);
+    });
+
+    act(() => {
+      result.current.setOrdering('-criado_em');
+    });
+
+    await waitFor(() => {
+      const lastCall =
+        mockedService.list.mock.calls[mockedService.list.mock.calls.length - 1]?.[0];
+      expect(lastCall?.ordering).toBe('-criado_em');
+    });
+  });
+
+  it('expoe erro quando o service falha', async () => {
+    const error = new Error('Falha ao listar');
+    mockedService.list.mockReset();
+    mockedService.list.mockRejectedValue(error);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacoesList({ pageSize: 10 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.conciliacoes).toEqual([]);
+  });
+});
+
+describe('useConciliacaoById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedService.retrieve.mockResolvedValue(conciliacao);
+  });
+
+  it('busca o detalhe da conciliacao quando o id e valido', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoById(1), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.data).toEqual(conciliacao));
+
+    expect(mockedService.retrieve).toHaveBeenCalledWith(1);
+  });
+
+  it('nao chama o service quando o id e null', () => {
+    const { Wrapper } = createWrapper();
+    renderHook(() => useConciliacaoById(null), { wrapper: Wrapper });
+
+    expect(mockedService.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('expoe erro quando o service falha', async () => {
+    mockedService.retrieve.mockReset();
+    mockedService.retrieve.mockRejectedValue(new Error('Falha ao recuperar'));
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoById(1), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+  });
+});
+
+describe('useConciliacaoItens', () => {
+  const item = {
+    id: 42,
+    conciliacao: 1,
+    conciliacao_numero: 'CONC-2025-0001',
+    conciliacao_status: 'em_aberto' as const,
+    unidade_administrativa: 7,
+    unidade_administrativa_sigla: 'DRE-SM',
+    bem: {
+      id: 123,
+      numero_patrimonial: 'PAT-000123',
+      nome: 'Notebook Dell',
+      descricao: 'Notebook 14',
+      marca: 'Dell',
+      modelo: 'Latitude',
+      valor_unitario: '4500.00',
+      status: 'ativo',
+      localizacao: 'Sala 12',
+      bloqueado_conciliacao: false,
+    },
+    situacao: 'encontrado_sem_divergencia' as const,
+    situacao_display: 'Encontrado sem divergência',
+    observacao: '',
+    divergencia: '',
+    tem_ocorrencia: false,
+    permite_registrar_ocorrencia: true,
+    atualizado_por: null,
+    atualizado_por_nome: '',
+    atualizado_em: '2025-01-15T10:00:00Z',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+    mockedService.listItens.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [item],
+    });
+  });
+
+  it('retorna a lista de itens apos fetching inicial', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.itens).toEqual([item]));
+
+    expect(result.current.count).toBe(1);
+    expect(result.current.loading).toBe(false);
+    expect(mockedService.listItens).toHaveBeenCalledWith(1, {
+      page: 1,
+      pageSize: 10,
+      numeroPatrimonial: '',
+      nome: '',
+      situacao: 'todos',
+      ordering: 'bem__numero_patrimonial',
+    });
+  });
+
+  it('nao chama o service quando o id da conciliacao e zero', () => {
+    const { Wrapper } = createWrapper();
+    renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 0, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    expect(mockedService.listItens).not.toHaveBeenCalled();
+  });
+
+  it('envia filtros e reinicia pagina ao alterar', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.itens).toHaveLength(1));
+
+    act(() => {
+      result.current.setNumeroPatrimonialInput('001');
+      result.current.setNomeInput('Mesa');
+      result.current.setSituacaoFilter('divergente');
+    });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+      expect(mockedService.listItens).toHaveBeenLastCalledWith(1, {
+        page: 1,
+        pageSize: 10,
+        numeroPatrimonial: '001',
+        nome: 'Mesa',
+        situacao: 'divergente',
+        ordering: 'bem__numero_patrimonial',
+      });
+    });
+  });
+
+  it('aplica debounce de 500ms nos campos de busca', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.itens).toHaveLength(1));
+
+    const callsBefore = mockedService.listItens.mock.calls.length;
+
+    act(() => {
+      result.current.setNumeroPatrimonialInput('0');
+      result.current.setNumeroPatrimonialInput('00');
+      result.current.setNumeroPatrimonialInput('001');
+      result.current.setNomeInput('M');
+      result.current.setNomeInput('Me');
+      result.current.setNomeInput('Mes');
+    });
+
+    expect(mockedService.listItens.mock.calls.length).toBe(callsBefore);
+
+    await waitFor(
+      () => {
+        const lastCall =
+          mockedService.listItens.mock.calls[mockedService.listItens.mock.calls.length - 1]?.[1];
+        expect(lastCall?.numeroPatrimonial).toBe('001');
+        expect(lastCall?.nome).toBe('Mes');
+      },
+      { timeout: 1500 },
+    );
+  });
+
+  it('atualiza o ordering e mantem a paginacao controlada', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.itens).toHaveLength(1));
+
+    act(() => {
+      result.current.setOrdering('bem__nome');
+    });
+
+    await waitFor(() => {
+      const lastCall =
+        mockedService.listItens.mock.calls[mockedService.listItens.mock.calls.length - 1]?.[1];
+      expect(lastCall?.ordering).toBe('bem__nome');
+    });
+  });
+
+  it('expoe erro quando o service falha', async () => {
+    mockedService.listItens.mockReset();
+    mockedService.listItens.mockRejectedValue(new Error('Falha ao listar itens'));
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.itens).toEqual([]);
+  });
+});
+
+describe('useConciliacaoFinalizar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('envia o id para o service e retorna a conciliacao finalizada', async () => {
+    const finalizada = { ...conciliacao, status: 'fechado' as const, esta_aberto: false };
+    mockedService.finalizar.mockResolvedValueOnce(finalizada);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoFinalizar(), { wrapper: Wrapper });
+
+    await act(async () => {
+      const returned = await result.current.mutateAsync(1);
+      expect(returned).toEqual(finalizada);
+    });
+
+    expect(mockedService.finalizar).toHaveBeenCalledWith(1);
+  });
+
+  it('invalida as queries de conciliacao apos sucesso', async () => {
+    const finalizada = { ...conciliacao, status: 'fechado' as const, esta_aberto: false };
+    mockedService.finalizar.mockResolvedValue(finalizada);
+
+    const { queryClient, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = renderHook(() => useConciliacaoFinalizar(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacoes'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacao', 1] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacao', 1, 'itens'] });
+    });
+  });
+
+  it('expoe erro quando o service falha', async () => {
+    mockedService.finalizar.mockReset();
+    mockedService.finalizar.mockRejectedValue(new Error('Falha ao finalizar'));
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoFinalizar(), { wrapper: Wrapper });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync(1);
+      } catch (caught) {
+        expect(caught).toBeInstanceOf(Error);
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
     });
   });
 });

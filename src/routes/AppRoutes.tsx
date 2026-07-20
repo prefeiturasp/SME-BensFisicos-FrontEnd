@@ -17,11 +17,15 @@ import BemDetailPage from '@/modules/bem-patrimonial/bem/pages/BemDetailPage';
 import MovimentacoesListPage from '@/modules/bem-patrimonial/movimentacao/pages/MovimentacoesListPage';
 import AdicionarMovimentacaoPage from '@/modules/bem-patrimonial/movimentacao/pages/AdicionarMovimentacaoPage';
 import MovimentacaoDetailPage from '@/modules/bem-patrimonial/movimentacao/pages/MovimentacaoDetailPage';
+import TransferenciasListPage from '@/modules/bem-patrimonial/transferencia/pages/TransferenciasListPage';
+import AdicionarTransferenciaPage from '@/modules/bem-patrimonial/transferencia/pages/AdicionarTransferenciaPage';
+import TransferenciaDetailPage from '@/modules/bem-patrimonial/transferencia/pages/TransferenciaDetailPage';
 import BaixasListPage from '@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage';
 
 // Módulo: Inventário
 import AdicionarConciliacaoPage from '@/modules/inventario/conciliacoes/pages/AdicionarConciliacaoPage';
 import GerenciamentoConciliacoesListPage from '@/modules/inventario/conciliacoes/pages/GerenciamentoConciliacoesListPage';
+import VisualizarConciliacaoPage from '@/modules/inventario/conciliacoes/pages/VisualizarConciliacaoPage';
 import ParametrosConciliacaoAnualListPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametrosConciliacaoAnualListPage';
 import ParametroConciliacaoAnualFormPage from '@/modules/inventario/parametros-conciliacao-anual/pages/ParametroConciliacaoAnualFormPage';
 
@@ -76,6 +80,11 @@ export default function AppRoutes() {
           <Route path='/movimentacoes/:id' element={<MovimentacaoDetailPage />} />
           <Route path='/movimentacoes/novo' element={<AdicionarMovimentacaoPage />} />
 
+          {/* Submódulo: Transferências */}
+          <Route path='/transferencias' element={<TransferenciasListPage />} />
+          <Route path='/transferencias/novo' element={<AdicionarTransferenciaPage />} />
+          <Route path='/transferencias/:id' element={<TransferenciaDetailPage />} />
+
           {/* Submódulo: Baixas Físicas */}
           <Route path='/baixas-fisicas' element={<BaixasListPage />} />
           <Route path='/baixas-fisicas/novo' element={<AdicionarBaixaPage />} />
@@ -86,6 +95,7 @@ export default function AppRoutes() {
           {/* Módulo: Inventário */}
           <Route path='/conciliacoes' element={<GerenciamentoConciliacoesListPage />} />
           <Route path='/conciliacoes/novo' element={<AdicionarConciliacaoPage />} />
+          <Route path='/conciliacoes/:id' element={<VisualizarConciliacaoPage />} />
           <Route
             path='/parametros-conciliacao-anual'
             element={<ParametrosConciliacaoAnualListPage />}
