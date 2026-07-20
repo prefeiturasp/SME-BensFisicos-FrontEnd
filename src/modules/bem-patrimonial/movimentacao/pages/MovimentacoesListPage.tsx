@@ -19,14 +19,8 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { usePagination } from '../../bem/hooks/usePagination'
+import { FilterSelect } from '@/modules/bem-patrimonial/components/FilterSelect'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoBemPatrimonialListItem } from '../types/movimentacao.types'
 
@@ -312,39 +306,6 @@ function StatusMultiSelect(props: Readonly<{
         </div>
       )}
     </div>
-  )
-}
-
-function FilterSelect(props: Readonly<{
-  label: string
-  value: string
-  placeholder: string
-  options: SelectOption[]
-  onChange: (value: string) => void
-}>) {
-  const { label, value, placeholder, options, onChange } = props
-
-  return (
-    <label className='space-y-2 text-sm font-semibold text-gray-700'>
-      <span>{label}</span>
-      <Select
-        value={value}
-        onValueChange={(nextValue) => {
-          onChange(nextValue)
-        }}
-      >
-        <SelectTrigger className={INPUT_CLASS}>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent position='popper' className='w-(--radix-select-trigger-width)'>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </label>
   )
 }
 

@@ -1,5 +1,5 @@
-import { AxiosError } from 'axios'
 import { api } from '@/api/http'
+import { handleApiError } from '@/lib/api-error'
 import type {
   MovimentacaoBemPatrimonialCreatePayload,
   MovimentacaoBemPatrimonialDetail,
@@ -8,52 +8,6 @@ import type {
   MovimentacaoUoCadastroOption,
   PaginatedResponse,
 } from '../types/movimentacao.types'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function primitiveMessage(value: unknown): string | null {
-  if (typeof value === 'string' && value.trim()) return value
-  if (typeof value === 'number') return String(value)
-  return null
-}
-
-function arrayMessage(value: unknown): string | null {
-  if (!Array.isArray(value) || value.length === 0) return null
-  return primitiveMessage(value[0])
-}
-
-function firstErrorMessage(data: unknown): string | null {
-  if (!isRecord(data)) return null
-
-  const detail = primitiveMessage(data.detail)
-  if (detail) return detail
-
-  for (const value of Object.values(data)) {
-    const message = arrayMessage(value) ?? primitiveMessage(value)
-    if (message) return message
-  }
-
-  return null
-}
-
-function handleApiError(error: unknown, defaultMessage: string): never {
-  if (error instanceof AxiosError) {
-    if (!error.response) {
-      throw new Error('Erro de conexão com o servidor.')
-    }
-
-    const message = firstErrorMessage(error.response.data)
-    if (message) {
-      throw new Error(message)
-    }
-
-    throw new Error(defaultMessage)
-  }
-
-  throw error
-}
 
 function buildQuery(params: MovimentacaoBemPatrimonialListParams = {}) {
   const query = new URLSearchParams()
@@ -67,10 +21,12 @@ function buildQuery(params: MovimentacaoBemPatrimonialListParams = {}) {
   } else if (params.status && params.status !== 'todos') {
     query.append('status', params.status)
   }
-  if (params.unidade_administrativa_origem)
+  if (params.unidade_administrativa_origem) {
     query.append('unidade_administrativa_origem', String(params.unidade_administrativa_origem))
-  if (params.unidade_administrativa_destino)
+  }
+  if (params.unidade_administrativa_destino) {
     query.append('unidade_administrativa_destino', String(params.unidade_administrativa_destino))
+  }
   if (params.numero_cimbpm?.trim()) query.append('numero_cimbpm', params.numero_cimbpm.trim())
   if (params.atrasada && params.atrasada !== 'todos') query.append('atrasada', params.atrasada)
   if (params.ordering) query.append('ordering', params.ordering)
