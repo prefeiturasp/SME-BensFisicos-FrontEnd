@@ -316,3 +316,4 @@ describe('bem.service', () => {
     await expect(bemService.delete(1)).rejects.toThrow('Erro ao excluir bem');
   });
 });
+
