@@ -6,7 +6,7 @@ import {
   type UnidadesListTableColumn,
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
-import type { Usuario } from '@/modules/configuracoes/usuarios/service/usuario.service';
+import type { UnidadeAdministrativaUsuario } from '../types/unidades-administrativas.types';
 import { usePagination } from '../hooks/usePagination';
 import {
   UA_USUARIOS_PAGE_SIZE,
@@ -22,7 +22,7 @@ const HEADERS: ReadonlyArray<UnidadesListTableHeader<string>> = [
   { label: 'RF', key: 'rf', sortable: false },
 ];
 
-const COLUMNS: ReadonlyArray<UnidadesListTableColumn<Usuario>> = [
+const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeAdministrativaUsuario>> = [
   { key: 'nome', render: (usuario) => usuario.nome || usuario.username },
   { key: 'rf', render: (usuario) => usuario.rf || '-' },
 ];
@@ -60,7 +60,7 @@ export function UnidadeAdministrativaUsuariosSection({
     return null;
   }
 
-  const handleView = (usuario: Usuario) => {
+  const handleView = (usuario: UnidadeAdministrativaUsuario) => {
     navigate(`/usuarios/${usuario.id}`);
   };
 

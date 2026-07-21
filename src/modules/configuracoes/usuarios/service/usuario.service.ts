@@ -99,8 +99,6 @@ function buildListQuery(params: any): URLSearchParams {
     appendIfPresent(query, 'page', params.page)
     appendSearch(query, params.search)
     appendIfNotDefault(query, 'unidade', params.unidade, 'todas')
-    appendIfPresent(query, 'unidade_administrativa_id', params.unidade_administrativa_id)
-    appendIfPresent(query, 'page_size', params.page_size)
     appendIfNotDefault(query, 'unidade_orcamentaria', params.unidade_orcamentaria, 'todas')
     appendIfNotDefault(query, 'group_name', params.grupo, 'todos')
     appendStatus(query, params.status)

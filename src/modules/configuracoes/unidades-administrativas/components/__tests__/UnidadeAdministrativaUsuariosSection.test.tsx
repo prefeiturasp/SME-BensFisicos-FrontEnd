@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Usuario } from '@/modules/configuracoes/usuarios/service/usuario.service';
+import type { UnidadeAdministrativaUsuario } from '../../types/unidades-administrativas.types';
 import { UnidadeAdministrativaUsuariosSection } from '../UnidadeAdministrativaUsuariosSection';
 
 const navigateMock = vi.fn();
 
-let queryData: { count: number; results: Usuario[] } | undefined;
+let queryData: { count: number; results: UnidadeAdministrativaUsuario[] } | undefined;
 let queryLoading = false;
 let queryError = false;
 
@@ -27,17 +27,13 @@ vi.mock('../../hooks/useUnidadeAdministrativaUsuarios', () => ({
   }),
 }));
 
-function buildUsuario(overrides: Partial<Usuario> = {}): Usuario {
+function buildUsuario(
+  overrides: Partial<UnidadeAdministrativaUsuario> = {},
+): UnidadeAdministrativaUsuario {
   return {
     id: 1,
     username: 'joao.silva',
     nome: 'João Silva',
-    email: 'joao@sme.gov.br',
-    unidade_codigo: '01.16.10.286',
-    unidade_nome: 'Divisão de Patrimônio',
-    grupo_nome: 'Gestor',
-    status: 'ativo',
-    status_display: 'Ativo',
     rf: '1234567',
     ...overrides,
   };

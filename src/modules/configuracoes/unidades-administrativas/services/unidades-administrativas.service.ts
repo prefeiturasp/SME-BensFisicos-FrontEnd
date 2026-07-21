@@ -10,7 +10,10 @@ import type {
   UpdateUnidadeAdministrativaPayload,
   UnidadeAdministrativaExportFormat,
   UnidadeAdministrativa,
+  UnidadeAdministrativaUsuario,
+  UnidadeAdministrativaUsuariosParams,
   UnidadesAdministrativasListParams,
+  PaginatedResponse,
 } from '../types/unidades-administrativas.types';
 
 const baseUnidadesAdministrativasService = createUnidadesListService<
@@ -63,6 +66,27 @@ export const unidadesAdministrativasService = {
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao carregar unidade administrativa');
+    }
+  },
+
+  async usuarios(
+    id: number,
+    params: UnidadeAdministrativaUsuariosParams = {},
+  ): Promise<PaginatedResponse<UnidadeAdministrativaUsuario>> {
+    try {
+      const query = new URLSearchParams();
+
+      if (params.search?.trim()) query.append('search', params.search.trim());
+      if (params.ordering) query.append('ordering', params.ordering);
+      if (params.page) query.append('page', String(params.page));
+      if (params.page_size) query.append('page_size', String(params.page_size));
+
+      const { data } = await api.get<PaginatedResponse<UnidadeAdministrativaUsuario>>(
+        `/unidades-administrativas/${id}/usuarios/?${query.toString()}`,
+      );
+      return data;
+    } catch (error) {
+      handleApiError(error, 'Erro ao listar usuários associados à unidade administrativa');
     }
   },
 

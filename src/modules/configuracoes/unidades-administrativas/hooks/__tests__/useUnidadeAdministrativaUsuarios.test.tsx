@@ -7,11 +7,11 @@ import {
   useUnidadeAdministrativaUsuarios,
 } from '../useUnidadeAdministrativaUsuarios';
 
-const listMock = vi.fn();
+const usuariosMock = vi.fn();
 
-vi.mock('@/modules/configuracoes/usuarios/service/usuario.service', () => ({
-  usuarioService: {
-    list: (...args: unknown[]) => listMock(...args),
+vi.mock('../../services/unidades-administrativas.service', () => ({
+  unidadesAdministrativasService: {
+    usuarios: (...args: unknown[]) => usuariosMock(...args),
   },
 }));
 
@@ -49,10 +49,10 @@ describe('useUnidadeAdministrativaUsuarios', () => {
     );
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(listMock).not.toHaveBeenCalled();
+    expect(usuariosMock).not.toHaveBeenCalled();
   });
 
-  it('busca usuários da UA com paginação e ordenação padrão', async () => {
+  it('busca os usuários da UA no endpoint dedicado, com paginação e ordenação padrão', async () => {
     const response = {
       count: 1,
       next: null,
@@ -62,18 +62,12 @@ describe('useUnidadeAdministrativaUsuarios', () => {
           id: 1,
           username: 'joao.silva',
           nome: 'João Silva',
-          email: 'joao@sme.gov.br',
-          unidade_codigo: '01.16.10.286',
-          unidade_nome: 'Divisão de Patrimônio',
-          grupo_nome: 'Gestor',
-          status: 'ativo',
-          status_display: 'Ativo',
           rf: '1234567',
         },
       ],
     };
 
-    listMock.mockResolvedValueOnce(response);
+    usuariosMock.mockResolvedValueOnce(response);
 
     const { wrapper } = createWrapper();
     const { result } = renderHook(
@@ -85,8 +79,7 @@ describe('useUnidadeAdministrativaUsuarios', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(listMock).toHaveBeenCalledWith({
-      unidade_administrativa_id: 10,
+    expect(usuariosMock).toHaveBeenCalledWith(10, {
       page: 2,
       page_size: UA_USUARIOS_PAGE_SIZE,
       ordering: 'nome',
@@ -96,7 +89,7 @@ describe('useUnidadeAdministrativaUsuarios', () => {
 
   it('não faz nova consulta quando o id da unidade permanece o mesmo', async () => {
     const response = { count: 0, next: null, previous: null, results: [] };
-    listMock.mockResolvedValue(response);
+    usuariosMock.mockResolvedValue(response);
 
     const { wrapper } = createWrapper();
     const { result, rerender } = renderHook(
@@ -111,11 +104,11 @@ describe('useUnidadeAdministrativaUsuarios', () => {
 
     rerender({ page: 1 });
 
-    expect(listMock).toHaveBeenCalledTimes(1);
+    expect(usuariosMock).toHaveBeenCalledTimes(1);
   });
 
   it('propaga erro quando a consulta falha', async () => {
-    listMock.mockRejectedValueOnce(new Error('Erro ao listar usuários'));
+    usuariosMock.mockRejectedValueOnce(new Error('Erro ao listar usuários'));
 
     const { wrapper } = createWrapper();
     const { result } = renderHook(
