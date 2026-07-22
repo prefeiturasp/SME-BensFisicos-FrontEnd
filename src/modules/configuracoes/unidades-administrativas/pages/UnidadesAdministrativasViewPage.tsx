@@ -7,6 +7,7 @@ import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UnidadeAdministrativaForm } from '../components/UnidadeAdministrativaForm';
+import { UnidadeAdministrativaUsuariosSection } from '../components/UnidadeAdministrativaUsuariosSection';
 import { UnidadesAdministrativasViewBreadcrumb } from '../components/UnidadesAdministrativasViewBreadcrumb';
 import {
   useUnidadeAdministrativaById,
@@ -264,6 +265,8 @@ export default function UnidadesAdministrativasViewPage() {
           onSubmit={handleSave}
         />
       </Card>
+
+      <UnidadeAdministrativaUsuariosSection unidadeId={unidade.id} />
     </div>
   );
 }
