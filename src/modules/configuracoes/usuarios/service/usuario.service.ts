@@ -1,4 +1,4 @@
-﻿import { api } from '@/api/http'
+﻿﻿import { api } from '@/api/http'
 import { AxiosError } from 'axios'
 import { parseFileNameFromContentDisposition } from '@/lib/unidades-list-service'
 
@@ -46,77 +46,33 @@ export interface UsuarioExportResult {
     contentType: string | null
 }
 
-// ─── Helpers de construção da query string ─────────────────────────────────
-
-/**
- * Adiciona o parâmetro à query somente se o valor for "truthy".
- * Cobre os casos simples: page, unidade_administrativa_id, page_size, ordering.
- */
-function appendIfPresent(
-    query: URLSearchParams,
-    key: string,
-    value: string | number | undefined | null
-): void {
-    if (value) {
-        query.append(key, String(value))
-    }
-}
-
-/**
- * Adiciona o parâmetro somente se o valor estiver preenchido e for
- * diferente do valor "padrão" usado pelos selects (ex: 'todas', 'todos').
- */
-function appendIfNotDefault(
-    query: URLSearchParams,
-    key: string,
-    value: string | undefined,
-    defaultValue: string
-): void {
-    if (value && value !== defaultValue) {
-        query.append(key, value)
-    }
-}
-
-function appendSearch(query: URLSearchParams, search?: string): void {
-    const trimmed = search?.trim()
-
-    if (trimmed) {
-        query.append('search', trimmed)
-    }
-}
-
-function appendStatus(query: URLSearchParams, status?: string): void {
-    if (!status || status === 'todos') {
-        return
-    }
-
-    query.append('is_active', status === 'ativo' ? 'true' : 'false')
-}
-
-function buildListQuery(params: any): URLSearchParams {
-    const query = new URLSearchParams()
-
-    appendIfPresent(query, 'page', params.page)
-    appendSearch(query, params.search)
-    appendIfNotDefault(query, 'unidade', params.unidade, 'todas')
-    appendIfPresent(query, 'unidade_administrativa_id', params.unidade_administrativa_id)
-    appendIfPresent(query, 'page_size', params.page_size)
-    appendIfNotDefault(query, 'unidade_orcamentaria', params.unidade_orcamentaria, 'todas')
-    appendIfNotDefault(query, 'group_name', params.grupo, 'todos')
-    appendStatus(query, params.status)
-    appendIfPresent(query, 'ordering', params.ordering)
-
-    return query
-}
-
-// ─── Serviço ────────────────────────────────────────────────────────────────
-
 export const usuarioService = {
 
     list: async (params: any = {}): Promise<PaginatedResponse<Usuario>> => {
         try {
 
-            const query = buildListQuery(params)
+            const query = new URLSearchParams()
+
+            if (params.page)
+                query.append('page', String(params.page))
+
+            if (params.search?.trim())
+                query.append('search', params.search.trim())
+
+            if (params.unidade && params.unidade !== 'todas')
+                query.append('unidade', params.unidade)
+
+            if (params.unidade_orcamentaria && params.unidade_orcamentaria !== 'todas')
+                query.append('unidade_orcamentaria', params.unidade_orcamentaria)
+
+            if (params.grupo && params.grupo !== 'todos')
+                query.append('group_name', params.grupo)
+
+            if (params.status && params.status !== 'todos')
+                query.append('is_active', params.status === 'ativo' ? 'true' : 'false')
+
+            if (params.ordering)
+                query.append('ordering', params.ordering)
 
             const { data } = await api.get(`/user/?${query.toString()}`)
             return data
