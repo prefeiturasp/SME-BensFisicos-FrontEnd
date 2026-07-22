@@ -118,6 +118,12 @@ vi.mock('../../utils/form-error-handler', () => ({
   handleUnidadeAdministrativaBadRequestError: (...args: unknown[]) => badRequestHandlerMock(...args),
 }));
 
+vi.mock('../../components/UnidadeAdministrativaUsuariosSection', () => ({
+  UnidadeAdministrativaUsuariosSection: ({ unidadeId }: { unidadeId: number }) => (
+    <div data-testid='ua-usuarios-section'>{unidadeId}</div>
+  ),
+}));
+
 describe('UnidadesAdministrativasViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -328,6 +334,18 @@ describe('UnidadesAdministrativasViewPage', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeInTheDocument();
+  });
+
+  it('renderiza a seção de usuários associados com o id da unidade carregada', () => {
+    render(
+      <MemoryRouter>
+        <UnidadesAdministrativasViewPage />
+      </MemoryRouter>,
+    );
+
+    const section = screen.getByTestId('ua-usuarios-section');
+    expect(section).toBeInTheDocument();
+    expect(section).toHaveTextContent('10');
   });
 
   it('exibe erro genérico quando a atualização falha fora do fluxo 400', async () => {

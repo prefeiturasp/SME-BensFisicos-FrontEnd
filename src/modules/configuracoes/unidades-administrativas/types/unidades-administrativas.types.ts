@@ -53,3 +53,17 @@ export interface UnidadeAdministrativaExportResult {
   fileName: string;
   contentType?: string;
 }
+
+export interface UnidadeAdministrativaUsuario {
+  id: number;
+  username: string;
+  nome: string;
+  rf: string;
+}
+
+export interface UnidadeAdministrativaUsuariosParams {
+  search?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}
