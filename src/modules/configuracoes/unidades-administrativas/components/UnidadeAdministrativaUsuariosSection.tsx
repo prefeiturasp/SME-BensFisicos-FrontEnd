@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/auth/useAuth';
 import { Card } from '@/components/ui/card';
 import {
   UnidadesListTable,
@@ -28,15 +29,11 @@ const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeAdministrativaUsuari
 ];
 
 /**
- * Seção "Usuários Associados" exibida na tela de visualização do cadastro
- * da Unidade Administrativa.
- *
- * Lista os usuários vinculados à UA (colunas Nome, RF e Ações) e a ação
- * "Visualizar" redireciona para a página de detalhamento do usuário,
- * servindo como atalho para consulta e edição conforme as permissões
- * já existentes no sistema.
+ * Conteúdo da seção. Fica em um componente separado para que o hook de
+ * consulta só seja montado quando o perfil tem permissão — assim o endpoint
+ * de usuários da UA não é chamado para operadores.
  */
-export function UnidadeAdministrativaUsuariosSection({
+function UsuariosAssociadosContent({
   unidadeId,
 }: Readonly<UnidadeAdministrativaUsuariosSectionProps>) {
   const navigate = useNavigate();
@@ -53,8 +50,7 @@ export function UnidadeAdministrativaUsuariosSection({
     pageSize: UA_USUARIOS_PAGE_SIZE,
   });
 
-  // Usuários sem permissão para consultar o cadastro de usuários (ex.:
-  // operadores) não devem ter a navegação comprometida: a seção
+  // Falha na consulta não deve comprometer a navegação da tela: a seção
   // simplesmente não é exibida.
   if (usuariosQuery.isError) {
     return null;
@@ -87,4 +83,28 @@ export function UnidadeAdministrativaUsuariosSection({
       />
     </Card>
   );
+}
+
+/**
+ * Seção "Usuários Associados" exibida na tela de visualização do cadastro
+ * da Unidade Administrativa.
+ *
+ * Lista os usuários vinculados à UA (colunas Nome, RF e Ações) e a ação
+ * "Visualizar" redireciona para a página de detalhamento do usuário,
+ * servindo como atalho para consulta e edição conforme as permissões
+ * já existentes no sistema.
+ *
+ * Visível apenas para gestores de patrimônio: operadores não têm acesso ao
+ * cadastro de usuários, então veem somente o card com os dados da UA.
+ */
+export function UnidadeAdministrativaUsuariosSection({
+  unidadeId,
+}: Readonly<UnidadeAdministrativaUsuariosSectionProps>) {
+  const { user } = useAuth();
+
+  if (!user?.is_gestor_patrimonio) {
+    return null;
+  }
+
+  return <UsuariosAssociadosContent unidadeId={unidadeId} />;
 }

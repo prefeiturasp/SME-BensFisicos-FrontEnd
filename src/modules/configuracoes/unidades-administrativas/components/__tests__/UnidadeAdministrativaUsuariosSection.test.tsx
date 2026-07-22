@@ -5,6 +5,8 @@ import type { UnidadeAdministrativaUsuario } from '../../types/unidades-administ
 import { UnidadeAdministrativaUsuariosSection } from '../UnidadeAdministrativaUsuariosSection';
 
 const navigateMock = vi.fn();
+const useUnidadeAdministrativaUsuariosMock = vi.fn();
+const useAuthMock = vi.fn();
 
 let queryData: { count: number; results: UnidadeAdministrativaUsuario[] } | undefined;
 let queryLoading = false;
@@ -18,13 +20,14 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 vi.mock('../../hooks/useUnidadeAdministrativaUsuarios', () => ({
   UA_USUARIOS_PAGE_SIZE: 10,
-  useUnidadeAdministrativaUsuarios: () => ({
-    data: queryData,
-    isLoading: queryLoading,
-    isError: queryError,
-  }),
+  useUnidadeAdministrativaUsuarios: (params: unknown) =>
+    useUnidadeAdministrativaUsuariosMock(params),
 }));
 
 function buildUsuario(
@@ -39,22 +42,96 @@ function buildUsuario(
   };
 }
 
+function renderSection(unidadeId = 10) {
+  return render(
+    <MemoryRouter>
+      <UnidadeAdministrativaUsuariosSection unidadeId={unidadeId} />
+    </MemoryRouter>,
+  );
+}
+
 describe('UnidadeAdministrativaUsuariosSection', () => {
   beforeEach(() => {
-    navigateMock.mockReset();
+    vi.clearAllMocks();
+
     queryData = { count: 0, results: [] };
     queryLoading = false;
     queryError = false;
+
+    useAuthMock.mockReturnValue({
+      user: { id: 1, is_gestor_patrimonio: true },
+      isLoading: false,
+    });
+
+    useUnidadeAdministrativaUsuariosMock.mockImplementation(() => ({
+      data: queryData,
+      isLoading: queryLoading,
+      isError: queryError,
+    }));
   });
+
+  // ===============================
+  // PERMISSÃO
+  // ===============================
+
+  it('não renderiza a seção para usuários sem is_gestor_patrimonio', () => {
+    useAuthMock.mockReturnValue({
+      user: { id: 2, is_gestor_patrimonio: false },
+      isLoading: false,
+    });
+
+    const { container } = renderSection();
+
+    expect(screen.queryByText('Usuários Associados')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('não consulta o endpoint de usuários quando o perfil não é gestor', () => {
+    useAuthMock.mockReturnValue({
+      user: { id: 2, is_gestor_patrimonio: false },
+      isLoading: false,
+    });
+
+    renderSection();
+
+    expect(useUnidadeAdministrativaUsuariosMock).not.toHaveBeenCalled();
+  });
+
+  it('não renderiza nem consulta quando não há usuário autenticado', () => {
+    useAuthMock.mockReturnValue({ user: null, isLoading: false });
+
+    const { container } = renderSection();
+
+    expect(container).toBeEmptyDOMElement();
+    expect(useUnidadeAdministrativaUsuariosMock).not.toHaveBeenCalled();
+  });
+
+  it('não renderiza quando a flag de gestor não está definida no usuário', () => {
+    useAuthMock.mockReturnValue({ user: { id: 3 }, isLoading: false });
+
+    const { container } = renderSection();
+
+    expect(container).toBeEmptyDOMElement();
+    expect(useUnidadeAdministrativaUsuariosMock).not.toHaveBeenCalled();
+  });
+
+  it('consulta os usuários da unidade informada quando o perfil é gestor', () => {
+    renderSection(77);
+
+    expect(useUnidadeAdministrativaUsuariosMock).toHaveBeenCalledWith({
+      unidadeId: 77,
+      page: 1,
+    });
+  });
+
+  // ===============================
+  // RENDERIZAÇÃO
+  // ===============================
 
   it('exibe título e colunas Nome e RF', () => {
     queryData = { count: 1, results: [buildUsuario()] };
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     expect(screen.getByText('Usuários Associados')).toBeInTheDocument();
     expect(screen.getByText('Nome')).toBeInTheDocument();
@@ -66,11 +143,7 @@ describe('UnidadeAdministrativaUsuariosSection', () => {
   it('exibe "-" quando o usuário não possui RF cadastrado', () => {
     queryData = { count: 1, results: [buildUsuario({ rf: '' })] };
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     expect(screen.getByText('-')).toBeInTheDocument();
   });
@@ -78,11 +151,7 @@ describe('UnidadeAdministrativaUsuariosSection', () => {
   it('usa o username quando o nome não está preenchido', () => {
     queryData = { count: 1, results: [buildUsuario({ nome: '' })] };
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     expect(screen.getByText('joao.silva')).toBeInTheDocument();
   });
@@ -90,11 +159,7 @@ describe('UnidadeAdministrativaUsuariosSection', () => {
   it('exibe mensagem de lista vazia quando a UA não possui usuários associados', () => {
     queryData = { count: 0, results: [] };
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     expect(
       screen.getByText('Nenhum usuário associado a esta Unidade Administrativa.'),
@@ -104,37 +169,51 @@ describe('UnidadeAdministrativaUsuariosSection', () => {
   it('exibe mensagem de carregamento enquanto busca os usuários', () => {
     queryLoading = true;
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     expect(screen.getByText('Carregando usuários associados...')).toBeInTheDocument();
   });
 
+  it('renderiza a seção mesmo quando a consulta ainda não retornou dados', () => {
+    queryData = undefined;
+
+    renderSection();
+
+    expect(screen.getByText('Usuários Associados')).toBeInTheDocument();
+  });
+
+  // ===============================
+  // NAVEGAÇÃO
+  // ===============================
+
   it('redireciona para o detalhamento do usuário ao clicar em visualizar', () => {
     queryData = { count: 1, results: [buildUsuario({ id: 42 })] };
 
-    render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    renderSection();
 
     fireEvent.click(screen.getByRole('button', { name: 'Visualizar usuário João Silva' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/usuarios/42');
   });
 
+  it('usa o username no rótulo de acessibilidade quando não há nome', () => {
+    queryData = { count: 1, results: [buildUsuario({ id: 43, nome: '' })] };
+
+    renderSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Visualizar usuário joao.silva' }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/usuarios/43');
+  });
+
+  // ===============================
+  // ERRO
+  // ===============================
+
   it('não renderiza a seção quando a consulta de usuários falha', () => {
     queryError = true;
 
-    const { container } = render(
-      <MemoryRouter>
-        <UnidadeAdministrativaUsuariosSection unidadeId={10} />
-      </MemoryRouter>,
-    );
+    const { container } = renderSection();
 
     expect(screen.queryByText('Usuários Associados')).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
