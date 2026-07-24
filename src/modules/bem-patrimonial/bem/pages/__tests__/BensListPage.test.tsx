@@ -316,7 +316,7 @@ describe('BensListPage', () => {
     renderWithProviders()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Digite o número patrimonial ou Nome do Bem'),
+      screen.getByPlaceholderText('Digite Número ou Nome'),
       { target: { value: 'abc' } }
     )
 
@@ -356,7 +356,8 @@ describe('BensListPage', () => {
     mockPage({ buscaGeralUos: false, setBuscaGeralUos, setEscopoFilter, setPage })
     renderWithProviders()
 
-    fireEvent.click(screen.getByLabelText('Busca geral em todas as UOs'))
+    fireEvent.click(screen.getByRole('button', { name: 'Busca Especial' }))
+    fireEvent.click(screen.getByText('Busca geral em todas as UOs'))
 
     expect(setBuscaGeralUos).toHaveBeenCalledWith(true)
     expect(setEscopoFilter).toHaveBeenCalledWith('todas')
@@ -370,7 +371,8 @@ describe('BensListPage', () => {
     mockPage({ buscaGeralUos: true, setBuscaGeralUos, setEscopoFilter, setPage })
     renderWithProviders()
 
-    fireEvent.click(screen.getByLabelText('Busca geral em todas as UOs'))
+    fireEvent.click(screen.getByRole('button', { name: 'Busca Especial' }))
+    fireEvent.click(screen.getByText('Busca geral em todas as UOs'))
 
     expect(setBuscaGeralUos).toHaveBeenCalledWith(false)
     expect(setEscopoFilter).not.toHaveBeenCalled()
@@ -383,7 +385,8 @@ describe('BensListPage', () => {
     mockPage({ bensBaixados: false, setBensBaixados, setPage })
     renderWithProviders()
 
-    fireEvent.click(screen.getByLabelText('Bens Baixados'))
+    fireEvent.click(screen.getByRole('button', { name: 'Busca Especial' }))
+    fireEvent.click(screen.getByText('Bens Baixados'))
 
     expect(setBensBaixados).toHaveBeenCalledWith(true)
     expect(setPage).toHaveBeenCalledWith(1)
@@ -433,7 +436,7 @@ describe('BensListPage', () => {
     mockPage({ page: 3, setPage })
     renderWithProviders()
 
-    fireEvent.click(screen.getByText('Situação'))
+    fireEvent.click(screen.getByText('Status'))
 
     expect(setPage).toHaveBeenCalledWith(1)
   })
@@ -458,7 +461,7 @@ describe('BensListPage', () => {
     mockPage({ ordering: '-status' })
     renderWithProviders()
 
-    const icon = screen.getByText('Situação').parentElement?.querySelector('svg')
+    const icon = screen.getByText('Status').parentElement?.querySelector('svg')
     expect(icon?.getAttribute('class') || '').toContain('text-[#00703C]')
   })
 

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { EscopoFilterDropdown } from '@/components/EscopoFilterDropdown'
+import { BuscaEspecialFilter } from '../components/BuscaEspecialFilter'
 import { useBensList } from '../hooks/useBensList'
 import { usePagination } from '../hooks/usePagination'
 
@@ -177,14 +178,14 @@ export default function BensListPage() {
             <label
               htmlFor='search-bem'
               className='text-sm font-semibold text-gray-700'>
-              Filtrar por Número, Nome do Bem
+              Filtrar por Número ou Nome do Bem
             </label>
             <input
               type='text'
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               className={INPUT_SEARCH_CLASS}
-              placeholder='Digite o número patrimonial ou Nome do Bem'
+              placeholder='Digite Número ou Nome'
             />
           </div>
 
@@ -238,41 +239,22 @@ export default function BensListPage() {
             </Select>
           </div>
 
-          <div className='flex items-end pb-1'>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-gray-700">Busca especial</span>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={buscaGeralUos}
-                  onChange={e => {
-                    const checked = e.target.checked
-                    setBuscaGeralUos(checked)
-                    if (checked) {
-                      setEscopoFilter('todas')
-                    }
-                    setPage(1)
-                  }}
-                  className="h-4 w-4 accent-[#00703C]"
-                />
-                <span>Busca geral em todas as UOs</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  id="bens-baixados"
-                  type="checkbox"
-                  checked={bensBaixados}
-                  onChange={e => {
-                    setBensBaixados(e.target.checked)
-                    setPage(1)
-                  }}
-                  className="h-4 w-4 accent-[#00703C]"
-                />
-                <span>
-                  Bens Baixados
-                </span>
-              </label>
-            </div>
+          <div className='flex flex-col gap-2'>
+            <BuscaEspecialFilter
+              buscaGeralUos={buscaGeralUos}
+              bensBaixados={bensBaixados}
+              onChangeBuscaGeralUos={checked => {
+                setBuscaGeralUos(checked)
+                if (checked) {
+                  setEscopoFilter('todas')
+                }
+                setPage(1)
+              }}
+              onChangeBensBaixados={checked => {
+                setBensBaixados(checked)
+                setPage(1)
+              }}
+            />
           </div>
         </div>
 
@@ -286,11 +268,17 @@ export default function BensListPage() {
                   { label: 'Número Patrimonial', field: 'numero_patrimonial' },
                   { label: 'Nome do Bem', field: 'nome' },
                   { label: 'Unidade Administrativa', field: 'unidade_administrativa' },
-                  { label: 'Situação', field: 'status' },
+                  { label: 'Status', field: 'status' },
                 ].map(col => (
                   <th
                     key={col.field}
-                    className='p-3 cursor-pointer select-none'
+                    className={`p-3 cursor-pointer select-none${
+                      col.field === 'status' ? ' whitespace-nowrap' : ''
+                    }${
+                      col.field === 'unidade_administrativa'
+                        ? ' max-w-[180px]'
+                        : ''
+                    }`}
                     onClick={() => handleSort(col.field)}
                   >
                     <div className='flex items-center gap-2'>
@@ -333,11 +321,14 @@ export default function BensListPage() {
                       {bem.numero_patrimonial ?? '-'}
                     </td>
                     <td className='p-3'>{bem.nome}</td>
-                    <td className='p-3'>
+                    <td
+                      className='p-3 max-w-[180px] truncate'
+                      title={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
+                    >
                       {bem.unidade_administrativa_codigo} -{' '}
                       {bem.unidade_administrativa_nome}
                     </td>
-                    <td className='p-3'>{bem.status_display}</td>
+                    <td className='p-3 whitespace-nowrap'>{bem.status_display}</td>
                     <td className='p-3 text-center'>
                       <Button
                         aria-label="Visualizar bem"
