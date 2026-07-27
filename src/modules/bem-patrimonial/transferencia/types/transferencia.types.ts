@@ -47,6 +47,7 @@ export interface TransferenciaItem {
 
 export interface TransferenciaBemPatrimonialListItem {
   id: number
+  nome_bem: string
   numero_ntbpm: string | null
   numero_processo: string | null
   observacao: string
@@ -89,6 +90,7 @@ export interface TransferenciaBemPatrimonialListParams {
   page?: number
   pageSize?: number
   search?: string
+  nome_bem?: string
   numero_ntbpm?: string
   numero_processo?: string
   unidade_orcamentaria_origem?: number

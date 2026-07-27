@@ -15,6 +15,7 @@ function buildQuery(params: TransferenciaBemPatrimonialListParams = {}) {
   if (params.page) query.append('page', String(params.page))
   if (params.pageSize) query.append('page_size', String(params.pageSize))
   if (params.search?.trim()) query.append('search', params.search.trim())
+  if (params.nome_bem?.trim()) query.append('nome_bem', params.nome_bem.trim())
   if (params.numero_ntbpm?.trim()) query.append('numero_ntbpm', params.numero_ntbpm.trim())
   if (params.numero_processo?.trim()) {
     query.append('numero_processo', params.numero_processo.trim())
