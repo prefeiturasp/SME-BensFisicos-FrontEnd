@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Eye, FileText, Network, Search } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -357,9 +357,12 @@ export default function TransferenciasListPage() {
       </div>
 
       <Card className='space-y-4 p-6'>
-        <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
-          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <label htmlFor='transferencias-filtro-nome-bem' className='block'>
+        <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] xl:items-start'>
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-nome-bem'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
               Filtrar por Nome do Bem
             </label>
             <div className='relative'>
@@ -376,8 +379,11 @@ export default function TransferenciasListPage() {
             </div>
           </div>
 
-          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <label htmlFor='transferencias-filtro-ntbpm' className='block'>
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-ntbpm'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
               Filtrar por NTBPM
             </label>
             <div className='relative'>
@@ -394,8 +400,11 @@ export default function TransferenciasListPage() {
             </div>
           </div>
 
-          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <label htmlFor='transferencias-filtro-numero-processo' className='block'>
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-numero-processo'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
               Filtrar por Número do Processo
             </label>
             <div className='relative'>
@@ -417,6 +426,7 @@ export default function TransferenciasListPage() {
             value={uoOrigemFilter}
             placeholder='Todos'
             options={uoFilterOptions}
+            className='min-w-0'
             onChange={(value) => {
               setUoOrigemFilter(value)
               setPage(1)
@@ -428,6 +438,7 @@ export default function TransferenciasListPage() {
             value={uoDestinoFilter}
             placeholder='Todos'
             options={uoFilterOptions}
+            className='min-w-0'
             onChange={(value) => {
               setUoDestinoFilter(value)
               setPage(1)
@@ -471,7 +482,7 @@ export default function TransferenciasListPage() {
           </table>
         </div>
 
-        <div className='flex items-center justify-center gap-1 pt-2'>
+        <div className='flex items-center justify-center gap-2 pt-4'>
           <Button
             size='icon'
             variant='ghost'
@@ -479,7 +490,7 @@ export default function TransferenciasListPage() {
             onClick={() => setPage((current) => current - 1)}
             aria-label='Página anterior'
           >
-            â€¹
+            <ChevronLeft size={16} />
           </Button>
 
           {pages.map((item, index) => (
@@ -499,7 +510,7 @@ export default function TransferenciasListPage() {
             onClick={() => setPage((current) => current + 1)}
             aria-label='Próxima página'
           >
-            â€º
+            <ChevronRight size={16} />
           </Button>
         </div>
       </Card>
