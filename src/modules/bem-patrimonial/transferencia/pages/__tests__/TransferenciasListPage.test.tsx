@@ -239,6 +239,142 @@ describe('TransferenciasListPage', () => {
     })
   })
 
+  it('aplica os filtros e refaz a busca com os parametros corretos', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(transferenciaService.list).mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockTransferencia],
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    const [nomeBemInput, ntbpmInput, processoInput] = screen.getAllByRole('textbox')
+    const [uoOrigemSelect, uoDestinoSelect] = screen.getAllByRole('combobox')
+
+    await user.type(nomeBemInput, 'Notebook')
+    await user.type(ntbpmInput, 'NTBPM-100')
+    await user.type(processoInput, '54321')
+    await user.selectOptions(uoOrigemSelect, '10')
+    await user.selectOptions(uoDestinoSelect, '20')
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          nome_bem: 'Notebook',
+          numero_ntbpm: 'NTBPM-100',
+          numero_processo: '54321',
+          unidade_orcamentaria_origem: 10,
+          unidade_orcamentaria_destino: 20,
+          ordering: '-criado_em',
+        }),
+      )
+    })
+  })
+
+  it('navega entre as páginas anterior e próxima', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(transferenciaService.list).mockResolvedValue({
+      count: 25,
+      next: 'next',
+      previous: null,
+      results: [mockTransferencia],
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    const nextButton = screen
+      .getAllByRole('button')
+      .find((button) => button.getAttribute('aria-label')?.includes('Pr')) as HTMLButtonElement
+
+    await user.click(nextButton)
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 2,
+          pageSize: 10,
+        }),
+      )
+    })
+
+    const previousButton = screen
+      .getAllByRole('button')
+      .find((button) => button.getAttribute('aria-label')?.includes('Anterior')) as HTMLButtonElement
+
+    await user.click(previousButton)
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+        }),
+      )
+    })
+  })
+
+  it('navega para a home ao clicar em voltar', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <Routes>
+          <Route path='/transferencias' element={<TransferenciasListPage />} />
+          <Route path='/home' element={<div data-testid='home-page' />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Voltar' }))
+
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+  })
+
+  it('mantém os filtros de UO vazios quando o carregamento das opções falhar', async () => {
+    vi.mocked(unidadesOrcamentariasService.list).mockRejectedValueOnce(new Error('falha'))
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(unidadesOrcamentariasService.list).toHaveBeenCalledWith({ pageSize: 1000 })
+    })
+
+    const origemSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement
+
+    expect(origemSelect.options).toHaveLength(1)
+    expect(origemSelect.options[0].value).toBe('todos')
+  })
+
   it('navega para a visualização da transferência ao clicar no ícone', async () => {
     const user = userEvent.setup()
 
