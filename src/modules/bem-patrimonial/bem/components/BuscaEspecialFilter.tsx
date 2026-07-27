@@ -1,59 +1,52 @@
-import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 export type BuscaEspecialFilterProps = Readonly<{
+  id: string
   buscaGeralUos: boolean
   bensBaixados: boolean
   onChangeBuscaGeralUos: (checked: boolean) => void
   onChangeBensBaixados: (checked: boolean) => void
+  triggerClassName?: string
 }>
 
-const TRIGGER_CLASS =
-  'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center justify-between gap-2'
+const DEFAULT_TRIGGER_CLASS =
+  'h-9 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center'
+
+// Mesma classe-base usada pelo SelectTrigger (components/ui/select.tsx),
+// para que o trigger da Busca Especial fique visualmente idêntico
+// (shadow, borda, foco) aos demais filtros de listagem (Status/Unidade).
+const SELECT_TRIGGER_BASE_CLASS =
+  "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit cursor-pointer items-center justify-between gap-2 border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
 export function BuscaEspecialFilter({
+  id,
   buscaGeralUos,
   bensBaixados,
   onChangeBuscaGeralUos,
   onChangeBensBaixados,
+  triggerClassName,
 }: BuscaEspecialFilterProps) {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const selecionadosCount = [buscaGeralUos, bensBaixados].filter(
     Boolean
   ).length
 
   return (
-    <div className='flex flex-col gap-2' ref={containerRef}>
-      <span
-        id='busca-especial-label'
-        className='text-sm font-semibold text-gray-700'
-      >
-        Busca Especial
-      </span>
-
-      <div className='relative'>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
+          id={id}
           type='button'
-          className={TRIGGER_CLASS}
-          aria-haspopup='true'
-          aria-expanded={open}
-          aria-labelledby='busca-especial-label'
-          onClick={() => setOpen(prev => !prev)}
+          className={cn(
+            SELECT_TRIGGER_BASE_CLASS,
+            triggerClassName ?? DEFAULT_TRIGGER_CLASS
+          )}
         >
           <span className='truncate text-gray-700'>
             {selecionadosCount > 0
@@ -62,34 +55,30 @@ export function BuscaEspecialFilter({
           </span>
           <ChevronDown size={16} className='text-gray-500 shrink-0' />
         </button>
-
-        {open && (
-          <div
-            aria-labelledby='busca-especial-label'
-            className='absolute z-10 mt-1 w-full rounded-xs border border-gray-300 bg-white shadow-md'
-          >
-            <label className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={buscaGeralUos}
-                onChange={e => onChangeBuscaGeralUos(e.target.checked)}
-                className='h-4 w-4 accent-[#00703C]'
-              />
-              <span>Busca geral em todas as UOs</span>
-            </label>
-            <label className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer'>
-              <input
-                id='bens-baixados'
-                type='checkbox'
-                checked={bensBaixados}
-                onChange={e => onChangeBensBaixados(e.target.checked)}
-                className='h-4 w-4 accent-[#00703C]'
-              />
-              <span>Bens Baixados</span>
-            </label>
-          </div>
-        )}
-      </div>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent
+        align='start'
+        className='w-[var(--radix-popover-trigger-width)] p-1'
+      >
+        <label className='flex items-center gap-2 rounded-xs px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer'>
+          <Checkbox
+            checked={buscaGeralUos}
+            onCheckedChange={checked =>
+              onChangeBuscaGeralUos(checked === true)
+            }
+          />
+          <span>Busca geral em todas as UOs</span>
+        </label>
+        <label className='flex items-center gap-2 rounded-xs px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer'>
+          <Checkbox
+            checked={bensBaixados}
+            onCheckedChange={checked =>
+              onChangeBensBaixados(checked === true)
+            }
+          />
+          <span>Bens Baixados</span>
+        </label>
+      </PopoverContent>
+    </Popover>
   )
 }

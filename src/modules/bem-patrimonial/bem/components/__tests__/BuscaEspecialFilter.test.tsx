@@ -9,6 +9,7 @@ describe('BuscaEspecialFilter', () => {
 
     render(
       <BuscaEspecialFilter
+        id='busca-especial'
         buscaGeralUos={false}
         bensBaixados={false}
         onChangeBuscaGeralUos={onChangeBuscaGeralUos}
@@ -20,9 +21,9 @@ describe('BuscaEspecialFilter', () => {
     return { onChangeBuscaGeralUos, onChangeBensBaixados }
   }
 
-  it('renderiza título "Busca Especial"', () => {
+  it('renderiza o trigger com o id informado', () => {
     setup()
-    expect(screen.getByText('Busca Especial')).toBeInTheDocument()
+    expect(document.getElementById('busca-especial')).toBeInTheDocument()
   })
 
   it('não exibe as opções antes de abrir o dropdown', () => {
@@ -64,14 +65,17 @@ describe('BuscaEspecialFilter', () => {
     expect(screen.getByText('2 selecionado(s)')).toBeInTheDocument()
   })
 
-  it('fecha o dropdown ao clicar fora', () => {
+  it('fecha o dropdown ao pressionar Escape', () => {
     setup()
     fireEvent.click(screen.getByRole('button'))
     expect(
       screen.getByText('Busca geral em todas as UOs')
     ).toBeInTheDocument()
 
-    fireEvent.mouseDown(document.body)
+    fireEvent.keyDown(screen.getByText('Busca geral em todas as UOs'), {
+      key: 'Escape',
+      code: 'Escape',
+    })
 
     expect(
       screen.queryByText('Busca geral em todas as UOs')

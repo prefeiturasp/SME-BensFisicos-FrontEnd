@@ -240,9 +240,18 @@ export default function BensListPage() {
           </div>
 
           <div className='flex flex-col gap-2'>
+            <label
+              htmlFor='busca-especial'
+              className='text-sm font-semibold text-gray-700'
+            >
+              Busca Especial
+            </label>
+
             <BuscaEspecialFilter
+              id='busca-especial'
               buscaGeralUos={buscaGeralUos}
               bensBaixados={bensBaixados}
+              triggerClassName={INPUT_SEARCH_CLASS}
               onChangeBuscaGeralUos={checked => {
                 setBuscaGeralUos(checked)
                 if (checked) {
