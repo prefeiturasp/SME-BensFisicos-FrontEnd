@@ -65,7 +65,7 @@ function TransferenciaTableRow(props: Readonly<{
       <td className='p-3 align-middle'>
         <Checkbox
           checked={selected}
-          aria-label={`Selecionar transferÃªncia ${transferencia.id}`}
+          aria-label={`Selecionar transferência ${transferencia.id}`}
           onCheckedChange={() => onToggleSelected(transferencia.id)}
         />
       </td>
@@ -88,7 +88,7 @@ function TransferenciaTableRow(props: Readonly<{
           type='button'
           size='icon'
           variant='ghost'
-          aria-label={`Visualizar transferÃªncia ${transferencia.id}`}
+          aria-label={`Visualizar transferência ${transferencia.id}`}
           onClick={() => onVisualizar(transferencia.id)}
         >
           <Eye size={18} />
@@ -152,7 +152,7 @@ function TransferenciasTableBody(props: TransferenciasTableBodyProps) {
     return (
       <tr>
         <td colSpan={7} className='py-10 text-center text-gray-400'>
-          Nenhuma transferÃªncia encontrada.
+          Nenhuma transferência encontrada.
         </td>
       </tr>
     )
@@ -322,13 +322,13 @@ export default function TransferenciasListPage() {
       <AppBreadcrumb
         items={[
           { label: 'Bem Patrimonial', icon: Network },
-          { label: 'TransferÃªncia de Bens Patrimoniais', icon: Network, isActive: true },
+          { label: 'Transferência de Bens Patrimoniais', icon: Network, isActive: true },
         ]}
       />
 
       <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-          TransferÃªncia de Bens Patrimoniais
+          Transferência de Bens Patrimoniais
         </h1>
 
         <div className='flex flex-wrap items-center gap-3'>
@@ -346,12 +346,12 @@ export default function TransferenciasListPage() {
             className={ACTION_BUTTON_CLASS}
             onClick={() => navigate('/transferencias/novo')}
           >
-            Adicionar TransferÃªncia
+            Adicionar Transferência
           </Button>
 
           <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
             <FileText size={16} />
-            RelatÃ³rio
+            Relatório
           </Button>
         </div>
       </div>
@@ -396,24 +396,24 @@ export default function TransferenciasListPage() {
 
           <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
             <label htmlFor='transferencias-filtro-numero-processo' className='block'>
-              Filtrar por NÃºmero do Processo
+              Filtrar por Número do Processo
             </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
                 id='transferencias-filtro-numero-processo'
-                aria-label='Filtrar por NÃºmero do Processo'
+                aria-label='Filtrar por Número do Processo'
                 type='text'
                 value={numeroProcessoInput}
                 onChange={(event) => setNumeroProcessoInput(event.target.value)}
-                placeholder='Digite o nÃºmero do processo'
+                placeholder='Digite o número do processo'
                 className={`${INPUT_CLASS} pl-10`}
               />
             </div>
           </div>
 
           <FilterSelect
-            label='Filtrar por Unidade OrÃ§amentÃ¡ria de Origem'
+            label='Filtrar por Unidade Orçamentária de Origem'
             value={uoOrigemFilter}
             placeholder='Todos'
             options={uoFilterOptions}
@@ -424,7 +424,7 @@ export default function TransferenciasListPage() {
           />
 
           <FilterSelect
-            label='Filtrar por Unidade OrÃ§amentÃ¡ria de Destino'
+            label='Filtrar por Unidade Orçamentária de Destino'
             value={uoDestinoFilter}
             placeholder='Todos'
             options={uoFilterOptions}
@@ -435,7 +435,7 @@ export default function TransferenciasListPage() {
           />
         </div>
         <h2 className='text-sm font-semibold text-[#00703C]'>
-          TransferÃªncias de Bem Patrimonial Cadastradas
+          Transferências de Bem Patrimonial Cadastradas
         </h2>
 
         <div className='overflow-x-auto'>
@@ -445,17 +445,17 @@ export default function TransferenciasListPage() {
                 <th className='p-3'>
                   <Checkbox
                     checked={selectedAll}
-                    aria-label='Selecionar todas as transferÃªncias'
+                    aria-label='Selecionar todas as transferências'
                     onCheckedChange={toggleAll}
                     disabled={transferencias.length === 0}
                   />
                 </th>
                 <th className='p-3'>Nome do Bem</th>
-                <th className='p-3'>NÃºmero NTBPM</th>
-                <th className='p-3'>NÃºmero do Processo</th>
-                <th className='p-3'>Unidade OrÃ§amentÃ¡ria de Origem</th>
-                <th className='p-3'>Unidade OrÃ§amentÃ¡ria de Destino</th>
-                <th className='p-3 text-center'>AÃ§Ãµes</th>
+                <th className='p-3'>Número NTBPM</th>
+                <th className='p-3'>Número do Processo</th>
+                <th className='p-3'>Unidade Orçamentária de Origem</th>
+                <th className='p-3'>Unidade Orçamentária de Destino</th>
+                <th className='p-3 text-center'>Ações</th>
               </tr>
             </thead>
 
@@ -477,7 +477,7 @@ export default function TransferenciasListPage() {
             variant='ghost'
             disabled={page === 1}
             onClick={() => setPage((current) => current - 1)}
-            aria-label='PÃ¡gina anterior'
+            aria-label='Página anterior'
           >
             â€¹
           </Button>
@@ -497,7 +497,7 @@ export default function TransferenciasListPage() {
             variant='ghost'
             disabled={page === totalPages}
             onClick={() => setPage((current) => current + 1)}
-            aria-label='PrÃ³xima pÃ¡gina'
+            aria-label='Próxima página'
           >
             â€º
           </Button>
