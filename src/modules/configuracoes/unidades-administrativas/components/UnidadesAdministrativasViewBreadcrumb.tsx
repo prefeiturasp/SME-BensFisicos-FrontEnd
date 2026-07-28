@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { AppBreadcrumb } from '@/components/AppBreadcrumb';
 
 interface UnidadesAdministrativasViewBreadcrumbProps {
@@ -11,8 +11,7 @@ export function UnidadesAdministrativasViewBreadcrumb({
   return (
     <AppBreadcrumb
       items={[
-        { label: 'Configurações', icon: Settings },
-        { label: 'Unidades Administrativas', to: '/unidades-administrativas' },
+        { label: 'Unidades Administrativas', icon: Building2, to: '/unidades-administrativas' },
         {
           label: isEditing
             ? 'Editar Unidade Administrativa'
