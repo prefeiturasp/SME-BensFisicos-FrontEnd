@@ -1,4 +1,13 @@
-import { Settings, X, Menu, ChevronDown, Boxes, ListOrdered } from 'lucide-react'
+import {
+  Settings,
+  X,
+  Menu,
+  ChevronDown,
+  Boxes,
+  ListOrdered,
+  Building2,
+  Landmark,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +32,7 @@ import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-
 
 const menuItems = [
   {
+    type: 'group' as const,
     title: 'Bem Patrimonial',
     icon: Boxes,
     isActive: true,
@@ -46,6 +56,7 @@ const menuItems = [
     ],
   },
   {
+    type: 'group' as const,
     title: 'Inventário',
     icon: ListOrdered,
     items: [
@@ -60,17 +71,23 @@ const menuItems = [
     ],
   },
   {
+    type: 'link' as const,
+    title: 'Unidades Orçamentárias',
+    icon: Landmark,
+    url: '/unidades-orcamentarias',
+    requiresSuperuser: true,
+  },
+  {
+    type: 'link' as const,
+    title: 'Unidades Administrativas',
+    icon: Building2,
+    url: '/unidades-administrativas',
+  },
+  {
+    type: 'group' as const,
     title: 'Configurações',
     icon: Settings,
     items: [
-      {
-        title: 'Unidades Administrativas',
-        url: '/unidades-administrativas',
-      },
-      {
-        title: 'Unidades Orçamentárias',
-        url: '/unidades-orcamentarias',
-      },
       {
         title: 'Usuários',
         url: '/usuarios',
@@ -89,27 +106,24 @@ export function AppSidebar() {
   const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const canAccessParametros = canAccessParametrosConciliacao(user)
-  const visibleMenuItems = menuItems.map((item) => {
-    if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
-      return {
-        ...item,
-        items: item.items.filter(
-          (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
-        ),
+  const visibleMenuItems = menuItems
+    .filter((item) => item.type !== 'link' || !item.requiresSuperuser || Boolean(user?.is_superuser))
+    .map((item) => {
+      if (item.type === 'link') {
+        return item
       }
-    }
 
-    if (item.title !== 'Configurações') {
+      if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
+        return {
+          ...item,
+          items: item.items.filter(
+            (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
+          ),
+        }
+      }
+
       return item
-    }
-
-    return {
-      ...item,
-      items: item.items.filter(
-        (subItem) => subItem.url !== '/unidades-orcamentarias' || Boolean(user?.is_superuser),
-      ),
-    }
-  })
+    })
 
   const handleSubItemClick = () => {
     if (isMobile) {
@@ -158,6 +172,44 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className={cn(isCollapsed ? 'gap-1' : 'gap-2')}>
               {visibleMenuItems.map((item) => {
+                if (item.type === 'link') {
+                  const isItemActive = location.pathname.startsWith(item.url)
+
+                  if (isCollapsed) {
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={item.title}
+                          className='bg-[#267A55] text-white hover:bg-[#1f6849] !h-[90px] !w-full !px-2 !py-2 !flex !flex-col !items-center !justify-center !gap-2 rounded !text-center !overflow-hidden [&>span:last-child]:!truncate-none [&>span:last-child]:!whitespace-normal [&>span:last-child]:!break-words [&>span:last-child]:!overflow-visible'
+                        >
+                          <Link to={item.url} onClick={handleSubItemClick}>
+                            <item.icon className='!size-7' />
+                            <span className='text-sm font-bold leading-tight w-full max-w-full text-center'>
+                              {item.title}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isItemActive}
+                        className='bg-[#267A55] text-white hover:bg-[#1f6849] data-[active=true]:bg-white data-[active=true]:text-[#267A55] py-6 px-3 rounded'
+                      >
+                        <Link to={item.url} onClick={handleSubItemClick}>
+                          <item.icon className='size-border-b !size-6' />
+                          <span className='font-bold text-sm flex-1'>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                }
+
                 const isActive = item.items?.some((sub) => location.pathname.startsWith(sub.url))
 
                 if (isCollapsed) {

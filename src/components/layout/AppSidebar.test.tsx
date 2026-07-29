@@ -38,13 +38,19 @@ beforeEach(() => {
   vi.stubGlobal(
     'ResizeObserver',
     class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe() {
+        // Não é necessário observar de fato em ambiente de teste (jsdom)
+      }
+      unobserve() {
+        // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+      }
+      disconnect() {
+        // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+      }
     },
   );
 
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
       matches: false,
@@ -90,6 +96,8 @@ describe('AppSidebar', () => {
       renderSidebar();
       expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument();
       expect(screen.getByText('Inventário')).toBeInTheDocument();
+      expect(screen.getByText('Unidades Orçamentárias')).toBeInTheDocument();
+      expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
       expect(screen.getByText('Configurações')).toBeInTheDocument();
     });
   });
@@ -126,16 +134,15 @@ describe('AppSidebar', () => {
   });
 
   describe('Navegação e Menus', () => {
-    it('exibe o atalho de Unidades Orçamentárias para superuser', async () => {
-      const user = userEvent.setup();
+    it('exibe o atalho de Unidades Orçamentárias diretamente no menu principal para superuser', () => {
       renderSidebar();
 
-      await user.click(screen.getByText('Configurações'));
-
-      expect(screen.getByRole('link', { name: 'Unidades Orçamentárias' })).toBeVisible();
+      const link = screen.getByRole('link', { name: 'Unidades Orçamentárias' });
+      expect(link).toBeVisible();
+      expect(link).toHaveAttribute('href', '/unidades-orcamentarias');
     });
 
-    it('oculta o atalho de Unidades Orçamentárias para não superuser', async () => {
+    it('oculta o atalho de Unidades Orçamentárias do menu principal para não superuser', () => {
       vi.mocked(useAuth).mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
@@ -161,10 +168,7 @@ describe('AppSidebar', () => {
         loginAsync: vi.fn(),
       });
 
-      const user = userEvent.setup();
       renderSidebar();
-
-      await user.click(screen.getByText('Configurações'));
 
       expect(
         screen.queryByRole('link', { name: 'Unidades Orçamentárias' }),
@@ -274,6 +278,103 @@ describe('AppSidebar', () => {
       await user.click(link);
 
       expect(screen.getByText('Página de Conciliações')).toBeInTheDocument();
+    });
+  });
+
+  describe('Item de menu Unidades Administrativas', () => {
+    it('deve exibir Unidades Administrativas como item direto do menu principal, fora de Configurações', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      expect(link).toBeVisible();
+      expect(link).toHaveAttribute('href', '/unidades-administrativas');
+    });
+
+    it('não deve mais exibir Unidades Administrativas dentro do submenu de Configurações', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Configurações'));
+
+      const links = screen.getAllByRole('link', { name: 'Unidades Administrativas' });
+      expect(links).toHaveLength(1);
+
+      expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Trocar Senha' })).toBeVisible();
+    });
+
+    it('deve exibir um ícone para o item Unidades Administrativas', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      expect(link.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('deve destacar visualmente o item quando a rota ativa for de Unidades Administrativas', () => {
+      renderSidebar(['/unidades-administrativas']);
+      const activeLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
+
+      expect(activeLink).toHaveAttribute('data-active', 'true');
+    });
+  });
+
+  describe('Item de menu Unidades Orçamentárias', () => {
+    it('deve exibir um ícone para o item Unidades Orçamentárias', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Orçamentárias' });
+      expect(link.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('deve navegar diretamente ao clicar em Unidades Orçamentárias, sem expandir submenu', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <SidebarProvider defaultOpen={true}>
+          <TooltipProvider>
+            <MemoryRouter initialEntries={['/home']}>
+              <Routes>
+                <Route path='/home' element={<AppSidebar />} />
+                <Route
+                  path='/unidades-orcamentarias'
+                  element={<div>Página de Unidades Orçamentárias</div>}
+                />
+              </Routes>
+            </MemoryRouter>
+          </TooltipProvider>
+        </SidebarProvider>,
+      );
+
+      const link = screen.getByRole('link', { name: 'Unidades Orçamentárias' });
+      await user.click(link);
+
+      expect(screen.getByText('Página de Unidades Orçamentárias')).toBeInTheDocument();
+    });
+
+    it('deve destacar visualmente o item quando a rota ativa for de Unidades Orçamentárias', () => {
+      renderSidebar(['/unidades-orcamentarias']);
+      const activeLink = screen.getByRole('link', { name: 'Unidades Orçamentárias' });
+
+      expect(activeLink).toHaveAttribute('data-active', 'true');
+    });
+
+    it('deve posicionar Unidades Orçamentárias imediatamente acima de Unidades Administrativas, e ambos acima de Configurações', () => {
+      renderSidebar();
+
+      const menuItems = screen
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.trim())
+        .filter(Boolean);
+
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const orcamentariasIndex = menuItems.indexOf('Unidades Orçamentárias');
+      const administrativasIndex = menuItems.indexOf('Unidades Administrativas');
+      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
+
+      expect(inventarioIndex).toBeGreaterThanOrEqual(0);
+      expect(orcamentariasIndex).toBeGreaterThan(inventarioIndex);
+      expect(administrativasIndex).toBeGreaterThan(orcamentariasIndex);
+      expect(configuracoesIndex).toBeGreaterThan(administrativasIndex);
     });
   });
 
