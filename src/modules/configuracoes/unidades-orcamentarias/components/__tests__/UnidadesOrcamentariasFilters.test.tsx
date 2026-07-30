@@ -44,7 +44,7 @@ describe('UnidadesOrcamentariasFilters', () => {
     fireEvent.change(screen.getByPlaceholderText('Digite o código da UO ou do Órgão'), {
       target: { value: '10.10.10' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Digite o nome ou sigla da UA'), {
+    fireEvent.change(screen.getByPlaceholderText('Digite o nome ou sigla da UO'), {
       target: { value: 'UO1' },
     });
 
