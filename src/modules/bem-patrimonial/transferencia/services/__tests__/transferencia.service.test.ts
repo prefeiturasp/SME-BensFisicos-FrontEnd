@@ -43,6 +43,7 @@ describe('transferenciaService', () => {
       page: 2,
       pageSize: 30,
       search: 'Notebook',
+      nome_bem: 'Notebook Dell',
       numero_ntbpm: 'NTBPM-1',
       numero_processo: '12345',
       unidade_orcamentaria_origem: 10,
@@ -55,6 +56,7 @@ describe('transferenciaService', () => {
     expect(url).toContain('page=2')
     expect(url).toContain('page_size=30')
     expect(url).toContain('search=Notebook')
+    expect(url).toContain('nome_bem=Notebook+Dell')
     expect(url).toContain('numero_ntbpm=NTBPM-1')
     expect(url).toContain('numero_processo=12345')
     expect(url).toContain('unidade_orcamentaria_origem=10')
@@ -71,6 +73,7 @@ describe('transferenciaService', () => {
       page: 0,
       pageSize: 0,
       search: '   ',
+      nome_bem: '   ',
       numero_ntbpm: '   ',
       numero_processo: '   ',
       ordering: '',
