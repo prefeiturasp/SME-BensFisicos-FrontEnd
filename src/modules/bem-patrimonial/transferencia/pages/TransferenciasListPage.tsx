@@ -426,7 +426,7 @@ export default function TransferenciasListPage() {
             value={uoOrigemFilter}
             placeholder='Todos'
             options={uoFilterOptions}
-            className='min-w-0'
+            className='[&>span]:flex [&>span]:min-h-[2.75rem] [&>span]:items-end [&>span]:leading-tight'
             onChange={(value) => {
               setUoOrigemFilter(value)
               setPage(1)
@@ -438,7 +438,7 @@ export default function TransferenciasListPage() {
             value={uoDestinoFilter}
             placeholder='Todos'
             options={uoFilterOptions}
-            className='min-w-0'
+            className='[&>span]:flex [&>span]:min-h-[2.75rem] [&>span]:items-end [&>span]:leading-tight'
             onChange={(value) => {
               setUoDestinoFilter(value)
               setPage(1)

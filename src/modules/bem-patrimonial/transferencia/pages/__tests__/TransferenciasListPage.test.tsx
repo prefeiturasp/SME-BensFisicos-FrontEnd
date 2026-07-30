@@ -265,8 +265,8 @@ describe('TransferenciasListPage', () => {
     await user.type(nomeBemInput, 'Notebook')
     await user.type(ntbpmInput, 'NTBPM-100')
     await user.type(processoInput, '54321')
-    await user.selectOptions(uoOrigemSelect, '10')
-    await user.selectOptions(uoDestinoSelect, '20')
+    await user.selectOptions(uoOrigemSelect as HTMLSelectElement, '10')
+    await user.selectOptions(uoDestinoSelect as HTMLSelectElement, '20')
 
     await waitFor(() => {
       expect(transferenciaService.list).toHaveBeenLastCalledWith(
