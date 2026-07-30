@@ -239,7 +239,7 @@ export default function TransferenciasListPage() {
 
     const loadUoOptions = async () => {
       try {
-        const response = await unidadesOrcamentariasService.list({ pageSize: 1000 })
+        const response = await unidadesOrcamentariasService.list({ pageSize: 100, ativa: 'true' })
         if (!active) return
 
         setUoOptions(

@@ -239,7 +239,7 @@ describe('TransferenciasListPage', () => {
     })
   })
 
-  it('aplica os filtros e refaz a busca com os parametros corretos', async () => {
+  it('aplica os filtros e refaz a busca com os parâmetros corretos', async () => {
     const user = userEvent.setup()
 
     vi.mocked(transferenciaService.list).mockResolvedValue({
@@ -366,7 +366,7 @@ describe('TransferenciasListPage', () => {
     )
 
     await waitFor(() => {
-      expect(unidadesOrcamentariasService.list).toHaveBeenCalledWith({ pageSize: 1000 })
+      expect(unidadesOrcamentariasService.list).toHaveBeenCalledWith({ pageSize: 100, ativa: 'true' })
     })
 
     const origemSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement

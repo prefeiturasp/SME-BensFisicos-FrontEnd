@@ -47,7 +47,7 @@ export interface TransferenciaItem {
 
 export interface TransferenciaBemPatrimonialListItem {
   id: number
-  nome_bem: string
+  nome_bem: string | null
   numero_ntbpm: string | null
   numero_processo: string | null
   observacao: string
@@ -61,7 +61,7 @@ export interface TransferenciaBemPatrimonialListItem {
 }
 
 export interface TransferenciaBemPatrimonialDetail
-  extends TransferenciaBemPatrimonialListItem {
+  extends Omit<TransferenciaBemPatrimonialListItem, 'nome_bem'> {
   unidade_administrativa_origem: TransferenciaUnidadeAdministrativa
   unidade_administrativa_destino: TransferenciaUnidadeAdministrativa
   itens: TransferenciaItem[]
