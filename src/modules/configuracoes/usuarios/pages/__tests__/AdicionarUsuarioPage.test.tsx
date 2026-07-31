@@ -220,7 +220,7 @@ describe("AdicionarUsuarioPage", () => {
         it("renderiza o breadcrumb corretamente", () => {
             renderComponent()
 
-            expect(screen.getByText("Configurações")).toBeInTheDocument()
+            expect(screen.getByText("Início")).toBeInTheDocument()
             expect(screen.getByText("Usuários")).toBeInTheDocument()
             expect(
                 screen.getByText("Adicionar Usuário", { selector: "span" })

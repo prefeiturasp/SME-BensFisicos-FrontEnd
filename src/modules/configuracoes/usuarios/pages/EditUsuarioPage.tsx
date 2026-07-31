@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
@@ -34,13 +34,30 @@ interface ValoresOriginais {
   unidadeOrcamentariaId: number | null
 }
 
-function getIdsUsuario(dadosUsuario: any): number[] {
+export function getIdsUsuario(dadosUsuario: any): number[] {
   if (dadosUsuario.unidades_administrativas?.length) return dadosUsuario.unidades_administrativas
   if (dadosUsuario.unidade_administrativa) return [dadosUsuario.unidade_administrativa]
   return []
 }
 
-function mountPayload(
+export function resolveUoInicial(
+  dadosUsuario: any,
+  selecionadas: EscopoUa[],
+  grupos: EscopoGrupo[]
+) {
+  const uoUsuarioId = typeof dadosUsuario.unidade_orcamentaria === "number" ? dadosUsuario.unidade_orcamentaria : null
+  if (uoUsuarioId !== null) return uoUsuarioId
+
+  const uoDaPrimeiraSelecionada = selecionadas[0]?.unidade_orcamentaria_id ?? null
+  if (uoDaPrimeiraSelecionada !== null) return uoDaPrimeiraSelecionada
+
+  const uoDoPrimeiroGrupo = grupos[0]?.uo.id ?? null
+  if (uoDoPrimeiroGrupo !== null) return uoDoPrimeiroGrupo
+
+  return null
+}
+
+export function mountPayload(
   data: EditarUsuarioFormData,
   valoresOriginais: ValoresOriginais | null,
   unidadesAdministrativas: EscopoUa[],
@@ -153,8 +170,7 @@ export default function EditarUsuarioPage() {
         setUnidadesSelecionadas(selecionadas)
         syncFormUnidades(selecionadas)
 
-        const uoUsuarioId = typeof dadosUsuario.unidade_orcamentaria === "number" ? dadosUsuario.unidade_orcamentaria : null
-        const uoInicial = uoUsuarioId ?? selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null
+        const uoInicial = resolveUoInicial(dadosUsuario, selecionadas, grupos)
         setUoSelecionadaId(uoInicial)
         const uasDaUoInicial = uas.filter((ua) => ua.unidade_orcamentaria_id === uoInicial)
         const isGestor = (dadosUsuario.grupo_nome ?? "") === "GESTOR_PATRIMONIO"
@@ -223,7 +239,13 @@ export default function EditarUsuarioPage() {
 
   return (
     <div className="p-8 space-y-4">
-      <AppBreadcrumb items={[{ label: "Configurações", icon: Settings }, { label: "Usuários" }, { label: "Editar Usuário", isActive: true }]} />
+      <AppBreadcrumb
+        items={[
+          { label: "Usuários", to: "/usuarios" },
+          { label: "Visualizar Usuário", to: id ? `/usuarios/${id}` : "/usuarios" },
+          { label: "Editar Usuário", isActive: true },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Editar Usuário</h1>
         <div className="flex items-center gap-3">

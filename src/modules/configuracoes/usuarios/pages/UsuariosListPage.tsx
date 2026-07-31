@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUpDown, Eye, FileText, Settings } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, Eye, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -25,7 +25,7 @@ const PAGE_SIZE = 10
 const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center'
 const INPUT_SEARCH_CLASS =
-  'h-9 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-white'
+  'h-9 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-white font-normal'
 const ACTION_BUTTON_CLASS =
   'h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors'
 
@@ -152,7 +152,6 @@ export default function UsuariosListPage() {
     <div className='space-y-4 p-8'>
       <AppBreadcrumb
         items={[
-          { label: 'Configurações', icon: Settings },
           { label: 'Usuários', isActive: true },
         ]}
       />
@@ -184,7 +183,7 @@ export default function UsuariosListPage() {
       </div>
 
       <Card className='space-y-6 p-6'>
-        <div className='grid grid-cols-1 gap-6 md:grid-cols-5'>
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-5  md:items-end'>
           <div className='flex flex-col gap-2'>
             <label className='text-sm font-semibold text-gray-700'>
               <span>Filtrar por Nome do Usuário</span>
@@ -251,7 +250,7 @@ export default function UsuariosListPage() {
 
           <div className='flex flex-col gap-2'>
             <label className='text-sm font-semibold text-gray-700'>
-              <span>Filtrar por Grupo de Permissionamento</span>
+              <span>Filtrar por Grupo</span>
               <Select
                 value={grupoFilter}
                 onValueChange={(v) => {

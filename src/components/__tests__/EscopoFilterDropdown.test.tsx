@@ -41,10 +41,10 @@ describe('EscopoFilterDropdown', () => {
     const trigger = screen.getByRole('button')
     fireEvent.click(trigger)
 
-    expect(screen.getByPlaceholderText('Buscar unidade...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
 
     fireEvent.click(trigger)
-    expect(screen.queryByPlaceholderText('Buscar unidade...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Buscar unidade')).not.toBeInTheDocument()
   })
 
   it('deve filtrar unidades pelo input', () => {
@@ -52,7 +52,7 @@ describe('EscopoFilterDropdown', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    const input = screen.getByPlaceholderText('Buscar unidade...')
+    const input = screen.getByPlaceholderText('Buscar unidade')
     fireEvent.change(input, { target: { value: 'A1' } })
 
     expect(screen.getByText('Escola A1')).toBeInTheDocument()
@@ -64,7 +64,7 @@ describe('EscopoFilterDropdown', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar unidade...'), {
+    fireEvent.change(screen.getByPlaceholderText('Buscar unidade'), {
       target: { value: 'inexistente' },
     })
 
@@ -79,7 +79,7 @@ describe('EscopoFilterDropdown', () => {
     fireEvent.click(screen.getByRole('button'))
 
     // pega o container do dropdown
-    const dropdown = screen.getByPlaceholderText('Buscar unidade...').closest('div')!
+    const dropdown = screen.getByPlaceholderText('Buscar unidade').closest('div')!
 
     // busca dentro dele
     const uoButton = within(dropdown.parentElement!).getByRole('button', {
@@ -120,11 +120,11 @@ describe('EscopoFilterDropdown', () => {
     renderComponent()
 
     fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByPlaceholderText('Buscar unidade...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
 
     fireEvent.mouseDown(document)
 
-    expect(screen.queryByPlaceholderText('Buscar unidade...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Buscar unidade')).not.toBeInTheDocument()
   })
 
   it('deve aplicar classe ativa para UO selecionada', () => {

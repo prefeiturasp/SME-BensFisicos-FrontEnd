@@ -5,7 +5,7 @@ import {
   ChevronDown,
   Boxes,
   ListOrdered,
-  Building2,
+  Building2, Users,
   Landmark,
 } from 'lucide-react'
 import {
@@ -84,14 +84,16 @@ const menuItems = [
     url: '/unidades-administrativas',
   },
   {
+    type: 'link' as const,
+    title: 'Usuários',
+    icon: Users,
+    url: '/usuarios',
+  },
+  {
     type: 'group' as const,
     title: 'Configurações',
     icon: Settings,
     items: [
-      {
-        title: 'Usuários',
-        url: '/usuarios',
-      },
       {
         title: 'Trocar Senha',
         url: '/trocar-senha',

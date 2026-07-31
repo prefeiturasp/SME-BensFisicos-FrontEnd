@@ -304,9 +304,7 @@ describe('TransferenciasListPage', () => {
       expect(transferenciaService.list).toHaveBeenCalled()
     })
 
-    const nextButton = screen
-      .getAllByRole('button')
-      .find((button) => button.getAttribute('aria-label')?.includes('Pr')) as HTMLButtonElement
+    const nextButton = screen.getByRole('button', { name: 'Próxima página' })
 
     await user.click(nextButton)
 
@@ -319,9 +317,7 @@ describe('TransferenciasListPage', () => {
       )
     })
 
-    const previousButton = screen
-      .getAllByRole('button')
-      .find((button) => button.getAttribute('aria-label')?.includes('Anterior')) as HTMLButtonElement
+    const previousButton = screen.getByRole('button', { name: 'Página anterior' })
 
     await user.click(previousButton)
 

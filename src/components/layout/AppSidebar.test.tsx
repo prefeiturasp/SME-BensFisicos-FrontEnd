@@ -98,6 +98,7 @@ describe('AppSidebar', () => {
       expect(screen.getByText('Inventário')).toBeInTheDocument();
       expect(screen.getByText('Unidades Orçamentárias')).toBeInTheDocument();
       expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
+      expect(screen.getByText('Usuários')).toBeInTheDocument();
       expect(screen.getByText('Configurações')).toBeInTheDocument();
     });
   });
@@ -282,25 +283,48 @@ describe('AppSidebar', () => {
   });
 
   describe('Item de menu Unidades Administrativas', () => {
-    it('deve exibir Unidades Administrativas como item direto do menu principal, fora de Configurações', () => {
+    it('deve exibir Usuários e Unidades Administrativas como itens diretos do menu principal, fora de Configurações', () => {
       renderSidebar();
 
-      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
-      expect(link).toBeVisible();
-      expect(link).toHaveAttribute('href', '/unidades-administrativas');
+      const uaLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      expect(uaLink).toBeVisible();
+      expect(uaLink).toHaveAttribute('href', '/unidades-administrativas');
+
+      const usuariosLink = screen.getByRole('link', { name: 'Usuários' });
+      expect(usuariosLink).toBeVisible();
+      expect(usuariosLink).toHaveAttribute('href', '/usuarios');
     });
 
-    it('não deve mais exibir Unidades Administrativas dentro do submenu de Configurações', async () => {
+    it('não deve mais exibir Usuários dentro do submenu de Configurações', async () => {
       const user = userEvent.setup();
       renderSidebar();
 
       await user.click(screen.getByText('Configurações'));
 
-      const links = screen.getAllByRole('link', { name: 'Unidades Administrativas' });
-      expect(links).toHaveLength(1);
-
-      expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
       expect(screen.getByRole('link', { name: 'Trocar Senha' })).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
+
+      const usersLinks = screen.getAllByRole('link', { name: 'Usuários' });
+      expect(usersLinks).toHaveLength(1);
+    });
+
+    it('deve posicionar Usuários após Unidades Administrativas e antes de Configurações', () => {
+      renderSidebar();
+
+      const menuItems = screen
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.trim())
+        .filter(Boolean);
+
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
+      const usuariosIndex = menuItems.indexOf('Usuários');
+      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
+
+      expect(inventarioIndex).toBeGreaterThanOrEqual(0);
+      expect(unidadesIndex).toBeGreaterThan(inventarioIndex);
+      expect(usuariosIndex).toBeGreaterThan(unidadesIndex);
+      expect(configuracoesIndex).toBeGreaterThan(usuariosIndex);
     });
 
     it('deve exibir um ícone para o item Unidades Administrativas', () => {

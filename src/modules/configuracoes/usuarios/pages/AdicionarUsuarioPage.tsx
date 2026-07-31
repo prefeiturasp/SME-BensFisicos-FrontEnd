@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
@@ -129,7 +129,7 @@ export default function AdicionarUsuarioPage() {
 
   return (
     <div className="p-8 space-y-4">
-      <AppBreadcrumb items={[{ label: "Configurações", icon: Settings }, { label: "Usuários" }, { label: "Adicionar Usuário", isActive: true }]} />
+      <AppBreadcrumb items={[{ label: "Usuários", to: "/usuarios" }, { label: "Adicionar Usuário", isActive: true }]} />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Adicionar Usuário</h1>
         <div className="flex items-center gap-3">
