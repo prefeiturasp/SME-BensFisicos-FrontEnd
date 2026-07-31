@@ -26,7 +26,7 @@ function baixarTemplate() {
     a.download = TEMPLATE_XLSX_FILE_NAME
     document.body.appendChild(a)
     a.click()
-    document.body.removeChild(a)
+    a.remove()
 }
 
 // ---------------------------------------------------------------------------
@@ -280,15 +280,17 @@ export default function BemImportPage() {
                                 Adicionar Bens Patrimoniais em lote
                             </p>
                             <p className='text-sm text-gray-600'>
-                                Realize o upload de arquivo Excel com o modelo de planilha padrão{' '}
+                                Realize o upload de arquivo Excel com o{' '}
                                 <button
                                     type='button'
                                     onClick={baixarTemplate}
-                                    className='text-[#2F7D57] underline hover:text-[#1f5c3e] text-sm'
+                                    className='text-[#2F7D57] underline hover:text-[#1f5c3e] text-sm font-medium'
                                 >
-                                    [clique aqui para baixar o modelo]
+                                    modelo de planilha padrão
                                 </button>{' '}
-                                para realizar a importação.
+                                [clique aqui para baixar o modelo] para realizar a importação. É
+                                possível realizar importação de Bens apenas sem Conciliações em
+                                aberto.
                             </p>
                         </div>
                         <div className='w-1/3'>

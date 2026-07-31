@@ -89,6 +89,16 @@ export function useBemImport() {
         return
       }
 
+      // 409: bloqueado por regra de negócio — ex.: Conciliação em aberto
+      // para a Unidade Administrativa/Orçamentária do usuário
+      if (status === 409) {
+        setEstado({
+          tipo: 'erro_request',
+          mensagem: data.detail ?? 'Importação não realizada: existe Conciliação em aberto.',
+        })
+        return
+      }
+
       // 400: arquivo inválido (formato, tamanho)
       if (status === 400) {
         const errosArquivo = (data as any)?.erros?.arquivo ?? []
