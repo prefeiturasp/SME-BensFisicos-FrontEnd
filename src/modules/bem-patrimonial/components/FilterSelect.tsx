@@ -22,7 +22,7 @@ export function FilterSelect(props: FilterSelectProps) {
   const { label, value, placeholder, options, onChange, className } = props
 
   return (
-    <label className={cn('space-y-2 text-sm font-semibold text-gray-700', className)}>
+    <label className={cn('min-w-0 space-y-2 text-sm font-semibold text-gray-700', className)}>
       <span>{label}</span>
       <Select
         value={value}
