@@ -1,13 +1,10 @@
-import { Settings } from 'lucide-react';
+import { Landmark } from 'lucide-react';
 import { AppBreadcrumb } from '@/components/AppBreadcrumb';
 
 export function UnidadesOrcamentariasBreadcrumb() {
   return (
     <AppBreadcrumb
-      items={[
-        { label: 'Configurações', icon: Settings },
-        { label: 'Unidades Orçamentárias', isActive: true },
-      ]}
+      items={[{ label: 'Unidades Orçamentárias', icon: Landmark, isActive: true }]}
     />
   );
 }

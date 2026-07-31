@@ -1,4 +1,13 @@
-import { Settings, X, Menu, ChevronDown, Boxes, ListOrdered, Building2 } from 'lucide-react'
+import {
+  Settings,
+  X,
+  Menu,
+  ChevronDown,
+  Boxes,
+  ListOrdered,
+  Building2,
+  Landmark,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -63,6 +72,13 @@ const menuItems = [
   },
   {
     type: 'link' as const,
+    title: 'Unidades Orçamentárias',
+    icon: Landmark,
+    url: '/unidades-orcamentarias',
+    requiresSuperuser: true,
+  },
+  {
+    type: 'link' as const,
     title: 'Unidades Administrativas',
     icon: Building2,
     url: '/unidades-administrativas',
@@ -72,10 +88,6 @@ const menuItems = [
     title: 'Configurações',
     icon: Settings,
     items: [
-      {
-        title: 'Unidades Orçamentárias',
-        url: '/unidades-orcamentarias',
-      },
       {
         title: 'Usuários',
         url: '/usuarios',
@@ -94,31 +106,24 @@ export function AppSidebar() {
   const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const canAccessParametros = canAccessParametrosConciliacao(user)
-  const visibleMenuItems = menuItems.map((item) => {
-    if (item.type === 'link') {
-      return item
-    }
-
-    if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
-      return {
-        ...item,
-        items: item.items.filter(
-          (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
-        ),
+  const visibleMenuItems = menuItems
+    .filter((item) => item.type !== 'link' || !item.requiresSuperuser || Boolean(user?.is_superuser))
+    .map((item) => {
+      if (item.type === 'link') {
+        return item
       }
-    }
 
-    if (item.title !== 'Configurações') {
+      if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
+        return {
+          ...item,
+          items: item.items.filter(
+            (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
+          ),
+        }
+      }
+
       return item
-    }
-
-    return {
-      ...item,
-      items: item.items.filter(
-        (subItem) => subItem.url !== '/unidades-orcamentarias' || Boolean(user?.is_superuser),
-      ),
-    }
-  })
+    })
 
   const handleSubItemClick = () => {
     if (isMobile) {

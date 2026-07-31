@@ -71,9 +71,9 @@ describe('UnidadesOrcamentariasTable', () => {
     expect(screen.getByText('10.10')).toBeInTheDocument();
     expect(screen.getByText('SME')).toBeInTheDocument();
     expect(screen.getByText('Secretaria Municipal de Educacao')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Código do órgão' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sigla do órgão' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Nome do órgão' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Código do Órgão' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sigla do Órgão' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nome do Órgão' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Visualizar unidade orçamentária Unidade Orçamentária 1'));
     expect(onView).toHaveBeenCalledWith(1);
@@ -102,9 +102,9 @@ describe('UnidadesOrcamentariasTable', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Código' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Código do órgão' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Sigla do órgão' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Nome do órgão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Código do Órgão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sigla do Órgão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nome do Órgão' }));
     fireEvent.click(screen.getByRole('button', { name: 'Página anterior' }));
     fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }));
     fireEvent.click(screen.getByRole('button', { name: '3' }));
