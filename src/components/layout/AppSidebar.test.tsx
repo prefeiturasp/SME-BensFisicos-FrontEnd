@@ -38,13 +38,19 @@ beforeEach(() => {
   vi.stubGlobal(
     'ResizeObserver',
     class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe() {
+        // Não é necessário observar de fato em ambiente de teste (jsdom)
+      }
+      unobserve() {
+        // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+      }
+      disconnect() {
+        // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+      }
     },
   );
 
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
       matches: false,
@@ -90,6 +96,7 @@ describe('AppSidebar', () => {
       renderSidebar();
       expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument();
       expect(screen.getByText('Inventário')).toBeInTheDocument();
+      expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
       expect(screen.getByText('Configurações')).toBeInTheDocument();
     });
   });
@@ -274,6 +281,86 @@ describe('AppSidebar', () => {
       await user.click(link);
 
       expect(screen.getByText('Página de Conciliações')).toBeInTheDocument();
+    });
+  });
+
+  describe('Item de menu Unidades Administrativas', () => {
+    it('deve exibir Unidades Administrativas como item direto do menu principal, fora de Configurações', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      expect(link).toBeVisible();
+      expect(link).toHaveAttribute('href', '/unidades-administrativas');
+    });
+
+    it('não deve mais exibir Unidades Administrativas dentro do submenu de Configurações', async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+
+      await user.click(screen.getByText('Configurações'));
+
+      const links = screen.getAllByRole('link', { name: 'Unidades Administrativas' });
+      expect(links).toHaveLength(1);
+
+      expect(screen.getByRole('link', { name: 'Unidades Orçamentárias' })).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Trocar Senha' })).toBeVisible();
+    });
+
+    it('deve posicionar Unidades Administrativas imediatamente após Inventário e antes de Configurações', () => {
+      renderSidebar();
+
+      const menuItems = screen
+        .getAllByRole('listitem')
+        .map((item) => item.textContent?.trim())
+        .filter(Boolean);
+
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
+      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
+
+      expect(inventarioIndex).toBeGreaterThanOrEqual(0);
+      expect(unidadesIndex).toBeGreaterThan(inventarioIndex);
+      expect(configuracoesIndex).toBeGreaterThan(unidadesIndex);
+    });
+
+    it('deve exibir um ícone para o item Unidades Administrativas', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      expect(link.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('deve navegar diretamente ao clicar em Unidades Administrativas, sem expandir submenu', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <SidebarProvider defaultOpen={true}>
+          <TooltipProvider>
+            <MemoryRouter initialEntries={['/home']}>
+              <Routes>
+                <Route path='/home' element={<AppSidebar />} />
+                <Route
+                  path='/unidades-administrativas'
+                  element={<div>Página de Unidades Administrativas</div>}
+                />
+              </Routes>
+            </MemoryRouter>
+          </TooltipProvider>
+        </SidebarProvider>,
+      );
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      await user.click(link);
+
+      expect(screen.getByText('Página de Unidades Administrativas')).toBeInTheDocument();
+    });
+
+    it('deve destacar visualmente o item quando a rota ativa for de Unidades Administrativas', () => {
+      renderSidebar(['/unidades-administrativas']);
+      const activeLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
+
+      expect(activeLink).toHaveAttribute('data-active', 'true');
     });
   });
 
