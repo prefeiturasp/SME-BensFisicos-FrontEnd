@@ -40,6 +40,23 @@ export function getIdsUsuario(dadosUsuario: any): number[] {
   return []
 }
 
+export function resolveUoInicial(
+  dadosUsuario: any,
+  selecionadas: EscopoUa[],
+  grupos: EscopoGrupo[]
+) {
+  const uoUsuarioId = typeof dadosUsuario.unidade_orcamentaria === "number" ? dadosUsuario.unidade_orcamentaria : null
+  if (uoUsuarioId !== null) return uoUsuarioId
+
+  const uoDaPrimeiraSelecionada = selecionadas[0]?.unidade_orcamentaria_id ?? null
+  if (uoDaPrimeiraSelecionada !== null) return uoDaPrimeiraSelecionada
+
+  const uoDoPrimeiroGrupo = grupos[0]?.uo.id ?? null
+  if (uoDoPrimeiroGrupo !== null) return uoDoPrimeiroGrupo
+
+  return null
+}
+
 export function mountPayload(
   data: EditarUsuarioFormData,
   valoresOriginais: ValoresOriginais | null,
@@ -153,8 +170,7 @@ export default function EditarUsuarioPage() {
         setUnidadesSelecionadas(selecionadas)
         syncFormUnidades(selecionadas)
 
-        const uoUsuarioId = typeof dadosUsuario.unidade_orcamentaria === "number" ? dadosUsuario.unidade_orcamentaria : null
-        const uoInicial = uoUsuarioId ?? selecionadas[0]?.unidade_orcamentaria_id ?? grupos[0]?.uo.id ?? null
+        const uoInicial = resolveUoInicial(dadosUsuario, selecionadas, grupos)
         setUoSelecionadaId(uoInicial)
         const uasDaUoInicial = uas.filter((ua) => ua.unidade_orcamentaria_id === uoInicial)
         const isGestor = (dadosUsuario.grupo_nome ?? "") === "GESTOR_PATRIMONIO"

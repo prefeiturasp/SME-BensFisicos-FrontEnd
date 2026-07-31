@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
-import EditarUsuarioPage, { getIdsUsuario, mountPayload } from "../EditUsuarioPage"
+import EditarUsuarioPage, { getIdsUsuario, mountPayload, resolveUoInicial } from "../EditUsuarioPage"
 import { usuarioService } from "../../service/usuario.service"
 import { authService } from "../../../../../auth/auth.service"
 
@@ -83,11 +83,64 @@ const meMock = {
     config: {},
 } as Awaited<ReturnType<typeof authService.getCurrentUser>>
 
+const meMockSemUoInicial = {
+    ...meMock,
+    data: {
+        ...meMock.data,
+        opcoes_escopo: {
+            grupos: [
+                {
+                    uo: {
+                        id: 20,
+                        label: "20 - UO Central",
+                    },
+                    uas: [
+                        {
+                            unidade_administrativa_id: 10,
+                            unidade_orcamentaria_id: 20,
+                            codigo: "UA001",
+                            nome: "Unidade Central",
+                        },
+                    ],
+                },
+                {
+                    uo: {
+                        id: 30,
+                        label: "30 - UO Alternativa",
+                    },
+                    uas: [
+                        {
+                            unidade_administrativa_id: 40,
+                            unidade_orcamentaria_id: 30,
+                            codigo: "UA040",
+                            nome: "Unidade Alternativa",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+} as Awaited<ReturnType<typeof authService.getCurrentUser>>
+
 const MOCK_PASSWORD = ["S@", "nh4", "@123!"].join("")
 
-function renderPage(id = "1") {
+function createDeferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res
+        reject = rej
+    })
+    return { promise, resolve, reject }
+}
+
+function renderPage(
+    id = "1",
+    initialEntries = [`/usuarios/${id}/editar`],
+    initialIndex = 0
+) {
     return render(
-        <MemoryRouter initialEntries={[`/usuarios/${id}/editar`]}>
+        <MemoryRouter initialEntries={initialEntries} initialIndex={initialIndex}>
             <Routes>
                 <Route path="/usuarios/:id/editar" element={<EditarUsuarioPage />} />
                 <Route path="/usuarios/:id" element={<div>Página de Detalhes</div>} />
@@ -112,10 +165,15 @@ describe("EditarUsuarioPage", () => {
         vi.mocked(usuarioService.partialUpdate).mockResolvedValue(usuarioMock)
     })
 
-    it("exibe spinner de carregamento enquanto busca os dados", () => {
-        vi.mocked(usuarioService.retrieve).mockReturnValue(new Promise(() => { }))
+    it("exibe spinner de carregamento enquanto busca os dados", async () => {
+        const deferred = createDeferred<typeof usuarioMock>()
+        vi.mocked(usuarioService.retrieve).mockReturnValue(deferred.promise)
         renderPage()
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        await act(async () => {
+            deferred.resolve(usuarioMock)
+            await deferred.promise
+        })
     })
 
     it("exibe mensagem de erro quando a requisição falha", async () => {
@@ -501,6 +559,31 @@ describe("helpers do EditarUsuarioPage", () => {
         })
     })
 
+    it("mountPayload funciona quando não há valores originais para comparação", () => {
+        expect(
+            mountPayload(
+                {
+                    ...baseFormData,
+                    nome: "Maria da Silva",
+                    rf: "B765432",
+                    email: "maria@email.com",
+                    grupo: "OPERADOR_INVENTARIO",
+                    status: "inativo",
+                },
+                null,
+                [],
+                [],
+                false,
+                null
+            )
+        ).toEqual({
+            nome: "Maria da Silva",
+            rf: "B765432",
+            email: "maria@email.com",
+            group_name: "OPERADOR_INVENTARIO",
+        })
+    })
+
     it("mountPayload envia UO vazia quando o gestor não seleciona nenhuma UA", () => {
         expect(
             mountPayload(
@@ -533,5 +616,65 @@ describe("helpers do EditarUsuarioPage", () => {
             unidade_administrativa: 10,
             unidade_orcamentaria: 20,
         })
+    })
+
+    it("usa a UO da primeira unidade selecionada quando o usuário não traz unidade_orcamentaria", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidade_orcamentaria: null,
+            unidades_administrativas: [10],
+        })
+        vi.mocked(authService.getCurrentUser).mockResolvedValue(meMockSemUoInicial)
+
+        renderPage()
+        await aguardarCarregamento()
+
+        expect(screen.getAllByRole("combobox")[2]).toHaveTextContent("20 - UO Central")
+    })
+
+    it("usa a UO do primeiro grupo quando o usuário não traz UO nem unidade selecionada", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue({
+            ...usuarioMock,
+            unidade_orcamentaria: null,
+            unidades_administrativas: [],
+        })
+        vi.mocked(authService.getCurrentUser).mockResolvedValue(meMockSemUoInicial)
+
+        renderPage()
+        await aguardarCarregamento()
+
+        expect(screen.getAllByRole("combobox")[2]).toHaveTextContent("20 - UO Central")
+    })
+
+    it("volta para a tela anterior ao clicar no botão de retorno", async () => {
+        renderPage("1", ["/usuarios", "/usuarios/1/editar"], 1)
+        await aguardarCarregamento()
+
+        const user = userEvent.setup()
+        await user.click(screen.getAllByRole("button")[0])
+
+        expect(screen.getByText("Lista de Usuários")).toBeInTheDocument()
+    })
+
+    it("alterna a visibilidade das senhas ao clicar nos botões de olho", async () => {
+        renderPage()
+        await aguardarCarregamento()
+
+        const user = userEvent.setup()
+
+        const senhaInput = screen.getByPlaceholderText("Cadastre uma senha") as HTMLInputElement
+        const confirmarSenhaInput = screen.getByPlaceholderText("Confirme a senha") as HTMLInputElement
+
+        expect(senhaInput).toHaveAttribute("type", "password")
+        expect(confirmarSenhaInput).toHaveAttribute("type", "password")
+
+        const senhaContainer = senhaInput.closest("div")?.parentElement
+        const confirmarContainer = confirmarSenhaInput.closest("div")?.parentElement
+
+        await user.click(within(senhaContainer as HTMLElement).getByRole("button"))
+        await user.click(within(confirmarContainer as HTMLElement).getByRole("button"))
+
+        expect(senhaInput).toHaveAttribute("type", "text")
+        expect(confirmarSenhaInput).toHaveAttribute("type", "text")
     })
 })
