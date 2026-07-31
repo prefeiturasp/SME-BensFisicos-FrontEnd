@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 
-import EditarUsuarioPage from "../EditUsuarioPage"
+import EditarUsuarioPage, { getIdsUsuario, mountPayload } from "../EditUsuarioPage"
 import { usuarioService } from "../../service/usuario.service"
 import { authService } from "../../../../../auth/auth.service"
 
@@ -411,6 +411,127 @@ describe("EditarUsuarioPage", () => {
 
         await waitFor(() => {
             expect(screen.getByText("Unidade Administrativa é obrigatória para Operador")).toBeInTheDocument()
+        })
+    })
+})
+
+describe("helpers do EditarUsuarioPage", () => {
+    const ua10 = {
+        unidade_administrativa_id: 10,
+        unidade_orcamentaria_id: 20,
+    } as any
+
+    const ua11 = {
+        unidade_administrativa_id: 11,
+        unidade_orcamentaria_id: 20,
+    } as any
+
+    const baseFormData = {
+        nome: "João da Silva",
+        rf: "A123456",
+        email: "joao@email.com",
+        grupo: "GESTOR_PATRIMONIO",
+        status: "ativo",
+        senha: "",
+        confirmarSenha: "",
+    } as any
+
+    const valoresOriginais = {
+        nome: "João da Silva",
+        rf: "A123456",
+        email: "joao@email.com",
+        grupo: "GESTOR_PATRIMONIO",
+        status: "ativo",
+        unidadeIds: [10],
+        unidadeOrcamentariaId: 20,
+    } as NonNullable<Parameters<typeof mountPayload>[1]>
+
+    it("getIdsUsuario prioriza a lista de unidades quando existe", () => {
+        expect(getIdsUsuario({ unidades_administrativas: [10, 11], unidade_administrativa: 99 })).toEqual([10, 11])
+    })
+
+    it("getIdsUsuario usa unidade_administrativa singular como fallback", () => {
+        expect(getIdsUsuario({ unidade_administrativa: 7 })).toEqual([7])
+    })
+
+    it("getIdsUsuario retorna lista vazia quando não há unidades", () => {
+        expect(getIdsUsuario({})).toEqual([])
+    })
+
+    it("mountPayload não envia campos quando nada mudou", () => {
+        expect(
+            mountPayload(
+                baseFormData,
+                valoresOriginais,
+                [ua10],
+                [ua10],
+                false,
+                20
+            )
+        ).toEqual({})
+    })
+
+    it("mountPayload envia alterações de cadastro, status e senha", () => {
+        expect(
+            mountPayload(
+                {
+                    ...baseFormData,
+                    nome: "Maria da Silva",
+                    rf: "B765432",
+                    email: "maria@email.com",
+                    grupo: "OPERADOR_INVENTARIO",
+                    status: "inativo",
+                    senha: MOCK_PASSWORD,
+                    confirmarSenha: MOCK_PASSWORD,
+                },
+                valoresOriginais,
+                [ua10],
+                [ua10],
+                false,
+                20
+            )
+        ).toEqual({
+            nome: "Maria da Silva",
+            rf: "B765432",
+            email: "maria@email.com",
+            group_name: "OPERADOR_INVENTARIO",
+            is_active: false,
+            password: MOCK_PASSWORD,
+            password_confirm: MOCK_PASSWORD,
+        })
+    })
+
+    it("mountPayload envia UO vazia quando o gestor não seleciona nenhuma UA", () => {
+        expect(
+            mountPayload(
+                baseFormData,
+                valoresOriginais,
+                [],
+                [],
+                false,
+                30
+            )
+        ).toEqual({
+            unidades_administrativas: [],
+            unidade_administrativa: null,
+            unidade_orcamentaria: 30,
+        })
+    })
+
+    it("mountPayload envia todas as UAs quando o gestor marca todas", () => {
+        expect(
+            mountPayload(
+                baseFormData,
+                valoresOriginais,
+                [ua10, ua11],
+                [ua10],
+                true,
+                20
+            )
+        ).toEqual({
+            unidades_administrativas: [10, 11],
+            unidade_administrativa: 10,
+            unidade_orcamentaria: 20,
         })
     })
 })

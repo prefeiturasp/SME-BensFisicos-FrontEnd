@@ -34,13 +34,13 @@ interface ValoresOriginais {
   unidadeOrcamentariaId: number | null
 }
 
-function getIdsUsuario(dadosUsuario: any): number[] {
+export function getIdsUsuario(dadosUsuario: any): number[] {
   if (dadosUsuario.unidades_administrativas?.length) return dadosUsuario.unidades_administrativas
   if (dadosUsuario.unidade_administrativa) return [dadosUsuario.unidade_administrativa]
   return []
 }
 
-function mountPayload(
+export function mountPayload(
   data: EditarUsuarioFormData,
   valoresOriginais: ValoresOriginais | null,
   unidadesAdministrativas: EscopoUa[],
