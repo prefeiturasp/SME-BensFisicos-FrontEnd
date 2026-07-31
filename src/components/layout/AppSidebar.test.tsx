@@ -299,26 +299,8 @@ describe('AppSidebar', () => {
       const links = screen.getAllByRole('link', { name: 'Unidades Administrativas' });
       expect(links).toHaveLength(1);
 
-      expect(screen.getByRole('link', { name: 'Unidades Orçamentárias' })).toBeVisible();
       expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
       expect(screen.getByRole('link', { name: 'Trocar Senha' })).toBeVisible();
-    });
-
-    it('deve posicionar Unidades Administrativas imediatamente após Inventário e antes de Configurações', () => {
-      renderSidebar();
-
-      const menuItems = screen
-        .getAllByRole('listitem')
-        .map((item) => item.textContent?.trim())
-        .filter(Boolean);
-
-      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
-      const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
-      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
-
-      expect(inventarioIndex).toBeGreaterThanOrEqual(0);
-      expect(unidadesIndex).toBeGreaterThan(inventarioIndex);
-      expect(configuracoesIndex).toBeGreaterThan(unidadesIndex);
     });
 
     it('deve exibir um ícone para o item Unidades Administrativas', () => {
@@ -338,10 +320,49 @@ describe('AppSidebar', () => {
               <Routes>
                 <Route path='/home' element={<AppSidebar />} />
                 <Route
-                  path='/unidades-orcamentarias'
-                  element={<div>Página de Unidades Orçamentárias</div>}
                   path='/unidades-administrativas'
                   element={<div>Página de Unidades Administrativas</div>}
+                />
+              </Routes>
+            </MemoryRouter>
+          </TooltipProvider>
+        </SidebarProvider>,
+      );
+
+      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
+      await user.click(link);
+
+      expect(screen.getByText('Página de Unidades Administrativas')).toBeInTheDocument();
+    });
+
+    it('deve destacar visualmente o item quando a rota ativa for de Unidades Administrativas', () => {
+      renderSidebar(['/unidades-administrativas']);
+      const activeLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
+
+      expect(activeLink).toHaveAttribute('data-active', 'true');
+    });
+  });
+
+  describe('Item de menu Unidades Orçamentárias', () => {
+    it('deve exibir um ícone para o item Unidades Orçamentárias', () => {
+      renderSidebar();
+
+      const link = screen.getByRole('link', { name: 'Unidades Orçamentárias' });
+      expect(link.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('deve navegar diretamente ao clicar em Unidades Orçamentárias, sem expandir submenu', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <SidebarProvider defaultOpen={true}>
+          <TooltipProvider>
+            <MemoryRouter initialEntries={['/home']}>
+              <Routes>
+                <Route path='/home' element={<AppSidebar />} />
+                <Route
+                  path='/unidades-orcamentarias'
+                  element={<div>Página de Unidades Orçamentárias</div>}
                 />
               </Routes>
             </MemoryRouter>
@@ -379,18 +400,6 @@ describe('AppSidebar', () => {
       expect(orcamentariasIndex).toBeGreaterThan(inventarioIndex);
       expect(administrativasIndex).toBeGreaterThan(orcamentariasIndex);
       expect(configuracoesIndex).toBeGreaterThan(administrativasIndex);
-    });
-      const link = screen.getByRole('link', { name: 'Unidades Administrativas' });
-      await user.click(link);
-
-      expect(screen.getByText('Página de Unidades Administrativas')).toBeInTheDocument();
-    });
-
-    it('deve destacar visualmente o item quando a rota ativa for de Unidades Administrativas', () => {
-      renderSidebar(['/unidades-administrativas']);
-      const activeLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
-
-      expect(activeLink).toHaveAttribute('data-active', 'true');
     });
   });
 

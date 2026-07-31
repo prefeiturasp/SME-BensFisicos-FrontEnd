@@ -89,10 +89,6 @@ const menuItems = [
     icon: Settings,
     items: [
       {
-        title: 'Unidades Orçamentárias',
-        url: '/unidades-orcamentarias',
-      },
-      {
         title: 'Usuários',
         url: '/usuarios',
       },
