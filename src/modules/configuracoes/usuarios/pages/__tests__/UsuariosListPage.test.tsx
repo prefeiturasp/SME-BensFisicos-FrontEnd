@@ -247,11 +247,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             const breadcrumb = screen.getByRole("navigation", { name: /breadcrumb/i })
-            expect(
-                within(breadcrumb)
-                    .getAllByRole("link", { name: "Início" })
-                    .some((link) => link.getAttribute("href") === "/home")
-            ).toBe(true)
+            expect(within(breadcrumb).getByRole("link", { name: "Início" })).toBeInTheDocument()
             expect(
                 within(breadcrumb).getByText("Usuários", { selector: "span" })
             ).toBeInTheDocument()

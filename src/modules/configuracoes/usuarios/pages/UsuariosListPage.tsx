@@ -152,7 +152,6 @@ export default function UsuariosListPage() {
     <div className='space-y-4 p-8'>
       <AppBreadcrumb
         items={[
-          { label: 'Início', icon: House },
           { label: 'Usuários', isActive: true },
         ]}
       />
