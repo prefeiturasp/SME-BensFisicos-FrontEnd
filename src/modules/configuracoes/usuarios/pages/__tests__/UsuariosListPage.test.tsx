@@ -281,7 +281,7 @@ describe("UsuariosListPage", () => {
                 screen.getByText("Filtrar por Unidade Administrativa")
             ).toBeInTheDocument()
             expect(
-                screen.getByText("Filtrar por Grupo de Permissionamento")
+                screen.getByText("Filtrar por Grupo")
             ).toBeInTheDocument()
             expect(screen.getByText("Filtrar por Status")).toBeInTheDocument()
         })

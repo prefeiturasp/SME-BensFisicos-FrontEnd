@@ -251,7 +251,7 @@ export default function UsuariosListPage() {
 
           <div className='flex flex-col gap-2'>
             <label className='text-sm font-semibold text-gray-700'>
-              <span>Filtrar por Grupo de Permissionamento</span>
+              <span>Filtrar por Grupo</span>
               <Select
                 value={grupoFilter}
                 onValueChange={(v) => {
