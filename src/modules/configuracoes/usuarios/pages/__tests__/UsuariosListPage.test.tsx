@@ -207,6 +207,18 @@ function resolveOrdering(previousValue: string): string {
     return updaterFn(previousValue)
 }
 
+function createDeferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void
+    let reject!: (reason?: unknown) => void
+
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res
+        reject = rej
+    })
+
+    return { promise, resolve, reject }
+}
+
 async function overridePagination(
     pages: { type: string; value?: number; id: string }[],
     totalPages: number
@@ -347,6 +359,42 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("02.17.20 - UO Teste")).toBeInTheDocument()
         })
 
+        it("exibe o identificador da UO quando não há código e nome", () => {
+            hookOverrides = {
+                usuarios: [
+                    {
+                        ...USUARIO_FIXTURE,
+                        id: 10,
+                        unidade_orcamentaria: 99,
+                        unidade_orcamentaria_codigo: null,
+                        unidade_orcamentaria_nome: null,
+                    },
+                ],
+            }
+
+            renderComponent()
+
+            expect(screen.getByText("UO 99")).toBeInTheDocument()
+        })
+
+        it("exibe travessão quando o usuário não possui UO cadastrada", () => {
+            hookOverrides = {
+                usuarios: [
+                    {
+                        ...USUARIO_FIXTURE,
+                        id: 11,
+                        unidade_orcamentaria: null,
+                        unidade_orcamentaria_codigo: null,
+                        unidade_orcamentaria_nome: null,
+                    },
+                ],
+            }
+
+            renderComponent()
+
+            expect(screen.getByText("—")).toBeInTheDocument()
+        })
+
         it("renderiza o nome do grupo", () => {
             renderComponent()
 
@@ -437,6 +485,37 @@ describe("UsuariosListPage", () => {
                 expect(toastSuccessMock).toHaveBeenCalledWith(
                     "Relatório exportado com sucesso."
                 )
+            })
+        })
+
+        it("ignora novo clique enquanto o relatório está sendo gerado", async () => {
+            const deferred = createDeferred<{
+                blob: Blob
+                fileName: string
+                contentType: string
+            }>()
+
+            mockExportUsuarios.mockReturnValueOnce(deferred.promise)
+
+            renderComponent()
+
+            fireEvent.click(screen.getByRole("button", { name: "Relatório" }))
+
+            await waitFor(() => {
+                expect(screen.getByRole("button", { name: "Gerando..." })).toBeInTheDocument()
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Gerando..." }))
+
+            deferred.resolve({
+                blob: new Blob(["xlsx-content"]),
+                fileName: "usuarios.xlsx",
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+
+            await waitFor(() => {
+                expect(mockExportUsuarios).toHaveBeenCalledTimes(1)
+                expect(downloadBlobFileMock).toHaveBeenCalledTimes(1)
             })
         })
 
@@ -536,6 +615,84 @@ describe("UsuariosListPage", () => {
 
             expect(setUnidadeFilterMock).toHaveBeenCalledWith("001")
             expect(setPageMock).toHaveBeenCalledWith(1)
+        })
+
+        it("chama setUoFilter, reseta a unidade e pagina ao selecionar uma UO", async () => {
+            renderComponent()
+
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            const selects = screen.getAllByRole("combobox")
+            fireEvent.change(selects[0], { target: { value: "2" } })
+
+            expect(setUoFilterMock).toHaveBeenCalledWith("2")
+            expect(setUnidadeFilterMock).toHaveBeenCalledWith("todas")
+            expect(setPageMock).toHaveBeenCalledWith(1)
+        })
+
+        it("filtra as UAs pelo valor selecionado da UO", async () => {
+            mockGetCurrentUser.mockResolvedValueOnce({
+                data: {
+                    ...ME_RESPONSE.data,
+                    opcoes_escopo: {
+                        grupos: [
+                            {
+                                uo: {
+                                    id: 2,
+                                    codigo: "02.17.20",
+                                    nome: "UO Teste",
+                                    label: "02.17.20 - UO Teste",
+                                    selecionavel: true,
+                                    unidade_administrativa_id: null,
+                                    unidade_orcamentaria_id: 2,
+                                },
+                                uas: [
+                                    {
+                                        id: 1,
+                                        codigo: "001",
+                                        nome: "Secretaria Teste",
+                                        label: "001 - Secretaria Teste",
+                                        unidade_administrativa_id: 1,
+                                        unidade_orcamentaria_id: 2,
+                                    },
+                                ],
+                            },
+                            {
+                                uo: {
+                                    id: 4,
+                                    codigo: "04.10.00",
+                                    nome: "UO Outra",
+                                    label: "04.10.00 - UO Outra",
+                                    selecionavel: true,
+                                    unidade_administrativa_id: null,
+                                    unidade_orcamentaria_id: 4,
+                                },
+                                uas: [
+                                    {
+                                        id: 3,
+                                        codigo: "003",
+                                        nome: "Outra Secretaria",
+                                        label: "003 - Outra Secretaria",
+                                        unidade_administrativa_id: 3,
+                                        unidade_orcamentaria_id: 4,
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                },
+            })
+            hookOverrides = { uoFilter: "2" }
+
+            renderComponent()
+
+            await waitFor(() => expect(mockGetCurrentUser).toHaveBeenCalled())
+
+            const selects = screen.getAllByRole("combobox")
+            expect(within(selects[1]).getByRole("option", { name: "001 - Secretaria Teste" })).toBeInTheDocument()
+            expect(
+                within(selects[1]).queryByRole("option", { name: "003 - Outra Secretaria" })
+            ).not.toBeInTheDocument()
         })
 
         it("chama setGrupoFilter e setPage ao selecionar grupo 'Gestor'", () => {
