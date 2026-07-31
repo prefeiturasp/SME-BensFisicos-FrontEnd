@@ -122,7 +122,7 @@ export function Header() {
                 <Input
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
-                  placeholder='Buscar unidade...'
+                  placeholder='Buscar unidade'
                   className='h-8 text-xs md:text-sm'
                 />
               </div>
@@ -204,19 +204,19 @@ export function Header() {
       {/* Direita: Info do Usuário + Sair */}
       <div className='flex items-center gap-2 md:gap-4'>
         <div className='hidden md:flex flex-col items-end justify-center border border-gray-200 px-2 py-1.5 rounded bg-gray-100 min-w-52'>
-          <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
+          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>RF:</span>
             <span className='text-gray-600'>{user?.rf ?? '00000000'}</span>
           </div>
 
-          <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
+          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>NOME:</span>
             <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
               {user?.nome?.toUpperCase() ?? 'USUÁRIO DO SISTEMA'}
             </span>
           </div>
 
-          <div className='flex items-center justify-start gap-2 w-full text-[11px] leading-snug'>
+          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
             <span className='font-bold text-gray-600'>CARGO/FUNÇÃO:</span>
             <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
               {userRoleLabel}
