@@ -243,12 +243,17 @@ describe("UsuariosListPage", () => {
             ).toBeInTheDocument()
         })
 
-        it("renderiza o breadcrumb com 'Configurações' e 'Usuários'", () => {
+        it("renderiza o breadcrumb com 'Início' e 'Usuários'", () => {
             renderComponent()
 
-            expect(screen.getByText("Configurações")).toBeInTheDocument()
+            const breadcrumb = screen.getByRole("navigation", { name: /breadcrumb/i })
             expect(
-                screen.getByText("Usuários", { selector: "span" })
+                within(breadcrumb)
+                    .getAllByRole("link", { name: "Início" })
+                    .some((link) => link.getAttribute("href") === "/home")
+            ).toBe(true)
+            expect(
+                within(breadcrumb).getByText("Usuários", { selector: "span" })
             ).toBeInTheDocument()
         })
 

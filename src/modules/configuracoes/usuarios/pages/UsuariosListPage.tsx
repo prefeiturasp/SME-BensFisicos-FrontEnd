@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUpDown, Eye, FileText, Settings } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, Eye, FileText, House } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -152,7 +152,7 @@ export default function UsuariosListPage() {
     <div className='space-y-4 p-8'>
       <AppBreadcrumb
         items={[
-          { label: 'Configurações', icon: Settings },
+          { label: 'Início', icon: House },
           { label: 'Usuários', isActive: true },
         ]}
       />
