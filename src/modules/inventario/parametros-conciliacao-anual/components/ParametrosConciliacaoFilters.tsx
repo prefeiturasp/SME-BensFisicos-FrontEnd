@@ -23,7 +23,7 @@ export function ParametrosConciliacaoFilters({
   return (
     <div className='grid grid-cols-1 items-center gap-5 px-3 pt-2 lg:grid-cols-2'>
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Ano de referência</span>
+        <span>Filtrar por Ano de Referência</span>
         <input
           type='text'
           inputMode='numeric'

@@ -25,8 +25,8 @@ interface Props {
 
 const HEADERS: ReadonlyArray<UnidadesListTableHeader<ParametroConciliacaoSortableField>> = [
   { label: 'Unidade Orçamentária', field: 'unidade_orcamentaria__codigo' },
-  { label: 'Ano de referência', field: 'ano_referencia' },
-  { label: 'Período final permitido', field: 'periodo_final' },
+  { label: 'Ano de Referência', field: 'ano_referencia' },
+  { label: 'Período Final Permitido', field: 'periodo_final' },
   { label: 'Status', field: 'ativo' },
 ];
 

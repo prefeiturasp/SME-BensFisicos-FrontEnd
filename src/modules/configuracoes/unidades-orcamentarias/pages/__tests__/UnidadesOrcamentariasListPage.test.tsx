@@ -190,7 +190,7 @@ describe('UnidadesOrcamentariasListPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Código do órgão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Código do Órgão' }));
 
     expect(setPageMock).toHaveBeenCalledWith(1);
     expect(setOrderingMock).toHaveBeenCalled();
@@ -203,7 +203,7 @@ describe('UnidadesOrcamentariasListPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sigla do órgão' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sigla do Órgão' }));
 
     const sortUpdater = setOrderingMock.mock.calls[0][0] as (current: string) => string;
 

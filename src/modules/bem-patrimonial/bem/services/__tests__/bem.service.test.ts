@@ -315,5 +315,86 @@ describe('bem.service', () => {
 
     await expect(bemService.delete(1)).rejects.toThrow('Erro ao excluir bem');
   });
-});
 
+  // ===============================
+  // IMPORTAR
+  // ===============================
+
+  const arquivoFake = new File(['conteudo'], 'planilha.xlsx', {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+  it('deve retornar { status, data } normalmente para respostas abaixo de 500 (ex: 201, 422, 409, 403, 400)', async () => {
+    mock.onPost('/bens/importar/').reply(201, {
+      detail: '3 bens importados.',
+      importados: 3,
+      ignorados_com_erro: 0,
+      total_linhas: 3,
+    });
+
+    const resultado = await bemService.importar(arquivoFake);
+
+    expect(resultado.status).toBe(201);
+    expect(resultado.data.importados).toBe(3);
+  });
+
+  it('500 com erro de FK de ItemConciliacao (cenário do incidente reportado) → usa o detail do backend (sem tradução de mensagem)', async () => {
+    // Payload real observado em produção: bem removido/inconsistente causa
+    // violação de FK ao sincronizar com ItemConciliacao. Esse cenário só
+    // pode ocorrer quando há Conciliação em aberto — e o backend agora
+    // bloqueia a importação com 409 nesse caso, antes de chegar a
+    // processar a planilha (ver bem_patrimonial/views.py). Então, na
+    // prática, esse 500 específico não deve mais acontecer via a API.
+    // Este teste documenta que o service não faz nenhuma tradução especial
+    // para 5xx — apenas repassa o `detail` do backend, como qualquer outro
+    // erro inesperado.
+    const axiosError = new AxiosError('Erro qualquer', '500', undefined, undefined, {
+      data: {
+        detail: 'Erro inesperado durante a importação.',
+        erro:
+          'insert or update on table "inventario_itemconciliacao" violates foreign key ' +
+          'constraint "inventario_iteminven_bem_id_31472ce2_fk_bem_patri"\n' +
+          'DETAIL:  Key (bem_id)=(637) is not present in table "bem_patrimonial_bempatrimonial".\n',
+      },
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      config: {},
+    } as any);
+
+    vi.spyOn(api, 'post').mockRejectedValueOnce(axiosError);
+
+    await expect(bemService.importar(arquivoFake)).rejects.toThrow(
+      'Erro inesperado durante a importação.'
+    );
+  });
+
+  it('500 SEM menção a conciliação → mantém o comportamento padrão (usa o detail do backend)', async () => {
+    const axiosError = new AxiosError('Erro qualquer', '500', undefined, undefined, {
+      data: {
+        detail: 'Erro inesperado durante a importação.',
+        erro: 'DataError: value too long for type character varying(20)',
+      },
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {},
+      config: {},
+    } as any);
+
+    vi.spyOn(api, 'post').mockRejectedValueOnce(axiosError);
+
+    await expect(bemService.importar(arquivoFake)).rejects.toThrow(
+      'Erro inesperado durante a importação.'
+    );
+  });
+
+  it('500 sem response (erro de rede) → mensagem de conexão, sem quebrar', async () => {
+    const axiosError = new AxiosError('Network Error');
+
+    vi.spyOn(api, 'post').mockRejectedValueOnce(axiosError);
+
+    await expect(bemService.importar(arquivoFake)).rejects.toThrow(
+      'Erro de conexão com o servidor.'
+    );
+  });
+});

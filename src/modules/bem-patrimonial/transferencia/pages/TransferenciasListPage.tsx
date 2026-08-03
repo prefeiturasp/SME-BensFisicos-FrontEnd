@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Eye, FileText, Network, Search } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -7,11 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { FilterSelect } from '@/modules/bem-patrimonial/components/FilterSelect'
 import { usePagination } from '@/modules/bem-patrimonial/bem/hooks/usePagination'
+import { unidadesOrcamentariasService } from '@/modules/configuracoes/unidades-orcamentarias/services/unidades-orcamentarias.service'
 import { transferenciaService } from '../services/transferencia.service'
 import type { TransferenciaBemPatrimonialListItem } from '../types/transferencia.types'
 
 type PaginationItem = number | '...'
+type UoOption = {
+  value: string
+  label: string
+}
 
 const PAGE_SIZE = 10
 
@@ -28,6 +34,10 @@ function formatUoLabel(
   unidade: TransferenciaBemPatrimonialListItem['unidade_orcamentaria_origem'],
 ) {
   return unidade.label ?? `${unidade.codigo} - ${unidade.sigla || unidade.nome}`
+}
+
+function formatBemLabel(nomeBem: string | null | undefined) {
+  return nomeBem?.trim() || '-'
 }
 
 function getNextSelectedIds(
@@ -59,6 +69,7 @@ function TransferenciaTableRow(props: Readonly<{
           onCheckedChange={() => onToggleSelected(transferencia.id)}
         />
       </td>
+      <td className='p-3 text-sm text-gray-700'>{formatBemLabel(transferencia.nome_bem)}</td>
       <td className='p-3 font-mono text-sm text-gray-700'>
         {transferencia.numero_ntbpm ?? '-'}
       </td>
@@ -130,7 +141,7 @@ function TransferenciasTableBody(props: TransferenciasTableBodyProps) {
   if (loading) {
     return (
       <tr>
-        <td colSpan={6} className='py-10 text-center text-gray-500'>
+        <td colSpan={7} className='py-10 text-center text-gray-500'>
           Carregando...
         </td>
       </tr>
@@ -140,7 +151,7 @@ function TransferenciasTableBody(props: TransferenciasTableBodyProps) {
   if (transferencias.length === 0) {
     return (
       <tr>
-        <td colSpan={6} className='py-10 text-center text-gray-400'>
+        <td colSpan={7} className='py-10 text-center text-gray-400'>
           Nenhuma transferência encontrada.
         </td>
       </tr>
@@ -170,10 +181,15 @@ export default function TransferenciasListPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [numeroNtbpmInput, setNumeroNtbpmInput] = useState('')
   const [numeroNtbpm, setNumeroNtbpm] = useState('')
+  const [nomeBemInput, setNomeBemInput] = useState('')
+  const [nomeBem, setNomeBem] = useState('')
   const [numeroProcessoInput, setNumeroProcessoInput] = useState('')
   const [numeroProcesso, setNumeroProcesso] = useState('')
+  const [uoOrigemFilter, setUoOrigemFilter] = useState('todos')
+  const [uoDestinoFilter, setUoDestinoFilter] = useState('todos')
 
   const { pages, totalPages } = usePagination({
     page,
@@ -184,6 +200,11 @@ export default function TransferenciasListPage() {
   const selectedAll = useMemo(
     () => transferencias.length > 0 && transferencias.every((item) => selectedIds.includes(item.id)),
     [selectedIds, transferencias],
+  )
+
+  const uoFilterOptions = useMemo(
+    () => [{ value: 'todos', label: 'Todos' }, ...uoOptions],
+    [uoOptions],
   )
 
   useEffect(() => {
@@ -204,15 +225,56 @@ export default function TransferenciasListPage() {
     return () => clearTimeout(timeout)
   }, [numeroProcessoInput])
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setNomeBem(nomeBemInput.trim())
+      setPage(1)
+    }, 350)
+
+    return () => clearTimeout(timeout)
+  }, [nomeBemInput])
+
+  useEffect(() => {
+    let active = true
+
+    const loadUoOptions = async () => {
+      try {
+        const response = await unidadesOrcamentariasService.list({ pageSize: 100, ativa: 'true' })
+        if (!active) return
+
+        setUoOptions(
+          response.results.map((uo) => ({
+            value: String(uo.id),
+            label: `${uo.codigo} - ${uo.sigla || uo.nome}`,
+          })),
+        )
+      } catch {
+        if (!active) return
+        setUoOptions([])
+      }
+    }
+
+    void loadUoOptions()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const loadTransferencias = useCallback(async () => {
     return transferenciaService.list({
       page,
       pageSize: PAGE_SIZE,
+      nome_bem: nomeBem || undefined,
       numero_ntbpm: numeroNtbpm || undefined,
       numero_processo: numeroProcesso || undefined,
+      unidade_orcamentaria_origem:
+        uoOrigemFilter === 'todos' ? undefined : Number(uoOrigemFilter),
+      unidade_orcamentaria_destino:
+        uoDestinoFilter === 'todos' ? undefined : Number(uoDestinoFilter),
       ordering: '-criado_em',
     })
-  }, [page, numeroNtbpm, numeroProcesso])
+  }, [nomeBem, numeroNtbpm, numeroProcesso, page, uoDestinoFilter, uoOrigemFilter])
 
   useEffect(() => {
     let active = true
@@ -243,7 +305,7 @@ export default function TransferenciasListPage() {
 
   useEffect(() => {
     setSelectedIds([])
-  }, [page, numeroNtbpm, numeroProcesso])
+  }, [nomeBem, numeroNtbpm, numeroProcesso, page, uoDestinoFilter, uoOrigemFilter])
 
   function toggleSelectedId(id: number) {
     setSelectedIds((current) =>
@@ -295,9 +357,33 @@ export default function TransferenciasListPage() {
       </div>
 
       <Card className='space-y-4 p-6'>
-        <div className='grid grid-cols-1 gap-4 xl:grid-cols-4'>
-          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <label htmlFor='transferencias-filtro-ntbpm' className='block'>
+        <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] xl:items-start'>
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-nome-bem'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
+              Filtrar por Nome do Bem
+            </label>
+            <div className='relative'>
+              <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
+              <Input
+                id='transferencias-filtro-nome-bem'
+                aria-label='Filtrar por Nome do Bem'
+                type='text'
+                value={nomeBemInput}
+                onChange={(event) => setNomeBemInput(event.target.value)}
+                placeholder='Digite o nome do bem'
+                className={`${INPUT_CLASS} pl-10`}
+              />
+            </div>
+          </div>
+
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-ntbpm'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
               Filtrar por NTBPM
             </label>
             <div className='relative'>
@@ -314,8 +400,11 @@ export default function TransferenciasListPage() {
             </div>
           </div>
 
-          <div className='block space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <label htmlFor='transferencias-filtro-numero-processo' className='block'>
+          <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
+            <label
+              htmlFor='transferencias-filtro-numero-processo'
+              className='flex min-h-[2.75rem] items-end leading-tight'
+            >
               Filtrar por Número do Processo
             </label>
             <div className='relative'>
@@ -331,8 +420,31 @@ export default function TransferenciasListPage() {
               />
             </div>
           </div>
-        </div>
 
+          <FilterSelect
+            label='Filtrar por Unidade Orçamentária de Origem'
+            value={uoOrigemFilter}
+            placeholder='Todos'
+            options={uoFilterOptions}
+            className='[&>span]:flex [&>span]:min-h-[2.75rem] [&>span]:items-end [&>span]:leading-tight'
+            onChange={(value) => {
+              setUoOrigemFilter(value)
+              setPage(1)
+            }}
+          />
+
+          <FilterSelect
+            label='Filtrar por Unidade Orçamentária de Destino'
+            value={uoDestinoFilter}
+            placeholder='Todos'
+            options={uoFilterOptions}
+            className='[&>span]:flex [&>span]:min-h-[2.75rem] [&>span]:items-end [&>span]:leading-tight'
+            onChange={(value) => {
+              setUoDestinoFilter(value)
+              setPage(1)
+            }}
+          />
+        </div>
         <h2 className='text-sm font-semibold text-[#00703C]'>
           Transferências de Bem Patrimonial Cadastradas
         </h2>
@@ -349,6 +461,7 @@ export default function TransferenciasListPage() {
                     disabled={transferencias.length === 0}
                   />
                 </th>
+                <th className='p-3'>Nome do Bem</th>
                 <th className='p-3'>Número NTBPM</th>
                 <th className='p-3'>Número do Processo</th>
                 <th className='p-3'>Unidade Orçamentária de Origem</th>
@@ -369,7 +482,7 @@ export default function TransferenciasListPage() {
           </table>
         </div>
 
-        <div className='flex items-center justify-center gap-1 pt-2'>
+        <div className='flex items-center justify-center gap-2 pt-4'>
           <Button
             size='icon'
             variant='ghost'
@@ -377,7 +490,7 @@ export default function TransferenciasListPage() {
             onClick={() => setPage((current) => current - 1)}
             aria-label='Página anterior'
           >
-            ‹
+            <ChevronLeft size={16} />
           </Button>
 
           {pages.map((item, index) => (
@@ -397,7 +510,7 @@ export default function TransferenciasListPage() {
             onClick={() => setPage((current) => current + 1)}
             aria-label='Próxima página'
           >
-            ›
+            <ChevronRight size={16} />
           </Button>
         </div>
       </Card>

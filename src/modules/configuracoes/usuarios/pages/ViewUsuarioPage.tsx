@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 
@@ -135,7 +135,7 @@ export default function ViewUsuarioPage() {
 
   return (
     <div className="p-8 space-y-4">
-      <AppBreadcrumb items={[{ label: "Configurações", icon: Settings }, { label: "Usuários" }, { label: "Visualizar Usuário", isActive: true }]} />
+      <AppBreadcrumb items={[{ label: "Usuários", to: "/usuarios" }, { label: "Visualizar Usuário", isActive: true }]} />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Visualizar Usuário</h1>
         <div className="flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+import { Landmark } from 'lucide-react';
 import { AppBreadcrumb } from '@/components/AppBreadcrumb';
 
 interface UnidadesOrcamentariasViewBreadcrumbProps {
@@ -11,8 +11,7 @@ export function UnidadesOrcamentariasViewBreadcrumb({
   return (
     <AppBreadcrumb
       items={[
-        { label: 'Configurações', icon: Settings },
-        { label: 'Unidades Orçamentárias', to: '/unidades-orcamentarias' },
+        { label: 'Unidades Orçamentárias', icon: Landmark, to: '/unidades-orcamentarias' },
         {
           label: isEditing ? 'Editar Unidade Orçamentária' : 'Visualizar Unidade Orçamentária',
           isActive: true,

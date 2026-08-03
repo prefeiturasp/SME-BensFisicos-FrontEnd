@@ -89,7 +89,7 @@ export function EscopoFilterDropdown({ grupos, value, onChange }: Props) {
         <div className='absolute top-full left-0 right-0 z-50 mt-1 max-h-80 overflow-y-auto border border-gray-200 bg-white rounded-xs shadow-xl'>
           <div className='p-2 border-b'>
             <Input
-              placeholder='Buscar unidade...'
+              placeholder='Buscar unidade'
               value={filter}
               onChange={e => setFilter(e.target.value)}
               className='h-8 text-sm'

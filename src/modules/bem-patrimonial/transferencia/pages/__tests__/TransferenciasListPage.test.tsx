@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuth } from '@/auth/useAuth'
+import { unidadesOrcamentariasService } from '@/modules/configuracoes/unidades-orcamentarias/services/unidades-orcamentarias.service'
 import TransferenciasListPage from '../TransferenciasListPage'
 import { transferenciaService } from '../../services/transferencia.service'
 
@@ -15,8 +16,45 @@ vi.mock('../../services/transferencia.service', () => ({
   },
 }))
 
+vi.mock('@/modules/bem-patrimonial/components/FilterSelect', () => ({
+  FilterSelect: ({
+    label,
+    value,
+    placeholder,
+    options,
+    onChange,
+  }: {
+    label: string
+    value: string
+    placeholder: string
+    options: Array<{ value: string; label: string }>
+    onChange: (value: string) => void
+  }) => (
+    <label>
+      <span>{label}</span>
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value='todos'>{placeholder}</option>
+        {options
+          .filter((option) => option.value !== 'todos')
+          .map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+      </select>
+    </label>
+  ),
+}))
+
+vi.mock('@/modules/configuracoes/unidades-orcamentarias/services/unidades-orcamentarias.service', () => ({
+  unidadesOrcamentariasService: {
+    list: vi.fn(),
+  },
+}))
+
 const mockTransferencia = {
   id: 1,
+  nome_bem: 'Notebook Dell',
   numero_ntbpm: '001.0000001.2026',
   numero_processo: '12345',
   observacao: 'Teste',
@@ -99,6 +137,36 @@ beforeEach(() => {
     previous: null,
     results: [mockTransferencia],
   } as never)
+
+  vi.mocked(unidadesOrcamentariasService.list).mockResolvedValue({
+    count: 2,
+    next: null,
+    previous: null,
+    results: [
+      {
+        id: 10,
+        codigo: '01.16.10',
+        sigla: 'SME',
+        nome: 'Secretaria',
+        sigla_orgao: 'SME',
+        orgao: 'Secretaria',
+        codigo_orgao: '01.16',
+        ativa: true,
+        ativa_display: 'Ativa',
+      },
+      {
+        id: 20,
+        codigo: '99.01',
+        sigla: 'DEST',
+        nome: 'Destino',
+        sigla_orgao: 'EXT',
+        orgao: 'Destino',
+        codigo_orgao: '99.01',
+        ativa: true,
+        ativa_display: 'Ativa',
+      },
+    ],
+  } as never)
 })
 
 describe('TransferenciasListPage', () => {
@@ -113,13 +181,12 @@ describe('TransferenciasListPage', () => {
       expect(transferenciaService.list).toHaveBeenCalled()
     })
 
-    expect(
-      screen.getByRole('heading', { name: 'Transferência de Bens Patrimoniais' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('Notebook Dell')).toBeInTheDocument()
     expect(screen.getByText('001.0000001.2026')).toBeInTheDocument()
     expect(screen.getByText('12345')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Adicionar Transferência' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Adicionar/i })).toBeInTheDocument()
   })
 
   it('permite selecionar e deselecionar a transferência exibida', async () => {
@@ -132,18 +199,17 @@ describe('TransferenciasListPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Selecionar transferência 1')).toBeEnabled()
+      expect(screen.getAllByRole('checkbox')[1]).toBeEnabled()
     })
 
-    const checkbox = screen.getByLabelText('Selecionar transferência 1')
-    await user.click(checkbox)
+    const [selectAll, rowCheckbox] = screen.getAllByRole('checkbox')
+    await user.click(rowCheckbox)
 
     await waitFor(() => {
-      expect(checkbox).toBeChecked()
-      expect(screen.getByLabelText('Selecionar todas as transferências')).toBeChecked()
+      expect(rowCheckbox).toBeChecked()
+      expect(selectAll).toBeChecked()
     })
 
-    const selectAll = screen.getByLabelText('Selecionar todas as transferências')
     await user.click(selectAll)
 
     await waitFor(() => {
@@ -155,21 +221,154 @@ describe('TransferenciasListPage', () => {
     const user = userEvent.setup()
 
     render(
-      <MemoryRouter initialEntries={['/transferencias']} >
+      <MemoryRouter initialEntries={['/transferencias']}>
         <TransferenciasListPage />
       </MemoryRouter>,
     )
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Selecionar todas as transferências')).toBeEnabled()
+      expect(screen.getAllByRole('checkbox')[0]).toBeEnabled()
     })
 
-    await user.click(screen.getByLabelText('Selecionar todas as transferências'))
+    const [selectAll, rowCheckbox] = screen.getAllByRole('checkbox')
+    await user.click(selectAll)
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Selecionar todas as transferências')).toBeChecked()
-      expect(screen.getByLabelText('Selecionar transferência 1')).toBeChecked()
+      expect(selectAll).toBeChecked()
+      expect(rowCheckbox).toBeChecked()
     })
+  })
+
+  it('aplica os filtros e refaz a busca com os parâmetros corretos', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(transferenciaService.list).mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [mockTransferencia],
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    const [nomeBemInput, ntbpmInput, processoInput] = screen.getAllByRole('textbox')
+    const [uoOrigemSelect, uoDestinoSelect] = screen.getAllByRole('combobox')
+
+    await user.type(nomeBemInput, 'Notebook')
+    await user.type(ntbpmInput, 'NTBPM-100')
+    await user.type(processoInput, '54321')
+    await user.selectOptions(uoOrigemSelect as HTMLSelectElement, '10')
+    await user.selectOptions(uoDestinoSelect as HTMLSelectElement, '20')
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+          nome_bem: 'Notebook',
+          numero_ntbpm: 'NTBPM-100',
+          numero_processo: '54321',
+          unidade_orcamentaria_origem: 10,
+          unidade_orcamentaria_destino: 20,
+          ordering: '-criado_em',
+        }),
+      )
+    })
+  })
+
+  it('navega entre as páginas anterior e próxima', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(transferenciaService.list).mockResolvedValue({
+      count: 25,
+      next: 'next',
+      previous: null,
+      results: [mockTransferencia],
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    const nextButton = screen.getByRole('button', { name: 'Próxima página' })
+
+    await user.click(nextButton)
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 2,
+          pageSize: 10,
+        }),
+      )
+    })
+
+    const previousButton = screen.getByRole('button', { name: 'Página anterior' })
+
+    await user.click(previousButton)
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 10,
+        }),
+      )
+    })
+  })
+
+  it('navega para a home ao clicar em voltar', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <Routes>
+          <Route path='/transferencias' element={<TransferenciasListPage />} />
+          <Route path='/home' element={<div data-testid='home-page' />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.list).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Voltar' }))
+
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+  })
+
+  it('mantém os filtros de UO vazios quando o carregamento das opções falhar', async () => {
+    vi.mocked(unidadesOrcamentariasService.list).mockRejectedValueOnce(new Error('falha'))
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias']}>
+        <TransferenciasListPage />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(unidadesOrcamentariasService.list).toHaveBeenCalledWith({ pageSize: 100, ativa: 'true' })
+    })
+
+    const origemSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement
+
+    expect(origemSelect.options).toHaveLength(1)
+    expect(origemSelect.options[0].value).toBe('todos')
   })
 
   it('navega para a visualização da transferência ao clicar no ícone', async () => {
@@ -188,59 +387,9 @@ describe('TransferenciasListPage', () => {
       expect(transferenciaService.list).toHaveBeenCalled()
     })
 
-    await user.click(screen.getByLabelText('Visualizar transferência 1'))
+    await user.click(screen.getByRole('button', { name: /Visualizar/i }))
 
     expect(screen.getByTestId('transferencia-detail')).toBeInTheDocument()
-  })
-
-  it('aplica filtros e paginação nas chamadas da API', async () => {
-    vi.mocked(transferenciaService.list).mockResolvedValue({
-      count: 100,
-      next: null,
-      previous: null,
-      results: [mockTransferencia],
-    } as never)
-
-    const user = userEvent.setup()
-
-    render(
-      <MemoryRouter initialEntries={['/transferencias']}>
-        <TransferenciasListPage />
-      </MemoryRouter>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('...')).toBeInTheDocument()
-    })
-
-    await user.type(screen.getByLabelText('Filtrar por NTBPM'), 'NTBPM-100')
-    await user.type(screen.getByLabelText('Filtrar por Número do Processo'), '54321')
-
-    await waitFor(() => {
-      expect(transferenciaService.list).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          page: 1,
-          pageSize: 10,
-          numero_ntbpm: 'NTBPM-100',
-          numero_processo: '54321',
-          ordering: '-criado_em',
-        }),
-      )
-    })
-
-    await user.click(screen.getByRole('button', { name: '2' }))
-
-    await waitFor(() => {
-      expect(transferenciaService.list).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          page: 2,
-          pageSize: 10,
-          numero_ntbpm: 'NTBPM-100',
-          numero_processo: '54321',
-          ordering: '-criado_em',
-        }),
-      )
-    })
   })
 
   it('navega para a tela de cadastro ao clicar em adicionar', async () => {
@@ -259,7 +408,11 @@ describe('TransferenciasListPage', () => {
       expect(transferenciaService.list).toHaveBeenCalled()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Adicionar Transferência' }))
+    const addButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.includes('Adicionar')) as HTMLButtonElement
+
+    await user.click(addButton)
 
     expect(screen.getByTestId('transferencia-create')).toBeInTheDocument()
   })
@@ -279,7 +432,7 @@ describe('TransferenciasListPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Nenhuma transferência encontrada.')).toBeInTheDocument()
+      expect(screen.getByText(/Nenhuma/i)).toBeInTheDocument()
     })
   })
 

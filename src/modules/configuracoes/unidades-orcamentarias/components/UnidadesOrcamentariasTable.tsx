@@ -30,9 +30,9 @@ const HEADERS: ReadonlyArray<UnidadesListTableHeader<UnidadeOrcamentariaSortable
   { label: 'Código', field: 'codigo' },
   { label: 'Sigla', field: 'sigla' },
   { label: 'Nome', field: 'nome' },
-  { label: 'Código do órgão', field: 'codigo_orgao' },
-  { label: 'Sigla do órgão', field: 'sigla_orgao' },
-  { label: 'Nome do órgão', field: 'orgao' },
+  { label: 'Código do Órgão', field: 'codigo_orgao' },
+  { label: 'Sigla do Órgão', field: 'sigla_orgao' },
+  { label: 'Nome do Órgão', field: 'orgao' },
   { label: 'Status', field: 'status' },
 ];
 
