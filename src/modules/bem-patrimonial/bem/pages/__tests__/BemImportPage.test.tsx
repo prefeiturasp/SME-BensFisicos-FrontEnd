@@ -109,6 +109,9 @@ describe('BemImportPage — estado idle', () => {
     render(<BemImportPage />)
     expect(screen.getByText('Adicionar Bens Patrimoniais em lote')).toBeInTheDocument()
     expect(screen.getByText('[clique aqui para baixar o modelo]')).toBeInTheDocument()
+    expect(
+      screen.getByText(/É possível realizar importação de Bens apenas sem Conciliações em aberto\./)
+    ).toBeInTheDocument()
   })
 
   it('exibe botão Anexar Documento', () => {
@@ -370,6 +373,31 @@ describe('BemImportPage — estado erro_request', () => {
   })
 })
 
+describe('BemImportPage — bloqueio por Conciliação em aberto', () => {
+  beforeEach(() => {
+    mockHook({
+      estado: {
+        tipo: 'erro_request',
+        mensagem: 'Importação não realizada: existe Conciliação em aberto.',
+      },
+    })
+  })
+
+  it('exibe toast "Importação não realizada" com a mensagem de conciliação em aberto', () => {
+    render(<BemImportPage />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Importação não realizada')).toBeInTheDocument()
+    expect(
+      screen.getByText('Importação não realizada: existe Conciliação em aberto.')
+    ).toBeInTheDocument()
+  })
+
+  it('não exibe tabela de erros nem processa nenhuma linha da planilha', () => {
+    render(<BemImportPage />)
+    expect(screen.queryByText('Foram identificados erros na planilha')).not.toBeInTheDocument()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // bem.service — importar (testes adicionais de cobertura)
 // ---------------------------------------------------------------------------
@@ -464,7 +492,7 @@ describe('BemImportPage — baixarTemplate', () => {
   beforeEach(() => mockHook())
 
   it('cria elemento <a> com href e download corretos ao clicar no link do modelo', () => {
-    const anchorMock = { href: '', download: '', click: vi.fn() }
+    const anchorMock = { href: '', download: '', click: vi.fn(), remove: vi.fn() }
 
     // Captura via prototype — imune a spies anteriores no document
     const originalCreateElement = Document.prototype.createElement.bind(document)
@@ -475,11 +503,10 @@ describe('BemImportPage — baixarTemplate', () => {
         tag === 'a' ? (anchorMock as unknown as HTMLAnchorElement) : originalCreateElement(tag)
       )
 
-    // render ANTES de mockar appendChild/removeChild
+    // render ANTES de mockar appendChild
     render(<BemImportPage />)
 
     const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
-    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => anchorMock as any)
 
     fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))
 
@@ -487,15 +514,14 @@ describe('BemImportPage — baixarTemplate', () => {
     expect(anchorMock.href).toContain('/assets/template_importacao_bens.xlsx')
     expect(anchorMock.click).toHaveBeenCalledOnce()
     expect(appendChildSpy).toHaveBeenCalledWith(anchorMock)
-    expect(removeChildSpy).toHaveBeenCalledWith(anchorMock)
+    expect(anchorMock.remove).toHaveBeenCalledOnce()
 
     createElementSpy.mockRestore()
     appendChildSpy.mockRestore()
-    removeChildSpy.mockRestore()
   })
 
   it('o clique no link do modelo não navega para outra página', () => {
-    const anchorMock = { href: '', download: '', click: vi.fn() }
+    const anchorMock = { href: '', download: '', click: vi.fn(), remove: vi.fn() }
 
     const originalCreateElement = Document.prototype.createElement.bind(document)
 
@@ -505,11 +531,10 @@ describe('BemImportPage — baixarTemplate', () => {
         tag === 'a' ? (anchorMock as unknown as HTMLAnchorElement) : originalCreateElement(tag)
       )
 
-    // render ANTES de mockar appendChild/removeChild
+    // render ANTES de mockar appendChild
     render(<BemImportPage />)
 
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => anchorMock as any)
 
     expect(() =>
       fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))

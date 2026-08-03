@@ -366,12 +366,12 @@ describe('useBemImport', () => {
   })
 
   // =========================================================================
-  // importar: status desconhecido (ex: 409)
+  // importar: status desconhecido (ex: 405)
   // =========================================================================
 
   it('importar status desconhecido → erro_request com detail', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 409,
+      status: 405,
       data: makeResultado({ detail: 'Conflito inesperado.' }),
     })
 
@@ -387,7 +387,7 @@ describe('useBemImport', () => {
 
   it('importar status desconhecido sem detail → "Erro desconhecido. Nenhum bem foi importado."', async () => {
     vi.mocked(bemService.importar).mockResolvedValueOnce({
-      status: 409,
+      status: 405,
       data: { detail: undefined } as any,
     })
 
@@ -398,6 +398,162 @@ describe('useBemImport', () => {
     expect(result.current.estado.tipo).toBe('erro_request')
     if (result.current.estado.tipo === 'erro_request') {
       expect(result.current.estado.mensagem).toBe('Erro desconhecido. Nenhum bem foi importado.')
+    }
+  })
+
+  // =========================================================================
+  // importar: 409 conflito — Conciliação em aberto
+  // =========================================================================
+
+  it('importar 409 → erro_request com mensagem do backend', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 409,
+      data: makeResultado({
+        detail: 'Importação não realizada: existe Conciliação em aberto.',
+      }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe(
+        'Importação não realizada: existe Conciliação em aberto.'
+      )
+    }
+  })
+
+  it('importar 409 → fallback quando detail for undefined', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 409,
+      data: { detail: undefined } as any,
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe('Existe Conciliação em aberto.')
+    }
+  })
+
+  it('importar 409 → sempre usa a mensagem fixa curta, mesmo quando detail vem preenchido mas sem menção a conciliação', async () => {
+    // Se detail vier preenchido mas SEM a palavra "conciliação", a checagem
+    // universal não intercepta, então cai no bloco 409 dedicado — que deve
+    // ignorar data.detail e usar sempre a string fixa curta (evita duplicar
+    // o início da frase com o título do toast "Importação não realizada").
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 409,
+      data: makeResultado({ detail: 'Conflito ao processar a requisição.' }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe('Existe Conciliação em aberto.')
+    }
+  })
+
+  it('importar 409 → não processa nem persiste nenhuma informação (nenhum estado de sucesso ou erro_total)', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 409,
+      data: makeResultado({
+        detail: 'Importação não realizada: existe Conciliação em aberto.',
+      }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).not.toBe('sucesso')
+    expect(result.current.estado.tipo).not.toBe('erro_total')
+  })
+
+  // =========================================================================
+  // importar: qualquer erro relacionado a Conciliação → sempre a mesma
+  // mensagem padronizada, independente do status HTTP ou formato do payload
+  // =========================================================================
+
+  it('importar → erro de conciliação lançado como exceção pelo service (cenário real de 500) é repassado como está', async () => {
+    // O bemService.importar já detecta e traduz esse cenário (ver
+    // bem.service.test.ts para o teste do payload bruto de FK constraint);
+    // aqui confirmamos que o hook apenas repassa a mensagem já padronizada.
+    vi.mocked(bemService.importar).mockRejectedValueOnce(
+      new Error('Importação não realizada: existe Conciliação em aberto.')
+    )
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe(
+        'Importação não realizada: existe Conciliação em aberto.'
+      )
+    }
+  })
+
+  it('importar 403 mencionando conciliação → mensagem padronizada, não a mensagem genérica de permissão', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 403,
+      data: makeResultado({
+        detail: 'Não é possível importar: Conciliação em aberto para sua UA.',
+      }),
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe(
+        'Importação não realizada: existe Conciliação em aberto.'
+      )
+    }
+  })
+
+  it('importar status desconhecido mencionando conciliação → mensagem padronizada', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 405,
+      data: { detail: 'Falha ao processar: Conciliação vinculada em estado inválido.' } as any,
+    })
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe(
+        'Importação não realizada: existe Conciliação em aberto.'
+      )
+    }
+  })
+
+  it('importar com exceção SEM menção a conciliação → mantém a mensagem original do erro', async () => {
+    vi.mocked(bemService.importar).mockRejectedValueOnce(
+      new Error('DataError: value too long for type character varying(20)')
+    )
+
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(result.current.estado.tipo).toBe('erro_request')
+    if (result.current.estado.tipo === 'erro_request') {
+      expect(result.current.estado.mensagem).toBe(
+        'DataError: value too long for type character varying(20)'
+      )
     }
   })
 

@@ -26,7 +26,7 @@ function baixarTemplate() {
     a.download = TEMPLATE_XLSX_FILE_NAME
     document.body.appendChild(a)
     a.click()
-    document.body.removeChild(a)
+    a.remove()
 }
 
 // ---------------------------------------------------------------------------
@@ -284,11 +284,12 @@ export default function BemImportPage() {
                                 <button
                                     type='button'
                                     onClick={baixarTemplate}
-                                    className='text-[#2F7D57] underline hover:text-[#1f5c3e] text-sm'
+                                    className='text-[#2F7D57] underline hover:text-[#1f5c3e] text-sm font-medium'
                                 >
                                     [clique aqui para baixar o modelo]
                                 </button>{' '}
-                                para realizar a importação.
+                                para realizar a importação. É possível realizar importação de Bens
+                                apenas sem Conciliações em aberto.
                             </p>
                         </div>
                         <div className='w-1/3'>
