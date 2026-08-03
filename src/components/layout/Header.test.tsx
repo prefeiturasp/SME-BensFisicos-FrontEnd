@@ -19,7 +19,7 @@ vi.mock('@/components/ui/sidebar', () => ({
 
 describe('Header', () => {
   const asEscopoState = (state: unknown) =>
-    state as unknown as ReturnType<typeof useEscopoSelector>;
+    state as ReturnType<typeof useEscopoSelector>;
 
   const mockLogout = vi.fn();
   const mockSetFilter = vi.fn();
@@ -277,5 +277,79 @@ describe('Header', () => {
 
     expect(mockSelectEscopoByValue).toHaveBeenCalledWith('uo:1');
     expect(mockSetFilter).toHaveBeenCalledWith('');
+  });
+
+  describe('Menu de informações do usuário (Trocar Senha)', () => {
+    it('deve iniciar fechado, exibindo apenas as informações do usuário', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      expect(screen.queryByTestId('user-menu-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /trocar senha/i })).not.toBeInTheDocument();
+      expect(screen.getByTestId('user-menu-toggle')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('deve abrir o menu e exibir a opção Trocar Senha ao clicar no toggle', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      fireEvent.click(screen.getByTestId('user-menu-toggle'));
+
+      expect(screen.getByTestId('user-menu-dropdown')).toBeInTheDocument();
+      const trocarSenhaLink = screen.getByRole('link', { name: /trocar senha/i });
+      expect(trocarSenhaLink).toBeVisible();
+      expect(trocarSenhaLink).toHaveAttribute('href', '/trocar-senha');
+      expect(screen.getByTestId('user-menu-toggle')).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('deve fechar o menu ao clicar novamente no toggle', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      const toggle = screen.getByTestId('user-menu-toggle');
+      fireEvent.click(toggle);
+      expect(screen.getByTestId('user-menu-dropdown')).toBeInTheDocument();
+
+      fireEvent.click(toggle);
+      expect(screen.queryByTestId('user-menu-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('deve fechar o menu ao pressionar Escape', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      fireEvent.click(screen.getByTestId('user-menu-toggle'));
+      expect(screen.getByTestId('user-menu-dropdown')).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('user-menu-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('deve fechar o menu ao clicar fora', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      fireEvent.click(screen.getByTestId('user-menu-toggle'));
+      expect(screen.getByTestId('user-menu-dropdown')).toBeInTheDocument();
+
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByTestId('user-menu-dropdown')).not.toBeInTheDocument();
+    });
+
+    it('deve fechar o menu ao clicar na opção Trocar Senha (navegação)', () => {
+      setupMocks();
+
+      renderWithProviders(<Header />);
+
+      fireEvent.click(screen.getByTestId('user-menu-toggle'));
+      fireEvent.click(screen.getByRole('link', { name: /trocar senha/i }));
+
+      expect(screen.queryByTestId('user-menu-dropdown')).not.toBeInTheDocument();
+    });
   });
 });
