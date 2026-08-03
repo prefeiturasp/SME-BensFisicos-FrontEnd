@@ -108,7 +108,7 @@ describe('BemImportPage — estado idle', () => {
   it('exibe texto de instrução e link do modelo', () => {
     render(<BemImportPage />)
     expect(screen.getByText('Adicionar Bens Patrimoniais em lote')).toBeInTheDocument()
-    expect(screen.getByText('modelo de planilha padrão')).toBeInTheDocument()
+    expect(screen.getByText('[clique aqui para baixar o modelo]')).toBeInTheDocument()
     expect(
       screen.getByText(/É possível realizar importação de Bens apenas sem Conciliações em aberto\./)
     ).toBeInTheDocument()
@@ -126,7 +126,7 @@ describe('BemImportPage — estado idle', () => {
 
   it('botão de download do modelo existe e é clicável', () => {
     render(<BemImportPage />)
-    const btn = screen.getByText('modelo de planilha padrão')
+    const btn = screen.getByText('[clique aqui para baixar o modelo]')
     expect(btn).toBeInTheDocument()
     expect((btn as HTMLButtonElement).type).toBe('button')
   })
@@ -508,7 +508,7 @@ describe('BemImportPage — baixarTemplate', () => {
 
     const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
 
-    fireEvent.click(screen.getByText('modelo de planilha padrão'))
+    fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))
 
     expect(anchorMock.download).toBe('template_importacao_bens.xlsx')
     expect(anchorMock.href).toContain('/assets/template_importacao_bens.xlsx')
@@ -537,7 +537,7 @@ describe('BemImportPage — baixarTemplate', () => {
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => anchorMock as any)
 
     expect(() =>
-      fireEvent.click(screen.getByText('modelo de planilha padrão'))
+      fireEvent.click(screen.getByText('[clique aqui para baixar o modelo]'))
     ).not.toThrow()
 
     createElementSpy.mockRestore()

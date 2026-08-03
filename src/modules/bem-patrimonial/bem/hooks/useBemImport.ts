@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { bemService, type ImportacaoResultado } from '../services/bem.service'
+import {
+  ehErroDeConciliacao,
+  MENSAGEM_CONCILIACAO_EM_ABERTO,
+} from '../utils/conciliacao-erro'
 
 export interface ImportacaoErroLinha {
   linha: number
@@ -73,6 +77,18 @@ export function useBemImport() {
         return
       }
 
+      // Qualquer erro relacionado a Conciliação — independente do status
+      // HTTP retornado (403, 409, 422, 500, etc.) — deve ser comunicado ao
+      // usuário com a mensagem padronizada de negócio, prevalecendo sobre
+      // as demais regras de mapeamento de erro abaixo.
+      if (ehErroDeConciliacao(data)) {
+        setEstado({
+          tipo: 'erro_request',
+          mensagem: MENSAGEM_CONCILIACAO_EM_ABERTO,
+        })
+        return
+      }
+
       // 422: carga rejeitada com erros padronizados
       if (status === 422) {
         const erros = parseErrosPorLinha(data.erros_por_linha ?? [])
@@ -90,11 +106,14 @@ export function useBemImport() {
       }
 
       // 409: bloqueado por regra de negócio — ex.: Conciliação em aberto
-      // para a Unidade Administrativa/Orçamentária do usuário
+      // para a Unidade Administrativa/Orçamentária do usuário.
+      // Mensagem fixa (não usa data.detail): o título do toast já é
+      // "Importação não realizada", então usar um detail que repete esse
+      // início duplica a frase na tela.
       if (status === 409) {
         setEstado({
           tipo: 'erro_request',
-          mensagem: data.detail ?? 'Importação não realizada: existe Conciliação em aberto.',
+          mensagem: 'Existe Conciliação em aberto.',
         })
         return
       }

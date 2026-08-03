@@ -280,17 +280,16 @@ export default function BemImportPage() {
                                 Adicionar Bens Patrimoniais em lote
                             </p>
                             <p className='text-sm text-gray-600'>
-                                Realize o upload de arquivo Excel com o{' '}
+                                Realize o upload de arquivo Excel com o modelo de planilha padrão{' '}
                                 <button
                                     type='button'
                                     onClick={baixarTemplate}
                                     className='text-[#2F7D57] underline hover:text-[#1f5c3e] text-sm font-medium'
                                 >
-                                    modelo de planilha padrão
+                                    [clique aqui para baixar o modelo]
                                 </button>{' '}
-                                [clique aqui para baixar o modelo] para realizar a importação. É
-                                possível realizar importação de Bens apenas sem Conciliações em
-                                aberto.
+                                para realizar a importação. É possível realizar importação de Bens
+                                apenas sem Conciliações em aberto.
                             </p>
                         </div>
                         <div className='w-1/3'>
