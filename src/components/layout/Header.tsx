@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CheckCircle2, ChevronDown, Power } from 'lucide-react';
+import { CheckCircle2, ChevronDown, KeyRound, Power } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ export function Header() {
   const { user, logout } = useAuth();
   const dropdownRef = React.useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = React.useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
   const {
     grupos,
     filter,
@@ -72,6 +74,31 @@ export function Header() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, setFilter]);
+
+  React.useEffect(() => {
+    if (!isUserMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   return (
     <header className='sticky top-0 z-50 flex h-16 md:h-24 shrink-0 items-center justify-between border-b bg-white px-4 md:px-8 shadow-md'>
@@ -203,25 +230,57 @@ export function Header() {
 
       {/* Direita: Info do Usuário + Sair */}
       <div className='flex items-center gap-2 md:gap-4'>
-        <div className='hidden md:flex flex-col items-end justify-center border border-gray-200 px-2 py-1.5 rounded bg-gray-100 min-w-52'>
-          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
-            <span className='font-bold text-gray-600'>RF:</span>
-            <span className='text-gray-600'>{user?.rf ?? '00000000'}</span>
-          </div>
+        <div ref={userMenuRef} className='relative hidden md:block'>
+          <button
+            type='button'
+            data-testid='user-menu-toggle'
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            aria-expanded={isUserMenuOpen}
+            aria-haspopup='menu'
+            className='flex items-center gap-2 border border-gray-200 px-2 py-1.5 rounded bg-gray-100 hover:bg-gray-200 min-w-52 cursor-pointer transition-colors'
+          >
+            <div className='flex flex-col items-start justify-center flex-1'>
+              <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
+                <span className='font-bold text-gray-600'>RF:</span>
+                <span className='text-gray-600'>{user?.rf ?? '00000000'}</span>
+              </div>
 
-          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
-            <span className='font-bold text-gray-600'>NOME:</span>
-            <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
-              {user?.nome?.toUpperCase() ?? 'USUÁRIO DO SISTEMA'}
-            </span>
-          </div>
+              <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
+                <span className='font-bold text-gray-600'>NOME:</span>
+                <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
+                  {user?.nome?.toUpperCase() ?? 'USUÁRIO DO SISTEMA'}
+                </span>
+              </div>
 
-          <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
-            <span className='font-bold text-gray-600'>CARGO/FUNÇÃO:</span>
-            <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
-              {userRoleLabel}
-            </span>
-          </div>
+              <div className='flex items-center justify-start gap-1 w-full text-[11px] leading-snug'>
+                <span className='font-bold text-gray-600'>CARGO/FUNÇÃO:</span>
+                <span className='truncate max-w-52 uppercase font-normal text-gray-600'>
+                  {userRoleLabel}
+                </span>
+              </div>
+            </div>
+            <ChevronDown
+              className={`size-4 text-gray-500 shrink-0 transition-transform ${
+                isUserMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {isUserMenuOpen && (
+            <div
+              data-testid='user-menu-dropdown'
+              className='absolute left-0 right-0 top-full z-80 mt-1 rounded-md border border-gray-200 bg-white shadow-2xl overflow-hidden'
+            >
+              <Link
+                to='/trocar-senha'
+                onClick={() => setIsUserMenuOpen(false)}
+                className='flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 font-semibold hover:bg-gray-50'
+              >
+                <KeyRound className='size-4 text-gray-500' />
+                Trocar Senha
+              </Link>
+            </div>
+          )}
         </div>
 
         <button
