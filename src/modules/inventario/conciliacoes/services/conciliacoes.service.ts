@@ -4,8 +4,11 @@ import { handleApiError } from '@/lib/unidades-list-service';
 import type {
   Conciliacao,
   ConciliacaoHistoricoGrupo,
-  ConciliacaoItensListParams,
+  ConciliacaoItemDetail,
   ConciliacaoItemSituacaoFilter,
+  ConciliacaoItensListParams,
+  ConciliacaoOcorrenciaPayload,
+  ConciliacaoSituacaoDisponivel,
   ConciliacoesListParams,
   ConciliacaoStatusFilter,
   ConciliacaoTipoFilter,
@@ -62,7 +65,7 @@ function buildItensListParams(params?: ConciliacaoItensListParams) {
   return queryParams;
 }
 
-function handleCreateError(error: unknown): never {
+function handleCreateError(error: unknown, defaultMessage: string): never {
   if (error instanceof AxiosError) {
     if (!error.response) {
       throw new Error('Erro de conexão com o servidor.');
@@ -77,7 +80,7 @@ function handleCreateError(error: unknown): never {
     }
   }
 
-  throw new Error('Erro ao cadastrar conciliação.');
+  throw new Error(defaultMessage);
 }
 
 export const conciliacoesService = {
@@ -97,7 +100,7 @@ export const conciliacoesService = {
       const { data } = await api.post<Conciliacao>(`${BASE_PATH}/`, payload);
       return data;
     } catch (error) {
-      handleCreateError(error);
+      handleCreateError(error, 'Erro ao cadastrar conciliação.');
     }
   },
 
@@ -153,6 +156,64 @@ export const conciliacoesService = {
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao finalizar conciliação.');
+    }
+  },
+
+  async retrieveItem(
+    conciliacaoId: number,
+    itemId: number,
+  ): Promise<ConciliacaoItemDetail> {
+    try {
+      const { data } = await api.get<ConciliacaoItemDetail>(
+        `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/`,
+      );
+      return data;
+    } catch (error) {
+      handleApiError(error, 'Erro ao carregar item da conciliação.');
+    }
+  },
+
+  async listSituacoesDisponiveis(
+    conciliacaoId: number,
+    itemId: number,
+  ): Promise<ConciliacaoSituacaoDisponivel[]> {
+    try {
+      const { data } = await api.get<ConciliacaoSituacaoDisponivel[]>(
+        `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/situacoes-disponiveis/`,
+      );
+      return data;
+    } catch (error) {
+      handleApiError(error, 'Erro ao listar situações disponíveis para o item.');
+    }
+  },
+
+  async upsertOcorrencia(
+    conciliacaoId: number,
+    itemId: number,
+    payload: ConciliacaoOcorrenciaPayload,
+  ): Promise<ConciliacaoItemDetail> {
+    try {
+      const { data } = await api.post<ConciliacaoItemDetail>(
+        `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/ocorrencias/`,
+        payload,
+      );
+      return data;
+    } catch (error) {
+      handleCreateError(error, 'Erro ao registrar ocorrência.');
+    }
+  },
+
+  async removerOcorrencia(
+    conciliacaoId: number,
+    itemId: number,
+  ): Promise<ConciliacaoItemDetail> {
+    try {
+      const { data } = await api.post<ConciliacaoItemDetail>(
+        `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/ocorrencias/remover/`,
+      );
+      return data;
+    } catch (error) {
+      handleCreateError(error, 'Erro ao excluir ocorrência.');
     }
   },
 };
