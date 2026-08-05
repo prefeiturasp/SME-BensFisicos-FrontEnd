@@ -6,7 +6,11 @@ import {
   useConciliacaoById,
   useConciliacaoCreate,
   useConciliacaoFinalizar,
+  useConciliacaoItem,
+  useConciliacaoItemSituacoesDisponiveis,
   useConciliacaoItens,
+  useConciliacaoOcorrenciaRemover,
+  useConciliacaoOcorrenciaUpsert,
   useConciliacoesList,
 } from '../useConciliacoes';
 import { conciliacoesService } from '../../services/conciliacoes.service';
@@ -20,6 +24,10 @@ vi.mock('../../services/conciliacoes.service', () => ({
     historico: vi.fn(),
     exportar: vi.fn(),
     finalizar: vi.fn(),
+    retrieveItem: vi.fn(),
+    listSituacoesDisponiveis: vi.fn(),
+    upsertOcorrencia: vi.fn(),
+    removerOcorrencia: vi.fn(),
   },
 }));
 
@@ -545,6 +553,153 @@ describe('useConciliacaoFinalizar', () => {
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
+    });
+  });
+});
+
+describe('useConciliacaoItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('nao busca quando os ids nao sao validos', () => {
+    const { Wrapper } = createWrapper();
+    renderHook(() => useConciliacaoItem(null, null), { wrapper: Wrapper });
+
+    expect(mockedService.retrieveItem).not.toHaveBeenCalled();
+  });
+
+  it('busca o detalhe do item quando os ids sao validos', async () => {
+    const detail = { id: 42, conciliacao: 1 } as never;
+    mockedService.retrieveItem.mockResolvedValueOnce(detail);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoItem(1, 42), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(detail);
+    });
+
+    expect(mockedService.retrieveItem).toHaveBeenCalledWith(1, 42);
+  });
+});
+
+describe('useConciliacaoItemSituacoesDisponiveis', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('nao busca quando os ids sao invalidos', () => {
+    const { Wrapper } = createWrapper();
+    renderHook(() => useConciliacaoItemSituacoesDisponiveis(null, 1), { wrapper: Wrapper });
+
+    expect(mockedService.listSituacoesDisponiveis).not.toHaveBeenCalled();
+  });
+
+  it('busca a lista de situacoes disponiveis para o item', async () => {
+    const opcoes = [{ value: 'encontrado', label: 'Encontrado' }];
+    mockedService.listSituacoesDisponiveis.mockResolvedValueOnce(opcoes as never);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoItemSituacoesDisponiveis(1, 42), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(opcoes);
+    });
+
+    expect(mockedService.listSituacoesDisponiveis).toHaveBeenCalledWith(1, 42);
+  });
+});
+
+describe('useConciliacaoOcorrenciaUpsert', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('envia o payload para o service e retorna a resposta', async () => {
+    const itemDetail = { id: 42, conciliacao: 1 } as never;
+    mockedService.upsertOcorrencia.mockResolvedValueOnce(itemDetail);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useConciliacaoOcorrenciaUpsert(), {
+      wrapper: Wrapper,
+    });
+
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.mutateAsync({
+        conciliacaoId: 1,
+        itemId: 42,
+        payload: { situacao: 'divergente', divergencia: 'detalhes' },
+      });
+    });
+
+    expect(returned).toEqual(itemDetail);
+    expect(mockedService.upsertOcorrencia).toHaveBeenCalledWith(1, 42, {
+      situacao: 'divergente',
+      divergencia: 'detalhes',
+    });
+  });
+
+  it('invalida queries de itens, item, ocorrencias e conciliacoes apos sucesso', async () => {
+    const itemDetail = { id: 42, conciliacao: 1 } as never;
+    mockedService.upsertOcorrencia.mockResolvedValueOnce(itemDetail);
+
+    const { queryClient, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = renderHook(() => useConciliacaoOcorrenciaUpsert(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        conciliacaoId: 1,
+        itemId: 42,
+        payload: { situacao: 'encontrado' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacoes'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacao', 1] });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['conciliacao', 1, 'item', 42],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['conciliacao', 1, 'itens'],
+      });
+    });
+  });
+});
+
+describe('useConciliacaoOcorrenciaRemover', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('chama o service e invalida as queries relacionadas', async () => {
+    const itemDetail = { id: 42, conciliacao: 1 } as never;
+    mockedService.removerOcorrencia.mockResolvedValueOnce(itemDetail);
+
+    const { queryClient, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = renderHook(() => useConciliacaoOcorrenciaRemover(), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ conciliacaoId: 1, itemId: 42 });
+    });
+
+    expect(mockedService.removerOcorrencia).toHaveBeenCalledWith(1, 42);
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacoes'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['conciliacao', 1] });
     });
   });
 });

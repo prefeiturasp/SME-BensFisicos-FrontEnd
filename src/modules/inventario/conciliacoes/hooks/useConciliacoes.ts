@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { conciliacoesService } from '../services/conciliacoes.service';
 import type {
+  ConciliacaoItemDetail,
   ConciliacaoItemSituacaoFilter,
   ConciliacaoItemSortableField,
+  ConciliacaoOcorrenciaPayload,
+  ConciliacaoSituacaoDisponivel,
   ConciliacaoStatusFilter,
   ConciliacaoTipoFilter,
   CreateConciliacaoPayload,
@@ -192,4 +195,91 @@ function useDebouncedValue<T>(value: T, delay = 500): T {
   }, [delay, value]);
 
   return debounced;
+}
+
+export function useConciliacaoItem(
+  conciliacaoId: number | null,
+  itemId: number | null,
+) {
+  return useQuery({
+    queryKey: ['conciliacao', conciliacaoId, 'item', itemId],
+    queryFn: () =>
+      conciliacoesService.retrieveItem(conciliacaoId as number, itemId as number),
+    enabled:
+      Number.isInteger(conciliacaoId) &&
+      Number.isInteger(itemId) &&
+      (conciliacaoId as number) > 0 &&
+      (itemId as number) > 0,
+  });
+}
+
+export function useConciliacaoItemSituacoesDisponiveis(
+  conciliacaoId: number | null,
+  itemId: number | null,
+) {
+  return useQuery<ConciliacaoSituacaoDisponivel[]>({
+    queryKey: ['conciliacao', conciliacaoId, 'item', itemId, 'situacoes-disponiveis'],
+    queryFn: () =>
+      conciliacoesService.listSituacoesDisponiveis(
+        conciliacaoId as number,
+        itemId as number,
+      ),
+    enabled:
+      Number.isInteger(conciliacaoId) &&
+      Number.isInteger(itemId) &&
+      (conciliacaoId as number) > 0 &&
+      (itemId as number) > 0,
+  });
+}
+
+export function useConciliacaoOcorrenciaUpsert() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ConciliacaoItemDetail,
+    unknown,
+    { conciliacaoId: number; itemId: number; payload: ConciliacaoOcorrenciaPayload }
+  >({
+    mutationFn: ({ conciliacaoId, itemId, payload }) =>
+      conciliacoesService.upsertOcorrencia(conciliacaoId, itemId, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['conciliacao', data.conciliacao] });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'item', data.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'item', data.id, 'situacoes-disponiveis'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'itens'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['conciliacoes'] });
+    },
+  });
+}
+
+export function useConciliacaoOcorrenciaRemover() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ConciliacaoItemDetail,
+    unknown,
+    { conciliacaoId: number; itemId: number }
+  >({
+    mutationFn: ({ conciliacaoId, itemId }) =>
+      conciliacoesService.removerOcorrencia(conciliacaoId, itemId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['conciliacao', data.conciliacao] });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'item', data.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'item', data.id, 'situacoes-disponiveis'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['conciliacao', data.conciliacao, 'itens'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['conciliacoes'] });
+    },
+  });
 }
