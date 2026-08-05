@@ -294,6 +294,11 @@ function VisualizarConciliacaoContent() {
           onNumeroPatrimonialChange={itens.setNumeroPatrimonialInput}
           onNomeChange={itens.setNomeInput}
           onSituacaoChange={itens.setSituacaoFilter}
+          onSelectItem={(item) =>
+            navigate(
+              `/conciliacoes/${conciliacao.id}/itens/${item.id}/ocorrencia`,
+            )
+          }
         />
       </Card>
 

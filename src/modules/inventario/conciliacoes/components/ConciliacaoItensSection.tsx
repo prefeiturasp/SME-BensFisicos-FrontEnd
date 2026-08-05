@@ -23,6 +23,7 @@ interface ConciliacaoItensSectionProps {
   onNumeroPatrimonialChange: (value: string) => void;
   onNomeChange: (value: string) => void;
   onSituacaoChange: (value: ConciliacaoItemSituacaoFilter) => void;
+  onSelectItem?: (item: ConciliacaoItem) => void;
 }
 
 export function ConciliacaoItensSection({
@@ -41,6 +42,7 @@ export function ConciliacaoItensSection({
   onNumeroPatrimonialChange,
   onNomeChange,
   onSituacaoChange,
+  onSelectItem,
 }: Readonly<ConciliacaoItensSectionProps>) {
   const { pages, totalPages } = useUnidadesPagination({
     page,
@@ -78,6 +80,7 @@ export function ConciliacaoItensSection({
         totalPages={totalPages}
         onPageChange={onPageChange}
         onSort={handleSort}
+        onSelectItem={onSelectItem}
       />
     </section>
   );
