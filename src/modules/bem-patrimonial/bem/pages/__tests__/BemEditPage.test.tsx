@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemEditPage from '../BemEditPage'
@@ -18,15 +20,36 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('../../hooks/useNumeroPatrimonial', () => ({
-  useNumeroPatrimonial: () => ({
-    disabled: false,
-    semNumeracao: true,
-    applyMask: (v: string) => v,
-    handleFormatoAntigoChange: vi.fn(),
-    handleSemNumeracaoChange: vi.fn(),
-    ativarFormatoAntigo: vi.fn(),
-    desativarFormatoAntigo: vi.fn(),
-  }),
+  useNumeroPatrimonial: ({
+    formatoAntigoInicial,
+    semNumeracaoInicial,
+  }: {
+    formatoAntigoInicial: boolean
+    semNumeracaoInicial: boolean
+  }) => {
+    const [formatoAntigo, setFormatoAntigo] = useState(
+      formatoAntigoInicial ?? false
+    )
+    const [semNumeracao, setSemNumeracao] = useState(
+      semNumeracaoInicial ?? false
+    )
+
+    return {
+      formatoAntigo,
+      semNumeracao,
+      disabled: semNumeracao && !formatoAntigo,
+      applyMask: (v: string) => v,
+      ativarFormatoAntigo: () => {
+        setFormatoAntigo(true)
+        setSemNumeracao(false)
+      },
+      desativarFormatoAntigo: () => setFormatoAntigo(false),
+      handleSemNumeracaoChange: (checked: boolean) => {
+        if (checked) setFormatoAntigo(false)
+        setSemNumeracao(checked)
+      },
+    }
+  },
 }))
 
 const bemMock = {
@@ -127,6 +150,21 @@ function renderPage() {
 describe('BemEditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
   })
 
   // ─── Carregamento ────────────────────────────────────────────────────────────
@@ -678,6 +716,153 @@ describe('BemEditPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  describe('Select de Formato (mutuamente exclusivo)', () => {
+    it('deve exibir "Selecione" quando nenhuma opção de formato estiver marcada', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('')
+    })
+
+    it('deve exibir "Formato Anterior" selecionado quando numero_formato_antigo=true', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemFormatoAntigoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('formato_anterior')
+    })
+
+    it('deve exibir "Sem Número Patrimonial" selecionado quando sem_numeracao=true', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemSemNumeracaoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('sem_numeracao')
+    })
+
+    it('ao selecionar "Formato Anterior", desabilita a validação do número e libera o campo pra digitação livre', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      fireEvent.change(select, { target: { value: 'formato_anterior' } })
+
+      expect(select.value).toBe('formato_anterior')
+
+      const numeroInput = screen.getByLabelText(
+        'Número Patrimonial'
+      ) as HTMLInputElement
+      expect(numeroInput.disabled).toBe(false)
+
+      fireEvent.change(numeroInput, { target: { value: 'ABC-livre-123' } })
+      expect(numeroInput.value).toBe('ABC-livre-123')
+    })
+
+    it('ao selecionar "Sem Número Patrimonial", desabilita o campo Número Patrimonial', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      fireEvent.change(select, { target: { value: 'sem_numeracao' } })
+
+      expect(select.value).toBe('sem_numeracao')
+
+      await waitFor(() => {
+        const numeroInput = screen.getByLabelText(
+          'Número Patrimonial'
+        ) as HTMLInputElement
+        expect(numeroInput.disabled).toBe(true)
+      })
+    })
+
+    it('as opções são mutuamente exclusivas: trocar de "Formato Anterior" para "Sem Número Patrimonial" desmarca a primeira', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemFormatoAntigoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('formato_anterior')
+
+      fireEvent.change(select, { target: { value: 'sem_numeracao' } })
+
+      expect(select.value).toBe('sem_numeracao')
+
+      await waitFor(() => {
+        const numeroInput = screen.getByLabelText(
+          'Número Patrimonial'
+        ) as HTMLInputElement
+        expect(numeroInput.disabled).toBe(true)
+      })
+    })
+
+    it('deve voltar para "Selecione" (nenhuma opção) ao escolher a opção vazia', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemFormatoAntigoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      fireEvent.change(select, { target: { value: '' } })
+
+      expect(select.value).toBe('')
+    })
+
+    it('deve exibir o tooltip informativo ao passar o mouse no ícone ao lado de Formato', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const formatoLabel = screen.getByText('Formato')
+      const tooltipTrigger = formatoLabel.parentElement?.querySelector('svg')
+      expect(tooltipTrigger).toBeInTheDocument()
+
+      await user.hover(tooltipTrigger!)
+
+      const tooltipMatches = await screen.findAllByText(
+        /Se marcado.*Formato anterior.*não valida o formato do número/s
+      )
+      expect(tooltipMatches.length).toBeGreaterThan(0)
+    })
+  })
+
   // ─── Unidade Administrativa ───────────────────────────────────────────────────
 
   it('deve exibir unidade administrativa corretamente e desabilitada', async () => {
@@ -716,8 +901,8 @@ describe('BemEditPage', () => {
     // const baixaInput = inputs.find(
     //   (el) => el.getAttribute('id') === undefined && (el as HTMLInputElement).disabled
     // )
-    // Verifica pelo label NUMERO PROCESSO BAIXA
-    const label = screen.getByText('NUMERO PROCESSO BAIXA')
+    // Verifica pelo label Número do Processo de Baixa
+    const label = screen.getByText('Número do Processo de Baixa')
     expect(label).toBeInTheDocument()
   })
 })

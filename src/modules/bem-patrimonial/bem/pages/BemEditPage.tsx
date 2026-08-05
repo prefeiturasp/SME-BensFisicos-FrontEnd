@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 
@@ -8,10 +8,12 @@ import { bemService, type Bem } from '../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
+import { valorSelectFormato } from '../utils/formato-bem'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Form,
   FormField,
@@ -24,7 +26,19 @@ import {
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 
+const FIELD_LABELS: Record<string, string> = {
+  nome: 'Nome do Bem',
+  descricao: 'Descrição do Bem',
+  valor_unitario: 'Valor Unitário',
+  marca: 'Marca',
+  modelo: 'Modelo',
+  localizacao: 'Localização',
+  numero_processo: 'Número do Processo de Incorporação',
+  numero_processo_baixa: 'Número do Processo de Baixa',
+}
+
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
+
 
 function isNumeroPatrimonialValido(values: Bem): boolean {
   if (values.sem_numeracao) return true
@@ -173,13 +187,13 @@ export default function BemEditPage() {
             Editar Bem Patrimonial
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Atualize as informações do bem cadastrado
+            Atualize as informações do Bem cadastrado
           </p>
         </div>
 
         <Button
           variant="outline"
-          className="h-10 border-gray-300 text-gray-700"
+          className="h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
           onClick={() => navigate(`/bens-patrimoniais/${bem.id}`)}
         >
           <ArrowLeft size={16} className="mr-2" />
@@ -196,7 +210,7 @@ export default function BemEditPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-8 items-start">
+            <div className="grid grid-cols-3 gap-8 items-start">
               <div className="space-y-1">
                 <label
                   htmlFor="unidade_administrativa"
@@ -238,67 +252,51 @@ export default function BemEditPage() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="numero_formato_antigo"
-                render={({ field }) => (
-                  <FormItem className="pt-9">
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <input
-                          id="numero_formato_antigo"
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked)
-                            if (e.target.checked) {
-                              numeroHook.ativarFormatoAntigo()
-                            } else {
-                              numeroHook.desativarFormatoAntigo()
-                            }
-                          }}
-                          disabled={!podeEditar}
-                        />
-                      </FormControl>
-                      <FormLabel
-                        htmlFor="numero_formato_antigo"
-                        className="text-sm text-gray-700 whitespace-nowrap"
-                      >
-                        Formato anterior
-                      </FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel htmlFor="formato">Formato</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info size={14} className="text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6} className="max-w-70">
+                      Se marcado “Formato anterior”, não valida o formato do número (valor
+                      livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+                      automaticamente.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <FormControl>
+                  <select
+                    id="formato"
+                    value={valorSelectFormato(formatoAntigo, semNumeracao)}
+                    onChange={(e) => {
+                      const valor = e.target.value
 
-              <FormField
-                control={form.control}
-                name="sem_numeracao"
-                render={({ field }) => (
-                  <FormItem className="pt-9">
-                    <div className="flex items-center gap-2">
-                      <FormControl>
-                        <input
-                          id="sem_numeracao"
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked)
-                            numeroHook.handleSemNumeracaoChange(e.target.checked)
-                          }}
-                          disabled={!podeEditar}
-                        />
-                      </FormControl>
-                      <FormLabel
-                        htmlFor="sem_numeracao"
-                        className="text-sm text-gray-700 whitespace-nowrap"
-                      >
-                        Sem número patrimonial
-                      </FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
+                      if (valor === 'formato_anterior') {
+                        form.setValue('numero_formato_antigo', true, { shouldDirty: true })
+                        form.setValue('sem_numeracao', false, { shouldDirty: true })
+                        numeroHook.ativarFormatoAntigo()
+                      } else if (valor === 'sem_numeracao') {
+                        form.setValue('numero_formato_antigo', false, { shouldDirty: true })
+                        form.setValue('sem_numeracao', true, { shouldDirty: true })
+                        numeroHook.handleSemNumeracaoChange(true)
+                      } else {
+                        form.setValue('numero_formato_antigo', false, { shouldDirty: true })
+                        form.setValue('sem_numeracao', false, { shouldDirty: true })
+                        numeroHook.desativarFormatoAntigo()
+                        numeroHook.handleSemNumeracaoChange(false)
+                      }
+                    }}
+                    disabled={!podeEditar}
+                    className={INPUT_CLASS}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="formato_anterior">Formato Anterior</option>
+                    <option value="sem_numeracao">Sem Número Patrimonial</option>
+                  </select>
+                </FormControl>
+              </FormItem>
             </div>
 
             <div className="grid grid-cols-3 gap-6">
@@ -320,9 +318,7 @@ export default function BemEditPage() {
                     <FormItem
                       className={fieldName === 'descricao' ? 'col-span-3' : ''}
                     >
-                      <FormLabel>
-                        {fieldName.replaceAll('_', ' ').toUpperCase()}
-                      </FormLabel>
+                      <FormLabel>{FIELD_LABELS[fieldName]}</FormLabel>
                       <FormControl>
                         {fieldName === 'descricao' ? (
                           <textarea
@@ -354,7 +350,7 @@ export default function BemEditPage() {
               name={'observacao' as any}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>OBSERVAÇÃO</FormLabel>
+                  <FormLabel>Observação</FormLabel>
                   <FormControl>
                     <textarea
                       {...field}
@@ -375,7 +371,7 @@ export default function BemEditPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    JUSTIFICATIVA
+                    Justificativa
                     {justificativaObrigatoria && (
                       <span className="text-red-500"> *</span>
                     )}
