@@ -359,7 +359,7 @@ function RegistarOcorrenciaContent() {
       </Card>
 
       <Card className='p-6'>
-        <div className='space-y-5'>
+        <div className='space-y-5 p-4'>
           <h3 className='text-base font-bold text-[#2F7D57]'>Registro da ocorrência</h3>
 
           {opcoesQuery.isError ? (

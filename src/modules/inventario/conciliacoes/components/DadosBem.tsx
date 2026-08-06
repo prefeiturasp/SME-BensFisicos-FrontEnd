@@ -119,7 +119,7 @@ export function DadosBem({
 
   return (
     <section
-      className='space-y-5'
+      className='space-y-5 p-4'
       data-testid='dados-bem-section'
       aria-label='Dados do bem'
     >
