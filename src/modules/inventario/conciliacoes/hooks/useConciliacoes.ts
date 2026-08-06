@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { conciliacoesService } from '../services/conciliacoes.service';
 import type {
   ConciliacaoItemDetail,
@@ -184,17 +185,6 @@ export function useConciliacaoItens({ conciliacaoId, pageSize }: UseConciliacaoI
       setSituacaoFilter(value);
     },
   };
-}
-
-function useDebouncedValue<T>(value: T, delay = 500): T {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const timer = globalThis.setTimeout(() => setDebounced(value), delay);
-    return () => globalThis.clearTimeout(timer);
-  }, [delay, value]);
-
-  return debounced;
 }
 
 export function useConciliacaoItem(

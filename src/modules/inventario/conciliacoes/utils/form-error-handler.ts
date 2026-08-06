@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import type { UseFormReturn } from 'react-hook-form';
+import { extractErrorMessage } from '@/lib/backend-form-errors';
 import type { ConciliacaoFormData } from '../validators/conciliacao-form.schema';
 
 const FIELD_MAP: Record<string, keyof ConciliacaoFormData> = {
@@ -25,11 +26,7 @@ function normalizeNonFieldMessage(message: string): string {
   return message;
 }
 
-function extractMessage(value: unknown): string | null {
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value) && value.length > 0) return String(value[0]);
-  return null;
-}
+export { extractErrorMessage as extractMessage };
 
 export interface ConciliacaoBadRequestResult {
   handled: boolean;
@@ -55,7 +52,7 @@ export function handleConciliacaoBadRequestError(
 
   for (const [backendField, formField] of Object.entries(FIELD_MAP)) {
     if (!formField) continue;
-    const message = extractMessage(obj[backendField]);
+    const message = extractErrorMessage(obj[backendField]);
     if (message) {
       form.setError(formField, { type: 'server', message: FIELD_ERROR_MESSAGE });
       if (!firstFieldMessage) {
@@ -69,7 +66,8 @@ export function handleConciliacaoBadRequestError(
     return { handled: true, toastDescription: firstFieldMessage };
   }
 
-  const nonFieldMessage = extractMessage(obj.non_field_errors) || extractMessage(obj.detail);
+  const nonFieldMessage =
+    extractErrorMessage(obj.non_field_errors) || extractErrorMessage(obj.detail);
 
   if (nonFieldMessage) {
     const displayMessage = normalizeNonFieldMessage(nonFieldMessage);
