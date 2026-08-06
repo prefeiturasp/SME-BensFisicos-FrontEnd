@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -18,7 +17,10 @@ import {
   useConciliacaoOcorrenciaUpsert,
 } from '../hooks/useConciliacoes';
 import { canAccessConciliacoes } from '../utils/permissions';
-import { extractMessage } from '../utils/form-error-handler';
+import {
+  handleOcorrenciaBadRequestError,
+  OCORRENCIA_ERROR_TOAST_TITLE,
+} from '../utils/form-error-handler';
 import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS, WARNING_ALERT_CLASS } from '../utils/form-styles';
 import { getErrorMessage } from '@/lib/unidades-list-page';
 import {
@@ -35,11 +37,7 @@ const DANGER_BUTTON_CLASS =
 
 const SAVE_BUTTON_CLASS = 'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
 
-const FALLBACK_ERROR_MESSAGE = 'Não foi possível registrar a ocorrência.';
-
-function isValidationError(error: unknown): boolean {
-  return error instanceof AxiosError && error.response?.status === 400;
-}
+const FALLBACK_EXCLUSAO_MESSAGE = 'Erro ao excluir a ocorrência.';
 
 export default function RegistarOcorrenciaPage() {
   const { user } = useAuth();
@@ -133,7 +131,7 @@ function RegistarOcorrenciaContent() {
   }, [watchedDivergencia, watchedSituacao]);
 
   const showErrorToast = useCallback((description: string) => {
-    toast.error(FALLBACK_ERROR_MESSAGE, { description });
+    toast.error(OCORRENCIA_ERROR_TOAST_TITLE, { description });
   }, []);
 
   const setServerError = useCallback(
@@ -173,27 +171,13 @@ function RegistarOcorrenciaContent() {
       });
       navigate(`/conciliacoes/${conciliacaoId}`);
     } catch (error) {
-      if (isValidationError(error)) {
-        const axiosError = error as AxiosError;
-        const data = axiosError.response?.data;
-        if (data && typeof data === 'object') {
-          const obj = data as Record<string, unknown>;
-          const divergenciaMsg = extractMessage(obj.divergencia);
-          if (divergenciaMsg) {
-            form.setError('divergencia', { type: 'server', message: divergenciaMsg });
-            showErrorToast(divergenciaMsg);
-            return;
-          }
-          const detail = extractMessage(obj.detail);
-          if (detail) {
-            setServerError(detail);
-            showErrorToast(detail);
-            return;
-          }
-        }
+      const badRequest = handleOcorrenciaBadRequestError(error, form);
+      if (badRequest.handled) {
+        showErrorToast(badRequest.toastDescription);
+        return;
       }
 
-      const message = getErrorMessage(error, FALLBACK_ERROR_MESSAGE);
+      const message = getErrorMessage(error, OCORRENCIA_ERROR_TOAST_TITLE);
       setServerError(message);
       showErrorToast(message);
     }
@@ -224,7 +208,7 @@ function RegistarOcorrenciaContent() {
       setShowExclusao(false);
       navigate(`/conciliacoes/${conciliacaoId}`);
     } catch (error) {
-      const message = getErrorMessage(error, 'Erro ao excluir a ocorrência.');
+      const message = getErrorMessage(error, FALLBACK_EXCLUSAO_MESSAGE);
       setRemoverError(message);
       showErrorToast(message);
     }

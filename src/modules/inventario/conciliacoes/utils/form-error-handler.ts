@@ -2,6 +2,7 @@ import { AxiosError } from 'axios';
 import type { UseFormReturn } from 'react-hook-form';
 import { extractErrorMessage } from '@/lib/backend-form-errors';
 import type { ConciliacaoFormData } from '../validators/conciliacao-form.schema';
+import type { OcorrenciaFormData } from '../validators/ocorrencia-form.schema';
 
 const FIELD_MAP: Record<string, keyof ConciliacaoFormData> = {
   unidade_administrativa: 'periodoFinal',
@@ -79,3 +80,40 @@ export function handleConciliacaoBadRequestError(
 }
 
 export const CONCILIACAO_ERROR_TOAST_TITLE = ERROR_TOAST_TITLE;
+
+export const OCORRENCIA_ERROR_TOAST_TITLE = 'Não foi possível registrar a ocorrência.';
+
+export interface OcorrenciaBadRequestResult {
+  handled: boolean;
+  toastDescription: string;
+}
+
+export function handleOcorrenciaBadRequestError(
+  error: unknown,
+  form: UseFormReturn<OcorrenciaFormData>,
+): OcorrenciaBadRequestResult {
+  if (!(error instanceof AxiosError) || error.response?.status !== 400) {
+    return { handled: false, toastDescription: '' };
+  }
+
+  const data = error.response.data;
+  if (typeof data !== 'object' || data === null) {
+    return { handled: false, toastDescription: '' };
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  const divergenciaMsg = extractErrorMessage(obj.divergencia);
+  if (divergenciaMsg) {
+    form.setError('divergencia', { type: 'server', message: divergenciaMsg });
+    return { handled: true, toastDescription: divergenciaMsg };
+  }
+
+  const detailMsg = extractErrorMessage(obj.detail);
+  if (detailMsg) {
+    form.setError('root.serverError', { type: 'server', message: detailMsg });
+    return { handled: true, toastDescription: detailMsg };
+  }
+
+  return { handled: false, toastDescription: '' };
+}
