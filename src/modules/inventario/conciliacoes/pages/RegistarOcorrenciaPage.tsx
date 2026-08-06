@@ -19,7 +19,7 @@ import {
 } from '../hooks/useConciliacoes';
 import { canAccessConciliacoes } from '../utils/permissions';
 import { extractMessage } from '../utils/form-error-handler';
-import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS } from '../utils/form-styles';
+import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS, WARNING_ALERT_CLASS } from '../utils/form-styles';
 import { getErrorMessage } from '@/lib/unidades-list-page';
 import {
   ocorrenciaFormSchema,
@@ -294,8 +294,10 @@ function RegistarOcorrenciaContent() {
   }
 
   const opcoes = opcoesQuery.data ?? [];
-  const opcoesDisabled = upsertMutation.isPending;
-  const salvarDisabled = upsertMutation.isPending || !isFormComplete;
+  const conciliacaoFechada = !item.conciliacao_esta_aberto;
+  const opcoesDisabled = upsertMutation.isPending || conciliacaoFechada;
+  const salvarDisabled = upsertMutation.isPending || !isFormComplete || conciliacaoFechada;
+  const excluirDisabled = removerMutation.isPending || conciliacaoFechada;
   const temOcorrencia = item.tem_ocorrencia;
   const mostrarMensagemCondicional = !temOcorrencia;
 
@@ -314,7 +316,7 @@ function RegistarOcorrenciaContent() {
               type='button'
               onClick={handleExcluir}
               className={DANGER_BUTTON_CLASS}
-              disabled={removerMutation.isPending}
+              disabled={excluirDisabled}
               data-testid='registrar-ocorrencia-excluir'
             >
               Excluir
@@ -357,6 +359,16 @@ function RegistarOcorrenciaContent() {
       <Card className='p-6'>
         <div className={SECTION_QUADRANTE_CLASS}>
           <h2 className={SECTION_TITLE_CLASS}>Registro da ocorrência</h2>
+
+          {conciliacaoFechada && (
+            <div
+              className={WARNING_ALERT_CLASS}
+              role='status'
+              data-testid='registrar-ocorrencia-conciliacao-fechada'
+            >
+              Esta conciliação está fechada. O registro de ocorrências é somente leitura.
+            </div>
+          )}
 
           {opcoesQuery.isError ? (
             <Card className='border-red-200 bg-red-50 p-4 text-sm text-red-700'>

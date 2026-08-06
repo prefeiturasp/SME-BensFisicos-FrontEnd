@@ -18,6 +18,9 @@ export const READONLY_FIELD_CLASS =
 export const ROOT_ERROR_ALERT_CLASS =
   'rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700';
 
+export const WARNING_ALERT_CLASS =
+  'rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800';
+
 export const SECTION_QUADRANTE_CLASS = 'space-y-5 p-4';
 
 export const SECTION_TITLE_CLASS = 'text-base font-semibold text-[#2F7D57]';

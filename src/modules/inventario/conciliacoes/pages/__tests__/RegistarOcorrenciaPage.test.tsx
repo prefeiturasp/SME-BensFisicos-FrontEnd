@@ -568,4 +568,26 @@ describe('RegistarOcorrenciaPage', () => {
     expect(screen.getByTestId('registrar-ocorrencia-salvar')).toBeDisabled();
     expect(screen.getByTestId('registrar-ocorrencia-excluir')).toBeEnabled();
   });
+
+  it('exibe banner e desabilita formulario quando a conciliacao esta fechada', () => {
+    itemState = {
+      ...itemState,
+      data: {
+        ...itemDetail,
+        tem_ocorrencia: true,
+        conciliacao_status: 'fechado',
+        conciliacao_esta_aberto: false,
+      },
+    };
+
+    renderPage();
+
+    expect(
+      screen.getByTestId('registrar-ocorrencia-conciliacao-fechada'),
+    ).toHaveTextContent(/conciliação está fechada/i);
+    expect(screen.getByTestId('registrar-ocorrencia-salvar')).toBeDisabled();
+    expect(screen.getByTestId('registrar-ocorrencia-excluir')).toBeDisabled();
+    expect(screen.getByTestId('ocorrencia-opcao-encontrado')).toBeDisabled();
+    expect(screen.getByTestId('ocorrencia-observacao')).toBeDisabled();
+  });
 });
