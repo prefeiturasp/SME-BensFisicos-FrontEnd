@@ -1,21 +1,18 @@
-import { CircleHelp } from 'lucide-react';
 import { CampoReadonly } from './CampoReadonly';
 import { ConciliacaoItemSituacaoBadge } from './ConciliacaoItemSituacaoBadge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { FieldLabelWithTooltip } from './FieldLabelWithTooltip';
 import { cn } from '@/lib/utils';
 import type {
   ConciliacaoItemBem,
   ConciliacaoItemSituacao,
 } from '../types/conciliacoes.types';
-
-const HELPER_BUTTON_CLASS =
-  'inline-flex text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F7D57]/30 rounded-sm';
-
-const HELPER_LABEL_CLASS = 'text-sm font-semibold text-gray-700';
+import {
+  LABEL_CLASS,
+  LABEL_WITH_TOOLTIP_ROW_CLASS,
+  READONLY_FIELD_CLASS,
+  SECTION_QUADRANTE_CLASS,
+  SECTION_TITLE_CLASS,
+} from '../utils/form-styles';
 
 const READONLY_DIVERGENCIA_HELPER_TEXT =
   'Detalhe da divergência registrada para o item no inventário atual.';
@@ -23,8 +20,8 @@ const READONLY_DIVERGENCIA_HELPER_TEXT =
 const READONLY_OBSERVACAO_HELPER_TEXT =
   'Observação registrada para o item no inventário atual.';
 
-const READONLY_FIELD_CLASS =
-  'min-h-[2.75rem] rounded-xs border border-gray-300 bg-[#F5F5F5] px-4 py-2 text-sm text-gray-700 whitespace-pre-line break-words';
+const READONLY_BADGE_FIELD_CLASS =
+  'flex min-h-[2.75rem] items-center rounded-xs border border-gray-300 bg-[#F5F5F5] px-4 py-2';
 
 interface DadosBemProps {
   numeroPatrimonial: string;
@@ -35,54 +32,20 @@ interface DadosBemProps {
   bem?: ConciliacaoItemBem | null;
 }
 
-function FieldLabelWithTooltip({
-  htmlFor,
-  label,
-  tooltip,
-}: Readonly<{ htmlFor?: string; label: string; tooltip: string }>) {
-  return (
-    <div className='flex h-6 items-center gap-2'>
-      <label htmlFor={htmlFor} className={HELPER_LABEL_CLASS}>
-        {label}
-      </label>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type='button'
-            className={HELPER_BUTTON_CLASS}
-            aria-label={`Ajuda sobre ${label}`}
-            tabIndex={-1}
-          >
-            <CircleHelp className='h-4 w-4' />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side='top' sideOffset={6}>
-          {tooltip}
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-}
-
 function SituacaoReadonlyField({
   situacao,
   bem,
 }: Readonly<{ situacao: ConciliacaoItemSituacao; bem?: ConciliacaoItemBem | null }>) {
   return (
     <div className='space-y-1'>
-      <div className='flex h-6 items-center'>
-        <label
-          htmlFor='ocorrencia-dados-bem-situacao'
-          className='text-sm font-semibold text-gray-700'
-        >
+      <div className={LABEL_WITH_TOOLTIP_ROW_CLASS}>
+        <label htmlFor='ocorrencia-dados-bem-situacao' className={LABEL_CLASS}>
           Situação
         </label>
       </div>
       <div
         id='ocorrencia-dados-bem-situacao'
-        className={cn(
-          'flex min-h-[2.75rem] items-center rounded-xs border border-gray-300 bg-[#F5F5F5] px-4 py-2',
-        )}
+        className={cn(READONLY_BADGE_FIELD_CLASS)}
         data-testid='dados-bem-situacao-wrapper'
         data-bem-status={bem?.status ?? ''}
       >
@@ -119,11 +82,11 @@ export function DadosBem({
 
   return (
     <section
-      className='space-y-5 p-4'
+      className={SECTION_QUADRANTE_CLASS}
       data-testid='dados-bem-section'
       aria-label='Dados do bem'
     >
-      <h3 className='text-base font-bold text-[#2F7D57]'>Dados do bem</h3>
+      <h2 className={SECTION_TITLE_CLASS}>Dados do bem</h2>
 
       <div className='grid grid-cols-1 items-start gap-x-8 gap-y-5 md:grid-cols-2'>
         <CampoReadonly

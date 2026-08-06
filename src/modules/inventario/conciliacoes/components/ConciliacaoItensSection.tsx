@@ -2,6 +2,7 @@ import { useUnidadesPagination } from '@/hooks/useUnidadesPagination';
 import { toggleOrdering } from '@/lib/unidades-list-page';
 import { ConciliacaoItensFilters } from './ConciliacaoItensFilters';
 import { ConciliacaoItensTable, type ConciliacaoItemSortableField } from './ConciliacaoItensTable';
+import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type {
   ConciliacaoItemSituacaoFilter,
   ConciliacaoItem,
@@ -56,11 +57,11 @@ export function ConciliacaoItensSection({
 
   return (
     <section
-      className='space-y-5 p-4'
+      className={SECTION_QUADRANTE_CLASS}
       data-testid='conciliacao-itens-section'
       aria-label='Itens de conciliação'
     >
-      <h2 className='text-base font-semibold text-[#2F7D57]'>Itens de conciliação</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Itens de conciliação</h2>
 
       <ConciliacaoItensFilters
         numeroPatrimonial={numeroPatrimonial}

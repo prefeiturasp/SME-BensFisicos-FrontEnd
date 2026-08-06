@@ -5,6 +5,7 @@ import { CampoDescricaoDivergencia } from './CampoDescricaoDivergencia';
 import { CampoObservacao } from './CampoObservacao';
 import { OcorrenciaMensagemCondicional } from './OcorrenciaMensagemCondicional';
 import { OcorrenciaOpcoesList } from './OcorrenciaOpcoesList';
+import { ROOT_ERROR_ALERT_CLASS } from '../utils/form-styles';
 import type { OcorrenciaFormData } from '../validators/ocorrencia-form.schema';
 import type {
   ConciliacaoItemSituacao,
@@ -70,7 +71,7 @@ export function OcorrenciaForm({
       >
         {rootError && (
           <div
-            className='rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'
+            className={ROOT_ERROR_ALERT_CLASS}
             role='alert'
             data-testid='ocorrencia-form-root-error'
           >

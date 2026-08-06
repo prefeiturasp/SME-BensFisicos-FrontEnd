@@ -1,3 +1,4 @@
+import { SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type { Conciliacao } from '../types/conciliacoes.types';
 
 interface ConciliacaoAuditoriaProps {
@@ -70,7 +71,7 @@ export function ConciliacaoAuditoria({ conciliacao }: Readonly<ConciliacaoAudito
       data-testid='conciliacao-auditoria'
       aria-label='Auditoria da conciliação'
     >
-      <h2 className='text-base font-semibold text-[#2F7D57]'>Auditoria</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Auditoria</h2>
 
       <div className='grid grid-cols-1 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4'>
         <div className='space-y-1' data-testid='conciliacao-auditoria-criado-por'>

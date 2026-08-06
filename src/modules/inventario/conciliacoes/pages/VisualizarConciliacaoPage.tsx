@@ -311,7 +311,6 @@ function VisualizarConciliacaoContent() {
 
       <ConciliacaoFinalizarModal
         open={showFinalizar}
-        conciliacaoId={conciliacao.id}
         loading={finalizarMutation.isPending}
         errorMessage={finalizarErrorMessage}
         onConfirm={handleConfirmarFinalizacao}

@@ -18,6 +18,9 @@ import {
   useConciliacaoOcorrenciaUpsert,
 } from '../hooks/useConciliacoes';
 import { canAccessConciliacoes } from '../utils/permissions';
+import { extractMessage } from '../utils/form-error-handler';
+import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS } from '../utils/form-styles';
+import { getErrorMessage } from '@/lib/unidades-list-page';
 import {
   ocorrenciaFormSchema,
   type OcorrenciaFormData,
@@ -33,12 +36,6 @@ const DANGER_BUTTON_CLASS =
 const SAVE_BUTTON_CLASS = 'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
 
 const FALLBACK_ERROR_MESSAGE = 'Não foi possível registrar a ocorrência.';
-
-function extractMessage(value: unknown): string | null {
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value) && value.length > 0) return String(value[0]);
-  return null;
-}
 
 function isValidationError(error: unknown): boolean {
   return error instanceof AxiosError && error.response?.status === 400;
@@ -196,7 +193,7 @@ function RegistarOcorrenciaContent() {
         }
       }
 
-      const message = error instanceof Error ? error.message : FALLBACK_ERROR_MESSAGE;
+      const message = getErrorMessage(error, FALLBACK_ERROR_MESSAGE);
       setServerError(message);
       showErrorToast(message);
     }
@@ -227,8 +224,7 @@ function RegistarOcorrenciaContent() {
       setShowExclusao(false);
       navigate(`/conciliacoes/${conciliacaoId}`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Erro ao excluir a ocorrência.';
+      const message = getErrorMessage(error, 'Erro ao excluir a ocorrência.');
       setRemoverError(message);
       showErrorToast(message);
     }
@@ -359,8 +355,8 @@ function RegistarOcorrenciaContent() {
       </Card>
 
       <Card className='p-6'>
-        <div className='space-y-5 p-4'>
-          <h3 className='text-base font-bold text-[#2F7D57]'>Registro da ocorrência</h3>
+        <div className={SECTION_QUADRANTE_CLASS}>
+          <h2 className={SECTION_TITLE_CLASS}>Registro da ocorrência</h2>
 
           {opcoesQuery.isError ? (
             <Card className='border-red-200 bg-red-50 p-4 text-sm text-red-700'>
