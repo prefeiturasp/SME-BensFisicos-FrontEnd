@@ -43,7 +43,6 @@ export function OcorrenciaMensagemCondicional({
         visual.messageBorderClassName,
         visual.messageClassName,
       )}
-      role='status'
       data-testid='ocorrencia-mensagem-condicional'
       data-situacao-anterior={situacaoAnterior}
     >

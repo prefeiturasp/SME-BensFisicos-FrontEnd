@@ -27,7 +27,7 @@ function normalizeNonFieldMessage(message: string): string {
   return message;
 }
 
-export { extractErrorMessage as extractMessage };
+export { extractErrorMessage as extractMessage } from '@/lib/backend-form-errors';
 
 export interface ConciliacaoBadRequestResult {
   handled: boolean;

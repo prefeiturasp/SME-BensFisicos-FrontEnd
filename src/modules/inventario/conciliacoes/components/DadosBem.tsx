@@ -68,11 +68,14 @@ export function DadosBem({
   const temObservacao = observacao.trim().length > 0;
   const useDivergencia = isDivergente && temDivergencia;
   const secondaryLabel = useDivergencia ? 'Divergência' : 'Observação';
-  const secondaryValue = useDivergencia
-    ? divergencia
-    : temObservacao
-      ? observacao
-      : '-';
+  let secondaryValue: string;
+  if (useDivergencia) {
+    secondaryValue = divergencia;
+  } else if (temObservacao) {
+    secondaryValue = observacao;
+  } else {
+    secondaryValue = '-';
+  }
   const secondaryHelper = useDivergencia
     ? READONLY_DIVERGENCIA_HELPER_TEXT
     : READONLY_OBSERVACAO_HELPER_TEXT;

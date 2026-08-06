@@ -575,6 +575,7 @@ describe('RegistarOcorrenciaPage', () => {
       data: {
         ...itemDetail,
         tem_ocorrencia: true,
+        situacao: 'divergente',
         conciliacao_status: 'fechado',
         conciliacao_esta_aberto: false,
       },
@@ -589,5 +590,8 @@ describe('RegistarOcorrenciaPage', () => {
     expect(screen.getByTestId('registrar-ocorrencia-excluir')).toBeDisabled();
     expect(screen.getByTestId('ocorrencia-opcao-encontrado')).toBeDisabled();
     expect(screen.getByTestId('ocorrencia-observacao')).toBeDisabled();
+    expect(
+      screen.queryByTestId('ocorrencia-mensagem-condicional'),
+    ).not.toBeInTheDocument();
   });
 });

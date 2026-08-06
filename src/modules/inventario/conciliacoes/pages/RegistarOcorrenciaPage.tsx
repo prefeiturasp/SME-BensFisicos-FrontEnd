@@ -27,7 +27,11 @@ import {
   ocorrenciaFormSchema,
   type OcorrenciaFormData,
 } from '../validators/ocorrencia-form.schema';
-import type { ConciliacaoItemSituacao } from '../types/conciliacoes.types';
+import type {
+  ConciliacaoItemDetail,
+  ConciliacaoItemSituacao,
+  ConciliacaoSituacaoDisponivel,
+} from '../types/conciliacoes.types';
 
 const ACTION_BUTTON_CLASS =
   'h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors';
@@ -38,6 +42,45 @@ const DANGER_BUTTON_CLASS =
 const SAVE_BUTTON_CLASS = 'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
 
 const FALLBACK_EXCLUSAO_MESSAGE = 'Erro ao excluir a ocorrência.';
+
+type OcorrenciaContentQuery = {
+  isError: boolean;
+};
+
+function renderOcorrenciaContent(
+  opcoesQuery: OcorrenciaContentQuery,
+  opcoes: ReadonlyArray<ConciliacaoSituacaoDisponivel>,
+  item: ConciliacaoItemDetail,
+  form: ReturnType<typeof useForm<OcorrenciaFormData>>,
+  mostrarMensagemCondicional: boolean,
+  opcoesDisabled: boolean,
+) {
+  if (opcoesQuery.isError) {
+    return (
+      <Card className='border-red-200 bg-red-50 p-4 text-sm text-red-700'>
+        Não foi possível carregar as situações disponíveis para este item.
+      </Card>
+    );
+  }
+
+  if (opcoes.length === 0) {
+    return (
+      <Card className='p-4 text-sm text-gray-500'>
+        Nenhuma situação disponível para este item.
+      </Card>
+    );
+  }
+
+  return (
+    <OcorrenciaForm
+      form={form}
+      opcoes={opcoes}
+      situacaoAnterior={item.situacao}
+      mostrarMensagemCondicional={mostrarMensagemCondicional}
+      disabled={opcoesDisabled}
+    />
+  );
+}
 
 export default function RegistarOcorrenciaPage() {
   const { user } = useAuth();
@@ -283,7 +326,7 @@ function RegistarOcorrenciaContent() {
   const salvarDisabled = upsertMutation.isPending || !isFormComplete || conciliacaoFechada;
   const excluirDisabled = removerMutation.isPending || conciliacaoFechada;
   const temOcorrencia = item.tem_ocorrencia;
-  const mostrarMensagemCondicional = !temOcorrencia;
+  const mostrarMensagemCondicional = !temOcorrencia && !conciliacaoFechada;
 
   return (
     <div className='space-y-4 p-8' data-testid='registrar-ocorrencia-page'>
@@ -347,29 +390,19 @@ function RegistarOcorrenciaContent() {
           {conciliacaoFechada && (
             <div
               className={WARNING_ALERT_CLASS}
-              role='status'
               data-testid='registrar-ocorrencia-conciliacao-fechada'
             >
               Esta conciliação está fechada. O registro de ocorrências é somente leitura.
             </div>
           )}
 
-          {opcoesQuery.isError ? (
-            <Card className='border-red-200 bg-red-50 p-4 text-sm text-red-700'>
-              Não foi possível carregar as situações disponíveis para este item.
-            </Card>
-          ) : opcoes.length === 0 ? (
-            <Card className='p-4 text-sm text-gray-500'>
-              Nenhuma situação disponível para este item.
-            </Card>
-          ) : (
-            <OcorrenciaForm
-              form={form}
-              opcoes={opcoes}
-              situacaoAnterior={item.situacao}
-              mostrarMensagemCondicional={mostrarMensagemCondicional}
-              disabled={opcoesDisabled}
-            />
+          {renderOcorrenciaContent(
+            opcoesQuery,
+            opcoes,
+            item,
+            form,
+            mostrarMensagemCondicional,
+            opcoesDisabled,
           )}
         </div>
       </Card>
