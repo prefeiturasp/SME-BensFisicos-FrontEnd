@@ -294,6 +294,11 @@ function VisualizarConciliacaoContent() {
           onNumeroPatrimonialChange={itens.setNumeroPatrimonialInput}
           onNomeChange={itens.setNomeInput}
           onSituacaoChange={itens.setSituacaoFilter}
+          onSelectItem={(item) =>
+            navigate(
+              `/conciliacoes/${conciliacao.id}/itens/${item.id}/ocorrencia`,
+            )
+          }
         />
       </Card>
 
@@ -306,7 +311,6 @@ function VisualizarConciliacaoContent() {
 
       <ConciliacaoFinalizarModal
         open={showFinalizar}
-        conciliacaoId={conciliacao.id}
         loading={finalizarMutation.isPending}
         errorMessage={finalizarErrorMessage}
         onConfirm={handleConfirmarFinalizacao}

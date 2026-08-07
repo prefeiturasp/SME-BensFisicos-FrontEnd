@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { parametrosConciliacaoAnualService } from '../services/parametros-conciliacao-anual.service';
 import type {
   ParametroConciliacaoStatusFilter,
@@ -15,24 +16,13 @@ interface UpdateParams {
   payload: ParametroConciliacaoUpdatePayload;
 }
 
-function useDebouncedValue(value: string, delay = 350) {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const timer = globalThis.setTimeout(() => setDebounced(value), delay);
-    return () => globalThis.clearTimeout(timer);
-  }, [delay, value]);
-
-  return debounced;
-}
-
 export function useParametrosConciliacaoAnualList({ pageSize }: UseParametrosListParams) {
   const [page, setPage] = useState(1);
   const [ordering, setOrdering] = useState('-ano_referencia');
   const [anoInput, setAnoInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<ParametroConciliacaoStatusFilter>('todos');
 
-  const anoFiltro = useDebouncedValue(anoInput);
+  const anoFiltro = useDebouncedValue(anoInput, 350);
 
   const query = useQuery({
     queryKey: ['parametros-conciliacao-anual', page, pageSize, anoFiltro, statusFilter, ordering],
