@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Info } from 'lucide-react'
+import { Loader2, ArrowLeft, Info, Network } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 
 import { bemService, type Bem } from '../services/bem.service'
+import { valorSelectFormato } from '../utils/formato-bem'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
-import { valorSelectFormato } from '../utils/formato-bem'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import {
   Form,
   FormField,
@@ -23,8 +23,11 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 
+// Mesmas classes usadas em BemDetailPage — mantém o tamanho de fonte do
+// título e dos inputs idêntico entre visualização e edição.
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
+const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
 
 const FIELD_LABELS: Record<string, string> = {
   nome: 'Nome do Bem',
@@ -38,7 +41,6 @@ const FIELD_LABELS: Record<string, string> = {
 }
 
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
-
 
 function isNumeroPatrimonialValido(values: Bem): boolean {
   if (values.sem_numeracao) return true
@@ -181,9 +183,17 @@ export default function BemEditPage() {
 
   return (
     <div className="p-8 space-y-6">
+      <AppBreadcrumb
+        items={[
+          { label: 'Bem Patrimonial', icon: Network },
+          { label: 'Bens Patrimoniais', icon: Network, to: '/bens-patrimoniais' },
+          { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
+        ]}
+      />
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#363636]">
+          <h1 className={TITLE_CLASS}>
             Editar Bem Patrimonial
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -218,7 +228,7 @@ export default function BemEditPage() {
                 >
                   Unidade Administrativa
                 </label>
-                <Input
+                <input
                   id="unidade_administrativa"
                   value={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
                   disabled
@@ -233,7 +243,7 @@ export default function BemEditPage() {
                   <FormItem>
                     <FormLabel>Número Patrimonial</FormLabel>
                     <FormControl>
-                      <Input
+                      <input
                         {...field}
                         value={field.value ?? ''}
                         disabled={!podeEditar || numeroHook.disabled}
@@ -327,7 +337,7 @@ export default function BemEditPage() {
                             className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
                           />
                         ) : (
-                          <Input
+                          <input
                             {...field}
                             value={field.value ?? ''}
                             disabled={

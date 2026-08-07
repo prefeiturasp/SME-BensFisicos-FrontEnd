@@ -13,8 +13,9 @@ import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
 
-const FIELD_CLASS =
+export const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
+export const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
 const ACTION_BUTTON_CLASS = `
   h-10
   px-6
@@ -48,6 +49,7 @@ function formatarCriadoEm(dateString: string | null | undefined): string | null 
 
   return `${dataFormatada}, às ${horaFormatada}`
 }
+
 export default function BemDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -105,14 +107,14 @@ export default function BemDetailPage() {
     <AppBreadcrumb
       items={[
         { label: 'Bem Patrimonial', icon: Network },
-        { label: 'Bem Patrimonial', icon: Network, to: '/bens-patrimoniais' },
-        { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
+        { label: 'Bens Patrimoniais', icon: Network, to: '/bens-patrimoniais' },
+        { label: 'Visualizar Cadastro do Bem Patrimonial', isActive: true },
       ]}
     />
 
     {/* HEADER */}
     <div className="flex justify-between items-center">
-      <h1 className="text-xl font-bold tracking-tight text-gray-700">
+      <h1 className={TITLE_CLASS}>
         Visualizar Cadastro do Bem Patrimonial
       </h1>
 

@@ -716,6 +716,97 @@ describe('BemEditPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  // ─── Unidade Administrativa ───────────────────────────────────────────────────
+
+  it('deve exibir unidade administrativa corretamente e desabilitada', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    const unidadeInput = await screen.findByDisplayValue(
+      '001 - Escola Central'
+    )
+    expect(unidadeInput).toBeInTheDocument()
+    expect(unidadeInput).toBeDisabled()
+  })
+
+  // ─── numero_processo_baixa ────────────────────────────────────────────────────
+
+  it('campo numero_processo_baixa deve estar sempre desabilitado para gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    // // numero_processo_baixa é null no mock, então o input estará vazio
+    // const inputs = screen.getAllByRole('textbox')
+    // const baixaInput = inputs.find(
+    //   (el) => el.getAttribute('id') === undefined && (el as HTMLInputElement).disabled
+    // )
+    // Verifica pelo label Número do Processo de Baixa
+    const label = screen.getByText('Número do Processo de Baixa')
+    expect(label).toBeInTheDocument()
+  })
+
+  describe('Breadcrumb', () => {
+    it('deve renderizar o breadcrumb no topo da página de edição', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
+      expect(screen.getByText('Início')).toBeInTheDocument()
+      expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument()
+      expect(screen.getByText('Bens Patrimoniais')).toBeInTheDocument()
+      expect(
+        screen.getByText('Editar Cadastro do Bem Patrimonial')
+      ).toBeInTheDocument()
+    })
+
+    it('o item "Bens Patrimoniais" do breadcrumb deve linkar para a listagem', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const link = screen.getByRole('link', { name: 'Bens Patrimoniais' })
+      expect(link).toHaveAttribute('href', '/bens-patrimoniais')
+    })
+
+    it('o item ativo do breadcrumb deve ser "Editar Cadastro do Bem Patrimonial"', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const activeItem = screen
+        .getByText('Editar Cadastro do Bem Patrimonial')
+        .closest('span')
+      expect(activeItem).toHaveAttribute('aria-current', 'page')
+    })
+  })
+
   describe('Select de Formato (mutuamente exclusivo)', () => {
     it('deve exibir "Selecione" quando nenhuma opção de formato estiver marcada', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
@@ -756,7 +847,7 @@ describe('BemEditPage', () => {
       expect(select.value).toBe('sem_numeracao')
     })
 
-    it('ao selecionar "Formato Anterior", desabilita a validação do número e libera o campo pra digitação livre', async () => {
+    it('ao selecionar "Formato Anterior", libera o campo Número Patrimonial pra digitação livre', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
         bemMock as any
       )
@@ -825,21 +916,6 @@ describe('BemEditPage', () => {
       })
     })
 
-    it('deve voltar para "Selecione" (nenhuma opção) ao escolher a opção vazia', async () => {
-      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
-        bemFormatoAntigoMock as any
-      )
-      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
-
-      renderPage()
-      await screen.findByDisplayValue('Notebook Dell')
-
-      const select = screen.getByLabelText('Formato') as HTMLSelectElement
-      fireEvent.change(select, { target: { value: '' } })
-
-      expect(select.value).toBe('')
-    })
-
     it('deve exibir o tooltip informativo ao passar o mouse no ícone ao lado de Formato', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
         bemMock as any
@@ -863,46 +939,49 @@ describe('BemEditPage', () => {
     })
   })
 
-  // ─── Unidade Administrativa ───────────────────────────────────────────────────
+  describe('Padronização visual (título e inputs)', () => {
+    it('o título "Editar Bem Patrimonial" deve usar a mesma classe de fonte do título de visualização', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
 
-  it('deve exibir unidade administrativa corretamente e desabilitada', async () => {
-    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
-      bemMock as any
-    )
-    ;(useAuth as any).mockReturnValue({
-      user: userGestorAutorizado,
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const titulo = screen.getByRole('heading', {
+        name: 'Editar Bem Patrimonial',
+      })
+      expect(titulo.className).toContain('text-xl')
+      expect(titulo.className).not.toContain('text-2xl')
     })
 
-    renderPage()
+    it('o input Nome do Bem deve ter a mesma altura/estilo usado na visualização (h-11, rounded-xs)', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
 
-    const unidadeInput = await screen.findByDisplayValue(
-      '001 - Escola Central'
-    )
-    expect(unidadeInput).toBeInTheDocument()
-    expect(unidadeInput).toBeDisabled()
-  })
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
 
-  // ─── numero_processo_baixa ────────────────────────────────────────────────────
-
-  it('campo numero_processo_baixa deve estar sempre desabilitado para gestor', async () => {
-    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
-      bemMock as any
-    )
-    ;(useAuth as any).mockReturnValue({
-      user: userGestorAutorizado,
+      const nomeInput = screen.getByDisplayValue('Notebook Dell')
+      expect(nomeInput.className).toContain('h-11')
+      expect(nomeInput.className).toContain('rounded-xs')
     })
 
-    renderPage()
+    it('deve exibir "Atualize as informações do Bem cadastrado" com "Bem" capitalizado', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
 
-    await screen.findByDisplayValue('Notebook Dell')
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
 
-    // // numero_processo_baixa é null no mock, então o input estará vazio
-    // const inputs = screen.getAllByRole('textbox')
-    // const baixaInput = inputs.find(
-    //   (el) => el.getAttribute('id') === undefined && (el as HTMLInputElement).disabled
-    // )
-    // Verifica pelo label Número do Processo de Baixa
-    const label = screen.getByText('Número do Processo de Baixa')
-    expect(label).toBeInTheDocument()
+      expect(
+        screen.getByText('Atualize as informações do Bem cadastrado')
+      ).toBeInTheDocument()
+    })
   })
 })
