@@ -22,6 +22,7 @@ export interface Bem {
   observacao?: string
   justificativa?: string
   criado_por_nome?: string | null
+  criado_por_rf?: string | null
   criado_em?: string | null
 }
 export interface HistoricoAcao {

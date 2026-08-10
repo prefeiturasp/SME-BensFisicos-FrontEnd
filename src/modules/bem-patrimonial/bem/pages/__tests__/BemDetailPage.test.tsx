@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemDetailPage from '../BemDetailPage'
@@ -66,7 +67,8 @@ const bemMock = {
   unidade_administrativa_nome: 'Escola Central',
   unidade_orcamentaria_nome: 'UO Central',
   criado_por_nome: 'Admin',
-  criado_em: '2024-01-01',
+  criado_por_rf: '1234567',
+  criado_em: '2026-05-21T15:41:13.610114-03:00',
 }
 
 const bemUoAtivaMock = {
@@ -129,6 +131,21 @@ function renderPage() {
 describe('BemDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
   })
 
   it('deve mostrar loader inicialmente', async () => {
@@ -344,7 +361,7 @@ describe('BemDetailPage', () => {
 
   it('deve exibir botão Apagar e manter desabilitado se não for gestor', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
-      .mockResolvedValue(bemMock as any)
+      .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
 
     ;(useAuth as any).mockReturnValue({
       user: { is_gestor_patrimonio: false },
@@ -359,7 +376,7 @@ describe('BemDetailPage', () => {
 
   it('deve abrir modal de exclusão ao clicar em Apagar', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
-      .mockResolvedValue(bemMock as any)
+      .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
 
     ;(useAuth as any).mockReturnValue({
       user: userGestorComAcesso,
@@ -380,7 +397,7 @@ describe('BemDetailPage', () => {
 
   it('deve fechar modal ao clicar em Manter', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
-      .mockResolvedValue(bemMock as any)
+      .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
 
     ;(useAuth as any).mockReturnValue({
       user: userGestorComAcesso,
@@ -406,7 +423,7 @@ describe('BemDetailPage', () => {
       .mockResolvedValue(undefined)
 
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
-      .mockResolvedValue(bemMock as any)
+      .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
 
     ;(useAuth as any).mockReturnValue({
       user: userGestorComAcesso,
@@ -434,7 +451,7 @@ describe('BemDetailPage', () => {
       .mockRejectedValue(new Error('Erro na API'))
 
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
-      .mockResolvedValue(bemMock as any)
+      .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
 
     ;(useAuth as any).mockReturnValue({
       user: userGestorComAcesso,
@@ -454,6 +471,146 @@ describe('BemDetailPage', () => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao excluir bem')
     })
 
+  })
+
+  describe('Breadcrumb', () => {
+    it('deve exibir o label "Visualizar Cadastro do Bem Patrimonial" como item ativo', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const nav = screen.getByRole('navigation')
+      const activeItem = within(nav)
+        .getByText('Visualizar Cadastro do Bem Patrimonial')
+        .closest('span')
+      expect(activeItem).toHaveAttribute('aria-current', 'page')
+      expect(
+        screen.queryByText('Editar Cadastro do Bem Patrimonial')
+      ).not.toBeInTheDocument()
+    })
+
+    it('o item "Bens Patrimoniais" do breadcrumb deve linkar para a listagem', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const link = screen.getByRole('link', { name: 'Bens Patrimoniais' })
+      expect(link).toHaveAttribute('href', '/bens-patrimoniais')
+    })
+  })
+
+  describe('Data de criação (Criado em / RF)', () => {
+    it('deve exibir a data de criação formatada em pt-BR com o RF do responsável, sem timestamp ISO', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+
+      expect(
+        await screen.findByText('Criado em 21/05/2026, às 15:41 por RF 1234567')
+      ).toBeInTheDocument()
+
+      expect(
+        screen.queryByText(/2026-05-21T15:41:13/)
+      ).not.toBeInTheDocument()
+    })
+
+    it('deve exibir mensagem alternativa quando não houver data de criação', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue({ ...bemMock, criado_em: null } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+
+      expect(
+        await screen.findByText('Data de criação não disponível')
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('Campo Formato (select + tooltip)', () => {
+    it('deve exibir os rótulos dos campos com a nomenclatura padronizada', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(screen.getByText('Valor Unitário')).toBeInTheDocument()
+      expect(
+        screen.getByText('Número do Processo de Incorporação')
+      ).toBeInTheDocument()
+    })
+
+    it('deve exibir o tooltip informativo no campo Formato ao passar o mouse', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const formatoLabel = screen.getByText('Formato')
+      const tooltipTrigger = formatoLabel.parentElement?.querySelector('svg')
+      expect(tooltipTrigger).toBeInTheDocument()
+
+      await user.hover(tooltipTrigger!)
+
+      const tooltipMatches = await screen.findAllByText(
+        /Se marcado.*Formato anterior.*não valida o formato do número/s
+      )
+      expect(tooltipMatches.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Botão Apagar (visível apenas para status aguardando_aprovacao)', () => {
+    it('deve exibir botão Apagar quando status for aguardando_aprovacao', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue({ ...bemMock, status: 'aguardando_aprovacao' } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(screen.getByRole('button', { name: 'Apagar' })).toBeInTheDocument()
+    })
+
+    it('não deve exibir botão Apagar quando status não for aguardando_aprovacao (ex: ativo)', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue({ ...bemMock, status: 'ativo' } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(
+        screen.queryByRole('button', { name: 'Apagar' })
+      ).not.toBeInTheDocument()
+    })
+
+    it('não deve exibir botão Apagar para status baixa_fisica_aguardando_aprovacao', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(
+          { ...bemMock, status: 'baixa_fisica_aguardando_aprovacao' } as any
+        )
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(
+        screen.queryByRole('button', { name: 'Apagar' })
+      ).not.toBeInTheDocument()
+    })
   })
 
 })
