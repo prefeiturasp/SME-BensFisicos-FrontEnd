@@ -191,8 +191,14 @@ async function fillForm(
         await screen.findByText("02.17.20 - UO Teste")
         fireEvent.change(selectUo, { target: { value: "2" } })
 
+        openUaDropdown()
         fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
     }
+}
+
+// Abre o dropdown de Unidades Administrativas (a lista fica oculta até o campo receber foco)
+function openUaDropdown() {
+    fireEvent.focus(screen.getByPlaceholderText("Pesquise por código ou UA"))
 }
 
 //  Testes 
@@ -356,6 +362,8 @@ describe("AdicionarUsuarioPage", () => {
             await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
 
+            openUaDropdown()
+
             await waitFor(() => {
                 expect(
                     screen.getByText("001 - Secretaria de Finanças")
@@ -370,6 +378,8 @@ describe("AdicionarUsuarioPage", () => {
             await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
 
+            openUaDropdown()
+
             await waitFor(() => {
                 expect(
                     screen.getByText("001 - Secretaria de Finanças")
@@ -383,6 +393,8 @@ describe("AdicionarUsuarioPage", () => {
             const { uo } = getSelects()
             await screen.findByText("02.17.20 - UO Teste")
             fireEvent.change(uo, { target: { value: "2" } })
+
+            openUaDropdown()
 
             await waitFor(() => {
                 expect(
