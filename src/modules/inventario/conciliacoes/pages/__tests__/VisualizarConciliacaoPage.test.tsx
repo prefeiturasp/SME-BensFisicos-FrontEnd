@@ -123,11 +123,11 @@ vi.mock('@/components/ui/select', () => {
     children,
     value,
     onValueChange,
-  }: {
+  }: Readonly<{
     children: ReactNode;
     value: string;
     onValueChange: (value: string) => void;
-  }) {
+  }>) {
     const childTestId = Children.toArray(children).find(
       (child): child is ReactElement<{ 'data-testid'?: string }> =>
         isValidElement(child) && 'data-testid' in (child.props as object),
@@ -491,8 +491,8 @@ describe('VisualizarConciliacaoPage', () => {
     const originalRevoke = URL.revokeObjectURL;
     const createObjectURL = vi.fn(() => 'blob:fake-url');
     const revokeObjectURL = vi.fn();
-    URL.createObjectURL = createObjectURL as unknown as typeof URL.createObjectURL;
-    URL.revokeObjectURL = revokeObjectURL as unknown as typeof URL.revokeObjectURL;
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
 
     const linkClickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -540,6 +540,14 @@ describe('VisualizarConciliacaoPage', () => {
     });
   });
 
+  it('exibe o botão com o texto "Finalizar Conciliação" e cor de fundo vermelha', () => {
+    renderPage();
+
+    const botao = screen.getByTestId('visualizar-conciliacao-finalizar');
+    expect(botao).toHaveTextContent('Finalizar Conciliação');
+    expect(botao.className).toContain('bg-[#C20F06]');
+  });
+
   it('abre o modal de finalizacao ao clicar em Finalizar conciliação', () => {
     renderPage();
 
@@ -572,6 +580,7 @@ describe('VisualizarConciliacaoPage', () => {
     renderPage();
 
     fireEvent.click(screen.getByTestId('visualizar-conciliacao-finalizar'));
+    fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirmacao'));
     fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirm'));
 
     await waitFor(() => {
@@ -596,6 +605,7 @@ describe('VisualizarConciliacaoPage', () => {
     renderPage();
 
     fireEvent.click(screen.getByTestId('visualizar-conciliacao-finalizar'));
+    fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirmacao'));
     fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirm'));
 
     await waitFor(() => {
