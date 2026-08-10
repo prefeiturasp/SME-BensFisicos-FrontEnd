@@ -17,7 +17,7 @@ export const ACTION_BUTTON_CLASS =
 export const GESTOR_BADGE_TEXT = "Gestor acessa todas UAs da UO"
 export const REQUIRED = <span className="text-red-500 ml-1">*</span>
 export const API_FIELD_PASSWORD = "password"
-export const API_FIELD_PASSWORD_CONFIRM = "password_confirm"
+export const API_FIELD_PASSWORD_CONFIRM = "password_confirm" // NOSONAR
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
 

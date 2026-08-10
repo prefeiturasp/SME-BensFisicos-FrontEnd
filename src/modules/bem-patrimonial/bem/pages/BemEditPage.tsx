@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { Input } from '@/components/ui/input'
 import {
   Form,
   FormField,
@@ -228,7 +229,7 @@ export default function BemEditPage() {
                 >
                   Unidade Administrativa
                 </label>
-                <input
+                <Input
                   id="unidade_administrativa"
                   value={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
                   disabled
@@ -243,7 +244,7 @@ export default function BemEditPage() {
                   <FormItem>
                     <FormLabel>Número Patrimonial</FormLabel>
                     <FormControl>
-                      <input
+                      <Input
                         {...field}
                         value={field.value ?? ''}
                         disabled={!podeEditar || numeroHook.disabled}
@@ -337,7 +338,7 @@ export default function BemEditPage() {
                             className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
                           />
                         ) : (
-                          <input
+                          <Input
                             {...field}
                             value={field.value ?? ''}
                             disabled={
