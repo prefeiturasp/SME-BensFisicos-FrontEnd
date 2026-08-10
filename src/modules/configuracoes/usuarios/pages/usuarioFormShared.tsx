@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 
 export const INPUT_CLASS =
-  "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
+  "!h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white flex items-center"
 export const INPUT_TEXT_CLASS =
   "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
 export const ACTION_BUTTON_CLASS =
@@ -17,9 +17,18 @@ export const ACTION_BUTTON_CLASS =
 export const GESTOR_BADGE_TEXT = "Gestor acessa todas UAs da UO"
 export const REQUIRED = <span className="text-red-500 ml-1">*</span>
 export const API_FIELD_PASSWORD = "password"
-export const API_FIELD_PASSWORD_CONFIRM = "password_confirm" // NOSONAR
+export const API_FIELD_PASSWORD_CONFIRM = "password_confirm" // NOSONAR - Campo de API, não é senha
 export const API_FIELD_UNIDADES_ADMINISTRATIVAS = "unidades_administrativas"
 export const API_FIELD_UNIDADE_ADMINISTRATIVA = "unidade_administrativa"
+
+export function FormSection({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-base font-bold text-gray-700 border-b pb-2">{title}</h2>
+      {children}
+    </section>
+  )
+}
 
 type UseUsuarioFormStateOptions<T extends Record<string, any> = Record<string, any>> = {
   gruposEscopo: EscopoGrupo[]
@@ -259,6 +268,7 @@ type UserTopSectionProps = {
   uosDisponiveis: UoOption[]
   unidadeObrigatoria?: boolean
   unidadesListadas: UaOption[]
+  unidadesSelecionadas: UaOption[]
   idsSelecionados: Set<number>
   todasUnidades: boolean
   filtroUa: string
@@ -293,6 +303,7 @@ export function UserTopSection({
   uosDisponiveis,
   unidadeObrigatoria,
   unidadesListadas,
+  unidadesSelecionadas,
   idsSelecionados,
   todasUnidades,
   filtroUa,
@@ -316,7 +327,9 @@ export function UserTopSection({
 }: Readonly<UserTopSectionProps>) {
   const isGestor = grupoValue === "GESTOR_PATRIMONIO"
   return (
-    <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <form className="space-y-8">
+      <FormSection title="Informações Gerais">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <FormTextField
         label="Nome Completo"
         required
@@ -387,7 +400,11 @@ export function UserTopSection({
           </SelectContent>
         </Select>
       </div>
+        </div>
+      </FormSection>
 
+      <FormSection title="Vinculação">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="flex flex-col gap-2">
         <Label htmlFor="uo" className="text-sm font-semibold text-gray-700">
           Unidade Orçamentária{REQUIRED}
@@ -410,6 +427,7 @@ export function UserTopSection({
         <UnidadesAdministrativasSelector
           label={isGestor ? "Notificações das UAs" : "Unidades Administrativas"}
           unidadesListadas={unidadesListadas}
+          unidadesSelecionadas={unidadesSelecionadas}
           isSelecionada={(uaId) => idsSelecionados.has(uaId)}
           todasUnidades={todasUnidades}
           filtroUa={filtroUa}
@@ -422,6 +440,8 @@ export function UserTopSection({
           onToggleUa={onToggleUa}
         />
       </div>
+        </div>
+      </FormSection>
     </form>
   )
 }
@@ -452,7 +472,9 @@ export function PasswordStatusSection({
   confirmarSenhaError,
 }: Readonly<PasswordStatusSectionProps>) {
   return (
-    <div className="border-t pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="border-t pt-6">
+      <FormSection title="Acesso">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="flex flex-col gap-2">
         <label htmlFor={senhaId} className="text-sm font-semibold text-gray-700">
           Cadastre uma Senha
@@ -483,6 +505,8 @@ export function PasswordStatusSection({
         </div>
         {confirmarSenhaError ? <span className="text-red-600 text-sm">{confirmarSenhaError}</span> : null}
       </div>
+        </div>
+      </FormSection>
     </div>
   )
 }

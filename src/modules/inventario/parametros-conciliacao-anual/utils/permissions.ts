@@ -1,8 +1,11 @@
-type ParametrosConciliacaoUser = {
-  is_superuser?: boolean;
-  is_gestor_patrimonio?: boolean;
-} | null | undefined;
+import type { User } from '@/auth/auth.service';
 
-export function canAccessParametrosConciliacao(user: ParametrosConciliacaoUser) {
+type ParametrosPermissionFields = Partial<
+  Pick<User, 'is_superuser' | 'is_gestor_patrimonio'>
+>;
+
+export function canAccessParametrosConciliacao(
+  user: ParametrosPermissionFields | null | undefined,
+) {
   return Boolean(user?.is_superuser || user?.is_gestor_patrimonio);
 }

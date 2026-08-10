@@ -2,6 +2,7 @@ import { useUnidadesPagination } from '@/hooks/useUnidadesPagination';
 import { toggleOrdering } from '@/lib/unidades-list-page';
 import { ConciliacaoItensFilters } from './ConciliacaoItensFilters';
 import { ConciliacaoItensTable, type ConciliacaoItemSortableField } from './ConciliacaoItensTable';
+import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type {
   ConciliacaoItemSituacaoFilter,
   ConciliacaoItem,
@@ -23,6 +24,7 @@ interface ConciliacaoItensSectionProps {
   onNumeroPatrimonialChange: (value: string) => void;
   onNomeChange: (value: string) => void;
   onSituacaoChange: (value: ConciliacaoItemSituacaoFilter) => void;
+  onSelectItem?: (item: ConciliacaoItem) => void;
 }
 
 export function ConciliacaoItensSection({
@@ -41,6 +43,7 @@ export function ConciliacaoItensSection({
   onNumeroPatrimonialChange,
   onNomeChange,
   onSituacaoChange,
+  onSelectItem,
 }: Readonly<ConciliacaoItensSectionProps>) {
   const { pages, totalPages } = useUnidadesPagination({
     page,
@@ -54,11 +57,11 @@ export function ConciliacaoItensSection({
 
   return (
     <section
-      className='space-y-5 p-4'
+      className={SECTION_QUADRANTE_CLASS}
       data-testid='conciliacao-itens-section'
       aria-label='Itens de conciliação'
     >
-      <h2 className='text-base font-semibold text-[#2F7D57]'>Itens de conciliação</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Itens de conciliação</h2>
 
       <ConciliacaoItensFilters
         numeroPatrimonial={numeroPatrimonial}
@@ -78,6 +81,7 @@ export function ConciliacaoItensSection({
         totalPages={totalPages}
         onPageChange={onPageChange}
         onSort={handleSort}
+        onSelectItem={onSelectItem}
       />
     </section>
   );

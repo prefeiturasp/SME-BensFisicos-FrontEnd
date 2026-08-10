@@ -115,6 +115,23 @@ describe('ConciliacaoItensTable', () => {
     expect(onPageChange).not.toHaveBeenCalled();
   });
 
+  it('dispara onSelectItem ao clicar no botao de acao quando informado', () => {
+    const onSelectItem = vi.fn();
+
+    render(
+      <ConciliacaoItensTable
+        {...baseProps}
+        itens={[baseItem]}
+        onSelectItem={onSelectItem}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('conciliacao-item-action-42'));
+
+    expect(onSelectItem).toHaveBeenCalledTimes(1);
+    expect(onSelectItem).toHaveBeenCalledWith(baseItem);
+  });
+
   it('dispara onSort ao clicar em colunas ordenaveis', () => {
     const onSort = vi.fn();
 

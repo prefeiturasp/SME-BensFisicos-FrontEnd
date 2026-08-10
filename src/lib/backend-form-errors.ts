@@ -10,7 +10,7 @@ interface HandleMappedBadRequestErrorOptions<TFieldValues extends FieldValues> {
   rootErrorFields?: string[];
 }
 
-function extractErrorMessage(value: unknown): string | null {
+export function extractErrorMessage(value: unknown): string | null {
   if (typeof value === 'string') {
     return value;
   }
