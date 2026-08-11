@@ -73,9 +73,9 @@ export const transferenciaService = {
     }
   },
 
-  async baixarDocumentoNtBpm(urlDocumento: string): Promise<Blob> {
+  async baixarDocumentoNtBpm(id: number): Promise<Blob> {
     try {
-      const { data } = await api.get(urlDocumento, {
+      const { data } = await api.get(`/transferencias/${id}/documento-ntbpm/`, {
         responseType: 'blob',
       })
       return data
