@@ -68,7 +68,7 @@ export function UnidadesListTable<TItem, TField extends string>({
         onClick={() => onView(item)}
         aria-label={getViewAriaLabel(item)}
       >
-        <Eye size={18} className='text-[#00703C]' />
+        <Eye className='size-[22px] text-[#00703C]' />
       </Button>
     );
   };

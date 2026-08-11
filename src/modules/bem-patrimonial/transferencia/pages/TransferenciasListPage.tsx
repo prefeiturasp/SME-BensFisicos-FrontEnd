@@ -91,7 +91,7 @@ function TransferenciaTableRow(props: Readonly<{
           aria-label={`Visualizar transferência ${transferencia.id}`}
           onClick={() => onVisualizar(transferencia.id)}
         >
-          <Eye size={18} />
+          <Eye className='size-[22px] text-[#00703C]' />
         </Button>
       </td>
     </tr>

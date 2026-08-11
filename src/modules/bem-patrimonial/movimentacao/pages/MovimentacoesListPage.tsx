@@ -220,7 +220,7 @@ function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
           aria-label={`Visualizar movimentação ${movimentacao.id}`}
           onClick={() => onVisualizar(movimentacao.id)}
         >
-          <Eye size={18} />
+          <Eye className='size-[22px] text-[#00703C]' />
         </Button>
       </td>
     </tr>

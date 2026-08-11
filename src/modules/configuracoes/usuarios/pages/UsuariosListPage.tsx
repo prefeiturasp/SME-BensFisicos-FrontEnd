@@ -338,7 +338,7 @@ export default function UsuariosListPage() {
                     <td className='p-3'>{usuario.status_display}</td>
                     <td className='p-3 text-center'>
                       <Button size='icon' variant='ghost' onClick={() => handleDetalhar(usuario.id)}>
-                        <Eye size={18} />
+                        <Eye className='size-[22px] text-[#00703C]' />
                       </Button>
                     </td>
                   </tr>

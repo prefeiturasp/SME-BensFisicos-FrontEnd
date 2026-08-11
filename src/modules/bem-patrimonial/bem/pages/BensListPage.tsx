@@ -345,7 +345,7 @@ export default function BensListPage() {
                         variant='ghost'
                         onClick={() => handleDetalhar(bem.id)}
                       >
-                        <Eye size={18} />
+                        <Eye className='size-[22px] text-[#00703C]' />
                       </Button>
                     </td>
                   </tr>
