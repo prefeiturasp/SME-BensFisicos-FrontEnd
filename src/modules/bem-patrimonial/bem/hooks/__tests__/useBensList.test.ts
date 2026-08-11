@@ -298,7 +298,7 @@ describe('useBensList', () => {
 
   // ── persistência via localStorage ──────────────────────────────────────
 
-  it('sem persistKey, os filtros de baixados/busca geral iniciam desmarcados e nada é persistido', () => {
+  it('sem persistKey, os filtros especiais iniciam desmarcados e nada é persistido', () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 
     expect(result.current.bensBaixados).toBe(false)
@@ -323,7 +323,7 @@ describe('useBensList', () => {
     expect(result.current.buscaGeralUos).toBe(true)
   })
 
-  it('com persistKey, persiste alterações de bensBaixados e buscaGeralUos', async () => {
+  it('com persistKey, persiste alterações dos filtros especiais', async () => {
     const { result } = renderHook(() =>
       useBensList({ pageSize: 10, persistKey: 'bens-list' }),
     )

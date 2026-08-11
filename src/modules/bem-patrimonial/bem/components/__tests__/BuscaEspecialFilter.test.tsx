@@ -18,7 +18,10 @@ describe('BuscaEspecialFilter', () => {
       />
     )
 
-    return { onChangeBuscaGeralUos, onChangeBensBaixados }
+    return {
+      onChangeBuscaGeralUos,
+      onChangeBensBaixados,
+    }
   }
 
   it('renderiza o trigger com o id informado', () => {
