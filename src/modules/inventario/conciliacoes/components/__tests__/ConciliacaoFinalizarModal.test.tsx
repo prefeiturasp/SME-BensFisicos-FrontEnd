@@ -11,7 +11,6 @@ describe('ConciliacaoFinalizarModal', () => {
     const { container } = render(
       <ConciliacaoFinalizarModal
         open={false}
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -26,7 +25,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -47,7 +45,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={onConfirm}
@@ -67,7 +64,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={onConfirm}
@@ -92,7 +88,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -109,7 +104,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -118,7 +112,7 @@ describe('ConciliacaoFinalizarModal', () => {
     );
 
     const botao = screen.getByTestId('conciliacao-finalizar-confirm');
-    expect(botao.className).toContain('bg-[#C20F06]');
+    expect(botao.className).toContain('bg-red-600');
   });
 
   it('dispara onClose ao clicar em Cancelar', () => {
@@ -127,7 +121,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -146,7 +139,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -163,7 +155,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -183,7 +174,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage='Conciliacao ja finalizada.'
         onConfirm={vi.fn()}
@@ -200,7 +190,6 @@ describe('ConciliacaoFinalizarModal', () => {
     const { rerender } = render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage='Erro 1'
         onConfirm={vi.fn()}
@@ -213,7 +202,6 @@ describe('ConciliacaoFinalizarModal', () => {
     rerender(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
