@@ -1,7 +1,8 @@
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { Checkbox } from './ui/checkbox';
 
 export type ConfirmDialogVariant = 'primary' | 'destructive';
 
@@ -17,11 +18,20 @@ export interface ConfirmDialogProps {
   readonly variant?: ConfirmDialogVariant;
   readonly testId?: string;
   readonly closeButtonLabel?: string;
+  /**
+   * Quando informado, exibe um check-box de confirmação com esse texto
+   * abaixo da mensagem principal. O botão de confirmar fica desabilitado
+   * até o usuário marcá-lo. Opcional — sem essa prop, o diálogo se
+   * comporta exatamente como antes (compatível com usos existentes, como
+   * o ModalExclusao).
+   */
+  readonly confirmationCheckboxLabel?: string;
   readonly testIds?: Partial<{
     container: string;
     confirm: string;
     cancel: string;
     error: string;
+    checkbox: string;
   }>;
   readonly onConfirm: () => void;
   readonly onClose: () => void;
@@ -47,18 +57,31 @@ export function ConfirmDialog({
   variant = 'primary',
   testId = 'confirm-dialog',
   closeButtonLabel = 'Fechar modal',
+  confirmationCheckboxLabel,
   testIds,
   onConfirm,
   onClose,
 }: Readonly<ConfirmDialogProps>) {
+  const [confirmado, setConfirmado] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setConfirmado(false);
+    }
+  }, [open]);
+
   if (!open) {
     return null;
   }
+
+  const exigeConfirmacao = !!confirmationCheckboxLabel;
+  const podeConfirmar = !exigeConfirmacao || confirmado;
 
   const containerTestId = testIds?.container ?? testId;
   const confirmTestId = testIds?.confirm ?? `${testId}-confirm`;
   const cancelTestId = testIds?.cancel ?? `${testId}-cancel`;
   const errorTestId = testIds?.error ?? `${testId}-error`;
+  const checkboxTestId = testIds?.checkbox ?? `${testId}-confirmacao`;
 
   return (
     <dialog
@@ -101,6 +124,19 @@ export function ConfirmDialog({
             </div>
           )}
 
+          {exigeConfirmacao && (
+            <label className='flex items-center gap-2 text-sm text-gray-700'>
+              <Checkbox
+                id={checkboxTestId}
+                checked={confirmado}
+                onCheckedChange={(value) => setConfirmado(value === true)}
+                disabled={loading}
+                data-testid={checkboxTestId}
+              />
+              {confirmationCheckboxLabel}
+            </label>
+          )}
+
           <div className='flex items-center justify-end gap-3 pt-2'>
             <Button
               type='button'
@@ -113,9 +149,15 @@ export function ConfirmDialog({
             </Button>
             <Button
               type='button'
-              onClick={onConfirm}
-              className={cn(VARIANT_CONFIRM_CLASS[variant])}
-              disabled={loading}
+              onClick={() => {
+                if (!podeConfirmar) return;
+                onConfirm();
+              }}
+              className={cn(
+                VARIANT_CONFIRM_CLASS[variant],
+                'disabled:cursor-not-allowed disabled:opacity-50',
+              )}
+              disabled={loading || !podeConfirmar}
               data-testid={confirmTestId}
             >
               {loading ? (loadingLabel ?? 'Carregando...') : confirmLabel}

@@ -29,7 +29,7 @@ const ACTION_BUTTON_CLASS = `
 `;
 
 const PRIMARY_BUTTON_CLASS =
-  'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
+  'h-10 px-6 bg-[#C20F06] text-white hover:bg-[#A70C05] rounded-md';
 
 const ICON_BUTTON_CLASS = `
   h-10 w-10 bg-white border border-[#2F7D57]
@@ -249,7 +249,7 @@ function VisualizarConciliacaoContent() {
             className={PRIMARY_BUTTON_CLASS}
             data-testid='visualizar-conciliacao-finalizar'
           >
-            Finalizar conciliação
+            Finalizar Conciliação
           </Button>
 
           <Button
@@ -295,9 +295,7 @@ function VisualizarConciliacaoContent() {
           onNomeChange={itens.setNomeInput}
           onSituacaoChange={itens.setSituacaoFilter}
           onSelectItem={(item) =>
-            navigate(
-              `/conciliacoes/${conciliacao.id}/itens/${item.id}/ocorrencia`,
-            )
+            navigate(`/conciliacoes/${conciliacao.id}/itens/${item.id}/ocorrencia`)
           }
         />
       </Card>

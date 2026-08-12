@@ -1,20 +1,20 @@
-import { ConfirmDialog, type ConfirmDialogProps } from '@/components/ConfirmDialog';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
-type ConciliacaoFinalizarModalProps = Pick<
-  ConfirmDialogProps,
-  'open' | 'loading' | 'errorMessage' | 'onConfirm' | 'onClose'
->;
+interface ConciliacaoFinalizarModalProps {
+  readonly open: boolean;
+  readonly loading: boolean;
+  readonly errorMessage: string | null;
+  readonly onConfirm: () => void;
+  readonly onClose: () => void;
+}
 
-const TITLE = 'Finalizar conciliação';
 const MESSAGE = (
   <>
-    Tem certeza que deseja finalizar esta conciliação? Esta ação não pode ser
-    desfeita e os itens em processo de baixa serão confirmados como{' '}
-    <strong>Baixa Física</strong>.
+    Tem certeza que deseja finalizar esta conciliação? Esta ação não
+    pode ser desfeita e os itens em processo de baixa serão
+    confirmados como <strong>Baixa Física</strong>.
   </>
 );
-const CONFIRM_LABEL = 'Finalizar';
-const LOADING_LABEL = 'Finalizando...';
 
 export function ConciliacaoFinalizarModal({
   open,
@@ -26,13 +26,14 @@ export function ConciliacaoFinalizarModal({
   return (
     <ConfirmDialog
       open={open}
-      title={TITLE}
+      title='Finalizar conciliação'
       message={MESSAGE}
-      confirmLabel={CONFIRM_LABEL}
-      loadingLabel={LOADING_LABEL}
+      confirmLabel='Finalizar'
+      loadingLabel='Finalizando...'
       loading={loading}
       errorMessage={errorMessage}
-      variant='primary'
+      variant='destructive'
+      confirmationCheckboxLabel='Estou ciente que esta ação não pode ser desfeita.'
       closeButtonLabel='Fechar modal de finalização'
       testId='conciliacao-finalizar'
       testIds={{ container: 'conciliacao-finalizar-modal' }}
