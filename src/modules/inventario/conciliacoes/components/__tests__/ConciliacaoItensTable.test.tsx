@@ -109,6 +109,10 @@ describe('ConciliacaoItensTable', () => {
       'aria-label',
       'Visualizar item 001.052485928-0',
     );
+    expect(actionButton.querySelector('svg')).toHaveClass(
+      'size-[22px]',
+      'text-[#00703C]',
+    );
 
     fireEvent.click(actionButton);
 
