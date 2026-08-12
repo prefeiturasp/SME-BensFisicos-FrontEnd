@@ -1,4 +1,4 @@
-import { Eye, Network, ArrowLeft, FileText, ArrowUpDown } from 'lucide-react'
+import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,11 @@ import {
 } from '@/components/ui/select'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { EscopoFilterDropdown } from '@/components/EscopoFilterDropdown'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { BuscaEspecialFilter } from '../components/BuscaEspecialFilter'
 import { useBensList } from '../hooks/useBensList'
 import { usePagination } from '../hooks/usePagination'
@@ -209,12 +214,28 @@ export default function BensListPage() {
           </div>
 
           <div className='flex flex-col gap-2'>
-            <label
-              htmlFor="filtro-status"
-              className="text-sm font-semibold text-gray-700"
-            >
-              Filtrar por Status
-            </label>
+            <div className='flex items-center gap-1.5'>
+              <label
+                htmlFor="filtro-status"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Filtrar por Status
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type='button'
+                    className='text-gray-400 hover:text-gray-600'
+                    aria-label='Informações sobre a visualização de bens transferidos'
+                  >
+                    <Info size={14} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  A listagem tem visualização padrão de todos os bens, menos os transferidos. Caso queira visualizá-los, selecione a opção Transferidos no filtro de Status abaixo.
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
             <Select
               id="filtro-status"
@@ -235,6 +256,7 @@ export default function BensListPage() {
                 <SelectItem value='aprovado'>Aprovado</SelectItem>
                 <SelectItem value='nao_aprovado'>Não aprovado</SelectItem>
                 <SelectItem value='baixa_fisica'>Baixa Física</SelectItem>
+                <SelectItem value='transferido'>Transferidos</SelectItem>
               </SelectContent>
             </Select>
           </div>
