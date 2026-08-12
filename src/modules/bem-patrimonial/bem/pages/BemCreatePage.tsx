@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Boxes } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Boxes, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService } from '../services/bem.service'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -20,7 +21,6 @@ type FormBase = {
   valor_unitario: string
   marca: string
   modelo: string
-  numero_processo: string
   observacao: string
 }
 
@@ -45,7 +45,6 @@ const LABEL_CAMPO: Record<keyof FormBase, string> = {
   valor_unitario: 'Valor Unitário',
   marca: 'Marca',
   modelo: 'Modelo',
-  numero_processo: 'Número do Processo',
   observacao: 'Observação',
 }
 
@@ -137,6 +136,7 @@ function novaLinha(): LinhaBemComId {
     numero_formato_antigo: false,
     sem_numeracao: false,
     localizacao: '',
+    numero_processo: '',
   }
 }
 
@@ -152,7 +152,6 @@ export default function BemCreatePage() {
     valor_unitario: '',
     marca: '',
     modelo: '',
-    numero_processo: '',
     observacao: '',
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
@@ -166,14 +165,25 @@ export default function BemCreatePage() {
     (g: any) => g.uas ?? []
   )
 
+  const uaAtivaId = user?.ua_ativa?.id ?? null
+  const exigeSelecaoManualDeUA = !uaAtivaId
+
   useEffect(() => {
-    if (todasUAs.length === 1 && !formBase.unidade_administrativa) {
+    if (uaAtivaId && formBase.unidade_administrativa !== String(uaAtivaId)) {
+      setFormBase(prev => ({
+        ...prev,
+        unidade_administrativa: String(uaAtivaId),
+      }))
+      return
+    }
+
+    if (!uaAtivaId && todasUAs.length === 1 && !formBase.unidade_administrativa) {
       setFormBase(prev => ({
         ...prev,
         unidade_administrativa: String(todasUAs[0].unidade_administrativa_id),
       }))
     }
-  }, [todasUAs.length])
+  }, [uaAtivaId, todasUAs.length])
 
   const updateLinhas = (
     updater: React.SetStateAction<LinhaBemComId[]>
@@ -284,25 +294,25 @@ export default function BemCreatePage() {
 
         <div className="flex gap-3">
           <Button
-            variant="outline"
-            onClick={() => navigate('/bens-patrimoniais')}
-          >
-            Cancelar
-          </Button>
-
-          <Button
             onClick={handleSave}
             disabled={loading}
             className="bg-[#00703C] hover:bg-[#005a30] text-white"
           >
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => navigate('/bens-patrimoniais')}
+          >
+            Cancelar
+          </Button>
         </div>
       </div>
 
       <Card className="p-6 space-y-6">
 
-        <div className="grid grid-cols-2 gap-6">
+        {exigeSelecaoManualDeUA && (
           <div className="space-y-1">
             <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
               Unidade Administrativa <span className="text-red-500">*</span>
@@ -315,7 +325,9 @@ export default function BemCreatePage() {
               error={formErrors.unidade_administrativa}
             />
           </div>
+        )}
 
+        <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1">
             <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
               Nome do Bem <span className="text-red-500">*</span>
@@ -329,40 +341,6 @@ export default function BemCreatePage() {
             />
             {formErrors.nome && (
               <p className="text-xs text-red-500">{formErrors.nome}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
-            Descrição <span className="text-red-500">*</span>
-          </label>
-          <Textarea
-            id="descricao"
-            className="min-h-25"
-            placeholder="Descrição do Bem"
-            value={formBase.descricao}
-            onChange={e => setField('descricao', e.target.value)}
-          />
-          {formErrors.descricao && (
-            <p className="text-xs text-red-500">{formErrors.descricao}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-6">
-          <div className="space-y-1">
-            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
-              Valor Unitário <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id="valor_unitario"
-              className={INPUT_CLASS}
-              placeholder="0,00"
-              value={formBase.valor_unitario}
-              onChange={e => setField('valor_unitario', e.target.value)}
-            />
-            {formErrors.valor_unitario && (
-              <p className="text-xs text-red-500">{formErrors.valor_unitario}</p>
             )}
           </div>
 
@@ -381,7 +359,9 @@ export default function BemCreatePage() {
               <p className="text-xs text-red-500">{formErrors.marca}</p>
             )}
           </div>
+        </div>
 
+        <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1">
             <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
               Modelo <span className="text-red-500">*</span>
@@ -397,30 +377,49 @@ export default function BemCreatePage() {
               <p className="text-xs text-red-500">{formErrors.modelo}</p>
             )}
           </div>
+
+          <div className="space-y-1">
+            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
+              Valor Unitário <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="valor_unitario"
+              className={INPUT_CLASS}
+              placeholder="0,00"
+              value={formBase.valor_unitario}
+              onChange={e => setField('valor_unitario', e.target.value)}
+            />
+            {formErrors.valor_unitario && (
+              <p className="text-xs text-red-500">{formErrors.valor_unitario}</p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
-            Número do processo de incorporação
+          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
+            Descrição do Bem <span className="text-red-500">*</span>
           </label>
-          <Input
-            id="numero_processo"
-            className={INPUT_CLASS}
-            placeholder="Número do processo de incorporação"
-            value={formBase.numero_processo}
-            onChange={e => setField('numero_processo', e.target.value)}
+          <Textarea
+            id="descricao"
+            className="min-h-25"
+            placeholder="Descreva o bem"
+            value={formBase.descricao}
+            onChange={e => setField('descricao', e.target.value)}
           />
+          {formErrors.descricao && (
+            <p className="text-xs text-red-500">{formErrors.descricao}</p>
+          )}
         </div>
 
-        {/* OBSERVAÇÃO */}
+        {/* OBSERVAÇÕES */}
         <div className="space-y-1">
           <label htmlFor="observacao" className="text-sm font-semibold text-gray-700">
-            Observação
+            Observações
           </label>
           <Textarea
             id="observacao"
             className="min-h-25"
-            placeholder="Observação"
+            placeholder="Observações"
             value={formBase.observacao}
             onChange={e => setField('observacao', e.target.value)}
           />
@@ -428,15 +427,20 @@ export default function BemCreatePage() {
 
         {/* LINHAS DOS BENS */}
         <div className="space-y-4">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2 className="text-sm font-semibold text-[#00703C]">
-              Dados únicos por Bem
+              Adicionar Bens Patrimoniais
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Para adicionar mais bens, clique no botão + ao final da linha.
-              Número Patrimonial, Formato Antigo, Sem Numeração e Localização
-              são específicos de cada bem criado.
-            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info size={14} className="text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="max-w-80">
+                Para adicionar mais bens, clique no botão + ao final da linha.
+                Caso não seja necessário o novo item do bem, ele pode ser
+                removido no botão de lixeira.
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {linhas.map((linha, index) => (
@@ -449,6 +453,7 @@ export default function BemCreatePage() {
               removeLinha={removeLinha}
               addLinha={addLinha}
               isLast={index === linhas.length - 1}
+              podeRemover={linhas.length > 1}
               errors={linhasErrors[index]}
             />
           ))}

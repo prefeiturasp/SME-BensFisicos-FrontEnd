@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { LinhaBemRow } from '../LinhaBemRow'
 import type { LinhaBem } from '../LinhaBemRow'
 
@@ -20,6 +21,7 @@ describe('LinhaBemRow', () => {
     numero_formato_antigo: false,
     sem_numeracao: false,
     localizacao: '',
+    numero_processo: '',
   }
 
   let setLinhas: any
@@ -31,6 +33,21 @@ describe('LinhaBemRow', () => {
     removeLinha = vi.fn()
     addLinha = vi.fn()
     vi.clearAllMocks()
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
   })
 
   function renderComponent(customLinha?: Partial<LinhaBem>, isLast = true) {
@@ -57,7 +74,7 @@ describe('LinhaBemRow', () => {
     ).toBeInTheDocument()
 
     expect(
-      screen.getByPlaceholderText('Localização')
+      screen.getByPlaceholderText('Insira a localização do bem')
     ).toBeInTheDocument()
   })
 
@@ -97,7 +114,7 @@ describe('LinhaBemRow', () => {
     renderComponent()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Localização'),
+      screen.getByPlaceholderText('Insira a localização do bem'),
       { target: { value: 'Sala 1' } }
     )
 
@@ -111,6 +128,28 @@ describe('LinhaBemRow', () => {
     fireEvent.click(removeButton)
 
     expect(removeLinha).toHaveBeenCalledWith(0)
+  })
+
+  it('não deve exibir botão de lixeira quando podeRemover for false (única linha)', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        podeRemover={false}
+      />
+    )
+
+    expect(screen.queryByLabelText('Remover bem')).not.toBeInTheDocument()
+  })
+
+  it('deve exibir botão de lixeira quando podeRemover for true (padrão)', () => {
+    renderComponent()
+    expect(screen.getByLabelText('Remover bem')).toBeInTheDocument()
   })
 
   it('deve chamar addLinha se for última linha', () => {
@@ -188,8 +227,60 @@ describe('LinhaBemRow', () => {
     expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
   })
 
-  it('deve exibir label de Localização com asterisco obrigatório', () => {
+  it('deve exibir label de Número Patrimonial com asterisco obrigatório', () => {
     renderComponent()
     expect(screen.getByText('*')).toBeInTheDocument()
+  })
+
+  it('deve renderizar o campo Número do Processo de Incorporação', () => {
+    renderComponent()
+
+    expect(
+      screen.getByPlaceholderText('Insira o nº do processo de incorporação')
+    ).toBeInTheDocument()
+  })
+
+  it('deve atualizar numero_processo ao digitar', () => {
+    renderComponent()
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Insira o nº do processo de incorporação'),
+      { target: { value: 'PROC-01' } }
+    )
+
+    expect(setLinhas).toHaveBeenCalled()
+  })
+
+  it('deve exibir erro de numero_processo quando errors.numero_processo é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{ numero_processo: 'Processo inválido' }}
+      />
+    )
+
+    expect(screen.getByText('Processo inválido')).toBeInTheDocument()
+  })
+
+  it('deve exibir o tooltip informativo no campo Formato ao passar o mouse', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+
+    const formatoLabel = screen.getByText('Formato')
+    const tooltipTrigger = formatoLabel.parentElement?.querySelector('svg')
+    expect(tooltipTrigger).toBeInTheDocument()
+
+    await user.hover(tooltipTrigger!)
+
+    const tooltipMatches = await screen.findAllByText(
+      /Se marcado.*Formato anterior.*não valida o formato do número/s
+    )
+    expect(tooltipMatches.length).toBeGreaterThan(0)
   })
 })
