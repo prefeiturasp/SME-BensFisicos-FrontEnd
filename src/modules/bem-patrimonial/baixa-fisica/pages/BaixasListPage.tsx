@@ -284,7 +284,7 @@ export default function BaixasListPage() {
                     <td className="p-3 text-center">
                         <Link to={`/baixas-fisicas/${b.id}`}>
                             <Button size="icon" variant="ghost" aria-label="Visualizar">
-                                <Eye size={18} />
+                                <Eye className='size-[22px] text-[#00703C]' />
                             </Button>
                         </Link>
                     </td>

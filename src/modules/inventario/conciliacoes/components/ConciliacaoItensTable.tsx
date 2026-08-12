@@ -114,7 +114,7 @@ export function ConciliacaoItensTable({
             data-testid={`conciliacao-item-action-${item.id}`}
             onClick={() => onSelectItem?.(item)}
           >
-            <Eye size={18} className='text-[#00703C]' />
+            <Eye className='size-[22px] text-[#00703C]' />
           </Button>
         )}
         hideDefaultActions

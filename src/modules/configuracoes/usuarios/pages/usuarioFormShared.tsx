@@ -482,7 +482,7 @@ export function PasswordStatusSection({
         <div className="relative">
           <input id={senhaId} type={showSenha ? "text" : "password"} placeholder="Cadastre uma senha" className={`${INPUT_TEXT_CLASS} pr-10`} {...senhaField} />
           <button type="button" onClick={onToggleSenha} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showSenha ? <EyeOff className="size-[22px]" /> : <Eye className="size-[22px]" />}
           </button>
         </div>
         {senhaError ? <span className="text-red-600 text-sm">{senhaError}</span> : null}
@@ -500,7 +500,7 @@ export function PasswordStatusSection({
             {...confirmarSenhaField}
           />
           <button type="button" onClick={onToggleConfirmarSenha} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {showConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showConfirmarSenha ? <EyeOff className="size-[22px]" /> : <Eye className="size-[22px]" />}
           </button>
         </div>
         {confirmarSenhaError ? <span className="text-red-600 text-sm">{confirmarSenhaError}</span> : null}
