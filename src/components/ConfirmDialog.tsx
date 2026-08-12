@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import { Checkbox } from './ui/checkbox';
 
 export type ConfirmDialogVariant = 'primary' | 'destructive';
 
@@ -124,13 +125,12 @@ export function ConfirmDialog({
           )}
 
           {exigeConfirmacao && (
-            <label className='flex items-start gap-2 text-sm text-gray-700'>
-              <input
-                type='checkbox'
+            <label className='flex items-center gap-2 text-sm text-gray-700'>
+              <Checkbox
+                id={checkboxTestId}
                 checked={confirmado}
-                onChange={(e) => setConfirmado(e.target.checked)}
+                onCheckedChange={(value) => setConfirmado(value === true)}
                 disabled={loading}
-                className='mt-0.5 h-4 w-4 accent-red-600'
                 data-testid={checkboxTestId}
               />
               {confirmationCheckboxLabel}
