@@ -1,8 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type React from 'react'
 import { LinhaBemRow } from '../LinhaBemRow'
 import type { LinhaBem } from '../LinhaBemRow'
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode
+    value: string
+    onValueChange: (value: string) => void
+  }) => (
+    <select
+      aria-label="Formato"
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+    >
+      <option value="">Selecione</option>
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
+    <option value={value}>{children}</option>
+  ),
+}))
 
 // Mock do hook
 vi.mock('../../hooks/useNumeroPatrimonial', () => ({
@@ -92,8 +120,8 @@ describe('LinhaBemRow', () => {
   it('deve marcar formato anterior', () => {
     renderComponent()
 
-    const checkbox = screen.getByLabelText('Formato anterior')
-    fireEvent.click(checkbox)
+    const select = screen.getByLabelText('Formato')
+    fireEvent.change(select, { target: { value: 'formato_anterior' } })
 
     expect(setLinhas).toHaveBeenCalled()
   })
@@ -104,10 +132,14 @@ describe('LinhaBemRow', () => {
       numero_formato_antigo: true,
     })
 
-    const checkbox = screen.getByLabelText('Sem número patrimonial')
-    fireEvent.click(checkbox)
+    const select = screen.getByLabelText('Formato')
+    fireEvent.change(select, { target: { value: 'sem_numeracao' } })
 
     expect(setLinhas).toHaveBeenCalled()
+    const newLinhas = setLinhas.mock.calls[0][0]
+    expect(newLinhas[0].sem_numeracao).toBe(true)
+    expect(newLinhas[0].numero_formato_antigo).toBe(false)
+    expect(newLinhas[0].numero_patrimonial).toBe('')
   })
 
   it('deve atualizar localização', () => {
@@ -227,9 +259,9 @@ describe('LinhaBemRow', () => {
     expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
   })
 
-  it('deve exibir label de Número Patrimonial com asterisco obrigatório', () => {
+  it('deve exibir asterisco obrigatório nos labels de Número Patrimonial e Localização', () => {
     renderComponent()
-    expect(screen.getByText('*')).toBeInTheDocument()
+    expect(screen.getAllByText('*')).toHaveLength(2)
   })
 
   it('deve renderizar o campo Número do Processo de Incorporação', () => {

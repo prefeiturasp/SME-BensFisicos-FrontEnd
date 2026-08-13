@@ -277,16 +277,12 @@ describe('BemCreatePage', () => {
   // Validação de campos obrigatórios no front
   // ------------------------------------------------------------------
 
-  it('deve mostrar toast de erro se campos obrigatórios estiverem vazios ao salvar', async () => {
+  it('deve manter o botão Salvar desabilitado enquanto campos obrigatórios estiverem vazios', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Salvar'))
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Preencha os campos obrigatórios.')
-    })
+    expect(screen.getByText('Salvar')).toBeDisabled()
   })
 
-  it('não deve chamar createMulti se campos obrigatórios estiverem vazios', async () => {
+  it('não deve chamar createMulti se campos obrigatórios estiverem vazios (botão desabilitado)', async () => {
     const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
     fireEvent.click(screen.getByText('Salvar'))
@@ -296,22 +292,28 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve exibir mensagem de erro inline para campo nome ausente', async () => {
+  it('deve habilitar o botão Salvar somente após preencher todos os campos obrigatórios, incluindo a localização da linha', () => {
     renderPage()
+    expect(screen.getByText('Salvar')).toBeDisabled()
 
-    fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), {
-      target: { value: 'Desc' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('0,00'), {
-      target: { value: '100' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Marca'), {
-      target: { value: 'M' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Modelo'), {
-      target: { value: 'X' },
-    })
+    preencherCamposBase()
 
+    expect(screen.getByText('Salvar')).toBeEnabled()
+  })
+
+  it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: { nome: 'Nome do Bem é obrigatório.' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -319,8 +321,19 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve limpar erro do campo ao editar', async () => {
+  it('deve limpar erro do campo ao editar (erro vindo do backend)', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: { nome: 'Nome do Bem é obrigatório.' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
     renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -328,14 +341,13 @@ describe('BemCreatePage', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
-      target: { value: 'Notebook' },
+      target: { value: 'Notebook Editado' },
     })
 
     expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
   })
 
-  it('deve exibir erro de localização quando campo estiver vazio ao salvar', async () => {
-    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+  it('deve manter o botão Salvar desabilitado quando a localização da linha estiver vazia', () => {
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
@@ -345,17 +357,10 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
     // Localização propositalmente não preenchida
 
-    fireEvent.click(screen.getByText('Salvar'))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('erro-localizacao-0')).toBeInTheDocument()
-      expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
-    })
-
-    expect(spy).not.toHaveBeenCalled()
+    expect(screen.getByText('Salvar')).toBeDisabled()
   })
 
-  it('deve limpar erro de localização ao editar a linha', async () => {
+  it('deve habilitar o botão Salvar ao preencher a localização da linha que faltava', () => {
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
@@ -363,6 +368,58 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
     fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+
+    expect(screen.getByText('Salvar')).toBeDisabled()
+
+    fireEvent.change(screen.getByPlaceholderText('Localização'), {
+      target: { value: 'Sala 1' },
+    })
+
+    expect(screen.getByText('Salvar')).toBeEnabled()
+  })
+
+  it('deve exibir erro de localização por linha quando retornado pelo backend', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': { localizacao: 'Localização é obrigatória.' },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('erro-localizacao-0')).toBeInTheDocument()
+      expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+    })
+  })
+
+  it('deve limpar erro de localização ao editar a linha (erro vindo do backend)', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': { localizacao: 'Localização é obrigatória.' },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -370,7 +427,7 @@ describe('BemCreatePage', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Localização'), {
-      target: { value: 'Sala 1' },
+      target: { value: 'Sala Nova' },
     })
 
     await waitFor(() => {

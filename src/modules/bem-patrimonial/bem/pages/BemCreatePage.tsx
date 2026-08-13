@@ -89,7 +89,7 @@ function UASearchSelect({
 
   return (
     <div ref={ref} className="relative">
-      <input
+      <Input
         id={id}
         className={INPUT_CLASS}
         placeholder="Buscar Unidade Administrativa..."
@@ -98,17 +98,18 @@ function UASearchSelect({
         onChange={e => setSearch(e.target.value)}
       />
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto border border-gray-200 bg-white rounded shadow-lg">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto border border-gray-200 bg-white rounded shadow-lg p-1">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">Nenhuma unidade encontrada</div>
           ) : (
             filtered.map((ua: any) => (
-              <button
+              <Button
                 key={ua.unidade_administrativa_id}
                 type="button"
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                variant="ghost"
+                className={`w-full justify-start text-left px-3 py-2 h-auto font-normal ${
                   String(ua.unidade_administrativa_id) === value
-                    ? 'bg-green-50 text-green-700'
+                    ? 'bg-green-50 text-green-700 hover:bg-green-50'
                     : 'text-gray-700'
                 }`}
                 onClick={() => {
@@ -119,7 +120,7 @@ function UASearchSelect({
                 }}
               >
                 {ua.label}
-              </button>
+              </Button>
             ))
           )}
         </div>
@@ -223,6 +224,12 @@ export default function BemCreatePage() {
     return errors
   }
 
+  // Habilita o botão Salvar apenas quando todos os campos obrigatórios do
+  // formulário e de todas as linhas de bens já foram preenchidos.
+  const formValido =
+    CAMPOS_OBRIGATORIOS.every(campo => !!formBase[campo]?.trim()) &&
+    linhas.every(linha => !!linha.localizacao?.trim())
+
   const handleSave = async () => {
     const baseErrors = validarBase()
     if (Object.keys(baseErrors).length) {
@@ -295,7 +302,7 @@ export default function BemCreatePage() {
         <div className="flex gap-3">
           <Button
             onClick={handleSave}
-            disabled={loading}
+            disabled={loading || !formValido}
             className="bg-[#00703C] hover:bg-[#005a30] text-white"
           >
             {loading ? 'Salvando...' : 'Salvar'}
@@ -313,17 +320,19 @@ export default function BemCreatePage() {
       <Card className="p-6 space-y-6">
 
         {exigeSelecaoManualDeUA && (
-          <div className="space-y-1">
-            <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
-              Unidade Administrativa <span className="text-red-500">*</span>
-            </label>
-            <UASearchSelect
-              id="unidade_administrativa"
-              value={formBase.unidade_administrativa}
-              onChange={id => setField('unidade_administrativa', id)}
-              uas={todasUAs}
-              error={formErrors.unidade_administrativa}
-            />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
+                Unidade Administrativa <span className="text-red-500">*</span>
+              </label>
+              <UASearchSelect
+                id="unidade_administrativa"
+                value={formBase.unidade_administrativa}
+                onChange={id => setField('unidade_administrativa', id)}
+                uas={todasUAs}
+                error={formErrors.unidade_administrativa}
+              />
+            </div>
           </div>
         )}
 

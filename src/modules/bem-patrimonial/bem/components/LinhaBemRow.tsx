@@ -1,8 +1,16 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Trash2, Plus, Info } from 'lucide-react'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
+import { valorSelectFormato } from '../utils/formato-bem'
 
 export type LinhaBem = {
   numero_patrimonial: string
@@ -25,7 +33,7 @@ export type LinhaBemRowProps = Readonly<{
 }>
 
 const INPUT_CLASS =
-  'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
+  '!h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 
 export function LinhaBemRow({
   linha,
@@ -44,6 +52,31 @@ export function LinhaBemRow({
     formatoAntigoInicial: linha.numero_formato_antigo,
     semNumeracaoInicial: linha.sem_numeracao,
   })
+
+  const valorFormato = valorSelectFormato(
+    linha.numero_formato_antigo,
+    linha.sem_numeracao
+  )
+
+  const handleFormatoChange = (valor: string) => {
+    const newLinhas = [...linhas]
+
+    if (valor === 'formato_anterior') {
+      newLinhas[index].numero_formato_antigo = true
+      newLinhas[index].sem_numeracao = false
+      numeroHook.ativarFormatoAntigo()
+    } else if (valor === 'sem_numeracao') {
+      newLinhas[index].numero_formato_antigo = false
+      newLinhas[index].sem_numeracao = true
+      newLinhas[index].numero_patrimonial = ''
+    } else {
+      newLinhas[index].numero_formato_antigo = false
+      newLinhas[index].sem_numeracao = false
+      numeroHook.desativarFormatoAntigo()
+    }
+
+    setLinhas(newLinhas)
+  }
 
   return (
     <div className="grid grid-cols-[1.2fr_1fr_1fr_1.2fr_auto] gap-6 items-start border rounded p-4">
@@ -66,17 +99,17 @@ export function LinhaBemRow({
             setLinhas(newLinhas)
           }}
         />
-        {errors?.numero_patrimonial ? (
+        {errors?.numero_patrimonial && (
           <p className="text-xs text-red-500">{errors.numero_patrimonial}</p>
-        ) : (
-          <p className="text-xs text-gray-400">Formato padrão: 000.000000000-0</p>
         )}
       </div>
 
       {/* FORMATO */}
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-gray-700">Formato</span>
+          <label htmlFor={`formato_${index}`} className="text-sm font-semibold text-gray-700">
+            Formato
+          </label>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info size={14} className="text-gray-400 cursor-help" />
@@ -89,51 +122,21 @@ export function LinhaBemRow({
           </Tooltip>
         </div>
 
-        <div className="space-y-2 pt-1">
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={linha.numero_formato_antigo}
-              disabled={linha.sem_numeracao}
-              onChange={(e) => {
-                const newLinhas = [...linhas]
-                newLinhas[index].numero_formato_antigo = e.target.checked
-                setLinhas(newLinhas)
-                if (e.target.checked) {
-                  numeroHook.ativarFormatoAntigo()
-                } else {
-                  numeroHook.desativarFormatoAntigo()
-                }
-              }}
-            />
-            <span>Formato anterior</span>
-          </label>
-
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={linha.sem_numeracao}
-              onChange={(e) => {
-                const newLinhas = [...linhas]
-                newLinhas[index].sem_numeracao = e.target.checked
-
-                if (e.target.checked) {
-                  newLinhas[index].numero_patrimonial = ''
-                  newLinhas[index].numero_formato_antigo = false
-                }
-
-                setLinhas(newLinhas)
-              }}
-            />
-            <span>Sem número patrimonial</span>
-          </label>
-        </div>
+        <Select value={valorFormato} onValueChange={handleFormatoChange}>
+          <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="formato_anterior">Formato anterior</SelectItem>
+            <SelectItem value="sem_numeracao">Sem número patrimonial</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* LOCALIZAÇÃO */}
       <div className="space-y-1">
         <label htmlFor={`localizacao_${index}`} className="text-sm font-semibold text-gray-700">
-          Localização
+          Localização <span className="text-red-500">*</span>
         </label>
         <Input
           id={`localizacao_${index}`}
@@ -188,9 +191,10 @@ export function LinhaBemRow({
         {isLast && (
           <Button
             type="button"
+            variant="outline"
             onClick={addLinha}
             aria-label="Adicionar bem"
-            className="bg-[#00703C] hover:bg-[#005a30] text-white h-10 w-10 p-0"
+            className="border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white h-10 w-10 p-0"
           >
             <Plus size={18} />
           </Button>
