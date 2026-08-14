@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Boxes } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Boxes, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService } from '../services/bem.service'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -20,7 +21,6 @@ type FormBase = {
   valor_unitario: string
   marca: string
   modelo: string
-  numero_processo: string
   observacao: string
 }
 
@@ -45,7 +45,6 @@ const LABEL_CAMPO: Record<keyof FormBase, string> = {
   valor_unitario: 'Valor Unitário',
   marca: 'Marca',
   modelo: 'Modelo',
-  numero_processo: 'Número do Processo',
   observacao: 'Observação',
 }
 
@@ -90,7 +89,7 @@ function UASearchSelect({
 
   return (
     <div ref={ref} className="relative">
-      <input
+      <Input
         id={id}
         className={INPUT_CLASS}
         placeholder="Buscar Unidade Administrativa..."
@@ -99,17 +98,18 @@ function UASearchSelect({
         onChange={e => setSearch(e.target.value)}
       />
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto border border-gray-200 bg-white rounded shadow-lg">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto border border-gray-200 bg-white rounded shadow-lg p-1">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">Nenhuma unidade encontrada</div>
           ) : (
             filtered.map((ua: any) => (
-              <button
+              <Button
                 key={ua.unidade_administrativa_id}
                 type="button"
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                variant="ghost"
+                className={`w-full justify-start text-left px-3 py-2 h-auto font-normal ${
                   String(ua.unidade_administrativa_id) === value
-                    ? 'bg-green-50 text-green-700'
+                    ? 'bg-green-50 text-green-700 hover:bg-green-50'
                     : 'text-gray-700'
                 }`}
                 onClick={() => {
@@ -120,7 +120,7 @@ function UASearchSelect({
                 }}
               >
                 {ua.label}
-              </button>
+              </Button>
             ))
           )}
         </div>
@@ -137,6 +137,7 @@ function novaLinha(): LinhaBemComId {
     numero_formato_antigo: false,
     sem_numeracao: false,
     localizacao: '',
+    numero_processo: '',
   }
 }
 
@@ -152,7 +153,6 @@ export default function BemCreatePage() {
     valor_unitario: '',
     marca: '',
     modelo: '',
-    numero_processo: '',
     observacao: '',
   })
   const [formErrors, setFormErrors] = useState<FormErrors>({})
@@ -166,14 +166,25 @@ export default function BemCreatePage() {
     (g: any) => g.uas ?? []
   )
 
+  const uaAtivaId = user?.ua_ativa?.id ?? null
+  const exigeSelecaoManualDeUA = !uaAtivaId
+
   useEffect(() => {
-    if (todasUAs.length === 1 && !formBase.unidade_administrativa) {
+    if (uaAtivaId && formBase.unidade_administrativa !== String(uaAtivaId)) {
+      setFormBase(prev => ({
+        ...prev,
+        unidade_administrativa: String(uaAtivaId),
+      }))
+      return
+    }
+
+    if (!uaAtivaId && todasUAs.length === 1 && !formBase.unidade_administrativa) {
       setFormBase(prev => ({
         ...prev,
         unidade_administrativa: String(todasUAs[0].unidade_administrativa_id),
       }))
     }
-  }, [todasUAs.length])
+  }, [uaAtivaId, todasUAs.length])
 
   const updateLinhas = (
     updater: React.SetStateAction<LinhaBemComId[]>
@@ -212,6 +223,12 @@ export default function BemCreatePage() {
     })
     return errors
   }
+
+  // Habilita o botão Salvar apenas quando todos os campos obrigatórios do
+  // formulário e de todas as linhas de bens já foram preenchidos.
+  const formValido =
+    CAMPOS_OBRIGATORIOS.every(campo => !!formBase[campo]?.trim()) &&
+    linhas.every(linha => !!linha.localizacao?.trim())
 
   const handleSave = async () => {
     const baseErrors = validarBase()
@@ -284,38 +301,43 @@ export default function BemCreatePage() {
 
         <div className="flex gap-3">
           <Button
-            variant="outline"
-            onClick={() => navigate('/bens-patrimoniais')}
+            onClick={handleSave}
+            disabled={loading || !formValido}
+            className="h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold !rounded-sm transition-colors disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#00703C]/25 disabled:text-white disabled:hover:bg-[#00703C]/25"
           >
-            Cancelar
+            {loading ? 'Salvando...' : 'Salvar'}
           </Button>
 
           <Button
-            onClick={handleSave}
-            disabled={loading}
-            className="bg-[#00703C] hover:bg-[#005a30] text-white"
+            variant="outline"
+            onClick={() => navigate('/bens-patrimoniais')}
+            className="h-10 px-6 bg-white border border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white font-semibold !rounded-sm transition-colors"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            Cancelar
           </Button>
         </div>
       </div>
 
       <Card className="p-6 space-y-6">
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
-              Unidade Administrativa <span className="text-red-500">*</span>
-            </label>
-            <UASearchSelect
-              id="unidade_administrativa"
-              value={formBase.unidade_administrativa}
-              onChange={id => setField('unidade_administrativa', id)}
-              uas={todasUAs}
-              error={formErrors.unidade_administrativa}
-            />
+        {exigeSelecaoManualDeUA && (
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
+                Unidade Administrativa <span className="text-red-500">*</span>
+              </label>
+              <UASearchSelect
+                id="unidade_administrativa"
+                value={formBase.unidade_administrativa}
+                onChange={id => setField('unidade_administrativa', id)}
+                uas={todasUAs}
+                error={formErrors.unidade_administrativa}
+              />
+            </div>
           </div>
+        )}
 
+        <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1">
             <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
               Nome do Bem <span className="text-red-500">*</span>
@@ -329,40 +351,6 @@ export default function BemCreatePage() {
             />
             {formErrors.nome && (
               <p className="text-xs text-red-500">{formErrors.nome}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
-            Descrição <span className="text-red-500">*</span>
-          </label>
-          <Textarea
-            id="descricao"
-            className="min-h-25"
-            placeholder="Descrição do Bem"
-            value={formBase.descricao}
-            onChange={e => setField('descricao', e.target.value)}
-          />
-          {formErrors.descricao && (
-            <p className="text-xs text-red-500">{formErrors.descricao}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-6">
-          <div className="space-y-1">
-            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
-              Valor Unitário <span className="text-red-500">*</span>
-            </label>
-            <Input
-              id="valor_unitario"
-              className={INPUT_CLASS}
-              placeholder="0,00"
-              value={formBase.valor_unitario}
-              onChange={e => setField('valor_unitario', e.target.value)}
-            />
-            {formErrors.valor_unitario && (
-              <p className="text-xs text-red-500">{formErrors.valor_unitario}</p>
             )}
           </div>
 
@@ -381,7 +369,9 @@ export default function BemCreatePage() {
               <p className="text-xs text-red-500">{formErrors.marca}</p>
             )}
           </div>
+        </div>
 
+        <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1">
             <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
               Modelo <span className="text-red-500">*</span>
@@ -397,30 +387,49 @@ export default function BemCreatePage() {
               <p className="text-xs text-red-500">{formErrors.modelo}</p>
             )}
           </div>
+
+          <div className="space-y-1">
+            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
+              Valor Unitário <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="valor_unitario"
+              className={INPUT_CLASS}
+              placeholder="0,00"
+              value={formBase.valor_unitario}
+              onChange={e => setField('valor_unitario', e.target.value)}
+            />
+            {formErrors.valor_unitario && (
+              <p className="text-xs text-red-500">{formErrors.valor_unitario}</p>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
-            Número do processo de incorporação
+          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
+            Descrição do Bem <span className="text-red-500">*</span>
           </label>
-          <Input
-            id="numero_processo"
-            className={INPUT_CLASS}
-            placeholder="Número do processo de incorporação"
-            value={formBase.numero_processo}
-            onChange={e => setField('numero_processo', e.target.value)}
+          <Textarea
+            id="descricao"
+            className="min-h-25"
+            placeholder="Descreva o bem"
+            value={formBase.descricao}
+            onChange={e => setField('descricao', e.target.value)}
           />
+          {formErrors.descricao && (
+            <p className="text-xs text-red-500">{formErrors.descricao}</p>
+          )}
         </div>
 
-        {/* OBSERVAÇÃO */}
+        {/* OBSERVAÇÕES */}
         <div className="space-y-1">
           <label htmlFor="observacao" className="text-sm font-semibold text-gray-700">
-            Observação
+            Observações
           </label>
           <Textarea
             id="observacao"
             className="min-h-25"
-            placeholder="Observação"
+            placeholder="Observações"
             value={formBase.observacao}
             onChange={e => setField('observacao', e.target.value)}
           />
@@ -428,15 +437,20 @@ export default function BemCreatePage() {
 
         {/* LINHAS DOS BENS */}
         <div className="space-y-4">
-          <div>
+          <div className="flex items-center gap-1.5">
             <h2 className="text-sm font-semibold text-[#00703C]">
-              Dados únicos por Bem
+              Adicionar Bens Patrimoniais
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Para adicionar mais bens, clique no botão + ao final da linha.
-              Número Patrimonial, Formato Antigo, Sem Numeração e Localização
-              são específicos de cada bem criado.
-            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info size={14} className="text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="max-w-80">
+                Para adicionar mais bens, clique no botão + ao final da linha.
+                Caso não seja necessário o novo item do bem, ele pode ser
+                removido no botão de lixeira.
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {linhas.map((linha, index) => (
@@ -449,6 +463,7 @@ export default function BemCreatePage() {
               removeLinha={removeLinha}
               addLinha={addLinha}
               isLast={index === linhas.length - 1}
+              podeRemover={linhas.length > 1}
               errors={linhasErrors[index]}
             />
           ))}
