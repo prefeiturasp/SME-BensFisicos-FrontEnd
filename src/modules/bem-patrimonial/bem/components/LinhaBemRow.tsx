@@ -53,12 +53,21 @@ export function LinhaBemRow({
     semNumeracaoInicial: linha.sem_numeracao,
   })
 
+  // O Radix Select não aceita SelectItem com value="" (lança erro em tempo
+  // de execução — a string vazia é reservada internamente para representar
+  // "nenhuma seleção"/placeholder). Por isso usamos um valor sentinela só
+  // para o item "Selecione", convertendo de/para "" (o valor "sem seleção"
+  // vindo de valorSelectFormato) na fronteira deste componente.
+  const SELECIONE_SENTINEL = '__selecione__'
+
   const valorFormato = valorSelectFormato(
     linha.numero_formato_antigo,
     linha.sem_numeracao
   )
+  const valorFormatoSelect = valorFormato === '' ? SELECIONE_SENTINEL : valorFormato
 
-  const handleFormatoChange = (valor: string) => {
+  const handleFormatoChange = (valorSelecionado: string) => {
+    const valor = valorSelecionado === SELECIONE_SENTINEL ? '' : valorSelecionado
     const newLinhas = [...linhas]
 
     if (valor === 'formato_anterior') {
@@ -122,11 +131,12 @@ export function LinhaBemRow({
           </Tooltip>
         </div>
 
-        <Select value={valorFormato} onValueChange={handleFormatoChange}>
+        <Select value={valorFormatoSelect} onValueChange={handleFormatoChange}>
           <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
             <SelectValue placeholder="Selecione" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={SELECIONE_SENTINEL}>Selecione</SelectItem>
             <SelectItem value="formato_anterior">Formato anterior</SelectItem>
             <SelectItem value="sem_numeracao">Sem número patrimonial</SelectItem>
           </SelectContent>

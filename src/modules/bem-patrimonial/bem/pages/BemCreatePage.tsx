@@ -303,7 +303,7 @@ export default function BemCreatePage() {
           <Button
             onClick={handleSave}
             disabled={loading || !formValido}
-            className="bg-[#00703C] hover:bg-[#005a30] text-white"
+            className="h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold !rounded-sm transition-colors disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#00703C]/25 disabled:text-white disabled:hover:bg-[#00703C]/25"
           >
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
@@ -311,6 +311,7 @@ export default function BemCreatePage() {
           <Button
             variant="outline"
             onClick={() => navigate('/bens-patrimoniais')}
+            className="h-10 px-6 bg-white border border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white font-semibold !rounded-sm transition-colors"
           >
             Cancelar
           </Button>
