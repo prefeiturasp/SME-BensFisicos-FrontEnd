@@ -11,7 +11,6 @@ describe('ConciliacaoFinalizarModal', () => {
     const { container } = render(
       <ConciliacaoFinalizarModal
         open={false}
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -26,7 +25,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -47,7 +45,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={onConfirm}
@@ -55,9 +52,67 @@ describe('ConciliacaoFinalizarModal', () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirmacao'));
     fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirm'));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém o botão Finalizar desabilitado até o check-box ser marcado', () => {
+    const onConfirm = vi.fn();
+
+    render(
+      <ConciliacaoFinalizarModal
+        open
+        loading={false}
+        errorMessage={null}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const botaoFinalizar = screen.getByTestId('conciliacao-finalizar-confirm');
+    expect(botaoFinalizar).toBeDisabled();
+
+    fireEvent.click(botaoFinalizar);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('conciliacao-finalizar-confirmacao'));
+    expect(botaoFinalizar).toBeEnabled();
+
+    fireEvent.click(botaoFinalizar);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('exibe o texto de confirmação do check-box', () => {
+    render(
+      <ConciliacaoFinalizarModal
+        open
+        loading={false}
+        errorMessage={null}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Estou ciente que esta ação não pode ser desfeita.'),
+    ).toBeInTheDocument();
+  });
+
+  it('exibe o botão Finalizar com fundo vermelho', () => {
+    render(
+      <ConciliacaoFinalizarModal
+        open
+        loading={false}
+        errorMessage={null}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const botao = screen.getByTestId('conciliacao-finalizar-confirm');
+    expect(botao.className).toContain('bg-red-600');
   });
 
   it('dispara onClose ao clicar em Cancelar', () => {
@@ -66,7 +121,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -85,7 +139,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -102,7 +155,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading
         errorMessage={null}
         onConfirm={vi.fn()}
@@ -122,7 +174,6 @@ describe('ConciliacaoFinalizarModal', () => {
     render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage='Conciliacao ja finalizada.'
         onConfirm={vi.fn()}
@@ -139,7 +190,6 @@ describe('ConciliacaoFinalizarModal', () => {
     const { rerender } = render(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage='Erro 1'
         onConfirm={vi.fn()}
@@ -152,7 +202,6 @@ describe('ConciliacaoFinalizarModal', () => {
     rerender(
       <ConciliacaoFinalizarModal
         open
-        conciliacaoId={1}
         loading={false}
         errorMessage={null}
         onConfirm={vi.fn()}

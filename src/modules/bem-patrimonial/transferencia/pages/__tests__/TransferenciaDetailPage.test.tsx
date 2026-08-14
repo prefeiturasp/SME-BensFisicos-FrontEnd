@@ -7,6 +7,8 @@ import TransferenciaDetailPage from '../TransferenciaDetailPage'
 import { transferenciaService } from '../../services/transferencia.service'
 import { downloadBlobFile } from '@/lib/unidades-list-page'
 
+const toastError = vi.fn()
+
 vi.mock('../../services/transferencia.service', () => ({
   transferenciaService: {
     retrieve: vi.fn(),
@@ -16,6 +18,12 @@ vi.mock('../../services/transferencia.service', () => ({
 
 vi.mock('@/lib/unidades-list-page', () => ({
   downloadBlobFile: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: (...args: unknown[]) => toastError(...args),
+  },
 }))
 
 const transferenciaMock = {
@@ -59,7 +67,7 @@ const transferenciaMock = {
     username: 'operador',
     nome_completo: 'Operador 1',
   },
-  url_documento_ntbpm: '/api/documento-ntbpm/9/download/',
+  url_documento_ntbpm: '/api/transferencias/9/documento-ntbpm/',
   itens: [
     {
       id: 1,
@@ -123,12 +131,55 @@ describe('TransferenciaDetailPage', () => {
 
     await waitFor(() => {
       expect(transferenciaService.baixarDocumentoNtBpm).toHaveBeenCalledWith(
-        '/api/documento-ntbpm/9/download/',
+        9,
       )
       expect(downloadBlobFile).toHaveBeenCalledWith(
         expect.any(Blob),
         'ntbpm-0009.pdf',
       )
     })
+  })
+
+  it('exibe erro quando o download do documento NTBPM falha', async () => {
+    const user = userEvent.setup()
+    vi.mocked(transferenciaService.baixarDocumentoNtBpm).mockRejectedValueOnce(
+      new Error('Falha ao baixar NTBPM'),
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/9']}>
+        <Routes>
+          <Route path='/transferencias/:id' element={<TransferenciaDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /Baixar NTBPM/i }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Falha ao baixar NTBPM')
+    })
+  })
+
+  it('oculta o botão quando o documento NTBPM não está disponível', async () => {
+    vi.mocked(transferenciaService.retrieve).mockResolvedValueOnce({
+      ...transferenciaMock,
+      numero_ntbpm: null,
+      url_documento_ntbpm: null,
+    } as never)
+
+    render(
+      <MemoryRouter initialEntries={['/transferencias/9']}>
+        <Routes>
+          <Route path='/transferencias/:id' element={<TransferenciaDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(transferenciaService.retrieve).toHaveBeenCalledWith(9)
+    })
+
+    expect(screen.queryByRole('button', { name: /Baixar NTBPM/i })).not.toBeInTheDocument()
   })
 })

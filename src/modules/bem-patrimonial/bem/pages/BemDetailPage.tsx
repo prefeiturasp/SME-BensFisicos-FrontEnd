@@ -3,17 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Loader2, ArrowLeft, Network, Pencil, Trash2 } from 'lucide-react'
+import { Loader2, ArrowLeft, Network, Pencil, Trash2, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService, type Bem } from '../services/bem.service'
+import { valorSelectFormato } from '../utils/formato-bem'
 import { useAuth } from '@/auth/useAuth'
 import HistoricoModal from '../modals/HistoricoModal'
 import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
 
-const FIELD_CLASS =
+export const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
+export const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
 const ACTION_BUTTON_CLASS = `
   h-10
   px-6
@@ -26,6 +28,28 @@ const ACTION_BUTTON_CLASS = `
   rounded-md
   transition-colors
 `
+
+function formatarCriadoEm(dateString: string | null | undefined): string | null {
+  if (!dateString) return null
+
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return null
+
+  const dataFormatada = date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo',
+  })
+  const horaFormatada = date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  })
+
+  return `${dataFormatada}, às ${horaFormatada}`
+}
+
 export default function BemDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -83,14 +107,14 @@ export default function BemDetailPage() {
     <AppBreadcrumb
       items={[
         { label: 'Bem Patrimonial', icon: Network },
-        { label: 'Bem Patrimonial', icon: Network, to: '/bens-patrimoniais' },
-        { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
+        { label: 'Bens Patrimoniais', icon: Network, to: '/bens-patrimoniais' },
+        { label: 'Visualizar Cadastro do Bem Patrimonial', isActive: true },
       ]}
     />
 
     {/* HEADER */}
     <div className="flex justify-between items-center">
-      <h1 className="text-xl font-bold tracking-tight text-gray-700">
+      <h1 className={TITLE_CLASS}>
         Visualizar Cadastro do Bem Patrimonial
       </h1>
 
@@ -116,26 +140,28 @@ export default function BemDetailPage() {
           )}
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <Button
-                variant="outline"
-                disabled={!podeEditar}
-                onClick={() => setOpenExcluir(true)}
-                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <Trash2 size={16} />
-                Apagar
-              </Button>
-            </span>
-          </TooltipTrigger>
-          {!podeEditar && (
-            <TooltipContent side="bottom" sideOffset={6}>
-              {motivoBloqueioEdicao}
-            </TooltipContent>
-          )}
-        </Tooltip>
+        {bem.status === 'aguardando_aprovacao' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  variant="outline"
+                  disabled={!podeEditar}
+                  onClick={() => setOpenExcluir(true)}
+                  className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <Trash2 size={16} />
+                  Apagar
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!podeEditar && (
+              <TooltipContent side="bottom" sideOffset={6}>
+                {motivoBloqueioEdicao}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
 
         <Button
           variant="outline"
@@ -193,7 +219,7 @@ export default function BemDetailPage() {
         </div>
 
         {/* PRIMEIRA LINHA */}
-        <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-8 items-start">
+        <div className="grid grid-cols-3 gap-8 items-start">
 
           {/* UNIDADE */}
           <div>
@@ -224,38 +250,36 @@ export default function BemDetailPage() {
             </p>
           </div>
 
-          {/* CHECK FORMATO ANTIGO */}
-          <div className="pt-9">
-            <input
-              id="numero_formato_antigo"
-              type="checkbox"
-              checked={bem.numero_formato_antigo}
+          {/* FORMATO (select) */}
+          <div>
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="formato" className="text-sm font-semibold text-gray-700">
+                Formato
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info size={14} className="text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6} className="max-w-70">
+                  Se marcado “Formato anterior”, não valida o formato do número (valor
+                  livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+                  automaticamente.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <select
+              id="formato"
+              value={valorSelectFormato(
+                bem.numero_formato_antigo,
+                bem.sem_numeracao
+              )}
               disabled
-              className="mr-2"
-            />
-            <label htmlFor="numero_formato_antigo" className="text-sm text-gray-700 whitespace-nowrap">
-              Formato anterior
-            </label>
-            <p className="text-xs text-gray-500">
-              Se marcado, não valida formato do número (valor livre)
-            </p>
-          </div>
-
-          {/* CHECK SEM NUMERO */}
-          <div className="pt-9">
-            <input
-              id="sem_numeracao"
-              type="checkbox"
-              checked={bem.sem_numeracao}
-              disabled
-              className="mr-2"
-            />
-            <label htmlFor="sem_numeracao" className="text-sm text-gray-700 whitespace-nowrap">
-              Sem número patrimonial
-            </label>
-            <p className="text-xs text-gray-500">
-              Se marcado, o sistema atribui automaticamente
-            </p>
+              className={FIELD_CLASS}
+            >
+              <option value="">-</option>
+              <option value="formato_anterior">Formato Anterior</option>
+              <option value="sem_numeracao">Sem Número Patrimonial</option>
+            </select>
           </div>
 
         </div>
@@ -292,7 +316,7 @@ export default function BemDetailPage() {
           {/* VALOR */}
           <div>
             <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
-              Valor unitário
+              Valor Unitário
             </label>
             <input
               id="valor_unitario"
@@ -344,7 +368,7 @@ export default function BemDetailPage() {
           {/* PROCESSO INCORPORAÇÃO */}
           <div>
             <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
-              Número do processo de incorporação
+              Número do Processo de Incorporação
             </label>
             <input
               id="numero_processo"
@@ -384,8 +408,13 @@ export default function BemDetailPage() {
 
         {/* METADADOS */}
         <div className="border-t pt-6 text-xs text-gray-500">
-          Criado por: {bem.criado_por_nome} <br />
-          Criado em: {bem.criado_em}
+          {formatarCriadoEm(bem.criado_em) ? (
+            <>
+              Criado em {formatarCriadoEm(bem.criado_em)} por RF {bem.criado_por_rf ?? '-'}
+            </>
+          ) : (
+            'Data de criação não disponível'
+          )}
         </div>
       </Card>
     </div>

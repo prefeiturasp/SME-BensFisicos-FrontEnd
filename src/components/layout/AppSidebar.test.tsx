@@ -99,7 +99,7 @@ describe('AppSidebar', () => {
       expect(screen.getByText('Unidades Orçamentárias')).toBeInTheDocument();
       expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
       expect(screen.getByText('Usuários')).toBeInTheDocument();
-      expect(screen.getByText('Configurações')).toBeInTheDocument();
+      expect(screen.queryByText('Configurações')).not.toBeInTheDocument();
     });
   });
 
@@ -283,7 +283,7 @@ describe('AppSidebar', () => {
   });
 
   describe('Item de menu Unidades Administrativas', () => {
-    it('deve exibir Usuários e Unidades Administrativas como itens diretos do menu principal, fora de Configurações', () => {
+    it('deve exibir Usuários e Unidades Administrativas como itens diretos do menu principal', () => {
       renderSidebar();
 
       const uaLink = screen.getByRole('link', { name: 'Unidades Administrativas' });
@@ -295,20 +295,7 @@ describe('AppSidebar', () => {
       expect(usuariosLink).toHaveAttribute('href', '/usuarios');
     });
 
-    it('não deve mais exibir Usuários dentro do submenu de Configurações', async () => {
-      const user = userEvent.setup();
-      renderSidebar();
-
-      await user.click(screen.getByText('Configurações'));
-
-      expect(screen.getByRole('link', { name: 'Trocar Senha' })).toBeVisible();
-      expect(screen.getByRole('link', { name: 'Usuários' })).toBeVisible();
-
-      const usersLinks = screen.getAllByRole('link', { name: 'Usuários' });
-      expect(usersLinks).toHaveLength(1);
-    });
-
-    it('deve posicionar Usuários após Unidades Administrativas e antes de Configurações', () => {
+    it('deve posicionar Usuários imediatamente após Unidades Administrativas, como último item do menu', () => {
       renderSidebar();
 
       const menuItems = screen
@@ -319,12 +306,11 @@ describe('AppSidebar', () => {
       const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
       const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
       const usuariosIndex = menuItems.indexOf('Usuários');
-      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
 
       expect(inventarioIndex).toBeGreaterThanOrEqual(0);
       expect(unidadesIndex).toBeGreaterThan(inventarioIndex);
       expect(usuariosIndex).toBeGreaterThan(unidadesIndex);
-      expect(configuracoesIndex).toBeGreaterThan(usuariosIndex);
+      expect(usuariosIndex).toBe(menuItems.length - 1);
     });
 
     it('deve exibir um ícone para o item Unidades Administrativas', () => {
@@ -407,7 +393,7 @@ describe('AppSidebar', () => {
       expect(activeLink).toHaveAttribute('data-active', 'true');
     });
 
-    it('deve posicionar Unidades Orçamentárias imediatamente acima de Unidades Administrativas, e ambos acima de Configurações', () => {
+    it('deve posicionar Unidades Orçamentárias imediatamente acima de Unidades Administrativas', () => {
       renderSidebar();
 
       const menuItems = screen
@@ -418,12 +404,10 @@ describe('AppSidebar', () => {
       const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
       const orcamentariasIndex = menuItems.indexOf('Unidades Orçamentárias');
       const administrativasIndex = menuItems.indexOf('Unidades Administrativas');
-      const configuracoesIndex = menuItems.findIndex((text) => text?.startsWith('Configurações'));
 
       expect(inventarioIndex).toBeGreaterThanOrEqual(0);
       expect(orcamentariasIndex).toBeGreaterThan(inventarioIndex);
       expect(administrativasIndex).toBeGreaterThan(orcamentariasIndex);
-      expect(configuracoesIndex).toBeGreaterThan(administrativasIndex);
     });
   });
 
@@ -553,8 +537,8 @@ describe('AppSidebar', () => {
       const inventarioSection = screen.getByText('Inventário').closest('button');
       expect(inventarioSection?.querySelector('svg')).toBeInTheDocument();
 
-      const configSection = screen.getByText('Configurações').closest('button');
-      expect(configSection?.querySelector('svg')).toBeInTheDocument();
+      const usuariosLink = screen.getByRole('link', { name: 'Usuários' });
+      expect(usuariosLink.querySelector('svg')).toBeInTheDocument();
     });
 
     it('deve mostrar chevron indicando expansão/colapso dos subitens', async () => {

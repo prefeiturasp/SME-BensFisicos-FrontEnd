@@ -1,8 +1,9 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
+import { useAuth } from '@/auth/useAuth'
 import BemCreatePage from '../BemCreatePage'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
@@ -52,6 +53,16 @@ vi.mock('../../components/LinhaBemRow', () => ({
           setLinhas(newLinhas)
         }}
       />
+      <input
+        data-testid={`numero-processo-${index}`}
+        placeholder="Número do Processo de Incorporação"
+        value={linha.numero_processo}
+        onChange={(e) => {
+          const newLinhas = [...linhas]
+          newLinhas[index] = { ...newLinhas[index], numero_processo: e.target.value }
+          setLinhas(newLinhas)
+        }}
+      />
       <button onClick={() => removeLinha(index)}>Remover Linha</button>
       <button onClick={addLinha}>Adicionar Linha</button>
     </div>
@@ -73,7 +84,7 @@ function preencherCamposBase() {
   fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
     target: { value: 'Notebook' },
   })
-  fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), {
+  fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), {
     target: { value: 'Notebook corporativo' },
   })
   fireEvent.change(screen.getByPlaceholderText('0,00'), {
@@ -95,6 +106,37 @@ describe('BemCreatePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUAs = [{ id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' }]
+
+    // vi.clearAllMocks() não restaura implementações setadas via
+    // mockReturnValue/mockImplementation (só limpa .mock.calls/.results) —
+    // reforça aqui o estado padrão (sem ua_ativa) pra testes que
+    // sobrescrevem useAuth não vazarem esse valor pros testes seguintes.
+    // Usa mockImplementation (não mockReturnValue) pra continuar lendo
+    // mockUAs dinamicamente a cada chamada, já que alguns testes reatribuem
+    // mockUAs depois do beforeEach e esperam que o mock reflita o valor atual.
+    vi.mocked(useAuth).mockImplementation(() => ({
+      user: {
+        is_gestor_patrimonio: true,
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    }) as any)
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
   })
 
   // ------------------------------------------------------------------
@@ -111,7 +153,7 @@ describe('BemCreatePage', () => {
   it('deve renderizar campos obrigatórios com asterisco', () => {
     renderPage()
     expect(screen.getByPlaceholderText('Nome do Bem')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Descrição do Bem')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Descreva o bem')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0,00')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Marca')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Modelo')).toBeInTheDocument()
@@ -137,6 +179,89 @@ describe('BemCreatePage', () => {
   })
 
   // ------------------------------------------------------------------
+  // Unidade Administrativa ativa (contexto global do header)
+  // ------------------------------------------------------------------
+
+  it('não deve exibir o campo Unidade Administrativa quando o usuário tem uma UA ativa no header', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { id: 42, label: 'UA Ativa - 042' },
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+
+    renderPage()
+
+    expect(
+      screen.queryByLabelText('Unidade Administrativa')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('Buscar Unidade Administrativa...')
+    ).not.toBeInTheDocument()
+  })
+
+  it('deve usar a UA ativa do header como unidade_administrativa ao salvar, mesmo sem exibir o campo', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { id: 42, label: 'UA Ativa - 042' },
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+
+    const spy = vi
+      .spyOn(bemServiceModule.bemService, 'createMulti')
+      .mockResolvedValue(undefined as any)
+
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      const payload = spy.mock.calls[0][0]
+      expect(payload.unidade_administrativa).toBe('42')
+    })
+  })
+
+  it('deve exibir o campo Unidade Administrativa quando o usuário não tem UA ativa (acesso a múltiplas UAs)', () => {
+    mockUAs = [
+      { id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' },
+      { id: 2, unidade_administrativa_id: 20, label: 'UA Teste - 002' },
+    ]
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+
+    renderPage()
+
+    expect(
+      screen.getByPlaceholderText('Buscar Unidade Administrativa...')
+    ).toBeInTheDocument()
+  })
+
+  // ------------------------------------------------------------------
+  // Ordem dos botões e disposição conforme protótipo
+  // ------------------------------------------------------------------
+
+  it('deve exibir o botão Salvar antes do botão Cancelar', () => {
+    renderPage()
+    const buttons = screen.getAllByRole('button')
+    const textos = buttons.map((b) => b.textContent)
+    expect(textos.indexOf('Salvar')).toBeLessThan(textos.indexOf('Cancelar'))
+  })
+
+  // ------------------------------------------------------------------
   // Edição de campos
   // ------------------------------------------------------------------
 
@@ -152,16 +277,12 @@ describe('BemCreatePage', () => {
   // Validação de campos obrigatórios no front
   // ------------------------------------------------------------------
 
-  it('deve mostrar toast de erro se campos obrigatórios estiverem vazios ao salvar', async () => {
+  it('deve manter o botão Salvar desabilitado enquanto campos obrigatórios estiverem vazios', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Salvar'))
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Preencha os campos obrigatórios.')
-    })
+    expect(screen.getByText('Salvar')).toBeDisabled()
   })
 
-  it('não deve chamar createMulti se campos obrigatórios estiverem vazios', async () => {
+  it('não deve chamar createMulti se campos obrigatórios estiverem vazios (botão desabilitado)', async () => {
     const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
     fireEvent.click(screen.getByText('Salvar'))
@@ -171,22 +292,28 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve exibir mensagem de erro inline para campo nome ausente', async () => {
+  it('deve habilitar o botão Salvar somente após preencher todos os campos obrigatórios, incluindo a localização da linha', () => {
     renderPage()
+    expect(screen.getByText('Salvar')).toBeDisabled()
 
-    fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), {
-      target: { value: 'Desc' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('0,00'), {
-      target: { value: '100' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Marca'), {
-      target: { value: 'M' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Modelo'), {
-      target: { value: 'X' },
-    })
+    preencherCamposBase()
 
+    expect(screen.getByText('Salvar')).toBeEnabled()
+  })
+
+  it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: { nome: 'Nome do Bem é obrigatório.' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -194,8 +321,19 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve limpar erro do campo ao editar', async () => {
+  it('deve limpar erro do campo ao editar (erro vindo do backend)', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: { nome: 'Nome do Bem é obrigatório.' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
     renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -203,41 +341,85 @@ describe('BemCreatePage', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
-      target: { value: 'Notebook' },
+      target: { value: 'Notebook Editado' },
     })
 
     expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
   })
 
-  it('deve exibir erro de localização quando campo estiver vazio ao salvar', async () => {
-    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+  it('deve manter o botão Salvar desabilitado quando a localização da linha estiver vazia', () => {
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
-    fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), { target: { value: 'Desc' } })
+    fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), { target: { value: 'Desc' } })
     fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
     fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
     // Localização propositalmente não preenchida
 
+    expect(screen.getByText('Salvar')).toBeDisabled()
+  })
+
+  it('deve habilitar o botão Salvar ao preencher a localização da linha que faltava', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
+    fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), { target: { value: 'Desc' } })
+    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
+    fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
+    fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+
+    expect(screen.getByText('Salvar')).toBeDisabled()
+
+    fireEvent.change(screen.getByPlaceholderText('Localização'), {
+      target: { value: 'Sala 1' },
+    })
+
+    expect(screen.getByText('Salvar')).toBeEnabled()
+  })
+
+  it('deve exibir erro de localização por linha quando retornado pelo backend', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': { localizacao: 'Localização é obrigatória.' },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(screen.getByTestId('erro-localizacao-0')).toBeInTheDocument()
       expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
     })
-
-    expect(spy).not.toHaveBeenCalled()
   })
 
-  it('deve limpar erro de localização ao editar a linha', async () => {
-    renderPage()
+  it('deve limpar erro de localização ao editar a linha (erro vindo do backend)', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': { localizacao: 'Localização é obrigatória.' },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
 
-    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
-    fireEvent.change(screen.getByPlaceholderText('Descrição do Bem'), { target: { value: 'Desc' } })
-    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
-    fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
-    fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -245,7 +427,7 @@ describe('BemCreatePage', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('Localização'), {
-      target: { value: 'Sala 1' },
+      target: { value: 'Sala Nova' },
     })
 
     await waitFor(() => {
@@ -300,6 +482,72 @@ describe('BemCreatePage', () => {
         expect(item).not.toHaveProperty('id')
       })
     })
+  })
+
+  it('deve enviar numero_processo por linha no multi_payload, e não como campo base', async () => {
+    const spy = vi
+      .spyOn(bemServiceModule.bemService, 'createMulti')
+      .mockResolvedValue(undefined as any)
+
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Número do Processo de Incorporação'),
+      { target: { value: 'PROC-2024-001' } }
+    )
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      const payload = spy.mock.calls[0][0]
+      expect(payload).not.toHaveProperty('numero_processo')
+      expect(payload.multi_payload[0].numero_processo).toBe('PROC-2024-001')
+    })
+  })
+
+  it('deve permitir números do processo distintos por linha ao adicionar múltiplos bens', async () => {
+    const spy = vi
+      .spyOn(bemServiceModule.bemService, 'createMulti')
+      .mockResolvedValue(undefined as any)
+
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.click(screen.getByText('Adicionar Linha'))
+
+    const camposProcesso = screen.getAllByPlaceholderText(
+      'Número do Processo de Incorporação'
+    )
+    fireEvent.change(camposProcesso[0], { target: { value: 'PROC-A' } })
+    fireEvent.change(camposProcesso[1], { target: { value: 'PROC-B' } })
+
+    const camposLocalizacao = screen.getAllByPlaceholderText('Localização')
+    fireEvent.change(camposLocalizacao[1], { target: { value: 'Sala 2' } })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      const payload = spy.mock.calls[0][0]
+      expect(payload.multi_payload[0].numero_processo).toBe('PROC-A')
+      expect(payload.multi_payload[1].numero_processo).toBe('PROC-B')
+    })
+  })
+
+  it('deve exibir o tooltip informativo no cabeçalho "Adicionar Bens Patrimoniais" ao passar o mouse', async () => {
+    renderPage()
+
+    const user = userEvent.setup()
+    const titulo = screen.getByText('Adicionar Bens Patrimoniais')
+    const tooltipTrigger = titulo.parentElement?.querySelector('svg')
+    expect(tooltipTrigger).toBeInTheDocument()
+
+    await user.hover(tooltipTrigger!)
+
+    const tooltipMatches = await screen.findAllByText(
+      /Para adicionar mais bens, clique no botão \+ ao final da linha/
+    )
+    expect(tooltipMatches.length).toBeGreaterThan(0)
   })
 
   // ------------------------------------------------------------------
@@ -559,12 +807,12 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve permitir preencher campo número do processo', () => {
+  it('deve permitir preencher campo número do processo de incorporação (por linha)', () => {
     mockUAs = [{ id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' }]
     renderPage()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Número do processo de incorporação'),
+      screen.getByPlaceholderText('Número do Processo de Incorporação'),
       { target: { value: 'PROC-2024-001' } }
     )
 

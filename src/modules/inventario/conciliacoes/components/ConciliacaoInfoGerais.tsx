@@ -1,5 +1,6 @@
 import { CampoReadonly } from './CampoReadonly';
 import { ConciliacaoStatusBadge } from './ConciliacaoStatusBadge';
+import { SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type { Conciliacao } from '../types/conciliacoes.types';
 
 interface ConciliacaoInfoGeraisProps {
@@ -45,7 +46,7 @@ export function ConciliacaoInfoGerais({
       data-testid='conciliacao-info-gerais'
       aria-label='Informações gerais da conciliação'
     >
-      <h2 className='text-base font-semibold text-[#2F7D57]'>Informações gerais</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Informações gerais</h2>
 
       <div className='grid grid-cols-1 items-start gap-x-8 gap-y-5 lg:grid-cols-3'>
         <div className='space-y-1'>

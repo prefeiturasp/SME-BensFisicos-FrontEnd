@@ -146,11 +146,9 @@ describe('transferenciaService', () => {
       data: blob,
     })
 
-    const result = await transferenciaService.baixarDocumentoNtBpm(
-      '/api/documento-ntbpm/9/download/',
-    )
+    const result = await transferenciaService.baixarDocumentoNtBpm(9)
 
-    expect(api.get).toHaveBeenCalledWith('/api/documento-ntbpm/9/download/', {
+    expect(api.get).toHaveBeenCalledWith('/transferencias/9/documento-ntbpm/', {
       responseType: 'blob',
     })
     expect(result).toBe(blob)
@@ -181,7 +179,7 @@ describe('transferenciaService', () => {
     vi.mocked(api.get).mockRejectedValue(makeAxiosError(400, { detail: 'Falha ao baixar' }))
 
     await expect(
-      transferenciaService.baixarDocumentoNtBpm('/api/documento-ntbpm/9/download/'),
+      transferenciaService.baixarDocumentoNtBpm(9),
     ).rejects.toThrow('Falha ao baixar')
   })
 

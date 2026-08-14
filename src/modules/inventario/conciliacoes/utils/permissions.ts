@@ -1,10 +1,10 @@
-type ConciliacoesUser = {
-  is_superuser?: boolean;
-  is_gestor_patrimonio?: boolean;
-  is_operador_inventario?: boolean;
-} | null | undefined;
+import type { User } from '@/auth/auth.service';
 
-export function canAccessConciliacoes(user: ConciliacoesUser) {
+type PermissionFields = Partial<
+  Pick<User, 'is_superuser' | 'is_gestor_patrimonio' | 'is_operador_inventario'>
+>;
+
+export function canAccessConciliacoes(user: PermissionFields | null | undefined) {
   if (!user) {
     return false;
   }

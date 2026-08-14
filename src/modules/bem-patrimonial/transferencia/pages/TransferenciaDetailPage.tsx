@@ -95,7 +95,7 @@ export default function TransferenciaDetailPage() {
     setDownloading(true)
     try {
       const blob = await transferenciaService.baixarDocumentoNtBpm(
-        transferencia.url_documento_ntbpm,
+        transferencia.id,
       )
       downloadBlobFile(blob, `ntbpm-${String(transferencia.id).padStart(4, '0')}.pdf`)
     } catch (error) {

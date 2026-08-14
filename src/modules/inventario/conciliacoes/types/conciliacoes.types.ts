@@ -106,6 +106,18 @@ export interface ConciliacaoItemBem {
   bloqueado_conciliacao: boolean;
 }
 
+export interface ConciliacaoOcorrencia {
+  id: number;
+  situacao: ConciliacaoItemSituacao;
+  situacao_display: string;
+  observacao: string;
+  divergencia: string;
+  registrado_por: number;
+  registrado_por_nome: string;
+  registrado_por_rf: string;
+  registrado_em: string;
+}
+
 export interface ConciliacaoItem {
   id: number;
   conciliacao: number;
@@ -123,6 +135,24 @@ export interface ConciliacaoItem {
   atualizado_por: number | null;
   atualizado_por_nome: string;
   atualizado_em: string;
+}
+
+export interface ConciliacaoItemDetail extends ConciliacaoItem {
+  pode_marcar_como_encontrado: boolean;
+  pode_resolver_situacao: boolean;
+  conciliacao_esta_aberto: boolean;
+  ocorrencias: ConciliacaoOcorrencia[];
+}
+
+export interface ConciliacaoSituacaoDisponivel {
+  value: ConciliacaoItemSituacao;
+  label: string;
+}
+
+export interface ConciliacaoOcorrenciaPayload {
+  situacao: ConciliacaoItemSituacao;
+  observacao?: string;
+  divergencia?: string;
 }
 
 export interface PaginatedConciliacaoItens {

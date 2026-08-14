@@ -269,6 +269,7 @@ export default function EditarUsuarioPage() {
           uosDisponiveis={uosDisponiveis}
           unidadeObrigatoria={unidadeObrigatoria}
           unidadesListadas={unidadesListadas}
+          unidadesSelecionadas={unidadesSelecionadas}
           idsSelecionados={idsSelecionados}
           todasUnidades={todasUnidades}
           filtroUa={filtroUa}

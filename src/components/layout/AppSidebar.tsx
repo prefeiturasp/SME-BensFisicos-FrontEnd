@@ -1,5 +1,4 @@
 import {
-  Settings,
   X,
   Menu,
   ChevronDown,
@@ -88,17 +87,6 @@ const menuItems = [
     title: 'Usuários',
     icon: Users,
     url: '/usuarios',
-  },
-  {
-    type: 'group' as const,
-    title: 'Configurações',
-    icon: Settings,
-    items: [
-      {
-        title: 'Trocar Senha',
-        url: '/trocar-senha',
-      },
-    ],
   },
 ]
 

@@ -1,13 +1,23 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Trash2, Plus } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Trash2, Plus, Info } from 'lucide-react'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
+import { valorSelectFormato } from '../utils/formato-bem'
 
 export type LinhaBem = {
   numero_patrimonial: string
   numero_formato_antigo: boolean
   sem_numeracao: boolean
   localizacao: string
+  numero_processo: string
 }
 
 export type LinhaBemRowProps = Readonly<{
@@ -18,11 +28,12 @@ export type LinhaBemRowProps = Readonly<{
   removeLinha: (index: number) => void
   addLinha: () => void
   isLast: boolean
+  podeRemover?: boolean
   errors?: Record<string, string>
 }>
 
 const INPUT_CLASS =
-  'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
+  '!h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 
 export function LinhaBemRow({
   linha,
@@ -32,6 +43,7 @@ export function LinhaBemRow({
   removeLinha,
   addLinha,
   isLast,
+  podeRemover = true,
   errors,
 }: LinhaBemRowProps) {
 
@@ -41,13 +53,47 @@ export function LinhaBemRow({
     semNumeracaoInicial: linha.sem_numeracao,
   })
 
+  // O Radix Select não aceita SelectItem com value="" (lança erro em tempo
+  // de execução — a string vazia é reservada internamente para representar
+  // "nenhuma seleção"/placeholder). Por isso usamos um valor sentinela só
+  // para o item "Selecione", convertendo de/para "" (o valor "sem seleção"
+  // vindo de valorSelectFormato) na fronteira deste componente.
+  const SELECIONE_SENTINEL = '__selecione__'
+
+  const valorFormato = valorSelectFormato(
+    linha.numero_formato_antigo,
+    linha.sem_numeracao
+  )
+  const valorFormatoSelect = valorFormato === '' ? SELECIONE_SENTINEL : valorFormato
+
+  const handleFormatoChange = (valorSelecionado: string) => {
+    const valor = valorSelecionado === SELECIONE_SENTINEL ? '' : valorSelecionado
+    const newLinhas = [...linhas]
+
+    if (valor === 'formato_anterior') {
+      newLinhas[index].numero_formato_antigo = true
+      newLinhas[index].sem_numeracao = false
+      numeroHook.ativarFormatoAntigo()
+    } else if (valor === 'sem_numeracao') {
+      newLinhas[index].numero_formato_antigo = false
+      newLinhas[index].sem_numeracao = true
+      newLinhas[index].numero_patrimonial = ''
+    } else {
+      newLinhas[index].numero_formato_antigo = false
+      newLinhas[index].sem_numeracao = false
+      numeroHook.desativarFormatoAntigo()
+    }
+
+    setLinhas(newLinhas)
+  }
+
   return (
-    <div className="grid grid-cols-[1.4fr_auto_auto_1fr_auto] gap-6 items-start border rounded p-4">
+    <div className="grid grid-cols-[1.2fr_1fr_1fr_1.2fr_auto] gap-6 items-start border rounded p-4">
 
       {/* NÚMERO PATRIMONIAL */}
       <div className="space-y-1">
         <label htmlFor={`numero_patrimonial_${index}`} className="text-sm font-semibold text-gray-700">
-          Número Patrimonial
+          Número Patrimonial <span className="text-red-500">*</span>
         </label>
         <Input
           id={`numero_patrimonial_${index}`}
@@ -62,61 +108,39 @@ export function LinhaBemRow({
             setLinhas(newLinhas)
           }}
         />
-        {errors?.numero_patrimonial ? (
+        {errors?.numero_patrimonial && (
           <p className="text-xs text-red-500">{errors.numero_patrimonial}</p>
-        ) : (
-          <p className="text-xs text-gray-400">Formato padrão: 000.000000000-0</p>
         )}
       </div>
 
-      {/* FORMATO ANTERIOR */}
-      <div className="space-y-1 pt-6">
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={linha.numero_formato_antigo}
-            disabled={linha.sem_numeracao}
-            onChange={(e) => {
-              const newLinhas = [...linhas]
-              newLinhas[index].numero_formato_antigo = e.target.checked
-              setLinhas(newLinhas)
-              if (e.target.checked) {
-                numeroHook.ativarFormatoAntigo()
-              } else {
-                numeroHook.desativarFormatoAntigo()
-              }
-            }}
-          />
-          <span>Formato anterior</span>
-        </label>
-        <p className="text-xs text-gray-400 whitespace-nowrap">
-          Se marcado, não valida formato do número (valor livre).
-        </p>
-      </div>
+      {/* FORMATO */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5">
+          <label htmlFor={`formato_${index}`} className="text-sm font-semibold text-gray-700">
+            Formato
+          </label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info size={14} className="text-gray-400 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="max-w-70">
+              Se marcado “Formato anterior”, não valida o formato do número (valor
+              livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+              automaticamente.
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
-      {/* SEM NUMERAÇÃO */}
-      <div className="space-y-1 pt-6">
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={linha.sem_numeracao}
-            onChange={(e) => {
-              const newLinhas = [...linhas]
-              newLinhas[index].sem_numeracao = e.target.checked
-
-              if (e.target.checked) {
-                newLinhas[index].numero_patrimonial = ''
-                newLinhas[index].numero_formato_antigo = false
-              }
-
-              setLinhas(newLinhas)
-            }}
-          />
-          <span>Sem número patrimonial</span>
-        </label>
-        <p className="text-xs text-gray-400 whitespace-nowrap">
-          Se marcado, o sistema atribui automaticamente.
-        </p>
+        <Select value={valorFormatoSelect} onValueChange={handleFormatoChange}>
+          <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={SELECIONE_SENTINEL}>Selecione</SelectItem>
+            <SelectItem value="formato_anterior">Formato anterior</SelectItem>
+            <SelectItem value="sem_numeracao">Sem número patrimonial</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* LOCALIZAÇÃO */}
@@ -127,7 +151,7 @@ export function LinhaBemRow({
         <Input
           id={`localizacao_${index}`}
           className={INPUT_CLASS}
-          placeholder="Localização"
+          placeholder="Insira a localização do bem"
           value={linha.localizacao}
           onChange={(e) => {
             const newLinhas = [...linhas]
@@ -140,21 +164,47 @@ export function LinhaBemRow({
         )}
       </div>
 
+      {/* NÚMERO DO PROCESSO DE INCORPORAÇÃO */}
+      <div className="space-y-1">
+        <label htmlFor={`numero_processo_${index}`} className="text-sm font-semibold text-gray-700">
+          Número do Processo de Incorporação
+        </label>
+        <Input
+          id={`numero_processo_${index}`}
+          className={INPUT_CLASS}
+          placeholder="Insira o nº do processo de incorporação"
+          value={linha.numero_processo}
+          onChange={(e) => {
+            const newLinhas = [...linhas]
+            newLinhas[index].numero_processo = e.target.value
+            setLinhas(newLinhas)
+          }}
+        />
+        {errors?.numero_processo && (
+          <p className="text-xs text-red-500">{errors.numero_processo}</p>
+        )}
+      </div>
+
       {/* AÇÕES */}
       <div className="flex gap-2 pt-6">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => removeLinha(index)}
-        >
-          <Trash2 size={18} />
-        </Button>
+        {podeRemover && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => removeLinha(index)}
+            aria-label="Remover bem"
+          >
+            <Trash2 size={18} />
+          </Button>
+        )}
 
         {isLast && (
           <Button
             type="button"
+            variant="outline"
             onClick={addLinha}
-            className="bg-[#00703C] hover:bg-[#005a30] text-white h-10 w-10 p-0"
+            aria-label="Adicionar bem"
+            className="border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white h-10 w-10 p-0"
           >
             <Plus size={18} />
           </Button>

@@ -594,3 +594,263 @@ describe('conciliacoesService.finalizar', () => {
     await expect(conciliacoesService.finalizar(1)).rejects.toThrow(/finalizar/i);
   });
 });
+
+describe('conciliacoesService.retrieveItem', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const itemDetail = {
+    id: 42,
+    conciliacao: 1,
+    conciliacao_numero: 'CONC-2025-0001',
+    conciliacao_status: 'em_aberto' as const,
+    unidade_administrativa: 7,
+    unidade_administrativa_sigla: 'DRE-SM',
+    bem: {
+      id: 123,
+      numero_patrimonial: 'PAT-000123',
+      nome: 'Notebook Dell',
+      descricao: 'Notebook 14',
+      marca: 'Dell',
+      modelo: 'Latitude',
+      valor_unitario: '4500.00',
+      status: 'ativo',
+      localizacao: 'Sala 12',
+      bloqueado_conciliacao: false,
+    },
+    situacao: 'divergente' as const,
+    situacao_display: 'Divergente',
+    observacao: '',
+    divergencia: 'Local divergente',
+    tem_ocorrencia: true,
+    permite_registrar_ocorrencia: true,
+    atualizado_por: null,
+    atualizado_por_nome: '',
+    atualizado_em: '2025-01-15T10:00:00Z',
+    pode_marcar_como_encontrado: false,
+    pode_resolver_situacao: false,
+    conciliacao_esta_aberto: true,
+    ocorrencias: [
+      {
+        id: 99,
+        situacao: 'divergente' as const,
+        situacao_display: 'Divergente',
+        observacao: 'obs',
+        divergencia: 'Local divergente',
+        registrado_por: 7,
+        registrado_por_nome: 'Maria Souza',
+        registrado_por_rf: '7654321',
+        registrado_em: '2025-06-10T14:25:00Z',
+      },
+    ],
+  };
+
+  it('busca o detalhe do item via GET /inventario/conciliacoes/{id}/itens/{itemId}/', async () => {
+    mockedGet.mockResolvedValueOnce({ data: itemDetail });
+
+    await expect(conciliacoesService.retrieveItem(1, 42)).resolves.toEqual(itemDetail);
+
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/inventario/conciliacoes/1/itens/42/',
+    );
+  });
+
+  it('repassa detalhe do backend em erros com detail', async () => {
+    const error = new AxiosError('Not Found', '404', undefined, undefined, {
+      status: 404,
+      statusText: 'Not Found',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Item nao encontrado.' },
+    });
+    mockedGet.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.retrieveItem(1, 42)).rejects.toThrow(
+      'Item nao encontrado.',
+    );
+  });
+
+  it('converte erro de conexao em mensagem amigavel', async () => {
+    mockedGet.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(conciliacoesService.retrieveItem(1, 42)).rejects.toThrow(/servidor/);
+  });
+
+  it('usa mensagem padrao quando o backend nao envia detalhe', async () => {
+    const error = new AxiosError('Server Error', '500', undefined, undefined, {
+      status: 500,
+      statusText: 'Server Error',
+      headers: {},
+      config: {} as never,
+      data: {},
+    });
+    mockedGet.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.retrieveItem(1, 42)).rejects.toThrow(
+      /item da concilia/i,
+    );
+  });
+});
+
+describe('conciliacoesService.listSituacoesDisponiveis', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('busca situacoes via GET /inventario/conciliacoes/{id}/itens/{itemId}/situacoes-disponiveis/', async () => {
+    const opcoes = [
+      { value: 'encontrado_sem_divergencia', label: 'Encontrado sem divergência' },
+      { value: 'encontrado', label: 'Encontrado' },
+    ];
+    mockedGet.mockResolvedValueOnce({ data: opcoes });
+
+    await expect(conciliacoesService.listSituacoesDisponiveis(1, 42)).resolves.toEqual(opcoes);
+
+    expect(mockedGet).toHaveBeenCalledWith(
+      '/inventario/conciliacoes/1/itens/42/situacoes-disponiveis/',
+    );
+  });
+
+  it('repassa detalhe do backend em erros com detail', async () => {
+    const error = new AxiosError('Bad Request', '400', undefined, undefined, {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Inventario fechado nao permite edicoes.' },
+    });
+    mockedGet.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.listSituacoesDisponiveis(1, 42)).rejects.toThrow(
+      'Inventario fechado nao permite edicoes.',
+    );
+  });
+
+  it('converte erro de conexao em mensagem amigavel', async () => {
+    mockedGet.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(conciliacoesService.listSituacoesDisponiveis(1, 42)).rejects.toThrow(
+      /servidor/,
+    );
+  });
+});
+
+describe('conciliacoesService.upsertOcorrencia', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('envia payload para POST /inventario/conciliacoes/{id}/itens/{itemId}/ocorrencias/', async () => {
+    const itemDetail = { id: 42 };
+    mockedPost.mockResolvedValueOnce({ data: itemDetail });
+
+    await expect(
+      conciliacoesService.upsertOcorrencia(1, 42, {
+        situacao: 'divergente',
+        divergencia: 'detalhes',
+      }),
+    ).resolves.toEqual(itemDetail);
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/inventario/conciliacoes/1/itens/42/ocorrencias/',
+      {
+        situacao: 'divergente',
+        divergencia: 'detalhes',
+      },
+    );
+  });
+
+  it('repassa erros 400 sem tratamento adicional para o formulario', async () => {
+    const error = new AxiosError('Bad Request', '400', undefined, undefined, {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as never,
+      data: { divergencia: ['Campo obrigatorio.'] },
+    });
+    mockedPost.mockRejectedValueOnce(error);
+
+    await expect(
+      conciliacoesService.upsertOcorrencia(1, 42, {
+        situacao: 'divergente',
+        divergencia: '',
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it('repassa detalhe do backend em erros nao-400 com detail', async () => {
+    const error = new AxiosError('Bad Request', '403', undefined, undefined, {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Inventario fechado nao permite edicoes.' },
+    });
+    mockedPost.mockRejectedValueOnce(error);
+
+    await expect(
+      conciliacoesService.upsertOcorrencia(1, 42, { situacao: 'encontrado' }),
+    ).rejects.toThrow('Inventario fechado nao permite edicoes.');
+  });
+
+  it('converte erro de conexao em mensagem amigavel', async () => {
+    mockedPost.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(
+      conciliacoesService.upsertOcorrencia(1, 42, { situacao: 'encontrado' }),
+    ).rejects.toThrow(/servidor/);
+  });
+
+  it('usa mensagem padrao para erros nao mapeados', async () => {
+    mockedPost.mockRejectedValueOnce(new Error('erro inesperado'));
+
+    await expect(
+      conciliacoesService.upsertOcorrencia(1, 42, { situacao: 'encontrado' }),
+    ).rejects.toThrow(/registrar/i);
+  });
+});
+
+describe('conciliacoesService.removerOcorrencia', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('chama POST /inventario/conciliacoes/{id}/itens/{itemId}/ocorrencias/remover/', async () => {
+    const itemDetail = { id: 42 };
+    mockedPost.mockResolvedValueOnce({ data: itemDetail });
+
+    await expect(conciliacoesService.removerOcorrencia(1, 42)).resolves.toEqual(itemDetail);
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/inventario/conciliacoes/1/itens/42/ocorrencias/remover/',
+    );
+  });
+
+  it('repassa detalhe do backend em erros nao-400 com detail', async () => {
+    const error = new AxiosError('Bad Request', '403', undefined, undefined, {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      config: {} as never,
+      data: { detail: 'Item sem ocorrencia.' },
+    });
+    mockedPost.mockRejectedValueOnce(error);
+
+    await expect(conciliacoesService.removerOcorrencia(1, 42)).rejects.toThrow(
+      'Item sem ocorrencia.',
+    );
+  });
+
+  it('converte erro de conexao em mensagem amigavel', async () => {
+    mockedPost.mockRejectedValueOnce(new AxiosError('Network Error'));
+
+    await expect(conciliacoesService.removerOcorrencia(1, 42)).rejects.toThrow(/servidor/);
+  });
+
+  it('usa mensagem padrao para erros nao mapeados', async () => {
+    mockedPost.mockRejectedValueOnce(new Error('erro inesperado'));
+
+    await expect(conciliacoesService.removerOcorrencia(1, 42)).rejects.toThrow(/excluir/i);
+  });
+});

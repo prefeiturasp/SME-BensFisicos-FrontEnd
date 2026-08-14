@@ -337,6 +337,20 @@ describe('BensListPage', () => {
     expect(setPage).toHaveBeenCalledWith(1)
   })
 
+  it('seleciona o status de transferidos e volta para a primeira página', () => {
+    const setStatusFilter = vi.fn()
+    const setPage = vi.fn()
+    mockPage({ setStatusFilter, setPage })
+    renderWithProviders()
+
+    fireEvent.change(screen.getByTestId('filtro-status'), {
+      target: { value: 'transferido' },
+    })
+
+    expect(setStatusFilter).toHaveBeenCalledWith('transferido')
+    expect(setPage).toHaveBeenCalledWith(1)
+  })
+
   it('atualiza o escopo e volta para a primeira página', () => {
     const setEscopoFilter = vi.fn()
     const setPage = vi.fn()
@@ -391,6 +405,7 @@ describe('BensListPage', () => {
     expect(setBensBaixados).toHaveBeenCalledWith(true)
     expect(setPage).toHaveBeenCalledWith(1)
   })
+
 
   // ===============================
   // ORDENAÇÃO

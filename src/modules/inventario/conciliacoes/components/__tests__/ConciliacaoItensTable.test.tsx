@@ -109,10 +109,31 @@ describe('ConciliacaoItensTable', () => {
       'aria-label',
       'Visualizar item 001.052485928-0',
     );
+    expect(actionButton.querySelector('svg')).toHaveClass(
+      'size-[22px]',
+      'text-[#00703C]',
+    );
 
     fireEvent.click(actionButton);
 
     expect(onPageChange).not.toHaveBeenCalled();
+  });
+
+  it('dispara onSelectItem ao clicar no botao de acao quando informado', () => {
+    const onSelectItem = vi.fn();
+
+    render(
+      <ConciliacaoItensTable
+        {...baseProps}
+        itens={[baseItem]}
+        onSelectItem={onSelectItem}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('conciliacao-item-action-42'));
+
+    expect(onSelectItem).toHaveBeenCalledTimes(1);
+    expect(onSelectItem).toHaveBeenCalledWith(baseItem);
   });
 
   it('dispara onSort ao clicar em colunas ordenaveis', () => {

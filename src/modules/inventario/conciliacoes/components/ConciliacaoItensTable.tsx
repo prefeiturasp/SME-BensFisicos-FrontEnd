@@ -23,6 +23,7 @@ interface Props {
   totalPages: number;
   onPageChange: (page: number) => void;
   onSort: (field: ConciliacaoItemSortableField) => void;
+  onSelectItem?: (item: ConciliacaoItem) => void;
 }
 
 const HEADERS: ReadonlyArray<UnidadesListTableHeader<ConciliacaoItemSortableField>> = [
@@ -52,6 +53,7 @@ export function ConciliacaoItensTable({
   totalPages,
   onPageChange,
   onSort,
+  onSelectItem,
 }: Readonly<Props>) {
   const columns = [
     { key: 'numero_patrimonial', render: (item: ConciliacaoItem) => item.bem.numero_patrimonial },
@@ -110,8 +112,9 @@ export function ConciliacaoItensTable({
             variant='ghost'
             aria-label={`Visualizar item ${item.bem.numero_patrimonial}`}
             data-testid={`conciliacao-item-action-${item.id}`}
+            onClick={() => onSelectItem?.(item)}
           >
-            <Eye size={18} className='text-[#00703C]' />
+            <Eye className='size-[22px] text-[#00703C]' />
           </Button>
         )}
         hideDefaultActions
