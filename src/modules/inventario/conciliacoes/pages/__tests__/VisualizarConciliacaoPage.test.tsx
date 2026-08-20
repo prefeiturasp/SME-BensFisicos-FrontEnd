@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   afterEach,
@@ -84,7 +83,7 @@ let conciliacaoItensState = {
   ordering: 'bem__numero_patrimonial' as const,
   numeroPatrimonialInput: '',
   nomeInput: '',
-  situacaoFilter: 'todos' as const,
+  situacaoFilter: [] as const,
   setPage: vi.fn(),
   setOrdering: vi.fn(),
   setNumeroPatrimonialInput: vi.fn(),
@@ -118,42 +117,32 @@ vi.mock('@/hooks/useUnidadesPagination', () => ({
   }),
 }));
 
-vi.mock('@/components/ui/select', () => {
-  function Select({
-    children,
-    value,
-    onValueChange,
-  }: Readonly<{
-    children: ReactNode;
-    value: string;
-    onValueChange: (value: string) => void;
-  }>) {
-    const childTestId = Children.toArray(children).find(
-      (child): child is ReactElement<{ 'data-testid'?: string }> =>
-        isValidElement(child) && 'data-testid' in (child.props as object),
-    )?.props?.['data-testid'];
-
-    return (
-      <select
-        data-testid={childTestId ?? `select-${value}`}
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-      >
-        {children}
-      </select>
-    );
-  }
-
-  return {
-    Select,
-    SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-    SelectValue: () => null,
-    SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-    SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
-      <option value={value}>{children}</option>
-    ),
-  };
-});
+vi.mock('@/components/ui/checkbox', () => ({
+  Checkbox: ({
+    checked,
+    disabled,
+    onCheckedChange,
+    'data-testid': testId,
+    id,
+  }: {
+    checked?: boolean;
+    disabled?: boolean;
+    id?: string;
+    'data-testid'?: string;
+    onCheckedChange?: (checked: boolean) => void;
+  }) => (
+    <input
+      type='checkbox'
+      id={id}
+      data-testid={testId}
+      checked={!!checked}
+      onChange={(event) => {
+        if (disabled) return
+        onCheckedChange?.(event.target.checked)
+      }}
+    />
+  ),
+}));
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -200,7 +189,7 @@ describe('VisualizarConciliacaoPage', () => {
       ordering: 'bem__numero_patrimonial',
       numeroPatrimonialInput: '',
       nomeInput: '',
-      situacaoFilter: 'todos',
+      situacaoFilter: [],
       setPage: vi.fn(),
       setOrdering: vi.fn(),
       setNumeroPatrimonialInput: vi.fn(),
@@ -376,13 +365,12 @@ describe('VisualizarConciliacaoPage', () => {
     fireEvent.change(screen.getByTestId('conciliacao-itens-nome-input'), {
       target: { value: 'Mesa' },
     });
-    fireEvent.change(screen.getByTestId('conciliacao-itens-situacao-select'), {
-      target: { value: 'divergente' },
-    });
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Divergente' }));
 
     expect(conciliacaoItensState.setNumeroPatrimonialInput).toHaveBeenCalledWith('001');
     expect(conciliacaoItensState.setNomeInput).toHaveBeenCalledWith('Mesa');
-    expect(conciliacaoItensState.setSituacaoFilter).toHaveBeenCalledWith('divergente');
+    expect(conciliacaoItensState.setSituacaoFilter).toHaveBeenCalledWith(['divergente']);
   });
 
   it('exibe os itens retornados pelo hook', () => {
