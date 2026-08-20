@@ -5,7 +5,6 @@ import type {
   Conciliacao,
   ConciliacaoHistoricoGrupo,
   ConciliacaoItemDetail,
-  ConciliacaoItemSituacaoFilter,
   ConciliacaoItensListParams,
   ConciliacaoOcorrenciaPayload,
   ConciliacaoSituacaoDisponivel,
@@ -56,8 +55,9 @@ function buildItensListParams(params?: ConciliacaoItensListParams) {
     queryParams.search = search;
   }
 
-  if (params?.situacao && params.situacao !== ('todos' as ConciliacaoItemSituacaoFilter)) {
-    queryParams.situacao = params.situacao;
+  if (Array.isArray(params?.situacao)) {
+    const valores = params.situacao.filter((item) => item && item !== 'todos');
+    if (valores.length > 0) queryParams.situacao = valores.join(',');
   }
 
   if (params?.ordering) queryParams.ordering = params.ordering;
