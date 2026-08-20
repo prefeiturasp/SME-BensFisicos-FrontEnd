@@ -85,6 +85,11 @@ const mockTransferencia = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Garante timers reais neste arquivo: userEvent depende deles para processar
+  // cliques. Se outro arquivo de teste deixar fake timers ativos (vazamento
+  // entre arquivos quando a suíte roda sem isolamento), a navegação de páginas
+  // aqui não avançaria e as asserções de paginação falhariam.
+  vi.useRealTimers()
 
   vi.mocked(useAuth).mockReturnValue({
     isAuthenticated: true,
