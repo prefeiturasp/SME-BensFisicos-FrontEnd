@@ -1,50 +1,33 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ConciliacaoItensFilters } from '../ConciliacaoItensFilters';
 import type { ConciliacaoItemSituacaoFilter } from '../../types/conciliacoes.types';
 
-vi.mock('@/components/ui/select', () => {
-  function Select({
-    children,
-    value,
-    onValueChange,
+vi.mock('@/components/ui/checkbox', () => ({
+  Checkbox: ({
+    checked,
+    disabled,
+    onCheckedChange,
   }: {
-    children: ReactNode;
-    value: string;
-    onValueChange: (value: string) => void;
-  }) {
-    const childTestId = Children.toArray(children).find(
-      (child): child is ReactElement<{ 'data-testid'?: string }> =>
-        isValidElement(child) && 'data-testid' in (child.props as object),
-    )?.props?.['data-testid'];
-
-    return (
-      <select
-        data-testid={childTestId ?? `select-${value}`}
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-      >
-        {children}
-      </select>
-    );
-  }
-
-  return {
-    Select,
-    SelectTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
-    SelectValue: () => null,
-    SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-    SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
-      <option value={value}>{children}</option>
-    ),
-  };
-});
+    checked?: boolean;
+    disabled?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+  }) => (
+    <input
+      type='checkbox'
+      checked={!!checked}
+      onChange={(event) => {
+        if (disabled) return
+        onCheckedChange?.(event.target.checked)
+      }}
+    />
+  ),
+}));
 
 const baseProps = {
   numeroPatrimonial: '',
   nome: '',
-  situacao: 'todos' as ConciliacaoItemSituacaoFilter,
+  situacao: [] as ConciliacaoItemSituacaoFilter,
   onNumeroPatrimonialChange: vi.fn(),
   onNomeChange: vi.fn(),
   onSituacaoChange: vi.fn(),
@@ -62,6 +45,12 @@ describe('ConciliacaoItensFilters', () => {
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Digite o Nome do bem')).toBeInTheDocument();
     expect(screen.getByTestId('conciliacao-itens-situacao-select')).toBeInTheDocument();
+  });
+
+  it('exibe "Todas" no botao quando nenhuma situacao esta selecionada', () => {
+    render(<ConciliacaoItensFilters {...baseProps} />);
+
+    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveTextContent('Todas');
   });
 
   it('dispara onNumeroPatrimonialChange ao digitar', () => {
@@ -93,30 +82,84 @@ describe('ConciliacaoItensFilters', () => {
     expect(onNomeChange).toHaveBeenCalledWith('POLTRONA');
   });
 
-  it('dispara onSituacaoChange ao alterar o select de situacao', () => {
-    const onSituacaoChange = vi.fn();
-
-    render(
-      <ConciliacaoItensFilters {...baseProps} onSituacaoChange={onSituacaoChange} />,
-    );
-
-    fireEvent.change(screen.getByTestId('conciliacao-itens-situacao-select'), {
-      target: { value: 'nao_encontrado' },
-    });
-
-    expect(onSituacaoChange).toHaveBeenCalledWith('nao_encontrado');
-  });
-
-  it('expõe opcoes de situacao incluindo "Todas"', () => {
+  it('abre o dropdown com as opcoes de situacao ao clicar no botao', () => {
     render(<ConciliacaoItensFilters {...baseProps} />);
 
-    expect(screen.getByRole('option', { name: 'Todas' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Encontrado sem divergência' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Encontrado' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Não encontrado' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Divergente' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Em processo de baixa' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Baixa Física' })).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+
+    expect(screen.getByRole('checkbox', { name: 'Encontrado sem divergência' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Encontrado' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Não encontrado' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Divergente' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Em processo de baixa' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Baixa Física' })).toBeInTheDocument();
+  });
+
+  it('marca multiplas situacoes e reflete todas as selecoes no estado', () => {
+    const onSituacaoChange = vi.fn();
+    let current = [] as ConciliacaoItemSituacaoFilter;
+    const renderWith = (value: ConciliacaoItemSituacaoFilter) => (
+      <ConciliacaoItensFilters
+        {...baseProps}
+        situacao={value}
+        onSituacaoChange={(next) => {
+          current = next;
+          onSituacaoChange(next);
+        }}
+      />
+    );
+
+    const { rerender } = render(renderWith(current));
+
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Divergente' }));
+    expect(onSituacaoChange).toHaveBeenLastCalledWith(['divergente']);
+
+    rerender(renderWith(current));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Não encontrado' }));
+    expect(onSituacaoChange).toHaveBeenLastCalledWith(['divergente', 'nao_encontrado']);
+  });
+
+  it('exibe os rotulos das situacoes selecionadas separados por virgula', () => {
+    render(
+      <ConciliacaoItensFilters
+        {...baseProps}
+        situacao={['divergente', 'nao_encontrado']}
+      />,
+    );
+
+    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveTextContent(
+      'Divergente, Não encontrado',
+    );
+  });
+
+  it('exibe "Todas" ao desmarcar todas as situacoes selecionadas', () => {
+    const onSituacaoChange = vi.fn();
+    let current = ['divergente', 'nao_encontrado'] as ConciliacaoItemSituacaoFilter;
+    const renderWith = (value: ConciliacaoItemSituacaoFilter) => (
+      <ConciliacaoItensFilters
+        {...baseProps}
+        situacao={value}
+        onSituacaoChange={(next) => {
+          current = next;
+          onSituacaoChange(next);
+        }}
+      />
+    );
+
+    const { rerender } = render(renderWith(current));
+
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Divergente' }));
+    expect(onSituacaoChange).toHaveBeenLastCalledWith(['nao_encontrado']);
+
+    rerender(renderWith(current));
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Não encontrado' }));
+    expect(onSituacaoChange).toHaveBeenLastCalledWith([]);
   });
 
   it('aceita valores controlados via props', () => {
@@ -124,19 +167,18 @@ describe('ConciliacaoItensFilters', () => {
 
     expect(screen.getByTestId('conciliacao-itens-numero-input')).toHaveValue('');
     expect(screen.getByTestId('conciliacao-itens-nome-input')).toHaveValue('');
-    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveValue('todos');
 
     rerender(
       <ConciliacaoItensFilters
         {...baseProps}
         numeroPatrimonial='001.004034553-9'
         nome='POLTRONA FIXA'
-        situacao='divergente'
+        situacao={['divergente']}
       />,
     );
 
     expect(screen.getByTestId('conciliacao-itens-numero-input')).toHaveValue('001.004034553-9');
     expect(screen.getByTestId('conciliacao-itens-nome-input')).toHaveValue('POLTRONA FIXA');
-    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveValue('divergente');
+    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveTextContent('Divergente');
   });
 });

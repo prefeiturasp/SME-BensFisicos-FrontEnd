@@ -1,11 +1,6 @@
-import { Search } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import type {
   ConciliacaoItemSituacao,
   ConciliacaoItemSituacaoFilter,
@@ -48,6 +43,87 @@ const SITUACAO_ORDER: ReadonlyArray<ConciliacaoItemSituacao> = [
   'em_processo_de_baixa_fisica',
   'baixa_fisica',
 ];
+
+function SituacaoMultiSelect({
+  value,
+  onChange,
+}: Readonly<{
+  value: ConciliacaoItemSituacaoFilter;
+  onChange: (value: ConciliacaoItemSituacaoFilter) => void;
+}>) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedLabel = useMemo(() => {
+    if (value.length === 0) return 'Todas';
+
+    const labels = value
+      .map((situacao) => SITUACAO_LABELS[situacao as ConciliacaoItemSituacao])
+      .filter(Boolean);
+
+    return labels.length > 0 ? labels.join(', ') : 'Todas';
+  }, [value]);
+
+  const toggleSituacao = (situacao: string) => {
+    onChange(
+      value.includes(situacao as ConciliacaoItemSituacao)
+        ? value.filter((item) => item !== situacao)
+        : [...value, situacao as ConciliacaoItemSituacao],
+    );
+  };
+
+  return (
+    <div ref={ref} className='relative'>
+      <button
+        type='button'
+        onClick={() => setOpen((prev) => !prev)}
+        className={SELECT_TRIGGER_CLASS}
+        aria-haspopup='listbox'
+        aria-expanded={open}
+        data-testid='conciliacao-itens-situacao-select'
+      >
+        <span className='flex w-full items-center justify-between gap-2'>
+          <span className='truncate text-left'>{selectedLabel}</span>
+          <ChevronDown className='size-4 shrink-0 text-gray-500' />
+        </span>
+      </button>
+
+      {open && (
+        <div className='absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-xl'>
+          <div className='p-1'>
+            {SITUACAO_ORDER.map((situacao) => {
+              const checked = value.includes(situacao);
+
+              return (
+                <label
+                  key={situacao}
+                  className='flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm font-normal text-gray-700 hover:bg-gray-50'
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => toggleSituacao(situacao)}
+                  />
+                  <span>{SITUACAO_LABELS[situacao]}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ConciliacaoItensFilters({
   numeroPatrimonial,
@@ -97,30 +173,7 @@ export function ConciliacaoItensFilters({
 
       <label className={LABEL_CLASS}>
         <span>Filtrar por Situação</span>
-        <Select
-          value={situacao}
-          onValueChange={(value) =>
-            onSituacaoChange(value as ConciliacaoItemSituacaoFilter)
-          }
-        >
-          <SelectTrigger
-            className={SELECT_TRIGGER_CLASS}
-            data-testid='conciliacao-itens-situacao-select'
-          >
-            <SelectValue placeholder='Todas' />
-          </SelectTrigger>
-          <SelectContent
-            position='popper'
-            className='w-(--radix-select-trigger-width)'
-          >
-            <SelectItem value='todos'>Todas</SelectItem>
-            {SITUACAO_ORDER.map((value) => (
-              <SelectItem key={value} value={value}>
-                {SITUACAO_LABELS[value]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SituacaoMultiSelect value={situacao} onChange={onSituacaoChange} />
       </label>
     </div>
   );
