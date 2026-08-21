@@ -37,6 +37,24 @@ vi.mock('lucide-react', () => ({
   Paperclip: () => <svg data-testid='icon-paperclip' />,
 }))
 
+// Select do Radix depende de portais/pointer events; mockamos com um <select>
+// nativo simples que preserva value/onValueChange e renderiza as opções.
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ value, onValueChange, children }: any) => (
+    <select
+      data-testid='select-ua'
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+    >
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: ({ placeholder }: any) => <option value=''>{placeholder}</option>,
+  SelectContent: ({ children }: any) => <>{children}</>,
+  SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+}))
+
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
@@ -54,6 +72,10 @@ function makeHookMock(overrides: Partial<ReturnType<typeof useBemImportModule.us
     novoUpload: vi.fn(),
     importar: vi.fn(),
     cancelar: vi.fn(),
+    precisaSelecionarUa: false,
+    uasDisponiveis: [],
+    uaSelecionadaId: null,
+    setUaSelecionadaId: vi.fn(),
   }
 
   return { ...defaults, ...overrides }
@@ -541,5 +563,48 @@ describe('BemImportPage — baixarTemplate', () => {
     ).not.toThrow()
 
     createElementSpy.mockRestore()
+  })
+})
+describe('BemImportPage — seleção de Unidade Administrativa (UO)', () => {
+  beforeEach(() => {
+    // Restaura spies vazados de describes anteriores (ex.: document.body
+    // .appendChild mockado nos testes de download do template), que de outro
+    // modo quebram o render do testing-library.
+    vi.restoreAllMocks()
+  })
+
+  it('não renderiza o select quando o usuário não precisa selecionar UA', () => {
+    mockHook({ precisaSelecionarUa: false })
+    render(<BemImportPage />)
+    expect(screen.queryByTestId('select-ua')).not.toBeInTheDocument()
+  })
+
+  it('renderiza o select com as UAs quando o usuário está em UO', () => {
+    mockHook({
+      precisaSelecionarUa: true,
+      uasDisponiveis: [
+        { id: 11, label: 'UA 11' },
+        { id: 12, label: 'UA 12' },
+      ],
+    })
+    render(<BemImportPage />)
+    expect(screen.getByTestId('select-ua')).toBeInTheDocument()
+    expect(screen.getByText('UA 11')).toBeInTheDocument()
+    expect(screen.getByText('UA 12')).toBeInTheDocument()
+  })
+
+  it('chama setUaSelecionadaId ao escolher uma UA', () => {
+    const setUaSelecionadaId = vi.fn()
+    mockHook({
+      precisaSelecionarUa: true,
+      uasDisponiveis: [
+        { id: 11, label: 'UA 11' },
+        { id: 12, label: 'UA 12' },
+      ],
+      setUaSelecionadaId,
+    })
+    render(<BemImportPage />)
+    fireEvent.change(screen.getByTestId('select-ua'), { target: { value: '12' } })
+    expect(setUaSelecionadaId).toHaveBeenCalledWith(12)
   })
 })
