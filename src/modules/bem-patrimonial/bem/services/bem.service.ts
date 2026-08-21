@@ -175,9 +175,17 @@ export const bemService = {
    * pois esses status carregam payload estruturado que a UI precisa exibir.
    * Somente erros de infraestrutura (5xx, sem conexão) são lançados como exceção.
    */
-  importar: async (arquivo: File): Promise<{ status: number; data: ImportacaoResultado }> => {
+  importar: async (
+    arquivo: File,
+    unidadeAdministrativaId?: number | null,
+  ): Promise<{ status: number; data: ImportacaoResultado }> => {
     const formData = new FormData()
     formData.append('arquivo', arquivo)
+    // Enviada apenas quando o usuário está logado numa UO e escolheu a UA de
+    // destino; para quem está logado numa UA, o backend usa a UA do usuário.
+    if (unidadeAdministrativaId != null) {
+      formData.append('unidade_administrativa_id', String(unidadeAdministrativaId))
+    }
 
     try {
       const response = await api.post('/bens/importar/', formData, {

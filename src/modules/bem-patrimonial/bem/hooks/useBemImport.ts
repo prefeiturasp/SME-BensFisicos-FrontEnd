@@ -62,10 +62,14 @@ export function useBemImport() {
     const uoAtivaId = user?.uo_ativa?.id
     const grupo =
       grupos.find((g) => g.uo.id === uoAtivaId) ?? grupos[0]
-    return (grupo?.uas ?? []).map((ua) => ({
-      id: ua.unidade_administrativa_id,
-      label: ua.label ?? ua.nome,
-    }))
+    return (grupo?.uas ?? [])
+      .map((ua) => ({
+        // Usa unidade_administrativa_id; se ausente, cai para id (ambos são o
+        // id da UA no backend). Garante que o valor enviado nunca seja nulo.
+        id: ua.unidade_administrativa_id ?? ua.id,
+        label: ua.label ?? ua.nome,
+      }))
+      .filter((ua) => ua.id != null)
   }, [precisaSelecionarUa, user?.opcoes_escopo?.grupos, user?.uo_ativa?.id])
 
   // Pré-seleciona automaticamente quando há exatamente uma UA disponível.
