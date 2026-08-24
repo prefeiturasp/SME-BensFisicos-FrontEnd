@@ -5,6 +5,11 @@ import {
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { UnidadesPaginationItem } from '@/hooks/useUnidadesPagination';
 import { ConciliacaoItemSituacaoBadge } from './ConciliacaoItemSituacaoBadge';
 import type {
@@ -106,16 +111,24 @@ export function ConciliacaoItensTable({
         getRowKey={(item) => item.id}
         getViewAriaLabel={(item) => `Visualizar item ${item.bem.numero_patrimonial}`}
         renderActions={(item) => (
-          <Button
-            type='button'
-            size='icon'
-            variant='ghost'
-            aria-label={`Visualizar item ${item.bem.numero_patrimonial}`}
-            data-testid={`conciliacao-item-action-${item.id}`}
-            onClick={() => onSelectItem?.(item)}
-          >
-            <Eye className='size-[22px] text-[#00703C]' />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type='button'
+                size='icon'
+                variant='ghost'
+                aria-label={`Visualizar item ${item.bem.numero_patrimonial}`}
+                data-testid={`conciliacao-item-action-${item.id}`}
+                onClick={() => onSelectItem?.(item)}
+              >
+                <Eye className='size-[22px] text-[#00703C]' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side='top' sideOffset={6} className='max-w-70'>
+              Ao clicar no ícone, é possível visualizar as informações do Bem e
+              realizar o registro de ocorrências.
+            </TooltipContent>
+          </Tooltip>
         )}
         hideDefaultActions
       />

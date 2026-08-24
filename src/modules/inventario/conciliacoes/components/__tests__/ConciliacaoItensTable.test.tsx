@@ -119,6 +119,15 @@ describe('ConciliacaoItensTable', () => {
     expect(onPageChange).not.toHaveBeenCalled();
   });
 
+  it('associa o tooltip informativo ao botao de acao de cada item', () => {
+    render(<ConciliacaoItensTable {...baseProps} itens={[baseItem]} />);
+
+    const actionButton = screen.getByTestId('conciliacao-item-action-42');
+
+    expect(actionButton).toHaveAttribute('data-slot', 'tooltip-trigger');
+    expect(actionButton).toHaveAttribute('data-state', 'closed');
+  });
+
   it('dispara onSelectItem ao clicar no botao de acao quando informado', () => {
     const onSelectItem = vi.fn();
 
