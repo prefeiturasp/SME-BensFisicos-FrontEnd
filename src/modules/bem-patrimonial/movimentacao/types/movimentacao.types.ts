@@ -85,12 +85,29 @@ export interface MovimentacaoBemItemPayload {
   bem: number
 }
 
+export interface MovimentacaoFaixaNumeroPatrimonial {
+  numero_patrimonial_de: string
+  numero_patrimonial_ate?: string
+}
+
+export interface MovimentacaoBensLotePreviewPayload {
+  unidade_administrativa_origem: number
+  faixas?: MovimentacaoFaixaNumeroPatrimonial[]
+  selecionar_todos?: boolean
+}
+
+export interface MovimentacaoBensLotePreviewResponse {
+  itens: MovimentacaoBem[]
+}
+
 export interface MovimentacaoBemPatrimonialCreatePayload {
   unidade_administrativa_origem: number
   unidade_orcamentaria_destino: number
   unidade_administrativa_destino?: number
   observacao: string
-  itens: MovimentacaoBemItemPayload[]
+  itens?: MovimentacaoBemItemPayload[]
+  faixas?: MovimentacaoFaixaNumeroPatrimonial[]
+  selecionar_todos?: boolean
 }
 
 export interface MovimentacaoBemPatrimonialListParams {

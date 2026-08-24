@@ -1,11 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
 import AdicionarMovimentacaoPage from './AdicionarMovimentacaoPage'
-import { bemService } from '../../bem/services/bem.service'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 
@@ -26,7 +26,17 @@ vi.mock('@/components/AppBreadcrumb', () => ({
 }))
 
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ value, onValueChange, disabled, children }: any) => (
+  Select: ({
+    value,
+    onValueChange,
+    disabled,
+    children,
+  }: {
+    value?: string
+    onValueChange?: (value: string) => void
+    disabled?: boolean
+    children?: ReactNode
+  }) => (
     <select
       data-testid='select'
       value={value ?? ''}
@@ -36,31 +46,38 @@ vi.mock('@/components/ui/select', () => ({
       {children}
     </select>
   ),
-  SelectTrigger: ({ children }: any) => <>{children}</>,
+  SelectTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
   SelectValue: () => null,
-  SelectContent: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ value, children, disabled }: any) => (
+  SelectContent: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  SelectItem: ({
+    value,
+    children,
+    disabled,
+  }: {
+    value: string
+    children?: ReactNode
+    disabled?: boolean
+  }) => (
     <option value={value} disabled={disabled}>
       {children}
     </option>
   ),
 }))
 
-vi.mock('../../bem/services/bem.service', () => ({
-  bemService: {
-    list: vi.fn(),
-  },
-}))
-
-vi.mock('@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service', () => ({
-  unidadesAdministrativasService: {
-    list: vi.fn(),
-  },
-}))
+vi.mock(
+  '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service',
+  () => ({
+    unidadesAdministrativasService: {
+      list: vi.fn(),
+    },
+  }),
+)
 
 vi.mock('../services/movimentacao.service', () => ({
   movimentacaoService: {
     listOpcoesCadastro: vi.fn(),
+    resolverItensLote: vi.fn(),
+    listBensMovimentaveis: vi.fn(),
     create: vi.fn(),
   },
 }))
@@ -239,12 +256,10 @@ describe('AdicionarMovimentacaoPage', () => {
       loginAsync: vi.fn(),
     })
 
-    vi.mocked(bemService.list).mockResolvedValue({
-      count: 1,
-      next: null,
-      previous: null,
-      results: [makeBem()],
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({
+      itens: [makeBem()],
     })
+    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([makeBem()])
 
     vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
       count: 4,
@@ -411,26 +426,33 @@ describe('AdicionarMovimentacaoPage', () => {
     )
   })
 
-  it('deve permitir adicionar e remover linhas de itens', async () => {
+  it('deve adicionar uma faixa, exibir o resumo e permitir sua exclusão', async () => {
     renderPage()
 
-    expect(screen.getAllByPlaceholderText('Buscar bem patrimonial')).toHaveLength(1)
-    expect(screen.getByLabelText('Remover item')).toBeDisabled()
-
-    fireEvent.click(screen.getByLabelText('Adicionar item'))
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('Buscar bem patrimonial')).toHaveLength(2)
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
     })
-
-    expect(screen.getAllByLabelText('Remover item')[0]).not.toBeDisabled()
-    expect(screen.getAllByLabelText('Remover item')[1]).not.toBeDisabled()
-
-    fireEvent.click(screen.getAllByLabelText('Remover item')[0])
-    await waitFor(() => {
-      expect(screen.getAllByPlaceholderText('Buscar bem patrimonial')).toHaveLength(1)
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
+      target: { value: '001.000000002-2' },
     })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
 
-    expect(screen.getByLabelText('Remover item')).toBeDisabled()
+    await waitFor(() => {
+      expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
+        unidade_administrativa_origem: 10,
+        faixas: [
+          {
+            numero_patrimonial_de: '001.000000001-1',
+            numero_patrimonial_ate: '001.000000002-2',
+          },
+        ],
+      })
+    })
+    expect(screen.getByText('001.000000001-1 até 001.000000002-2')).toBeInTheDocument()
+    expect(screen.getByText('Notebook')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /excluir faixa/i }))
+    expect(screen.queryByText('001.000000001-1 até 001.000000002-2')).not.toBeInTheDocument()
   })
 
   it('deve manter o botão salvar desabilitado até preencher os critérios obrigatórios', async () => {
@@ -452,17 +474,28 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '11' } })
     expect(saveButton).toBeDisabled()
 
-    fireEvent.focus(screen.getByPlaceholderText('Buscar bem patrimonial'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Notebook')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
     })
-
-    fireEvent.click(screen.getByText('Notebook'))
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
 
     await waitFor(() => {
       expect(saveButton).not.toBeDisabled()
     })
+  })
+
+  it('deve informar o erro retornado ao incluir uma faixa inválida', async () => {
+    vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(
+      new Error('O(s) Bem(ns) com Número Patrimonial 001.000000002 não pode ser movimentado.'),
+    )
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('não pode ser movimentado')
   })
 
   it('deve exibir erro quando o salvamento falhar', async () => {
@@ -477,16 +510,13 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
     })
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '11' } })
-    fireEvent.change(screen.getByPlaceholderText('Digite uma observação'), {
-      target: { value: 'Observação de teste' },
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
     })
-    fireEvent.focus(screen.getByPlaceholderText('Buscar bem patrimonial'))
-
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
       expect(screen.getByText('Notebook')).toBeInTheDocument()
     })
-
-    fireEvent.click(screen.getByText('Notebook'))
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao salvar')
@@ -506,26 +536,13 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
     })
 
-    fireEvent.change(screen.getByPlaceholderText('Digite uma observação'), {
-      target: { value: 'Movimentação interna' },
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
     })
-
-    fireEvent.focus(screen.getByPlaceholderText('Buscar bem patrimonial'))
-
-    await waitFor(() => {
-      expect(bemService.list).toHaveBeenCalledWith({
-        search: '',
-        status: 'aprovado',
-        unidade_administrativa: 10,
-        pageSize: 20,
-      })
-    })
-
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
       expect(screen.getByText('Notebook')).toBeInTheDocument()
     })
-
-    fireEvent.click(screen.getByText('Notebook'))
 
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
 
@@ -533,8 +550,13 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(movimentacaoService.create).toHaveBeenCalledWith({
         unidade_administrativa_origem: 10,
         unidade_orcamentaria_destino: 200,
-        observacao: 'Movimentação interna',
-        itens: [{ bem: 1 }],
+        observacao: '',
+        faixas: [
+          {
+            numero_patrimonial_de: '001.000000001-1',
+            numero_patrimonial_ate: '001.000000001-1',
+          },
+        ],
       })
     })
 
@@ -542,5 +564,62 @@ describe('AdicionarMovimentacaoPage', () => {
       'Cadastro realizado com sucesso - A movimentação do bem foi cadastrada e enviada para aprovação.',
     )
     expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
+  })
+
+  it('deve usar a seleção de todos os bens aprovados no salvamento', async () => {
+    vi.mocked(movimentacaoService.create).mockResolvedValue(makeMovimentacaoDetail())
+    renderPage()
+    await waitForUoOptions()
+
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
+        unidade_administrativa_origem: 10,
+        selecionar_todos: true,
+      })
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.create).toHaveBeenCalledWith({
+        unidade_administrativa_origem: 10,
+        unidade_orcamentaria_destino: 200,
+        observacao: '',
+        selecionar_todos: true,
+      })
+    })
+  })
+
+  it('lista os bens aprovados da UA de origem ao pesquisar um número patrimonial', async () => {
+    renderPage()
+
+    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
+    fireEvent.focus(numeroDe)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '123 - Notebook' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '123 - Notebook' }))
+
+    expect(numeroDe).toHaveValue('123')
+    expect(movimentacaoService.listBensMovimentaveis).toHaveBeenCalledWith(10, '')
+  })
+
+  it('deve exibir e remover o resumo da seleção de todos os bens', async () => {
+    renderPage()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Todos os Bens aprovados da UA de origem')).toBeInTheDocument()
+    })
+    expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /excluir seleção de todos os bens/i }))
+
+    expect(screen.queryByText('1 bem(ns) selecionado(s)')).not.toBeInTheDocument()
   })
 })
