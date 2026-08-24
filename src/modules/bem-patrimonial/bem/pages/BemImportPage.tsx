@@ -1,6 +1,13 @@
 import { Network, Upload, Trash2, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { useBemImport } from '../hooks/useBemImport'
 
@@ -192,6 +199,50 @@ function Toast({ tipo, mensagem }: ToastProps) {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-componente: seletor de Unidade Administrativa (usuário logado em UO)
+// ---------------------------------------------------------------------------
+
+interface SelecionarUnidadeProps {
+    readonly uas: readonly { id: number; label: string }[]
+    readonly valor: number | null
+    readonly onChange: (id: number) => void
+}
+
+function SelecionarUnidade({ uas, valor, onChange }: SelecionarUnidadeProps) {
+    return (
+        <div className='space-y-1 w-1/3'>
+            <label
+                htmlFor='select-ua-importacao'
+                className='text-sm font-semibold text-[#2F7D57]'
+            >
+                Unidade Administrativa de destino
+            </label>
+            <p className='text-sm text-gray-600'>
+                Selecione a Unidade Administrativa em que os Bens serão incorporados.
+            </p>
+            <Select
+                value={valor ? String(valor) : ''}
+                onValueChange={(v: string) => onChange(Number(v))}
+            >
+                <SelectTrigger
+                    id='select-ua-importacao'
+                    className='h-10 border border-gray-300 rounded-md bg-white'
+                >
+                    <SelectValue placeholder='Selecione a Unidade Administrativa' />
+                </SelectTrigger>
+                <SelectContent>
+                    {uas.map(ua => (
+                        <SelectItem key={ua.id} value={String(ua.id)}>
+                            {ua.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Página principal
 // ---------------------------------------------------------------------------
 
@@ -206,6 +257,10 @@ export default function BemImportPage() {
         novoUpload,
         importar,
         cancelar,
+        precisaSelecionarUa,
+        uasDisponiveis,
+        uaSelecionadaId,
+        setUaSelecionadaId,
     } = useBemImport()
 
     const podeImportar =
@@ -292,6 +347,13 @@ export default function BemImportPage() {
                                 apenas sem Conciliações em aberto.
                             </p>
                         </div>
+                        {precisaSelecionarUa && (
+                            <SelecionarUnidade
+                                uas={uasDisponiveis}
+                                valor={uaSelecionadaId}
+                                onChange={setUaSelecionadaId}
+                            />
+                        )}
                         <div className='w-1/3'>
                             {arquivo ? (
                                 <ArquivoAnexado
