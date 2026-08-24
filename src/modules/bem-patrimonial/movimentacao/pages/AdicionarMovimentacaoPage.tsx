@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Network, Plus, Trash2 } from 'lucide-react'
+import { Eye, Network, Plus, Trash2, X } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/button'
@@ -54,17 +54,23 @@ function formatarFaixa(numeroDe: string, numeroAte: string) {
   return numeroDe === numeroAte ? numeroDe : `${numeroDe} até ${numeroAte}`
 }
 
-function resumirNomes(bens: MovimentacaoBem[]) {
-  return bens.map((bem) => bem.nome).join(', ')
+function formatarStatus(status: string) {
+  return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
-type NumeroPatrimonialAutocompleteProps = {
+function getUaDestinoPlaceholder(destinoSemPontoCentral: boolean, destinoMesmaUo: boolean) {
+  if (destinoSemPontoCentral) return 'Nenhuma UA disponível'
+  if (destinoMesmaUo) return 'Selecione a UA de destino'
+  return 'Selecione a UO de destino primeiro'
+}
+
+type NumeroPatrimonialAutocompleteProps = Readonly<{
   id: string
   label: string
   value: string
   unidadeAdministrativaId: number | null
   onChange: (value: string) => void
-}
+}>
 
 function NumeroPatrimonialAutocomplete({
   id,
@@ -125,43 +131,45 @@ function NumeroPatrimonialAutocomplete({
       <label htmlFor={id} className='text-sm font-semibold text-gray-700'>
         {label}
       </label>
-      <Input
-        id={id}
-        value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        onFocus={() => {
-          setAberto(true)
-          void buscarBens(value)
-        }}
-        placeholder='000.000000000-0'
-        className={INPUT_CLASS}
-        aria-autocomplete='list'
-        aria-expanded={aberto}
-      />
-      {aberto && unidadeAdministrativaId && (
-        <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
-          {carregando ? (
-            <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>
-          ) : resultados.length === 0 ? (
-            <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
-          ) : (
-            resultados.map((bem) => (
-              <li key={bem.id} className='border-b border-gray-100 last:border-0'>
-                <button
-                  type='button'
-                  className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
-                  onClick={() => {
-                    onChange(bem.numero_patrimonial ?? '')
-                    setAberto(false)
-                  }}
-                >
-                  {bem.numero_patrimonial} - {bem.nome}
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      )}
+      <div className='relative'>
+        <Input
+          id={id}
+          value={value}
+          onChange={(event) => handleChange(event.target.value)}
+          onFocus={() => {
+            setAberto(true)
+            void buscarBens(value)
+          }}
+          placeholder='000.000000000-0'
+          className={INPUT_CLASS}
+          aria-autocomplete='list'
+          aria-expanded={aberto}
+        />
+        {aberto && unidadeAdministrativaId && (
+          <ul className='absolute bottom-full z-20 mb-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
+            {carregando && <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>}
+            {!carregando && resultados.length === 0 && (
+              <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
+            )}
+            {!carregando && resultados.length > 0 && (
+              resultados.map((bem) => (
+                <li key={bem.id} className='border-b border-gray-100 last:border-0'>
+                  <button
+                    type='button'
+                    className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
+                    onClick={() => {
+                      onChange(bem.numero_patrimonial ?? '')
+                      setAberto(false)
+                    }}
+                  >
+                    {bem.numero_patrimonial} - {bem.nome}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
@@ -179,6 +187,9 @@ export default function AdicionarMovimentacaoPage() {
   const [numeroDe, setNumeroDe] = useState('')
   const [numeroAte, setNumeroAte] = useState('')
   const [faixas, setFaixas] = useState<FaixaMovimentacao[]>([])
+  const [faixaEmVisualizacao, setFaixaEmVisualizacao] = useState<FaixaMovimentacao | null>(
+    null,
+  )
   const [selecionarTodos, setSelecionarTodos] = useState(false)
   const [bensSelecionarTodos, setBensSelecionarTodos] = useState<MovimentacaoBem[]>([])
   const [adicionandoItens, setAdicionandoItens] = useState(false)
@@ -242,14 +253,13 @@ export default function AdicionarMovimentacaoPage() {
     [originUaId, selectedUoNumericId, unidadesAdministrativas],
   )
   const itensSelecionados = useMemo(
-    () => (selecionarTodos ? bensSelecionarTodos : faixas.flatMap((faixa) => faixa.bens)),
+    () => {
+      if (selecionarTodos) return bensSelecionarTodos
+      return faixas.flatMap((faixa) => faixa.bens)
+    },
     [bensSelecionarTodos, faixas, selecionarTodos],
   )
-  const uaDestinoPlaceholder = destinoSemPontoCentral
-    ? 'Nenhuma UA disponível'
-    : destinoMesmaUo
-      ? 'Selecione a UA de destino'
-      : 'Selecione a UO de destino primeiro'
+  const uaDestinoPlaceholder = getUaDestinoPlaceholder(destinoSemPontoCentral, destinoMesmaUo)
   const canSave = Boolean(
     originUaId &&
     selectedUoNumericId &&
@@ -343,6 +353,11 @@ export default function AdicionarMovimentacaoPage() {
     },
     [originUaId],
   )
+
+  const removerFaixa = (faixaId: string) => {
+    setFaixas((current) => current.filter((item) => item.id !== faixaId))
+    setFaixaEmVisualizacao((current) => (current?.id === faixaId ? null : current))
+  }
 
   const handleSave = async () => {
     setError(null)
@@ -576,24 +591,34 @@ export default function AdicionarMovimentacaoPage() {
               <thead className='bg-gray-50 text-left text-gray-700'>
                 <tr>
                   <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Nome do Bem</th>
+                  <th className='p-3'>Bens selecionados</th>
                   <th className='p-3 text-center'>Ação</th>
+                  <th className='p-3 text-center'>Apagar</th>
                 </tr>
               </thead>
               <tbody>
                 {faixas.map((faixa) => (
                   <tr key={faixa.id} className='border-t border-gray-200'>
                     <td className='p-3'>{formatarFaixa(faixa.numeroDe, faixa.numeroAte)}</td>
-                    <td className='p-3'>{resumirNomes(faixa.bens)}</td>
+                    <td className='p-3'>{faixa.bens.length} bem(ns) selecionado(s)</td>
+                    <td className='p-3 text-center'>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon'
+                        aria-label={`Visualizar bens da faixa ${formatarFaixa(faixa.numeroDe, faixa.numeroAte)}`}
+                        onClick={() => setFaixaEmVisualizacao(faixa)}
+                      >
+                        <Eye className='size-[22px] text-[#00703C]' />
+                      </Button>
+                    </td>
                     <td className='p-3 text-center'>
                       <Button
                         type='button'
                         variant='ghost'
                         size='icon'
                         aria-label={`Excluir faixa ${formatarFaixa(faixa.numeroDe, faixa.numeroAte)}`}
-                        onClick={() =>
-                          setFaixas((current) => current.filter((item) => item.id !== faixa.id))
-                        }
+                        onClick={() => removerFaixa(faixa.id)}
                       >
                         <Trash2 className='size-5 text-[#00703C]' />
                       </Button>
@@ -604,6 +629,61 @@ export default function AdicionarMovimentacaoPage() {
             </table>
           </div>
         ) : null}
+        {faixaEmVisualizacao && (
+          <dialog
+            open
+            aria-modal='true'
+            aria-label={`Bens da faixa ${formatarFaixa(
+              faixaEmVisualizacao.numeroDe,
+              faixaEmVisualizacao.numeroAte,
+            )}`}
+            className='fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-black/40 p-4'
+            onClose={() => setFaixaEmVisualizacao(null)}
+          >
+            <div className='w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl'>
+              <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4'>
+                <div>
+                  <h2 className='text-lg font-semibold text-gray-800'>Bens da movimentação</h2>
+                  <p className='text-sm text-gray-600'>
+                    {formatarFaixa(
+                      faixaEmVisualizacao.numeroDe,
+                      faixaEmVisualizacao.numeroAte,
+                    )}
+                  </p>
+                </div>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  aria-label='Fechar detalhes dos bens'
+                  onClick={() => setFaixaEmVisualizacao(null)}
+                >
+                  <X className='size-5' />
+                </Button>
+              </div>
+              <div className='max-h-[60vh] overflow-auto p-6'>
+                <table className='w-full text-sm'>
+                  <thead className='bg-gray-50 text-left text-gray-700'>
+                    <tr>
+                      <th className='p-3'>Número Patrimonial</th>
+                      <th className='p-3'>Nome do Bem</th>
+                      <th className='p-3'>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {faixaEmVisualizacao.bens.map((bem) => (
+                      <tr key={bem.id} className='border-t border-gray-200'>
+                        <td className='p-3'>{bem.numero_patrimonial}</td>
+                        <td className='p-3'>{bem.nome}</td>
+                        <td className='p-3'>{formatarStatus(bem.status)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </dialog>
+        )}
       </section>
     </BemCadastroPageShell>
   )

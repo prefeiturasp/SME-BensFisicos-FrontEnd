@@ -426,7 +426,7 @@ describe('AdicionarMovimentacaoPage', () => {
     )
   })
 
-  it('deve adicionar uma faixa, exibir o resumo e permitir sua exclusão', async () => {
+  it('deve adicionar uma faixa, visualizar seus bens e permitir sua exclusão', async () => {
     renderPage()
 
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
@@ -449,7 +449,14 @@ describe('AdicionarMovimentacaoPage', () => {
       })
     })
     expect(screen.getByText('001.000000001-1 até 001.000000002-2')).toBeInTheDocument()
+    expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /visualizar bens da faixa/i }))
+
     expect(screen.getByText('Notebook')).toBeInTheDocument()
+    expect(screen.getByText('Aprovado')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes dos bens' }))
 
     fireEvent.click(screen.getByRole('button', { name: /excluir faixa/i }))
     expect(screen.queryByText('001.000000001-1 até 001.000000002-2')).not.toBeInTheDocument()
@@ -515,7 +522,7 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
-      expect(screen.getByText('Notebook')).toBeInTheDocument()
+      expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
 
@@ -541,7 +548,7 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
-      expect(screen.getByText('Notebook')).toBeInTheDocument()
+      expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
