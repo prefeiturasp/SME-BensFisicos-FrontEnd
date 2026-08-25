@@ -182,54 +182,51 @@ describe('useBensList', () => {
 
   // ── mapeamento de filtros ──────────────────────────────────────────────
 
-  it('mapeia escopoFilter "ua:<id>" para unidade_administrativa', async () => {
+  it('mapeia uma única UA selecionada para unidade_administrativa (array)', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     listMock.mockClear()
 
     act(() => {
-      result.current.setEscopoFilter('ua:42')
+      result.current.setUnidadesAdministrativas(['42'])
     })
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          unidade_administrativa: '42',
-          unidade_orcamentaria: undefined,
+          unidade_administrativa: ['42'],
         }),
       )
     })
   })
 
-  it('mapeia escopoFilter "uo:<id>" para unidade_orcamentaria', async () => {
+  it('mapeia múltiplas UAs selecionadas para unidade_administrativa', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     listMock.mockClear()
 
     act(() => {
-      result.current.setEscopoFilter('uo:7')
+      result.current.setUnidadesAdministrativas(['42', '7'])
     })
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          unidade_orcamentaria: '7',
-          unidade_administrativa: undefined,
+          unidade_administrativa: ['42', '7'],
         }),
       )
     })
   })
 
-  it('não envia unidade_administrativa/unidade_orcamentaria quando escopoFilter é "todas"', async () => {
+  it('não envia unidade_administrativa quando nenhuma UA está selecionada (Todas as UAs)', async () => {
     renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
           unidade_administrativa: undefined,
-          unidade_orcamentaria: undefined,
         }),
       )
     })

@@ -23,7 +23,11 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
-  const [escopoFilter, setEscopoFilter] = useState<string>('todas')
+  // Lista de IDs de Unidades Administrativas selecionadas no filtro
+  // "Filtrar por Unidade". Lista vazia representa "Todas as UAs".
+  const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<
+    string[]
+  >([])
   const [bensBaixados, setBensBaixados] = useState(() => {
     if (!persistKey) return false
     return parseBool(localStorage.getItem(`${persistKey}:bensBaixados`))
@@ -52,14 +56,10 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
         page,
         search,
         status: statusFilter === 'todos' ? undefined : statusFilter,
+        // Lista vazia = "Todas as UAs" (o service omite o parâmetro e o
+        // backend aplica o escopo padrão da UO do usuário).
         unidade_administrativa:
-          escopoFilter.startsWith('ua:')
-            ? escopoFilter.replace('ua:', '')
-            : undefined,
-        unidade_orcamentaria:
-          escopoFilter.startsWith('uo:')
-            ? escopoFilter.replace('uo:', '')
-            : undefined,
+          unidadesAdministrativas.length > 0 ? unidadesAdministrativas : undefined,
         busca_geral_uos: buscaGeralUos || undefined,
         bens_baixados: bensBaixados || undefined,
         ordering,
@@ -72,7 +72,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, escopoFilter, bensBaixados, buscaGeralUos, ordering])
+  }, [page, search, statusFilter, unidadesAdministrativas, bensBaixados, buscaGeralUos, ordering])
 
   useEffect(() => {
     fetchData()
@@ -129,7 +129,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     loading,
     searchInput,
     statusFilter,
-    escopoFilter,
+    unidadesAdministrativas,
     bensBaixados,
     buscaGeralUos,
     ordering,
@@ -137,7 +137,7 @@ export function useBensList({ pageSize, persistKey }: UseBensListProps) {
     setPage,
     setSearchInput,
     setStatusFilter,
-    setEscopoFilter,
+    setUnidadesAdministrativas,
     setBensBaixados,
     setBuscaGeralUos,
     setOrdering,

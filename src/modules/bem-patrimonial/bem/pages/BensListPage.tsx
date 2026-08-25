@@ -54,14 +54,14 @@ export default function BensListPage() {
     loading,
     searchInput,
     statusFilter,
-    escopoFilter,
+    unidadesAdministrativas,
     bensBaixados,
     buscaGeralUos,
     ordering,
     setPage,
     setSearchInput,
     setStatusFilter,
-    setEscopoFilter,
+    setUnidadesAdministrativas,
     setBensBaixados,
     setBuscaGeralUos,
     setOrdering,
@@ -205,9 +205,9 @@ export default function BensListPage() {
             <EscopoFilterDropdown
               id="filtro-unidade"
               grupos={user?.opcoes_escopo?.grupos ?? []}
-              value={escopoFilter}
-              onChange={(val: string) => {
-                setEscopoFilter(val)
+              value={unidadesAdministrativas}
+              onChange={(uaIds: string[]) => {
+                setUnidadesAdministrativas(uaIds)
                 setPage(1)
               }}
             />
@@ -277,7 +277,7 @@ export default function BensListPage() {
               onChangeBuscaGeralUos={checked => {
                 setBuscaGeralUos(checked)
                 if (checked) {
-                  setEscopoFilter('todas')
+                  setUnidadesAdministrativas([])
                 }
                 setPage(1)
               }}

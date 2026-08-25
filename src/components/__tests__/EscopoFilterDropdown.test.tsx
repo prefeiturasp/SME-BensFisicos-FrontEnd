@@ -24,13 +24,9 @@ const gruposMock = [
   },
 ]
 
-function renderComponent(value = 'todas', onChange = vi.fn()) {
+function renderComponent(value: string[] = [], onChange = vi.fn()) {
   return render(
-    <EscopoFilterDropdown
-      grupos={gruposMock}
-      value={value}
-      onChange={onChange}
-    />
+    <EscopoFilterDropdown grupos={gruposMock} value={value} onChange={onChange} />,
   )
 }
 
@@ -38,19 +34,21 @@ describe('EscopoFilterDropdown', () => {
   it('deve abrir e fechar dropdown', () => {
     renderComponent()
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: /Todas as UAs/i })
     fireEvent.click(trigger)
 
     expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
 
     fireEvent.click(trigger)
-    expect(screen.queryByPlaceholderText('Buscar unidade')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('Buscar unidade'),
+    ).not.toBeInTheDocument()
   })
 
   it('deve filtrar unidades pelo input', () => {
     renderComponent()
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
     const input = screen.getByPlaceholderText('Buscar unidade')
     fireEvent.change(input, { target: { value: 'A1' } })
@@ -62,7 +60,7 @@ describe('EscopoFilterDropdown', () => {
   it('deve mostrar mensagem quando não houver resultados', () => {
     renderComponent()
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
     fireEvent.change(screen.getByPlaceholderText('Buscar unidade'), {
       target: { value: 'inexistente' },
@@ -71,88 +69,96 @@ describe('EscopoFilterDropdown', () => {
     expect(screen.getByText('Nenhuma unidade encontrada')).toBeInTheDocument()
   })
 
-  it('deve selecionar UO e chamar onChange', () => {
+  it('deve selecionar uma UA individual e chamar onChange com o id', () => {
     const onChange = vi.fn()
-    renderComponent('todas', onChange)
+    renderComponent([], onChange)
 
-    // abre dropdown
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
-    // pega o container do dropdown
-    const dropdown = screen.getByPlaceholderText('Buscar unidade').closest('div')!
+    fireEvent.click(screen.getByText('Escola A1'))
 
-    // busca dentro dele
-    const uoButton = within(dropdown.parentElement!).getByRole('button', {
-        name: 'Secretaria A',
-    })
-
-    fireEvent.click(uoButton)
-
-    expect(onChange).toHaveBeenCalledWith('uo:1')
+    expect(onChange).toHaveBeenCalledWith(['100'])
   })
 
-  it('deve selecionar "Todas"', () => {
+  it('deve desmarcar uma UA já selecionada', () => {
     const onChange = vi.fn()
-    renderComponent('uo:1', onChange)
+    renderComponent(['100'], onChange)
+
+    // trigger exibe o label da UA única selecionada
+    fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
+
+    const painel = screen
+      .getByPlaceholderText('Buscar unidade')
+      .closest('div')!.parentElement!
+
+    fireEvent.click(within(painel).getByText('Escola A1'))
+
+    expect(onChange).toHaveBeenCalledWith([])
+  })
+
+  it('deve marcar todas as UAs da UO ao clicar no grupo', () => {
+    const onChange = vi.fn()
+    renderComponent([], onChange)
+
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
+
+    const dropdown = screen
+      .getByPlaceholderText('Buscar unidade')
+      .closest('div')!.parentElement!
+
+    fireEvent.click(within(dropdown).getByText('Secretaria A'))
+
+    expect(onChange).toHaveBeenCalledWith(['100', '101'])
+  })
+
+  it('deve selecionar "Todas as UAs" limpando a seleção', () => {
+    const onChange = vi.fn()
+    renderComponent(['100'], onChange)
 
     fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('button', { name: 'Todas' }))
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
-    expect(onChange).toHaveBeenCalledWith('todas')
+    expect(onChange).toHaveBeenCalledWith([])
   })
 
-  it('deve exibir label correta para UO selecionada', () => {
-    renderComponent('uo:1')
-    expect(screen.getByText('Secretaria A')).toBeInTheDocument()
+  it('deve exibir "Todas as UAs" quando nenhuma UA estiver selecionada', () => {
+    renderComponent([])
+    expect(screen.getByText('Todas as UAs')).toBeInTheDocument()
   })
 
-  it('deve exibir label correta para UA selecionada', () => {
-    renderComponent('ua:100')
+  it('deve exibir label da UA quando apenas uma estiver selecionada', () => {
+    renderComponent(['100'])
     expect(screen.getByText('Escola A1')).toBeInTheDocument()
   })
 
-  it('deve exibir "Todas" quando value for "todas"', () => {
-    renderComponent('todas')
-    expect(screen.getByText('Todas')).toBeInTheDocument()
+  it('deve exibir contagem quando múltiplas UAs estiverem selecionadas', () => {
+    renderComponent(['100', '101'])
+    expect(screen.getByText('2 unidades selecionadas')).toBeInTheDocument()
   })
 
   it('deve fechar ao clicar fora', () => {
     renderComponent()
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
     expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
 
     fireEvent.mouseDown(document)
 
-    expect(screen.queryByPlaceholderText('Buscar unidade')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('Buscar unidade'),
+    ).not.toBeInTheDocument()
   })
 
-  it('deve aplicar classe ativa para UO selecionada', () => {
-    renderComponent('uo:1')
+  it('deve aplicar destaque visual para UA selecionada', () => {
+    renderComponent(['100'])
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
 
-    const dropdownButtons = screen.getAllByRole('button', {
-      name: 'Secretaria A',
-    })
+    const painel = screen
+      .getByPlaceholderText('Buscar unidade')
+      .closest('div')!.parentElement!
 
-    // O primeiro é o trigger, o segundo é o botão dentro do dropdown
-    const dropdownButton = dropdownButtons[1]
-
-    expect(dropdownButton).toHaveClass('bg-green-50')
-  })
-
-  it('deve aplicar classe ativa para UA selecionada', () => {
-    renderComponent('ua:100')
-
-    fireEvent.click(screen.getByRole('button'))
-
-    const buttons = screen.getAllByRole('button', {
-        name: 'Escola A1',
-    })
-
-    const dropdownButton = buttons[1]
-
-    expect(dropdownButton).toHaveClass('bg-green-50')
+    const label = within(painel).getByText('Escola A1').closest('label')!
+    expect(label).toHaveClass('bg-green-50')
   })
 })

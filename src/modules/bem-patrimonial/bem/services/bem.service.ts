@@ -49,7 +49,7 @@ export interface BemListParams {
   pageSize?: number
   search?: string
   status?: string
-  unidade_administrativa?: string | number
+  unidade_administrativa?: string | number | ReadonlyArray<string | number>
   unidade_orcamentaria?: string | number
   busca_geral_uos?: boolean
   bens_baixados?: boolean
@@ -70,6 +70,30 @@ export interface ImportacaoResultado {
   erros_campos?: ImportacaoErroLinha[]
 }
 
+/**
+ * Normaliza o valor de `unidade_administrativa` em uma lista de IDs (string).
+ *
+ * Regras:
+ * - `undefined`/`null` ou o sentinela `'todas'` resultam em lista vazia
+ *   (nenhum parâmetro é enviado → backend aplica o escopo padrão da UO).
+ * - Valor único (string/number) é convertido em lista de um item.
+ * - Array é achatado, removendo valores vazios e o sentinela `'todas'`.
+ * - Valores duplicados são removidos, preservando a ordem de seleção.
+ */
+function normalizarUnidadesAdministrativas(
+  valor: BemListParams['unidade_administrativa'],
+): string[] {
+  if (valor === undefined || valor === null) return []
+
+  const bruto = Array.isArray(valor) ? valor : [valor]
+
+  const ids = bruto
+    .map(item => String(item).trim())
+    .filter(item => item !== '' && item !== 'todas')
+
+  return Array.from(new Set(ids))
+}
+
 export const bemService = {
   list: async (params: BemListParams = {}): Promise<PaginatedResponse<Bem>> => {
     try {
@@ -82,8 +106,11 @@ export const bemService = {
 
       if (params.status && params.status !== 'todos') query.append('status', params.status)
 
-      if (params.unidade_administrativa && params.unidade_administrativa !== 'todas')
-        query.append('unidade_administrativa', String(params.unidade_administrativa))
+      const unidadesAdministrativas = normalizarUnidadesAdministrativas(
+        params.unidade_administrativa,
+      )
+      if (unidadesAdministrativas.length > 0)
+        query.append('unidade_administrativa', unidadesAdministrativas.join(','))
 
       if (params.unidade_orcamentaria)
         query.append('unidade_orcamentaria', String(params.unidade_orcamentaria))
@@ -175,17 +202,9 @@ export const bemService = {
    * pois esses status carregam payload estruturado que a UI precisa exibir.
    * Somente erros de infraestrutura (5xx, sem conexão) são lançados como exceção.
    */
-  importar: async (
-    arquivo: File,
-    unidadeAdministrativaId?: number | null,
-  ): Promise<{ status: number; data: ImportacaoResultado }> => {
+  importar: async (arquivo: File): Promise<{ status: number; data: ImportacaoResultado }> => {
     const formData = new FormData()
     formData.append('arquivo', arquivo)
-    // Enviada apenas quando o usuário está logado numa UO e escolheu a UA de
-    // destino; para quem está logado numa UA, o backend usa a UA do usuário.
-    if (unidadeAdministrativaId != null) {
-      formData.append('unidade_administrativa_id', String(unidadeAdministrativaId))
-    }
 
     try {
       const response = await api.post('/bens/importar/', formData, {
