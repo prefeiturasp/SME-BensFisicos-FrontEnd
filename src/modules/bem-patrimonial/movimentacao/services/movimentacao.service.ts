@@ -1,6 +1,9 @@
 import { api } from '@/api/http'
 import { handleApiError } from '@/lib/api-error'
 import type {
+  MovimentacaoBensLotePreviewPayload,
+  MovimentacaoBensLotePreviewResponse,
+  MovimentacaoBem,
   MovimentacaoBemPatrimonialCreatePayload,
   MovimentacaoBemPatrimonialDetail,
   MovimentacaoBemPatrimonialListItem,
@@ -55,6 +58,33 @@ export const movimentacaoService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao criar movimentação')
+    }
+  },
+
+  async resolverItensLote(
+    payload: MovimentacaoBensLotePreviewPayload,
+  ): Promise<MovimentacaoBensLotePreviewResponse> {
+    try {
+      const { data } = await api.post('/movimentacoes/resolver-itens-lote/', payload)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao adicionar itens de movimentação')
+    }
+  },
+
+  async listBensMovimentaveis(
+    unidadeAdministrativaOrigem: number,
+    search = '',
+  ): Promise<MovimentacaoBem[]> {
+    try {
+      const query = new URLSearchParams({
+        unidade_administrativa_origem: String(unidadeAdministrativaOrigem),
+      })
+      if (search.trim()) query.append('search', search.trim())
+      const { data } = await api.get(`/movimentacoes/bens-movimentaveis/?${query.toString()}`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao buscar bens aptos para movimentação')
     }
   },
 
