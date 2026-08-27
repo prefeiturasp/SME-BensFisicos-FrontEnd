@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
@@ -46,6 +47,11 @@ export default function BensListPage() {
   const { user } = useAuth()
   const persistKey = `bens-list:${user?.id ?? 'anon'}`
 
+  const grupos = useMemo(
+    () => user?.opcoes_escopo?.grupos ?? [],
+    [user?.opcoes_escopo?.grupos],
+  )
+
   const {
     bens,
     selectedIds,
@@ -54,20 +60,24 @@ export default function BensListPage() {
     loading,
     searchInput,
     statusFilter,
-    escopoFilter,
+    unidadesAdministrativas,
     bensBaixados,
     buscaGeralUos,
     ordering,
     setPage,
     setSearchInput,
     setStatusFilter,
-    setEscopoFilter,
+    setUnidadesAdministrativas,
     setBensBaixados,
     setBuscaGeralUos,
     setOrdering,
     toggleSelect,
     atualizarStatusSelecionados,
-  } = useBensList({ pageSize: PAGE_SIZE, persistKey })
+  } = useBensList({
+    pageSize: PAGE_SIZE,
+    persistKey,
+    grupos,
+  })
 
   const { pages, totalPages } = usePagination({
     page,
@@ -204,10 +214,10 @@ export default function BensListPage() {
 
             <EscopoFilterDropdown
               id="filtro-unidade"
-              grupos={user?.opcoes_escopo?.grupos ?? []}
-              value={escopoFilter}
-              onChange={(val: string) => {
-                setEscopoFilter(val)
+              grupos={grupos}
+              value={unidadesAdministrativas}
+              onChange={(uaIds: string[]) => {
+                setUnidadesAdministrativas(uaIds)
                 setPage(1)
               }}
             />
@@ -277,7 +287,7 @@ export default function BensListPage() {
               onChangeBuscaGeralUos={checked => {
                 setBuscaGeralUos(checked)
                 if (checked) {
-                  setEscopoFilter('todas')
+                  setUnidadesAdministrativas([])
                 }
                 setPage(1)
               }}

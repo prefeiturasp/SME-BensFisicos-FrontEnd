@@ -49,8 +49,8 @@ export interface BemListParams {
   pageSize?: number
   search?: string
   status?: string
-  unidade_administrativa?: string | number
-  unidade_orcamentaria?: string | number
+  unidade_administrativa?: string | number | ReadonlyArray<string | number>
+  unidade_orcamentaria?: string | number | ReadonlyArray<string | number>
   busca_geral_uos?: boolean
   bens_baixados?: boolean
   ordering?: string
@@ -70,6 +70,30 @@ export interface ImportacaoResultado {
   erros_campos?: ImportacaoErroLinha[]
 }
 
+/**
+ * Normaliza o valor de uma unidade (UA ou UO) em uma lista de IDs (string).
+ *
+ * Regras:
+ * - `undefined`/`null` ou o sentinela `'todas'` resultam em lista vazia
+ *   (nenhum parâmetro é enviado → backend aplica o escopo padrão da UO).
+ * - Valor único (string/number) é convertido em lista de um item.
+ * - Array é achatado, removendo valores vazios e o sentinela `'todas'`.
+ * - Valores duplicados são removidos, preservando a ordem de seleção.
+ */
+function normalizarUnidades(
+  valor: BemListParams['unidade_administrativa'],
+): string[] {
+  if (valor === undefined || valor === null) return []
+
+  const bruto = Array.isArray(valor) ? valor : [valor]
+
+  const ids = bruto
+    .map(item => String(item).trim())
+    .filter(item => item !== '' && item !== 'todas')
+
+  return Array.from(new Set(ids))
+}
+
 export const bemService = {
   list: async (params: BemListParams = {}): Promise<PaginatedResponse<Bem>> => {
     try {
@@ -82,11 +106,17 @@ export const bemService = {
 
       if (params.status && params.status !== 'todos') query.append('status', params.status)
 
-      if (params.unidade_administrativa && params.unidade_administrativa !== 'todas')
-        query.append('unidade_administrativa', String(params.unidade_administrativa))
+      const unidadesAdministrativas = normalizarUnidades(
+        params.unidade_administrativa,
+      )
+      if (unidadesAdministrativas.length > 0)
+        query.append('unidade_administrativa', unidadesAdministrativas.join(','))
 
-      if (params.unidade_orcamentaria)
-        query.append('unidade_orcamentaria', String(params.unidade_orcamentaria))
+      const unidadesOrcamentarias = normalizarUnidades(
+        params.unidade_orcamentaria,
+      )
+      if (unidadesOrcamentarias.length > 0)
+        query.append('unidade_orcamentaria', unidadesOrcamentarias.join(','))
 
       if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
 
