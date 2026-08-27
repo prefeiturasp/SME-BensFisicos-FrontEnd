@@ -47,7 +47,9 @@ vi.mock('@/components/ui/select', () => ({
     </select>
   ),
   SelectTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  SelectValue: () => null,
+  SelectValue: ({ placeholder }: { placeholder?: string }) => (
+    <option value=''>{placeholder}</option>
+  ),
   SelectContent: ({ children }: { children?: ReactNode }) => <>{children}</>,
   SelectItem: ({
     value,
@@ -106,6 +108,23 @@ function makeBem(overrides: Record<string, unknown> = {}) {
     unidade_administrativa_nome: 'UA Origem',
     unidade_orcamentaria_nome: 'UO Origem',
     ...overrides,
+  }
+}
+
+function makeUa(id: number, codigo: string, unidadeOrcamentaria = 1000) {
+  return {
+    id,
+    codigo,
+    sigla: `UA ${codigo}`,
+    nome: `UA ${codigo}`,
+    status: 'ativa',
+    status_display: 'Ativa',
+    unidade_orcamentaria: unidadeOrcamentaria,
+    unidade_orcamentaria_codigo: '01.01',
+    unidade_orcamentaria_nome: 'UO Ativa',
+    unidade_orcamentaria_sigla: '01.01',
+    created_at: '2026-06-01T12:00:00Z',
+    updated_at: '2026-06-01T12:00:00Z',
   }
 }
 
@@ -368,6 +387,45 @@ describe('AdicionarMovimentacaoPage', () => {
     const selects = screen.getAllByRole('combobox')
     expect(selects).toHaveLength(2)
     expect(selects[1]).toBeDisabled()
+    expect(screen.getByRole('option', { name: 'Selecione a UO primeiro' })).toBeInTheDocument()
+  })
+
+  it('deve selecionar automaticamente a única UO disponível', async () => {
+    vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
+      {
+        id: 200,
+        codigo: '01.02',
+        nome: 'UO Destino',
+        label: '01.02 - UO Destino',
+        tem_ponto_central: true,
+      },
+    ])
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('combobox')[0]).toHaveValue('200')
+    })
+    expect(
+      screen.getByRole('option', { name: 'UA definida pelo ponto central' }),
+    ).toBeInTheDocument()
+  })
+
+  it('deve selecionar automaticamente a única UA disponível da mesma UO', async () => {
+    vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
+      count: 2,
+      next: null,
+      previous: null,
+      results: [makeUa(10, '001'), makeUa(11, '002')],
+    })
+    renderPage()
+    await waitForUoOptions()
+
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('combobox')[1]).toHaveValue('11')
+    })
   })
 
   it('deve navegar para a listagem ao clicar em Cancelar', async () => {
@@ -426,7 +484,7 @@ describe('AdicionarMovimentacaoPage', () => {
     )
   })
 
-  it('deve adicionar uma faixa, visualizar seus bens e permitir sua exclusão', async () => {
+  it('deve adicionar uma faixa, mostrar o nome do bem e permitir sua exclusão', async () => {
     renderPage()
 
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
@@ -449,17 +507,80 @@ describe('AdicionarMovimentacaoPage', () => {
       })
     })
     expect(screen.getByText('001.000000001-1 até 001.000000002-2')).toBeInTheDocument()
-    expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /visualizar bens da faixa/i }))
-
     expect(screen.getByText('Notebook')).toBeInTheDocument()
-    expect(screen.getByText('Aprovado')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes dos bens' }))
 
     fireEvent.click(screen.getByRole('button', { name: /excluir faixa/i }))
     expect(screen.queryByText('001.000000001-1 até 001.000000002-2')).not.toBeInTheDocument()
+  })
+
+  it('deve aplicar a máscara de Número Patrimonial nos campos da faixa', async () => {
+    renderPage()
+    await waitForUoOptions()
+
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '0010000000011abc' },
+    })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
+      target: { value: '0010000000022' },
+    })
+
+    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveValue('001.000000001-1')
+    expect(screen.getByLabelText('Número Patrimonial - Até')).toHaveValue('001.000000002-2')
+  })
+
+  it('deve rejeitar faixa invertida antes de chamar a API', async () => {
+    renderPage()
+    await waitForUoOptions()
+
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000012-0' },
+    })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
+      target: { value: '001.000000010-0' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(movimentacaoService.resolverItensLote).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
+    )
+    expect(toast.error).toHaveBeenCalledWith(
+      'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
+    )
+  })
+
+  it('deve rejeitar faixa duplicada antes de chamar novamente a API', async () => {
+    renderPage()
+    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
+
+    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    await screen.findByText('Notebook')
+
+    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Os bens informados já foram adicionados à movimentação.',
+    )
+  })
+
+  it('deve rejeitar bens sobrepostos identificados pela API', async () => {
+    renderPage()
+    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
+
+    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    await screen.findByText('Notebook')
+
+    fireEvent.change(numeroDe, { target: { value: '001.000000003-3' } })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Os bens informados já foram adicionados à movimentação.',
+    )
+    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(2)
   })
 
   it('deve manter o botão salvar desabilitado até preencher os critérios obrigatórios', async () => {
@@ -503,6 +624,9 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('não pode ser movimentado')
+    expect(toast.error).toHaveBeenCalledWith(
+      'O(s) Bem(ns) com Número Patrimonial 001.000000002 não pode ser movimentado.',
+    )
   })
 
   it('deve exibir erro quando o salvamento falhar', async () => {
@@ -522,7 +646,7 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
-      expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
+      expect(screen.getByText('Notebook')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
 
@@ -548,7 +672,7 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     await waitFor(() => {
-      expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
+      expect(screen.getByText('Notebook')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
@@ -561,7 +685,6 @@ describe('AdicionarMovimentacaoPage', () => {
         faixas: [
           {
             numero_patrimonial_de: '001.000000001-1',
-            numero_patrimonial_ate: '001.000000001-1',
           },
         ],
       })
@@ -599,6 +722,107 @@ describe('AdicionarMovimentacaoPage', () => {
     })
   })
 
+  it('deve manter o botão salvar desabilitado enquanto adiciona uma nova faixa', async () => {
+    renderPage()
+    await waitForUoOptions()
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    await screen.findByText('Notebook')
+    expect(screen.getByRole('button', { name: /^salvar$/i })).not.toBeDisabled()
+
+    vi.mocked(movimentacaoService.resolverItensLote).mockReturnValue(new Promise(() => undefined))
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000002-2' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeDisabled()
+  })
+
+  it('deve limpar o alerta ao alterar a observação', async () => {
+    renderPage()
+    await waitForUoOptions()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000012-0' },
+    })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
+      target: { value: '001.000000010-0' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Observação'), { target: { value: 'Teste' } })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('deve confirmar antes de substituir faixas pela seleção de todos', async () => {
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    await screen.findByText('Notebook')
+
+    const selecionarTodosCheckbox = screen.getByRole('checkbox', {
+      name: /selecionar todos os bens aprovados/i,
+    })
+    fireEvent.click(selecionarTodosCheckbox)
+
+    const dialog = screen.getByRole('dialog', { name: 'Selecionar todos os Bens' })
+    expect(screen.getByText('001.000000001-1')).toBeInTheDocument()
+    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(dialog)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(selecionarTodosCheckbox)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(selecionarTodosCheckbox)
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    await waitFor(() => {
+      expect(movimentacaoService.resolverItensLote).toHaveBeenLastCalledWith({
+        unidade_administrativa_origem: 10,
+        selecionar_todos: true,
+      })
+    })
+    expect(screen.queryByText('001.000000001-1')).not.toBeInTheDocument()
+    expect(screen.getByText('Todos os Bens aprovados da UA de origem')).toBeInTheDocument()
+  })
+
+  it('deve impedir seleção de todos sem bens e informar o erro em toast', async () => {
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [] })
+    renderPage()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
+    )
+    expect(toast.error).toHaveBeenCalledWith(
+      'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
+    )
+    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeDisabled()
+  })
+
+  it('deve exibir o erro da API ao selecionar todos', async () => {
+    vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(
+      new Error('Não foi possível selecionar os bens.'),
+    )
+    renderPage()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível selecionar os bens.')
+    expect(toast.error).toHaveBeenCalledWith('Não foi possível selecionar os bens.')
+  })
+
   it('lista os bens aprovados da UA de origem ao pesquisar um número patrimonial', async () => {
     renderPage()
 
@@ -608,11 +832,21 @@ describe('AdicionarMovimentacaoPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '123 - Notebook' })).toBeInTheDocument()
     })
+    expect(screen.getByRole('list')).toHaveClass('top-full')
 
     fireEvent.click(screen.getByRole('button', { name: '123 - Notebook' }))
 
     expect(numeroDe).toHaveValue('123')
     expect(movimentacaoService.listBensMovimentaveis).toHaveBeenCalledWith(10, '')
+  })
+
+  it('deve informar quando a pesquisa não encontrar bens aprovados', async () => {
+    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([])
+    renderPage()
+
+    fireEvent.focus(screen.getByLabelText('Número Patrimonial - De'))
+
+    expect(await screen.findByText('Nenhum bem aprovado encontrado.')).toBeInTheDocument()
   })
 
   it('deve exibir e remover o resumo da seleção de todos os bens', async () => {

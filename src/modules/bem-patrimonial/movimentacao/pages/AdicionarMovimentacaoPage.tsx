@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Eye, Network, Plus, Trash2, X } from 'lucide-react'
+import { Network, Plus, Trash2 } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -54,14 +55,28 @@ function formatarFaixa(numeroDe: string, numeroAte: string) {
   return numeroDe === numeroAte ? numeroDe : `${numeroDe} até ${numeroAte}`
 }
 
-function formatarStatus(status: string) {
-  return status.charAt(0).toUpperCase() + status.slice(1)
+function resumirNomes(bens: MovimentacaoBem[]) {
+  return bens.map((bem) => bem.nome).join(', ')
 }
 
-function getUaDestinoPlaceholder(destinoSemPontoCentral: boolean, destinoMesmaUo: boolean) {
-  if (destinoSemPontoCentral) return 'Nenhuma UA disponível'
-  if (destinoMesmaUo) return 'Selecione a UA de destino'
-  return 'Selecione a UO de destino primeiro'
+function formatarNP(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 13)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 12) return `${digits.slice(0, 3)}.${digits.slice(3)}`
+  return `${digits.slice(0, 3)}.${digits.slice(3, 12)}-${digits.slice(12)}`
+}
+
+function getUaDestinoPlaceholder(
+  selectedUoId: string,
+  destinoSemPontoCentral: boolean,
+  destinoMesmaUo: boolean,
+  hasUaOptions: boolean,
+) {
+  if (!selectedUoId) return 'Selecione a UO primeiro'
+  if (destinoSemPontoCentral) return 'Nenhuma UA'
+  if (!destinoMesmaUo) return 'UA definida pelo ponto central'
+  if (!hasUaOptions) return 'Nenhuma UA'
+  return 'Selecione a UA'
 }
 
 type NumeroPatrimonialAutocompleteProps = Readonly<{
@@ -120,10 +135,11 @@ function NumeroPatrimonialAutocomplete({
   )
 
   const handleChange = (novoValor: string) => {
-    onChange(novoValor)
+    const valorFormatado = formatarNP(novoValor)
+    onChange(valorFormatado)
     setAberto(true)
     if (buscaRef.current) clearTimeout(buscaRef.current)
-    buscaRef.current = setTimeout(() => void buscarBens(novoValor), 300)
+    buscaRef.current = setTimeout(() => void buscarBens(valorFormatado), 300)
   }
 
   return (
@@ -141,17 +157,20 @@ function NumeroPatrimonialAutocomplete({
             void buscarBens(value)
           }}
           placeholder='000.000000000-0'
+          inputMode='numeric'
+          maxLength={15}
           className={INPUT_CLASS}
           aria-autocomplete='list'
           aria-expanded={aberto}
         />
         {aberto && unidadeAdministrativaId && (
-          <ul className='absolute bottom-full z-20 mb-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
+          <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
             {carregando && <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>}
             {!carregando && resultados.length === 0 && (
               <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
             )}
-            {!carregando && resultados.length > 0 && (
+            {!carregando &&
+              resultados.length > 0 &&
               resultados.map((bem) => (
                 <li key={bem.id} className='border-b border-gray-100 last:border-0'>
                   <button
@@ -165,8 +184,7 @@ function NumeroPatrimonialAutocomplete({
                     {bem.numero_patrimonial} - {bem.nome}
                   </button>
                 </li>
-              ))
-            )}
+              ))}
           </ul>
         )}
       </div>
@@ -187,10 +205,8 @@ export default function AdicionarMovimentacaoPage() {
   const [numeroDe, setNumeroDe] = useState('')
   const [numeroAte, setNumeroAte] = useState('')
   const [faixas, setFaixas] = useState<FaixaMovimentacao[]>([])
-  const [faixaEmVisualizacao, setFaixaEmVisualizacao] = useState<FaixaMovimentacao | null>(
-    null,
-  )
   const [selecionarTodos, setSelecionarTodos] = useState(false)
+  const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
   const [bensSelecionarTodos, setBensSelecionarTodos] = useState<MovimentacaoBem[]>([])
   const [adicionandoItens, setAdicionandoItens] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -252,19 +268,34 @@ export default function AdicionarMovimentacaoPage() {
     () => buildUaOptions(unidadesAdministrativas, selectedUoNumericId, originUaId),
     [originUaId, selectedUoNumericId, unidadesAdministrativas],
   )
-  const itensSelecionados = useMemo(
-    () => {
-      if (selecionarTodos) return bensSelecionarTodos
-      return faixas.flatMap((faixa) => faixa.bens)
-    },
-    [bensSelecionarTodos, faixas, selecionarTodos],
+  useEffect(() => {
+    if (!selectedUoId && uoOptions.length === 1) {
+      setSelectedUoId(String(uoOptions[0].id))
+    }
+  }, [selectedUoId, uoOptions])
+
+  useEffect(() => {
+    if (destinoMesmaUo && !selectedUaId && uaOptions.length === 1) {
+      setSelectedUaId(String(uaOptions[0].id))
+    }
+  }, [destinoMesmaUo, selectedUaId, uaOptions])
+
+  const itensSelecionados = useMemo(() => {
+    if (selecionarTodos) return bensSelecionarTodos
+    return faixas.flatMap((faixa) => faixa.bens)
+  }, [bensSelecionarTodos, faixas, selecionarTodos])
+  const uaDestinoPlaceholder = getUaDestinoPlaceholder(
+    selectedUoId,
+    destinoSemPontoCentral,
+    destinoMesmaUo,
+    uaOptions.length > 0,
   )
-  const uaDestinoPlaceholder = getUaDestinoPlaceholder(destinoSemPontoCentral, destinoMesmaUo)
   const canSave = Boolean(
     originUaId &&
     selectedUoNumericId &&
     (destinoMesmaUo ? selectedUaId : selectedUoOption?.tem_ponto_central) &&
     itensSelecionados.length > 0 &&
+    !adicionandoItens &&
     !submitting,
   )
 
@@ -278,15 +309,38 @@ export default function AdicionarMovimentacaoPage() {
     }
   }, [destinoMesmaUo, selectedUaId, selectedUoId, uaOptions])
 
+  const exibirErro = useCallback((message: string) => {
+    setError(message)
+    toast.error(message)
+  }, [])
+
   const addFaixa = useCallback(async () => {
     if (!originUaId || !numeroDe.trim()) {
-      setError('Informe o Número Patrimonial - De.')
+      exibirErro('Informe o Número Patrimonial - De.')
+      return
+    }
+
+    const numeroDeNormalizado = numeroDe.trim()
+    const numeroAteNormalizado = numeroAte.trim() || numeroDeNormalizado
+    if (numeroAteNormalizado < numeroDeNormalizado) {
+      exibirErro('O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.')
+      return
+    }
+    if (
+      faixas.some(
+        (faixa) =>
+          numeroDeNormalizado <= faixa.numeroAte && numeroAteNormalizado >= faixa.numeroDe,
+      )
+    ) {
+      exibirErro('Os bens informados já foram adicionados à movimentação.')
       return
     }
 
     const faixa: MovimentacaoFaixaNumeroPatrimonial = {
-      numero_patrimonial_de: numeroDe.trim(),
-      ...(numeroAte.trim() ? { numero_patrimonial_ate: numeroAte.trim() } : {}),
+      numero_patrimonial_de: numeroDeNormalizado,
+      ...(numeroAteNormalizado !== numeroDeNormalizado
+        ? { numero_patrimonial_ate: numeroAteNormalizado }
+        : {}),
     }
     setAdicionandoItens(true)
     setError(null)
@@ -297,7 +351,7 @@ export default function AdicionarMovimentacaoPage() {
       })
       const idsExistentes = new Set(faixas.flatMap((item) => item.bens.map((bem) => bem.id)))
       if (itens.some((bem) => idsExistentes.has(bem.id))) {
-        setError('Os bens informados já foram adicionados à movimentação.')
+        exibirErro('Os bens informados já foram adicionados à movimentação.')
         return
       }
       setFaixas((current) => [
@@ -305,14 +359,14 @@ export default function AdicionarMovimentacaoPage() {
         {
           id: crypto.randomUUID(),
           numeroDe: faixa.numero_patrimonial_de,
-          numeroAte: faixa.numero_patrimonial_ate ?? faixa.numero_patrimonial_de,
+          numeroAte: numeroAteNormalizado,
           bens: itens,
         },
       ])
       setNumeroDe('')
       setNumeroAte('')
     } catch (requestError: unknown) {
-      setError(
+      exibirErro(
         requestError instanceof Error
           ? requestError.message
           : 'Erro ao adicionar itens de movimentação.',
@@ -320,7 +374,7 @@ export default function AdicionarMovimentacaoPage() {
     } finally {
       setAdicionandoItens(false)
     }
-  }, [faixas, numeroAte, numeroDe, originUaId])
+  }, [exibirErro, faixas, numeroAte, numeroDe, originUaId])
 
   const handleSelecionarTodos = useCallback(
     async (checked: boolean) => {
@@ -329,7 +383,10 @@ export default function AdicionarMovimentacaoPage() {
         setBensSelecionarTodos([])
         return
       }
-      if (!originUaId) return
+      if (!originUaId) {
+        exibirErro('Informe a Unidade Administrativa de origem.')
+        return
+      }
 
       setAdicionandoItens(true)
       setError(null)
@@ -338,11 +395,15 @@ export default function AdicionarMovimentacaoPage() {
           unidade_administrativa_origem: originUaId,
           selecionar_todos: true,
         })
+        if (itens.length === 0) {
+          exibirErro('Nenhum bem aprovado foi encontrado na unidade administrativa de origem.')
+          return
+        }
         setFaixas([])
         setBensSelecionarTodos(itens)
         setSelecionarTodos(true)
       } catch (requestError: unknown) {
-        setError(
+        exibirErro(
           requestError instanceof Error
             ? requestError.message
             : 'Erro ao adicionar itens de movimentação.',
@@ -351,28 +412,33 @@ export default function AdicionarMovimentacaoPage() {
         setAdicionandoItens(false)
       }
     },
-    [originUaId],
+    [exibirErro, originUaId],
   )
 
   const removerFaixa = (faixaId: string) => {
     setFaixas((current) => current.filter((item) => item.id !== faixaId))
-    setFaixaEmVisualizacao((current) => (current?.id === faixaId ? null : current))
   }
 
   const handleSave = async () => {
     setError(null)
-    if (!originUaId || !selectedUoNumericId || destinoSemPontoCentral) {
-      setError(
-        destinoSemPontoCentral ? MENSAGEM_SEM_PONTO_CENTRAL : 'Preencha os campos obrigatórios.',
-      )
+    if (!originUaId) {
+      exibirErro('Unidade Administrativa de origem não informada.')
+      return
+    }
+    if (!selectedUoNumericId) {
+      exibirErro('Selecione a Unidade Orçamentária de destino.')
+      return
+    }
+    if (destinoSemPontoCentral) {
+      exibirErro(MENSAGEM_SEM_PONTO_CENTRAL)
       return
     }
     if (destinoMesmaUo && !selectedUaId) {
-      setError('Selecione a Unidade Administrativa de destino.')
+      exibirErro('Selecione a Unidade Administrativa de destino.')
       return
     }
     if (itensSelecionados.length === 0) {
-      setError('Adicione ao menos um item de movimentação.')
+      exibirErro('Adicione ao menos um item de movimentação.')
       return
     }
 
@@ -387,7 +453,7 @@ export default function AdicionarMovimentacaoPage() {
           : {
               faixas: faixas.map(({ numeroDe: de, numeroAte: ate }) => ({
                 numero_patrimonial_de: de,
-                numero_patrimonial_ate: ate,
+                ...(de !== ate ? { numero_patrimonial_ate: ate } : {}),
               })),
             }),
         ...(destinoMesmaUo ? { unidade_administrativa_destino: Number(selectedUaId) } : {}),
@@ -477,7 +543,7 @@ export default function AdicionarMovimentacaoPage() {
             <SelectContent>
               {uaOptions.length === 0 ? (
                 <SelectItem value='__empty__' disabled>
-                  Nenhuma UA disponível
+                  Nenhuma UA
                 </SelectItem>
               ) : (
                 uaOptions.map((ua) => (
@@ -507,7 +573,10 @@ export default function AdicionarMovimentacaoPage() {
         <Textarea
           id='observacao'
           value={observacao}
-          onChange={(event) => setObservacao(event.target.value)}
+          onChange={(event) => {
+            setObservacao(event.target.value)
+            setError(null)
+          }}
           placeholder='Digite uma observação'
           className='min-h-28'
         />
@@ -522,7 +591,13 @@ export default function AdicionarMovimentacaoPage() {
             id='selecionar-todos-bens'
             checked={selecionarTodos}
             disabled={!originUaId || adicionandoItens}
-            onCheckedChange={(checked) => void handleSelecionarTodos(checked === true)}
+            onCheckedChange={(checked) => {
+              if (checked === true && faixas.length > 0) {
+                setConfirmarSelecionarTodos(true)
+                return
+              }
+              void handleSelecionarTodos(checked === true)
+            }}
           />
           <label htmlFor='selecionar-todos-bens' className='text-sm font-medium text-gray-700'>
             Selecionar todos os Bens aprovados da UA de origem
@@ -534,7 +609,7 @@ export default function AdicionarMovimentacaoPage() {
               <thead className='bg-gray-50 text-left text-gray-700'>
                 <tr>
                   <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Nome do Bem</th>
+                  <th className='p-3'>Bens selecionados</th>
                   <th className='p-3 text-center'>Ação</th>
                 </tr>
               </thead>
@@ -591,27 +666,15 @@ export default function AdicionarMovimentacaoPage() {
               <thead className='bg-gray-50 text-left text-gray-700'>
                 <tr>
                   <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Bens selecionados</th>
+                  <th className='p-3'>Nome do Bem</th>
                   <th className='p-3 text-center'>Ação</th>
-                  <th className='p-3 text-center'>Apagar</th>
                 </tr>
               </thead>
               <tbody>
                 {faixas.map((faixa) => (
                   <tr key={faixa.id} className='border-t border-gray-200'>
                     <td className='p-3'>{formatarFaixa(faixa.numeroDe, faixa.numeroAte)}</td>
-                    <td className='p-3'>{faixa.bens.length} bem(ns) selecionado(s)</td>
-                    <td className='p-3 text-center'>
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        aria-label={`Visualizar bens da faixa ${formatarFaixa(faixa.numeroDe, faixa.numeroAte)}`}
-                        onClick={() => setFaixaEmVisualizacao(faixa)}
-                      >
-                        <Eye className='size-[22px] text-[#00703C]' />
-                      </Button>
-                    </td>
+                    <td className='p-3'>{resumirNomes(faixa.bens)}</td>
                     <td className='p-3 text-center'>
                       <Button
                         type='button'
@@ -629,62 +692,18 @@ export default function AdicionarMovimentacaoPage() {
             </table>
           </div>
         ) : null}
-        {faixaEmVisualizacao && (
-          <dialog
-            open
-            aria-modal='true'
-            aria-label={`Bens da faixa ${formatarFaixa(
-              faixaEmVisualizacao.numeroDe,
-              faixaEmVisualizacao.numeroAte,
-            )}`}
-            className='fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-black/40 p-4'
-            onClose={() => setFaixaEmVisualizacao(null)}
-          >
-            <div className='w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl'>
-              <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4'>
-                <div>
-                  <h2 className='text-lg font-semibold text-gray-800'>Bens da movimentação</h2>
-                  <p className='text-sm text-gray-600'>
-                    {formatarFaixa(
-                      faixaEmVisualizacao.numeroDe,
-                      faixaEmVisualizacao.numeroAte,
-                    )}
-                  </p>
-                </div>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  aria-label='Fechar detalhes dos bens'
-                  onClick={() => setFaixaEmVisualizacao(null)}
-                >
-                  <X className='size-5' />
-                </Button>
-              </div>
-              <div className='max-h-[60vh] overflow-auto p-6'>
-                <table className='w-full text-sm'>
-                  <thead className='bg-gray-50 text-left text-gray-700'>
-                    <tr>
-                      <th className='p-3'>Número Patrimonial</th>
-                      <th className='p-3'>Nome do Bem</th>
-                      <th className='p-3'>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {faixaEmVisualizacao.bens.map((bem) => (
-                      <tr key={bem.id} className='border-t border-gray-200'>
-                        <td className='p-3'>{bem.numero_patrimonial}</td>
-                        <td className='p-3'>{bem.nome}</td>
-                        <td className='p-3'>{formatarStatus(bem.status)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </dialog>
-        )}
       </section>
+      <ConfirmDialog
+        open={confirmarSelecionarTodos}
+        title='Selecionar todos os Bens'
+        message='As faixas já adicionadas serão removidas. Deseja continuar?'
+        confirmLabel='Continuar'
+        onClose={() => setConfirmarSelecionarTodos(false)}
+        onConfirm={() => {
+          setConfirmarSelecionarTodos(false)
+          void handleSelecionarTodos(true)
+        }}
+      />
     </BemCadastroPageShell>
   )
 }
