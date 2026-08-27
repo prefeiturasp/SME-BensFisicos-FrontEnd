@@ -60,7 +60,7 @@ function resumirNomes(bens: MovimentacaoBem[]) {
 }
 
 function formatarNP(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 13)
+  const digits = value.replaceAll(/\D/g, '').slice(0, 13)
   if (digits.length <= 3) return digits
   if (digits.length <= 12) return `${digits.slice(0, 3)}.${digits.slice(3)}`
   return `${digits.slice(0, 3)}.${digits.slice(3, 12)}-${digits.slice(12)}`
@@ -338,9 +338,9 @@ export default function AdicionarMovimentacaoPage() {
 
     const faixa: MovimentacaoFaixaNumeroPatrimonial = {
       numero_patrimonial_de: numeroDeNormalizado,
-      ...(numeroAteNormalizado !== numeroDeNormalizado
-        ? { numero_patrimonial_ate: numeroAteNormalizado }
-        : {}),
+      ...(numeroAteNormalizado === numeroDeNormalizado
+        ? {}
+        : { numero_patrimonial_ate: numeroAteNormalizado }),
     }
     setAdicionandoItens(true)
     setError(null)
@@ -453,7 +453,7 @@ export default function AdicionarMovimentacaoPage() {
           : {
               faixas: faixas.map(({ numeroDe: de, numeroAte: ate }) => ({
                 numero_patrimonial_de: de,
-                ...(de !== ate ? { numero_patrimonial_ate: ate } : {}),
+                ...(de === ate ? {} : { numero_patrimonial_ate: ate }),
               })),
             }),
         ...(destinoMesmaUo ? { unidade_administrativa_destino: Number(selectedUaId) } : {}),

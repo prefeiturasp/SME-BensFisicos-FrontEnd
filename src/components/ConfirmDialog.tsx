@@ -103,12 +103,16 @@ export function ConfirmDialog({
         event.preventDefault();
         if (!loading) handleClose();
       }}
-      onClick={(event) => {
-        if (!loading && event.target === event.currentTarget) handleClose();
-      }}
     >
+      <button
+        type='button'
+        aria-label='Fechar modal ao clicar fora'
+        className='absolute inset-0 h-full w-full cursor-default border-0 bg-transparent p-0'
+        disabled={loading}
+        onClick={handleClose}
+      />
       <div
-        className='mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl'
+        className='relative z-10 mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl'
         data-testid={containerTestId}
       >
         <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4'>

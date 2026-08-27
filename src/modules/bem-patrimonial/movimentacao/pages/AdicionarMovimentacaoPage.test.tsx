@@ -772,11 +772,11 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     fireEvent.click(selecionarTodosCheckbox)
 
-    const dialog = screen.getByRole('dialog', { name: 'Selecionar todos os Bens' })
+    screen.getByRole('dialog', { name: 'Selecionar todos os Bens' })
     expect(screen.getByText('001.000000001-1')).toBeInTheDocument()
     expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(dialog)
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar modal ao clicar fora' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     fireEvent.click(selecionarTodosCheckbox)
