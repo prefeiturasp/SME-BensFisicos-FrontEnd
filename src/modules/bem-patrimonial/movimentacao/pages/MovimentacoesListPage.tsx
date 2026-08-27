@@ -9,6 +9,7 @@ import {
   Minus,
   Search,
   X,
+  CircleAlert,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -19,6 +20,7 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePagination } from '../../bem/hooks/usePagination'
 import { FilterSelect } from '@/modules/bem-patrimonial/components/FilterSelect'
 import { movimentacaoService } from '../services/movimentacao.service'
@@ -44,6 +46,7 @@ type SelectOption = {
 type MovimentacaoAction = 'aprovar' | 'rejeitar' | 'cancelar'
 
 const PAGE_SIZE = 10
+const DIAS_ATRASO = 7
 
 const ACTION_BUTTON_CLASS = `
   h-10 px-6 bg-white border border-[#2F7D57]
@@ -66,6 +69,15 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   aceita: 'text-blue-700',
   rejeitada: 'text-red-600',
   cancelada: 'text-gray-500',
+}
+
+export function isMovimentacaoAtrasada(movimentacao: Pick<MovimentacaoBemPatrimonialListItem, 'status' | 'criado_em'>): boolean {
+  if (movimentacao.status !== 'enviada') return false
+  const criado = new Date(movimentacao.criado_em)
+  if (Number.isNaN(criado.getTime())) return false
+  const limite = new Date()
+  limite.setDate(limite.getDate() - DIAS_ATRASO)
+  return criado <= limite
 }
 
 function getActionErrorMessage(action: MovimentacaoAction) {
@@ -181,6 +193,25 @@ function StatusBadge(props: Readonly<{ status: string; statusDisplay: string }>)
   )
 }
 
+function AlertaAtrasada() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className='inline-flex items-center'
+          aria-label='Movimentação em atraso'
+          data-testid='alerta-atrasada'
+        >
+          <CircleAlert className='size-4 text-red-600' />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side='top' sideOffset={6} className='max-w-70'>
+        Movimentação pendente há mais de {DIAS_ATRASO} dias
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 type MovimentacaoTableRowProps = Readonly<{
   movimentacao: MovimentacaoBemPatrimonialListItem
   selected: boolean
@@ -191,6 +222,7 @@ type MovimentacaoTableRowProps = Readonly<{
 
 function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
   const { movimentacao, selected, disabled, onToggleSelected, onVisualizar } = props
+  const atrasada = isMovimentacaoAtrasada(movimentacao)
 
   return (
     <tr key={movimentacao.id} className='border-b hover:bg-gray-50'>
@@ -202,7 +234,12 @@ function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
           onCheckedChange={() => onToggleSelected(movimentacao.id)}
         />
       </td>
-      <td className='p-3'>{movimentacao.numero_cimbpm ?? '-'}</td>
+      <td className='p-3'>
+        <span className='inline-flex items-center gap-1.5'>
+          {movimentacao.numero_cimbpm ?? '-'}
+          {atrasada && <AlertaAtrasada />}
+        </span>
+      </td>
       <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_origem)}</td>
       <td className='p-3'>{resolveUaLabel(movimentacao.unidade_administrativa_destino)}</td>
       <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
