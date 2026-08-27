@@ -561,6 +561,7 @@ describe('BensListPage', () => {
     expect(mockedUseBensList).toHaveBeenCalledWith({
       pageSize: 10,
       persistKey: 'bens-list:7',
+      grupos: [],
     })
   })
 
@@ -570,6 +571,7 @@ describe('BensListPage', () => {
     expect(mockedUseBensList).toHaveBeenCalledWith({
       pageSize: 10,
       persistKey: 'bens-list:anon',
+      grupos: [],
     })
   })
 })

@@ -232,6 +232,72 @@ describe('useBensList', () => {
     })
   })
 
+  it('consolida em unidade_orcamentaria quando todas as UAs da UO estão marcadas', async () => {
+    const grupos = [
+      {
+        uo: { id: 1 },
+        uas: [
+          { unidade_administrativa_id: 100 },
+          { unidade_administrativa_id: 101 },
+        ],
+      },
+    ]
+    const { result } = renderHook(() =>
+      useBensList({ pageSize: 10, grupos }),
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    listMock.mockClear()
+
+    act(() => {
+      result.current.setUnidadesAdministrativas(['100', '101'])
+    })
+
+    await waitFor(() => {
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unidade_orcamentaria: ['1'],
+          unidade_administrativa: undefined,
+        }),
+      )
+    })
+  })
+
+  it('envia UO consolidada e mantém UA avulsa quando a UO está parcialmente marcada', async () => {
+    const grupos = [
+      {
+        uo: { id: 1 },
+        uas: [
+          { unidade_administrativa_id: 100 },
+          { unidade_administrativa_id: 101 },
+        ],
+      },
+      {
+        uo: { id: 2 },
+        uas: [{ unidade_administrativa_id: 200 }],
+      },
+    ]
+    const { result } = renderHook(() =>
+      useBensList({ pageSize: 10, grupos }),
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    listMock.mockClear()
+
+    // UO 1 inteira + apenas uma UA da UO 2 (que só tem uma, então também vira UO)
+    act(() => {
+      result.current.setUnidadesAdministrativas(['100', '200'])
+    })
+
+    await waitFor(() => {
+      const call = listMock.mock.calls.at(-1)?.[0]
+      expect(call).toBeDefined()
+      // UA 100 não cobre a UO 1 inteira -> vai avulsa; UA 200 cobre a UO 2 -> vira UO
+      expect(call!.unidade_administrativa).toEqual(['100'])
+      expect(call!.unidade_orcamentaria).toEqual(['2'])
+    })
+  })
+
   it('envia buscaGeralUos como undefined quando desmarcado e true quando marcado', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 

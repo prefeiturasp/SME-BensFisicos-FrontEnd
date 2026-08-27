@@ -35,6 +35,19 @@ type Props = Readonly<{
 
 const TODAS_LABEL = 'Todas as UAs'
 
+type EstadoGrupo = 'todos' | 'parcial' | 'nenhum'
+
+/**
+ * Converte o estado de seleção de um grupo (UO) no valor `checked` esperado
+ * pelo Checkbox (Radix CheckedState): marcado, indeterminado (parcial) ou
+ * desmarcado. Extraído para evitar ternário aninhado no JSX.
+ */
+function checkedDoEstado(estado: EstadoGrupo): boolean | 'indeterminate' {
+  if (estado === 'todos') return true
+  if (estado === 'parcial') return 'indeterminate'
+  return false
+}
+
 export function EscopoFilterDropdown({ id, grupos, value, onChange }: Props) {
   const [open, setOpen] = React.useState(false)
   const [filter, setFilter] = React.useState('')
@@ -124,7 +137,7 @@ export function EscopoFilterDropdown({ id, grupos, value, onChange }: Props) {
     close()
   }
 
-  const grupoEstado = (grupo: Grupo): 'todos' | 'parcial' | 'nenhum' => {
+  const grupoEstado = (grupo: Grupo): EstadoGrupo => {
     const idsGrupo = grupo.uas.map(ua => String(ua.unidade_administrativa_id))
     if (idsGrupo.length === 0) return 'nenhum'
     const marcadas = idsGrupo.filter(uaId => selectedSet.has(uaId)).length
@@ -157,22 +170,18 @@ export function EscopoFilterDropdown({ id, grupos, value, onChange }: Props) {
           </div>
 
           <div className='p-1'>
-            <button
-              type='button'
-              onClick={selecionarTodas}
+            <label
               className={`
-                flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold rounded hover:bg-gray-50
+                flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold rounded hover:bg-gray-50 cursor-pointer
                 ${isTodas ? 'bg-green-50 text-green-700' : 'text-gray-700'}
               `}
             >
               <Checkbox
                 checked={isTodas}
-                aria-hidden='true'
-                tabIndex={-1}
-                className='pointer-events-none'
+                onCheckedChange={() => selecionarTodas()}
               />
               {TODAS_LABEL}
-            </button>
+            </label>
 
             {filteredGroups.length === 0 && (
               <div className='px-3 py-2 text-sm text-gray-500'>
@@ -192,15 +201,10 @@ export function EscopoFilterDropdown({ id, grupos, value, onChange }: Props) {
                       `}
                     >
                       <Checkbox
-                        checked={estado === 'todos'}
-                        data-parcial={estado === 'parcial' ? 'true' : undefined}
+                        checked={checkedDoEstado(estado)}
                         onCheckedChange={() => toggleGrupo(grupo)}
                         disabled={grupo.uas.length === 0}
-                        className={
-                          estado === 'parcial'
-                            ? 'data-[parcial=true]:bg-[#2F7D57] data-[parcial=true]:border-[#2F7D57] data-[parcial=true]:opacity-60'
-                            : undefined
-                        }
+                        className='data-[state=indeterminate]:bg-[#2F7D57] data-[state=indeterminate]:border-[#2F7D57] data-[state=indeterminate]:text-white'
                       />
                       {grupo.uo.label}
                     </label>

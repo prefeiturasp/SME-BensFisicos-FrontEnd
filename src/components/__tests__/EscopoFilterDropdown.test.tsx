@@ -115,8 +115,14 @@ describe('EscopoFilterDropdown', () => {
     const onChange = vi.fn()
     renderComponent(['100'], onChange)
 
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
+    // trigger exibe o label da UA única selecionada
+    fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
+
+    const painel = screen
+      .getByPlaceholderText('Buscar unidade')
+      .closest('div')!.parentElement!
+
+    fireEvent.click(within(painel).getByText('Todas as UAs'))
 
     expect(onChange).toHaveBeenCalledWith([])
   })
