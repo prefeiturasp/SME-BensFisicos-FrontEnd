@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/auth/useAuth'
-import MovimentacoesListPage from './MovimentacoesListPage'
+import MovimentacoesListPage, { isMovimentacaoAtrasada } from './MovimentacoesListPage'
 import { movimentacaoService } from '../services/movimentacao.service'
 
 const mockNavigate = vi.fn()
@@ -51,6 +51,12 @@ vi.mock('@/components/ui/checkbox', () => ({
       {...props}
     />
   ),
+}))
+
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: any) => <>{children}</>,
+  TooltipTrigger: ({ children, asChild }: any) => (asChild ? <>{children}</> : <span>{children}</span>),
+  TooltipContent: ({ children }: any) => <div role='tooltip'>{children}</div>,
 }))
 
 vi.mock('sonner', () => ({
@@ -184,9 +190,9 @@ function mockListResponse(
 }
 
 function mockActionResponses() {
-  vi.mocked(movimentacaoService.aprovar).mockResolvedValue(makeMovimentacao())
-  vi.mocked(movimentacaoService.rejeitar).mockResolvedValue(makeMovimentacao({ status: 'rejeitada', status_display: 'Rejeitada' }))
-  vi.mocked(movimentacaoService.cancelar).mockResolvedValue(makeMovimentacao({ status: 'cancelada', status_display: 'Cancelada' }))
+  vi.mocked(movimentacaoService.aprovar).mockResolvedValue(makeMovimentacao(1))
+  vi.mocked(movimentacaoService.rejeitar).mockResolvedValue(makeMovimentacao(1, { status: 'rejeitada', status_display: 'Rejeitada' }))
+  vi.mocked(movimentacaoService.cancelar).mockResolvedValue(makeMovimentacao(1, { status: 'cancelada', status_display: 'Cancelada' }))
 }
 
 function renderPage() {
@@ -211,6 +217,65 @@ function mockAuthenticatedUser(user: ReturnType<typeof makeUser>) {
   })
 }
 
+// ─── testes unitários do helper ────────────────────────────────────────────
+describe('isMovimentacaoAtrasada', () => {
+  it('retorna true para movimentação enviada criada há mais de 7 dias', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 8)
+    expect(
+      isMovimentacaoAtrasada({ status: 'enviada', criado_em: criado_em.toISOString() }),
+    ).toBe(true)
+  })
+
+  it('retorna true para movimentação enviada criada há exatamente 7 dias', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 7)
+    criado_em.setSeconds(criado_em.getSeconds() - 1)
+    expect(
+      isMovimentacaoAtrasada({ status: 'enviada', criado_em: criado_em.toISOString() }),
+    ).toBe(true)
+  })
+
+  it('retorna false para movimentação enviada criada há menos de 7 dias', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 3)
+    expect(
+      isMovimentacaoAtrasada({ status: 'enviada', criado_em: criado_em.toISOString() }),
+    ).toBe(false)
+  })
+
+  it('retorna false para movimentação aceita mesmo que antiga', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 30)
+    expect(
+      isMovimentacaoAtrasada({ status: 'aceita', criado_em: criado_em.toISOString() }),
+    ).toBe(false)
+  })
+
+  it('retorna false para movimentação rejeitada mesmo que antiga', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 30)
+    expect(
+      isMovimentacaoAtrasada({ status: 'rejeitada', criado_em: criado_em.toISOString() }),
+    ).toBe(false)
+  })
+
+  it('retorna false para movimentação cancelada mesmo que antiga', () => {
+    const criado_em = new Date()
+    criado_em.setDate(criado_em.getDate() - 30)
+    expect(
+      isMovimentacaoAtrasada({ status: 'cancelada', criado_em: criado_em.toISOString() }),
+    ).toBe(false)
+  })
+
+  it('retorna false para data inválida', () => {
+    expect(
+      isMovimentacaoAtrasada({ status: 'enviada', criado_em: 'data-invalida' }),
+    ).toBe(false)
+  })
+})
+
+// ─── testes de integração da página ────────────────────────────────────────
 describe('MovimentacoesListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -569,5 +634,94 @@ describe('MovimentacoesListPage', () => {
     expect(
       await screen.findByText('Nenhuma movimentação encontrada.'),
     ).toBeInTheDocument()
+  })
+
+  // ─── testes do indicador de atraso ───────────────────────────────────────
+  describe('indicador de movimentação atrasada', () => {
+    it('deve exibir o ícone de alerta para movimentação enviada há mais de 7 dias', async () => {
+      const criado_em = new Date()
+      criado_em.setDate(criado_em.getDate() - 8)
+
+      mockListResponse([
+        makeMovimentacao(1, { criado_em: criado_em.toISOString() }),
+      ])
+
+      renderPage()
+
+      await screen.findByText('Enviada')
+
+      expect(screen.getByTestId('alerta-atrasada')).toBeInTheDocument()
+      expect(screen.getByLabelText('Movimentação em atraso')).toBeInTheDocument()
+    })
+
+    it('deve exibir o tooltip de atraso ao renderizar o alerta', async () => {
+      const criado_em = new Date()
+      criado_em.setDate(criado_em.getDate() - 8)
+
+      mockListResponse([
+        makeMovimentacao(1, { criado_em: criado_em.toISOString() }),
+      ])
+
+      renderPage()
+
+      await screen.findByText('Enviada')
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Movimentação pendente há mais de 7 dias',
+      )
+    })
+
+    it('não deve exibir o ícone de alerta para movimentação enviada há menos de 7 dias', async () => {
+      const criado_em = new Date()
+      criado_em.setDate(criado_em.getDate() - 3)
+
+      mockListResponse([
+        makeMovimentacao(1, { criado_em: criado_em.toISOString() }),
+      ])
+
+      renderPage()
+
+      await screen.findByText('Enviada')
+
+      expect(screen.queryByTestId('alerta-atrasada')).not.toBeInTheDocument()
+    })
+
+    it('não deve exibir o ícone de alerta para movimentação aceita mesmo que antiga', async () => {
+      const criado_em = new Date()
+      criado_em.setDate(criado_em.getDate() - 30)
+
+      mockListResponse([
+        makeMovimentacao(1, {
+          status: 'aceita',
+          status_display: 'Aceita',
+          criado_em: criado_em.toISOString(),
+        }),
+      ])
+
+      renderPage()
+
+      await screen.findByText('Aceita')
+
+      expect(screen.queryByTestId('alerta-atrasada')).not.toBeInTheDocument()
+    })
+
+    it('deve exibir alerta apenas para movimentações atrasadas em lista mista', async () => {
+      const antiga = new Date()
+      antiga.setDate(antiga.getDate() - 10)
+
+      const recente = new Date()
+      recente.setDate(recente.getDate() - 2)
+
+      mockListResponse([
+        makeMovimentacao(1, { criado_em: antiga.toISOString() }),
+        makeMovimentacao(2, { criado_em: recente.toISOString() }),
+      ])
+
+      renderPage()
+
+      await screen.findAllByText('Enviada')
+
+      expect(screen.getAllByTestId('alerta-atrasada')).toHaveLength(1)
+    })
   })
 })
