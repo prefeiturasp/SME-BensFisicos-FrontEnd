@@ -382,7 +382,7 @@ describe('useConciliacaoItens', () => {
       pageSize: 10,
       numeroPatrimonial: '',
       nome: '',
-      situacao: 'todos',
+      situacao: [],
       ordering: 'bem__numero_patrimonial',
     });
   });
@@ -409,7 +409,7 @@ describe('useConciliacaoItens', () => {
     act(() => {
       result.current.setNumeroPatrimonialInput('001');
       result.current.setNomeInput('Mesa');
-      result.current.setSituacaoFilter('divergente');
+      result.current.setSituacaoFilter(['divergente']);
     });
 
     await waitFor(() => {
@@ -419,7 +419,43 @@ describe('useConciliacaoItens', () => {
         pageSize: 10,
         numeroPatrimonial: '001',
         nome: 'Mesa',
-        situacao: 'divergente',
+        situacao: ['divergente'],
+        ordering: 'bem__numero_patrimonial',
+      });
+    });
+  });
+
+  it('reinicia a pagina e refaz a busca ao alterar multiplas situacoes', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useConciliacaoItens({ conciliacaoId: 1, pageSize: 10 }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.itens).toHaveLength(1));
+
+    act(() => {
+      result.current.setPage(3);
+    });
+
+    await waitFor(() => {
+      const lastCall =
+        mockedService.listItens.mock.calls[mockedService.listItens.mock.calls.length - 1]?.[1];
+      expect(lastCall?.page).toBe(3);
+    });
+
+    act(() => {
+      result.current.setSituacaoFilter(['divergente', 'nao_encontrado']);
+    });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+      expect(mockedService.listItens).toHaveBeenLastCalledWith(1, {
+        page: 1,
+        pageSize: 10,
+        numeroPatrimonial: '',
+        nome: '',
+        situacao: ['divergente', 'nao_encontrado'],
         ordering: 'bem__numero_patrimonial',
       });
     });

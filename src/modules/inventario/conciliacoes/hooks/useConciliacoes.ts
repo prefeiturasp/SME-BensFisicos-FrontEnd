@@ -130,7 +130,7 @@ export function useConciliacaoItens({ conciliacaoId, pageSize }: UseConciliacaoI
   const [ordering, setOrdering] = useState<ConciliacaoItemSortableField>(DEFAULT_ITENS_ORDERING);
   const [numeroPatrimonialInput, setNumeroPatrimonialInput] = useState('');
   const [nomeInput, setNomeInput] = useState('');
-  const [situacaoFilter, setSituacaoFilter] = useState<ConciliacaoItemSituacaoFilter>('todos');
+  const [situacaoFilter, setSituacaoFilter] = useState<ConciliacaoItemSituacaoFilter>([]);
 
   const numeroPatrimonial = useDebouncedValue(numeroPatrimonialInput);
   const nome = useDebouncedValue(nomeInput);

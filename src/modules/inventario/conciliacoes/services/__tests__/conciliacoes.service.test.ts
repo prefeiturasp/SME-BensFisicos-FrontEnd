@@ -330,7 +330,7 @@ describe('conciliacoesService.listItens', () => {
         pageSize: 10,
         numeroPatrimonial: '001.052',
         nome: 'POLTRONA',
-        situacao: 'divergente',
+        situacao: ['divergente'],
         ordering: '-atualizado_em',
       }),
     ).resolves.toEqual({
@@ -351,6 +351,42 @@ describe('conciliacoesService.listItens', () => {
     });
   });
 
+  it('envia multiplas situacoes separadas por virgula', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await expect(
+      conciliacoesService.listItens(1, {
+        situacao: ['divergente', 'nao_encontrado'],
+      }),
+    ).resolves.toEqual({ count: 0, next: null, previous: null, results: [] });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/1/itens/', {
+      params: {
+        situacao: 'divergente,nao_encontrado',
+      },
+    });
+  });
+
+  it('omite a situacao quando a selecao contem "todos"', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await expect(
+      conciliacoesService.listItens(1, {
+        situacao: ['todos', 'divergente'],
+      }),
+    ).resolves.toEqual({ count: 0, next: null, previous: null, results: [] });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/1/itens/', {
+      params: {
+        situacao: 'divergente',
+      },
+    });
+  });
+
   it('envia apenas o termo de busca preenchido como search', async () => {
     mockedGet.mockResolvedValueOnce({
       data: { count: 0, next: null, previous: null, results: [] },
@@ -359,7 +395,7 @@ describe('conciliacoesService.listItens', () => {
     await conciliacoesService.listItens(1, {
       numeroPatrimonial: '001.052',
       nome: '',
-      situacao: 'todos',
+      situacao: [],
     });
 
     expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/1/itens/', {
@@ -378,7 +414,7 @@ describe('conciliacoesService.listItens', () => {
       conciliacoesService.listItens(1, {
         numeroPatrimonial: '   ',
         nome: '',
-        situacao: 'todos',
+        situacao: ['todos'],
       }),
     ).resolves.toEqual({ count: 0, next: null, previous: null, results: [] });
 

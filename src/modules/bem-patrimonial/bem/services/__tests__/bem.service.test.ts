@@ -79,6 +79,28 @@ describe('bem.service', () => {
     await bemService.list({ unidade_administrativa: 'todas' } as any);
   });
 
+  it('deve enviar unidade_orcamentaria como CSV quando for um array', async () => {
+    mock.onGet(/\/bens\/\?/).reply((config) => {
+      expect(config.url).toContain('unidade_orcamentaria=1%2C2');
+      return [200, { count: 0, next: null, previous: null, results: [] }];
+    });
+
+    await bemService.list({ unidade_orcamentaria: ['1', '2'] } as any);
+  });
+
+  it('deve enviar unidade_administrativa e unidade_orcamentaria juntas', async () => {
+    mock.onGet(/\/bens\/\?/).reply((config) => {
+      expect(config.url).toContain('unidade_administrativa=100');
+      expect(config.url).toContain('unidade_orcamentaria=5');
+      return [200, { count: 0, next: null, previous: null, results: [] }];
+    });
+
+    await bemService.list({
+      unidade_administrativa: ['100'],
+      unidade_orcamentaria: ['5'],
+    } as any);
+  });
+
   // ===============================
   // RETRIEVE
   // ===============================

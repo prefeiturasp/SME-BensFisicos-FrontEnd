@@ -42,8 +42,8 @@ vi.mock('@/components/EscopoFilterDropdown', () => ({
     <button
       data-testid={id}
       data-grupos={grupos.length}
-      data-value={value}
-      onClick={() => onChange('002')}
+      data-value={JSON.stringify(value)}
+      onClick={() => onChange(['002'])}
     >
       escopo
     </button>
@@ -87,14 +87,14 @@ const baseMock = {
   loading: false,
   searchInput: '',
   statusFilter: 'todos',
-  escopoFilter: 'todas',
+  unidadesAdministrativas: [],
   bensBaixados: false,
   buscaGeralUos: false,
   ordering: '',
   setPage: vi.fn(),
   setSearchInput: vi.fn(),
   setStatusFilter: vi.fn(),
-  setEscopoFilter: vi.fn(),
+  setUnidadesAdministrativas: vi.fn(),
   setBensBaixados: vi.fn(),
   setBuscaGeralUos: vi.fn(),
   setOrdering: vi.fn(),
@@ -351,45 +351,55 @@ describe('BensListPage', () => {
     expect(setPage).toHaveBeenCalledWith(1)
   })
 
-  it('atualiza o escopo e volta para a primeira página', () => {
-    const setEscopoFilter = vi.fn()
+  it('atualiza as unidades administrativas e volta para a primeira página', () => {
+    const setUnidadesAdministrativas = vi.fn()
     const setPage = vi.fn()
-    mockPage({ setEscopoFilter, setPage })
+    mockPage({ setUnidadesAdministrativas, setPage })
     renderWithProviders()
 
     fireEvent.click(screen.getByTestId('filtro-unidade'))
 
-    expect(setEscopoFilter).toHaveBeenCalledWith('002')
+    expect(setUnidadesAdministrativas).toHaveBeenCalledWith(['002'])
     expect(setPage).toHaveBeenCalledWith(1)
   })
 
-  it('define escopo como "todas" ao marcar busca geral em todas as UOs', () => {
+  it('limpa as UAs (Todas as UAs) ao marcar busca geral em todas as UOs', () => {
     const setBuscaGeralUos = vi.fn()
-    const setEscopoFilter = vi.fn()
+    const setUnidadesAdministrativas = vi.fn()
     const setPage = vi.fn()
-    mockPage({ buscaGeralUos: false, setBuscaGeralUos, setEscopoFilter, setPage })
+    mockPage({
+      buscaGeralUos: false,
+      setBuscaGeralUos,
+      setUnidadesAdministrativas,
+      setPage,
+    })
     renderWithProviders()
 
     fireEvent.click(screen.getByRole('button', { name: 'Busca Especial' }))
     fireEvent.click(screen.getByText('Busca geral em todas as UOs'))
 
     expect(setBuscaGeralUos).toHaveBeenCalledWith(true)
-    expect(setEscopoFilter).toHaveBeenCalledWith('todas')
+    expect(setUnidadesAdministrativas).toHaveBeenCalledWith([])
     expect(setPage).toHaveBeenCalledWith(1)
   })
 
-  it('não redefine o escopo ao desmarcar busca geral em todas as UOs', () => {
+  it('não redefine as UAs ao desmarcar busca geral em todas as UOs', () => {
     const setBuscaGeralUos = vi.fn()
-    const setEscopoFilter = vi.fn()
+    const setUnidadesAdministrativas = vi.fn()
     const setPage = vi.fn()
-    mockPage({ buscaGeralUos: true, setBuscaGeralUos, setEscopoFilter, setPage })
+    mockPage({
+      buscaGeralUos: true,
+      setBuscaGeralUos,
+      setUnidadesAdministrativas,
+      setPage,
+    })
     renderWithProviders()
 
     fireEvent.click(screen.getByRole('button', { name: 'Busca Especial' }))
     fireEvent.click(screen.getByText('Busca geral em todas as UOs'))
 
     expect(setBuscaGeralUos).toHaveBeenCalledWith(false)
-    expect(setEscopoFilter).not.toHaveBeenCalled()
+    expect(setUnidadesAdministrativas).not.toHaveBeenCalled()
     expect(setPage).toHaveBeenCalledWith(1)
   })
 
@@ -551,6 +561,7 @@ describe('BensListPage', () => {
     expect(mockedUseBensList).toHaveBeenCalledWith({
       pageSize: 10,
       persistKey: 'bens-list:7',
+      grupos: [],
     })
   })
 
@@ -560,6 +571,7 @@ describe('BensListPage', () => {
     expect(mockedUseBensList).toHaveBeenCalledWith({
       pageSize: 10,
       persistKey: 'bens-list:anon',
+      grupos: [],
     })
   })
 })

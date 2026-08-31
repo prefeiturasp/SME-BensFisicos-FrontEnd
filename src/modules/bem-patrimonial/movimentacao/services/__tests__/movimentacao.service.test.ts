@@ -130,6 +130,34 @@ describe('movimentacaoService', () => {
     expect(api.post).toHaveBeenCalledWith('/movimentacoes/', payload)
   })
 
+  it('deve resolver os itens de uma movimentação em lote', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { itens: [{ id: 1, numero_patrimonial: '001.000000001-1', nome: 'Notebook' }] },
+    })
+
+    const payload = {
+      unidade_administrativa_origem: 10,
+      faixas: [{ numero_patrimonial_de: '001.000000001-1' }],
+    }
+    const result = await movimentacaoService.resolverItensLote(payload)
+
+    expect(api.post).toHaveBeenCalledWith('/movimentacoes/resolver-itens-lote/', payload)
+    expect(result.itens).toHaveLength(1)
+  })
+
+  it('deve listar somente os bens aptos para movimentação em lote', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: [{ id: 1, numero_patrimonial: '001.000000001-1', nome: 'Notebook' }],
+    })
+
+    const result = await movimentacaoService.listBensMovimentaveis(10, '001.000')
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/movimentacoes/bens-movimentaveis/?unidade_administrativa_origem=10&search=001.000',
+    )
+    expect(result).toHaveLength(1)
+  })
+
   it('deve listar opções de cadastro de movimentação', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: [
@@ -272,9 +300,7 @@ describe('movimentacaoService', () => {
   it('deve lançar erro de conexão quando não houver response', async () => {
     vi.mocked(api.get).mockRejectedValue(makeNetworkError())
 
-    await expect(movimentacaoService.list()).rejects.toThrow(
-      'Erro de conexão com o servidor.',
-    )
+    await expect(movimentacaoService.list()).rejects.toThrow('Erro de conexão com o servidor.')
   })
 
   it('deve extrair a primeira mensagem de um array de erros ao listar', async () => {

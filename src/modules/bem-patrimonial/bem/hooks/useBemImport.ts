@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { useAuth } from '@/auth/useAuth'
 import { bemService, type ImportacaoResultado } from '../services/bem.service'
 import {
   ehErroDeConciliacao,
@@ -41,8 +43,48 @@ function parseErrosPorLinha(
 
 export function useBemImport() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [estado, setEstado] = useState<ImportacaoEstado>({ tipo: 'idle' })
+  const [uaSelecionadaId, setUaSelecionadaId] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Usuário está logado numa UA específica quando ua_ativa está preenchida.
+  // Caso contrário (uo_ativa preenchida, ua_ativa nula) opera no nível de UO e
+  // precisa escolher a UA de destino.
+  const estaEmUa = !!user?.ua_ativa
+  const precisaSelecionarUa = !estaEmUa && !!user?.uo_ativa
+
+  // UAs disponíveis para escolha quando logado numa UO: as UAs do grupo cuja
+  // UO corresponde à UO ativa do usuário (opcoes_escopo).
+  const uasDisponiveis = useMemo(() => {
+    if (!precisaSelecionarUa) return []
+    const grupos = user?.opcoes_escopo?.grupos ?? []
+    const uoAtivaId = user?.uo_ativa?.id
+    const grupo =
+      grupos.find((g) => g.uo.id === uoAtivaId) ?? grupos[0]
+    return (grupo?.uas ?? [])
+      .map((ua) => ({
+        // Usa unidade_administrativa_id; se ausente, cai para id (ambos são o
+        // id da UA no backend). Garante que o valor enviado nunca seja nulo.
+        id: ua.unidade_administrativa_id ?? ua.id,
+        label: ua.label ?? ua.nome,
+      }))
+      .filter((ua) => ua.id != null)
+  }, [precisaSelecionarUa, user?.opcoes_escopo?.grupos, user?.uo_ativa?.id])
+
+  // Pré-seleciona automaticamente quando há exatamente uma UA disponível.
+  // Isso evita o caso em que o usuário vê a única UA no campo mas o valor não
+  // chega a ser efetivamente selecionado (estado permaneceria nulo), levando o
+  // backend a recusar a importação por "UA não vinculada".
+  useEffect(() => {
+    if (
+      precisaSelecionarUa &&
+      uaSelecionadaId == null &&
+      uasDisponiveis.length === 1
+    ) {
+      setUaSelecionadaId(uasDisponiveis[0].id)
+    }
+  }, [precisaSelecionarUa, uaSelecionadaId, uasDisponiveis])
 
   const arquivo =
     estado.tipo === 'arquivo_selecionado' ? estado.arquivo : null
@@ -66,10 +108,22 @@ export function useBemImport() {
   const importar = async () => {
     if (estado.tipo !== 'arquivo_selecionado') return
 
+    // Quando o usuário opera no nível de UO, a UA de destino é obrigatória.
+    if (precisaSelecionarUa && uaSelecionadaId == null) {
+      toast.error('Importação não realizada', {
+        description: 'Selecione a Unidade Administrativa de destino.',
+      })
+      return
+    }
+
+    // UA enviada ao backend: a escolhida (quando em UO) ou nenhuma (quando em
+    // UA, o backend usa a UA do próprio usuário).
+    const uaId = precisaSelecionarUa ? uaSelecionadaId : null
+
     setEstado({ tipo: 'importando' })
 
     try {
-      const { status, data } = await bemService.importar(estado.arquivo)
+      const { status, data } = await bemService.importar(estado.arquivo, uaId)
 
       // 201: tudo importado sem erros
       if (status === 201) {
@@ -158,5 +212,10 @@ export function useBemImport() {
     novoUpload,
     importar,
     cancelar,
+    // Seleção de Unidade Administrativa (usuário logado numa UO)
+    precisaSelecionarUa,
+    uasDisponiveis,
+    uaSelecionadaId,
+    setUaSelecionadaId,
   }
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useBemImport } from '../useBemImport'
 import { bemService } from '../../services/bem.service'
+import { useAuth } from '@/auth/useAuth'
 
 const mockNavigate = vi.fn()
 
@@ -14,6 +15,77 @@ vi.mock('../../services/bem.service', () => ({
     importar: vi.fn(),
   },
 }))
+
+// useBemImport usa useAuth para decidir o escopo (UA x UO). Mockamos com um
+// usuário logado numa UA por padrão — cenário em que nenhuma seleção de UA é
+// exigida, mantendo o comportamento esperado pela maioria dos testes.
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+const mockedUseAuth = vi.mocked(useAuth)
+
+function usuarioEmUa() {
+  return {
+    id: 1,
+    ua_ativa: { id: 10, codigo: '10', nome: 'UA 10', label: 'UA 10' },
+    uo_ativa: { id: 100, codigo: '100', nome: 'UO 100', label: 'UO 100' },
+    opcoes_escopo: null,
+  }
+}
+
+function usuarioEmUo() {
+  return {
+    id: 2,
+    ua_ativa: null,
+    uo_ativa: { id: 100, codigo: '100', nome: 'UO 100', label: 'UO 100' },
+    opcoes_escopo: {
+      grupos: [
+        {
+          uo: {
+            id: 100,
+            codigo: '100',
+            nome: 'UO 100',
+            label: 'UO 100',
+            selecionavel: true,
+            unidade_administrativa_id: null,
+            unidade_orcamentaria_id: 100,
+          },
+          uas: [
+            {
+              id: 11,
+              codigo: '11',
+              nome: 'UA 11',
+              label: 'UA 11',
+              unidade_administrativa_id: 11,
+              unidade_orcamentaria_id: 100,
+            },
+            {
+              id: 12,
+              codigo: '12',
+              nome: 'UA 12',
+              label: 'UA 12',
+              unidade_administrativa_id: 12,
+              unidade_orcamentaria_id: 100,
+            },
+          ],
+        },
+      ],
+    },
+  }
+}
+
+function mockAuthUser(user: unknown) {
+  // Só o campo user é consumido por useBemImport.
+  mockedUseAuth.mockReturnValue({ user } as ReturnType<typeof useAuth>)
+}
 
 function makeFile(name = 'planilha.xlsx'): File {
   return new File(['conteudo'], name, {
@@ -45,6 +117,8 @@ describe('useBemImport', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    // Padrão: usuário logado numa UA (não exige seleção de UA).
+    mockAuthUser(usuarioEmUa())
   })
 
   afterEach(() => {
@@ -606,7 +680,9 @@ describe('useBemImport', () => {
     act(() => result.current.selecionarArquivo(file))
     await act(async () => { await result.current.importar() })
 
-    expect(bemService.importar).toHaveBeenCalledWith(file)
+    // Usuário logado numa UA (padrão do mock): a UA vai como null — o backend
+    // usa a UA do próprio usuário.
+    expect(bemService.importar).toHaveBeenCalledWith(file, null)
   })
 
   // =========================================================================
@@ -630,5 +706,78 @@ describe('useBemImport', () => {
     if (result.current.estado.tipo === 'erro_total') {
       expect(result.current.estado.erros[0].tipo_erro).toBe('numero_patrimonial: Já cadastrado no sistema.')
     }
+  })
+
+  // =========================================================================
+  // Seleção de Unidade Administrativa (usuário logado numa UO)
+  // =========================================================================
+
+  it('usuário em UA não exige seleção de UA (precisaSelecionarUa=false)', () => {
+    mockAuthUser(usuarioEmUa())
+    const { result } = renderHook(() => useBemImport())
+    expect(result.current.precisaSelecionarUa).toBe(false)
+    expect(result.current.uasDisponiveis).toEqual([])
+  })
+
+  it('usuário em UO exige seleção e expõe as UAs disponíveis', () => {
+    mockAuthUser(usuarioEmUo())
+    const { result } = renderHook(() => useBemImport())
+    expect(result.current.precisaSelecionarUa).toBe(true)
+    expect(result.current.uasDisponiveis).toEqual([
+      { id: 11, label: 'UA 11' },
+      { id: 12, label: 'UA 12' },
+    ])
+  })
+
+  it('usuário em UO sem UA selecionada: toast de erro e não chama o service', async () => {
+    const { toast } = await import('sonner')
+    mockAuthUser(usuarioEmUo())
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(makeFile()))
+    await act(async () => { await result.current.importar() })
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'Importação não realizada',
+      expect.objectContaining({
+        description: 'Selecione a Unidade Administrativa de destino.',
+      }),
+    )
+    expect(bemService.importar).not.toHaveBeenCalled()
+  })
+
+  it('usuário em UO com UA selecionada: envia a UA ao service', async () => {
+    vi.mocked(bemService.importar).mockResolvedValueOnce({
+      status: 201,
+      data: makeResultado(),
+    })
+    mockAuthUser(usuarioEmUo())
+    const file = makeFile()
+    const { result } = renderHook(() => useBemImport())
+    act(() => result.current.selecionarArquivo(file))
+    act(() => result.current.setUaSelecionadaId(12))
+    await act(async () => { await result.current.importar() })
+
+    expect(bemService.importar).toHaveBeenCalledWith(file, 12)
+  })
+
+  it('auto-seleciona a UA quando há exatamente uma disponível (UO)', () => {
+    mockAuthUser(usuarioEmUo())
+    const { result } = renderHook(() => useBemImport())
+    // usuarioEmUo tem 2 UAs -> não auto-seleciona
+    expect(result.current.uaSelecionadaId).toBeNull()
+  })
+
+  it('auto-seleciona quando a UO tem apenas uma UA', async () => {
+    const user = usuarioEmUo()
+    user.opcoes_escopo!.grupos[0].uas = [user.opcoes_escopo!.grupos[0].uas[0]]
+    mockAuthUser(user)
+    vi.mocked(bemService.importar).mockResolvedValueOnce({ status: 201, data: makeResultado() })
+    const file = makeFile()
+    const { result } = renderHook(() => useBemImport())
+    // efeito de auto-seleção roda após o render
+    expect(result.current.uaSelecionadaId).toBe(11)
+    act(() => result.current.selecionarArquivo(file))
+    await act(async () => { await result.current.importar() })
+    expect(bemService.importar).toHaveBeenCalledWith(file, 11)
   })
 })

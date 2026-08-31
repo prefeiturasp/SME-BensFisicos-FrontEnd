@@ -64,11 +64,21 @@ export function ConfirmDialog({
 }: Readonly<ConfirmDialogProps>) {
   const [confirmado, setConfirmado] = useState(false);
 
+  const handleClose = () => {
+    setConfirmado(false);
+    onClose();
+  };
+
   useEffect(() => {
-    if (open) {
+    if (!open || loading) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
       setConfirmado(false);
-    }
-  }, [open]);
+      onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [loading, onClose, open]);
 
   if (!open) {
     return null;
@@ -88,17 +98,28 @@ export function ConfirmDialog({
       open
       className='fixed inset-0 z-50 m-0 flex h-full w-full max-h-none max-w-none items-center justify-center border-none bg-black/40 p-0'
       aria-label={title}
-      onClose={onClose}
+      onClose={handleClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!loading) handleClose();
+      }}
     >
+      <button
+        type='button'
+        aria-label='Fechar modal ao clicar fora'
+        className='absolute inset-0 h-full w-full cursor-default border-0 bg-transparent p-0'
+        disabled={loading}
+        onClick={handleClose}
+      />
       <div
-        className='mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl'
+        className='relative z-10 mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl'
         data-testid={containerTestId}
       >
         <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4'>
           <h2 className='text-lg font-semibold text-gray-800'>{title}</h2>
           <button
             type='button'
-            onClick={onClose}
+            onClick={handleClose}
             disabled={loading}
             className='text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50'
             aria-label={closeButtonLabel}
@@ -140,7 +161,7 @@ export function ConfirmDialog({
           <div className='flex items-center justify-end gap-3 pt-2'>
             <Button
               type='button'
-              onClick={onClose}
+              onClick={handleClose}
               className={CANCEL_BUTTON_CLASS}
               disabled={loading}
               data-testid={cancelTestId}
@@ -151,6 +172,7 @@ export function ConfirmDialog({
               type='button'
               onClick={() => {
                 if (!podeConfirmar) return;
+                setConfirmado(false);
                 onConfirm();
               }}
               className={cn(

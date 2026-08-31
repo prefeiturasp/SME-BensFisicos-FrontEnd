@@ -182,56 +182,119 @@ describe('useBensList', () => {
 
   // ── mapeamento de filtros ──────────────────────────────────────────────
 
-  it('mapeia escopoFilter "ua:<id>" para unidade_administrativa', async () => {
+  it('mapeia uma única UA selecionada para unidade_administrativa (array)', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     listMock.mockClear()
 
     act(() => {
-      result.current.setEscopoFilter('ua:42')
+      result.current.setUnidadesAdministrativas(['42'])
     })
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          unidade_administrativa: '42',
-          unidade_orcamentaria: undefined,
+          unidade_administrativa: ['42'],
         }),
       )
     })
   })
 
-  it('mapeia escopoFilter "uo:<id>" para unidade_orcamentaria', async () => {
+  it('mapeia múltiplas UAs selecionadas para unidade_administrativa', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     listMock.mockClear()
 
     act(() => {
-      result.current.setEscopoFilter('uo:7')
+      result.current.setUnidadesAdministrativas(['42', '7'])
     })
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          unidade_orcamentaria: '7',
-          unidade_administrativa: undefined,
+          unidade_administrativa: ['42', '7'],
         }),
       )
     })
   })
 
-  it('não envia unidade_administrativa/unidade_orcamentaria quando escopoFilter é "todas"', async () => {
+  it('não envia unidade_administrativa quando nenhuma UA está selecionada (Todas as UAs)', async () => {
     renderHook(() => useBensList({ pageSize: 10 }))
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
         expect.objectContaining({
           unidade_administrativa: undefined,
-          unidade_orcamentaria: undefined,
         }),
       )
+    })
+  })
+
+  it('consolida em unidade_orcamentaria quando todas as UAs da UO estão marcadas', async () => {
+    const grupos = [
+      {
+        uo: { id: 1 },
+        uas: [
+          { unidade_administrativa_id: 100 },
+          { unidade_administrativa_id: 101 },
+        ],
+      },
+    ]
+    const { result } = renderHook(() =>
+      useBensList({ pageSize: 10, grupos }),
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    listMock.mockClear()
+
+    act(() => {
+      result.current.setUnidadesAdministrativas(['100', '101'])
+    })
+
+    await waitFor(() => {
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unidade_orcamentaria: ['1'],
+          unidade_administrativa: undefined,
+        }),
+      )
+    })
+  })
+
+  it('envia UO consolidada e mantém UA avulsa quando a UO está parcialmente marcada', async () => {
+    const grupos = [
+      {
+        uo: { id: 1 },
+        uas: [
+          { unidade_administrativa_id: 100 },
+          { unidade_administrativa_id: 101 },
+        ],
+      },
+      {
+        uo: { id: 2 },
+        uas: [{ unidade_administrativa_id: 200 }],
+      },
+    ]
+    const { result } = renderHook(() =>
+      useBensList({ pageSize: 10, grupos }),
+    )
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    listMock.mockClear()
+
+    // UO 1 inteira + apenas uma UA da UO 2 (que só tem uma, então também vira UO)
+    act(() => {
+      result.current.setUnidadesAdministrativas(['100', '200'])
+    })
+
+    await waitFor(() => {
+      const call = listMock.mock.calls.at(-1)?.[0]
+      expect(call).toBeDefined()
+      // UA 100 não cobre a UO 1 inteira -> vai avulsa; UA 200 cobre a UO 2 -> vira UO
+      expect(call!.unidade_administrativa).toEqual(['100'])
+      expect(call!.unidade_orcamentaria).toEqual(['2'])
     })
   })
 

@@ -84,7 +84,7 @@ export type ConciliacaoItemSituacao =
   | 'em_processo_de_baixa_fisica'
   | 'baixa_fisica';
 
-export type ConciliacaoItemSituacaoFilter = 'todos' | ConciliacaoItemSituacao;
+export type ConciliacaoItemSituacaoFilter = ('todos' | ConciliacaoItemSituacao)[];
 
 export type ConciliacaoItemSortableField =
   | 'id'
