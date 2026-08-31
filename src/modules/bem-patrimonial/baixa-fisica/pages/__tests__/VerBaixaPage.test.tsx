@@ -17,6 +17,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 
 import VerBaixaPage from "../VerBaixaPage"
+import { toast } from "sonner"
 import { baixaFisicaService } from "../../service/baixas.service"
 import { bemService } from "../../../bem/services/bem.service"
 
@@ -31,6 +32,14 @@ vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual("react-router-dom")
     return { ...actual, useNavigate: () => mockNavigate }
 })
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
 
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
@@ -153,9 +162,14 @@ function makeBaixaItem(id: number, bemOverrides: Partial<Bem> = {}) {
 
 // ===================== HELPERS =====================
 
-function renderPage(id = "1") {
+// `editando` = true simula a chegada pela ação "Editar" da listagem
+// (?editar=1), que já abre a tela com o modo de edição habilitado.
+function renderPage(id = "1", editando = false) {
+    const path = editando
+        ? `/baixas-fisicas/${id}?editar=1`
+        : `/baixas-fisicas/${id}`
     return render(
-        <MemoryRouter initialEntries={[`/baixas-fisicas/${id}`]}>
+        <MemoryRouter initialEntries={[path]}>
             <Routes>
                 <Route path="/baixas-fisicas/:id" element={<VerBaixaPage />} />
             </Routes>
@@ -318,9 +332,9 @@ describe("VerBaixaPage", () => {
     // Para os demais status o botão não é renderizado pelo componente
     // ─────────────────────────────────────────────────────────────
 
-    it("botão Salvar Edição presente e desabilitado sem alterações (aguardando_envio)", async () => {
+    it("botão Salvar Edição presente e desabilitado sem alterações (em elaboração + modo edição)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => expect(screen.getByText("Salvar Edição")).toBeDisabled())
     })
 
@@ -366,7 +380,7 @@ describe("VerBaixaPage", () => {
 
     it("exibe input de busca para linha vazia (aguardando_envio)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() =>
             expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
         )
@@ -375,7 +389,7 @@ describe("VerBaixaPage", () => {
     it("renderiza 'Buscando...' enquanto lista carrega", async () => {
         vi.mocked(bemService.list).mockReturnValue(new Promise(() => {}))
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         expect(screen.getByText("Buscando...")).toBeInTheDocument()
@@ -384,7 +398,7 @@ describe("VerBaixaPage", () => {
     it("renderiza 'Nenhum bem encontrado.' quando lista retorna vazia", async () => {
         vi.mocked(bemService.list).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() =>
@@ -394,7 +408,7 @@ describe("VerBaixaPage", () => {
 
     it("seleciona bem no dropdown e exibe na linha", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -404,7 +418,7 @@ describe("VerBaixaPage", () => {
 
     it("clicar fora do dropdown fecha o dropdown", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -416,7 +430,7 @@ describe("VerBaixaPage", () => {
 
     it("digitar no input dispara nova busca", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         const callsBefore = vi.mocked(bemService.list).mock.calls.length
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
@@ -432,7 +446,7 @@ describe("VerBaixaPage", () => {
                 unidade_administrativa_origem: { id: 0, sigla: "", codigo: "", nome: "", status: "active" },
             })
         )
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         vi.mocked(bemService.list).mockClear()
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
@@ -447,7 +461,7 @@ describe("VerBaixaPage", () => {
             previous: null,
         })
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Bem Sem Número"))
@@ -457,7 +471,7 @@ describe("VerBaixaPage", () => {
 
     it("item já selecionado aparece desabilitado no dropdown", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
 
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
@@ -483,7 +497,7 @@ describe("VerBaixaPage", () => {
 
     it("adiciona nova linha ao clicar em 'Adicionar item'", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByTitle("Adicionar item"))
         fireEvent.click(screen.getByTitle("Adicionar item"))
         await waitFor(() =>
@@ -493,7 +507,7 @@ describe("VerBaixaPage", () => {
 
     it("remove linha intermediária sem zerar lista", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByTitle("Adicionar item"))
         fireEvent.click(screen.getByTitle("Adicionar item"))
         await waitFor(() => screen.getAllByTitle("Excluir linha"))
@@ -505,7 +519,7 @@ describe("VerBaixaPage", () => {
 
     it("remover única linha cria nova linha vazia", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByTitle("Excluir linha"))
         fireEvent.click(screen.getByTitle("Excluir linha"))
         await waitFor(() =>
@@ -517,7 +531,7 @@ describe("VerBaixaPage", () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ itens: [makeBaixaItem(1)] })
         )
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByText(/PAT-001/))
         fireEvent.click(screen.getByTitle("Remover"))
         await waitFor(() =>
@@ -531,7 +545,7 @@ describe("VerBaixaPage", () => {
 
     it("habilita botão Salvar Edição após selecionar um bem", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -542,7 +556,7 @@ describe("VerBaixaPage", () => {
     it("exibe 'Salvando...' enquanto update está pendente", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
         vi.mocked(baixaFisicaService.update).mockReturnValue(new Promise(() => {}))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -556,7 +570,7 @@ describe("VerBaixaPage", () => {
         vi.mocked(baixaFisicaService.update).mockResolvedValue(
             makeBaixaDetail({ itens: [makeBaixaItem(1)] })
         )
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -570,10 +584,10 @@ describe("VerBaixaPage", () => {
         )
     })
 
-    it("após salvar com itens vazios exibe nova linha vazia", async () => {
+    it("após salvar com itens vazios volta ao modo visualização sem itens", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
         vi.mocked(baixaFisicaService.update).mockResolvedValue(makeBaixaDetail({ itens: [] }))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -581,7 +595,7 @@ describe("VerBaixaPage", () => {
         await waitFor(() => expect(screen.getByText("Salvar Edição")).not.toBeDisabled())
         fireEvent.click(screen.getByText("Salvar Edição"))
         await waitFor(() =>
-            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+            expect(screen.getByText("Nenhum item vinculado")).toBeInTheDocument()
         )
     })
 
@@ -589,7 +603,7 @@ describe("VerBaixaPage", () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
         vi.mocked(baixaFisicaService.update).mockRejectedValue(new Error("Erro"))
-        renderPage()
+        renderPage("1", true)
         await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
         fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
         await waitFor(() => screen.getByText("Cadeira Escritório"))
@@ -937,8 +951,7 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByTestId("btn-confirmar"))
         fireEvent.click(screen.getByTestId("btn-confirmar"))
         await waitFor(() => {
-            expect(screen.getByRole("alert")).toBeInTheDocument()
-            expect(screen.getByText("Sem permissão")).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Sem permissão")
             expect(screen.queryByTestId("confirmar-aceite-modal")).not.toBeInTheDocument()
         })
     })
@@ -960,7 +973,7 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByTestId("btn-confirmar"))
         fireEvent.click(screen.getByTestId("btn-confirmar"))
         await waitFor(() =>
-            expect(screen.getByText("Erro ao confirmar aceite da baixa.")).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Erro ao confirmar aceite da baixa.")
         )
     })
 
@@ -1240,5 +1253,105 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByText("Voltar"))
         fireEvent.click(screen.getByText("Voltar"))
         expect(mockNavigate).toHaveBeenCalledWith(-1)
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // Modo visualização x modo edição (Em elaboração)
+    // ─────────────────────────────────────────────────────────────
+
+    describe("Em elaboração — visualização e edição", () => {
+
+        it("abre em modo visualização: sem campos editáveis e com botão Editar", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeBaixaDetail({ itens: [makeBaixaItem(1)] })
+            )
+            renderPage()
+            await waitFor(() => expect(screen.getByText("Editar")).toBeInTheDocument())
+            expect(screen.queryByPlaceholderText("Selecione um bem")).not.toBeInTheDocument()
+            expect(screen.queryByText("Salvar Edição")).not.toBeInTheDocument()
+            expect(screen.queryByTitle("Adicionar item")).not.toBeInTheDocument()
+        })
+
+        it("exibe os itens em somente leitura no modo visualização", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeBaixaDetail({ itens: [makeBaixaItem(1, { numero_patrimonial: "PAT-777" })] })
+            )
+            renderPage()
+            await waitFor(() => expect(screen.getByText(/PAT-777/)).toBeInTheDocument())
+            expect(screen.queryByTitle("Remover")).not.toBeInTheDocument()
+        })
+
+        it("clicar em Editar habilita a alteração dos campos", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() =>
+                expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+            )
+            expect(screen.getByText("Salvar Edição")).toBeInTheDocument()
+            expect(screen.getByText("Editar Baixa Física de Bem Patrimonial")).toBeInTheDocument()
+        })
+
+        it("Cancelar Edição volta para o modo visualização", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByText("Cancelar Edição"))
+            fireEvent.click(screen.getByText("Cancelar Edição"))
+            await waitFor(() =>
+                expect(screen.queryByPlaceholderText("Selecione um bem")).not.toBeInTheDocument()
+            )
+            expect(screen.getByText("Editar")).toBeInTheDocument()
+        })
+
+        it("query param ?editar=1 abre direto em modo de edição", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
+            renderPage("1", true)
+            await waitFor(() =>
+                expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+            )
+        })
+
+        it("não exibe botão Editar para status diferente de Em elaboração", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeBaixaDetail({ status: "aceita", status_display: "Aceita" })
+            )
+            renderPage()
+            await waitFor(() => screen.getByText(/Aceita/))
+            expect(screen.queryByText("Editar")).not.toBeInTheDocument()
+        })
+
+        it("salvar exibe toast de sucesso e retorna ao modo visualização", async () => {
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
+            vi.mocked(baixaFisicaService.update).mockResolvedValue(
+                makeBaixaDetail({ itens: [makeBaixaItem(1)] })
+            )
+            renderPage("1", true)
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+            await waitFor(() => screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() =>
+                expect(toast.success).toHaveBeenCalledWith("Baixa Física atualizada com sucesso.")
+            )
+            await waitFor(() => expect(screen.getByText("Editar")).toBeInTheDocument())
+        })
+
+        it("erro ao salvar exibe toast de erro", async () => {
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
+            vi.mocked(baixaFisicaService.update).mockRejectedValue(new Error("Falha ao salvar"))
+            renderPage("1", true)
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+            await waitFor(() => screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Falha ao salvar"))
+            errorSpy.mockRestore()
+        })
     })
 })

@@ -8,6 +8,8 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
+import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
 
@@ -18,6 +20,13 @@ h-10 px-6 bg-white border border-[#2F7D57]
 text-[#2F7D57] hover:bg-[#2F7D57]
 hover:text-white font-semibold rounded-md transition-colors
 `
+
+// Status "aguardando_envio" é exibido como "Em elaboração" na UI
+const STATUS_EM_ELABORACAO = "aguardando_envio"
+
+// Ícone padrão das ações de listagem do sistema (mesmo tamanho/cor usados
+// em Bens, Movimentações, Transferências e Conciliações)
+const ACTION_ICON_CLASS = "size-[22px] text-[#00703C]"
 
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
@@ -101,7 +110,7 @@ export default function BaixasListPage() {
 
     // Status "aguardando_envio" agora é chamado "Em elaboração" na UI
     const emElaboracaoIds = baixas
-        .filter(b => b.status === "aguardando_envio")
+        .filter(b => b.status === STATUS_EM_ELABORACAO)
         .map(b => b.id)
 
     const solicitadaIds = baixas
@@ -190,7 +199,7 @@ export default function BaixasListPage() {
             a.click()
             URL.revokeObjectURL(url)
         } catch {
-            alert("Erro ao exportar Excel")
+            toast.error("Erro ao exportar Excel.")
         }
     }
 
@@ -202,9 +211,14 @@ export default function BaixasListPage() {
         try {
             await Promise.all(selectedEmElaboracao.map(id => baixaFisicaService.enviarSolicitacao(id)))
             setSelectedIds([])
+            toast.success(
+                selectedEmElaboracao.length > 1
+                    ? "Baixas Físicas solicitadas com sucesso."
+                    : "Baixa Física solicitada com sucesso."
+            )
             fetchBaixas()
         } catch {
-            alert("Erro ao solicitar baixas.")
+            toast.error("Erro ao solicitar baixas.")
         } finally {
             setActionLoading(false)
         }
@@ -246,7 +260,7 @@ export default function BaixasListPage() {
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || b.status === "aceita"
+            const isSelectable = b.status === "solicitada" || b.status === STATUS_EM_ELABORACAO || b.status === "aceita"
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -281,12 +295,26 @@ export default function BaixasListPage() {
                     <td className="p-3 text-xs text-gray-500">
                         {formatDateTimeBR(b.data_criacao)}
                     </td>
-                    <td className="p-3 text-center">
-                        <Link to={`/baixas-fisicas/${b.id}`}>
-                            <Button size="icon" variant="ghost" aria-label="Visualizar">
-                                <Eye className='size-[22px] text-[#00703C]' />
-                            </Button>
-                        </Link>
+                    <td className="p-3">
+                        <div className="flex items-center justify-center gap-1">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        asChild
+                                        size="icon"
+                                        variant="ghost"
+                                        aria-label={`Visualizar Baixa Física ${b.id}`}
+                                    >
+                                        <Link to={`/baixas-fisicas/${b.id}`}>
+                                            <Eye className={ACTION_ICON_CLASS} />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>
+                                    Visualizar as informações da Baixa Física.
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     </td>
                 </tr>
             )

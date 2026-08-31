@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
 
+import { toast } from "sonner"
 import BaixasListPage from "../BaixasListPage"
 import { baixaFisicaService } from "../../service/baixas.service"
 
@@ -23,6 +24,14 @@ vi.mock("react-router-dom", async () => {
         useNavigate: () => navigateMock,
     }
 })
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
 
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
@@ -468,6 +477,29 @@ describe("BaixasListPage", () => {
                     })
                 )
             })
+        })
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // Ações padronizadas (Visualizar / Editar)
+    // ─────────────────────────────────────────────────────────────
+
+    describe("ações da listagem", () => {
+
+        it("exibe toast de erro quando a exportação falha", async () => {
+            vi.mocked(baixaFisicaService.exportarExcel).mockRejectedValue(new Error("falha"))
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
+            })
+
+            fireEvent.click(screen.getByText("Exportar Excel"))
+
+            await waitFor(() =>
+                expect(toast.error).toHaveBeenCalledWith("Erro ao exportar Excel.")
+            )
         })
     })
 })

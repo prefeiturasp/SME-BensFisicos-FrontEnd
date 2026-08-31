@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach } from "vitest"
+import { toast } from "sonner"
 import AdicionarBaixaPage from "../AdicionarBaixaPage"
 import { baixaFisicaService } from "../../service/baixas.service"
 import { bemService } from "../../../bem/services/bem.service"
@@ -14,6 +15,14 @@ vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual("react-router-dom")
     return { ...actual, useNavigate: () => mockNavigate }
 })
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
 
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
@@ -136,7 +145,7 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
-            expect(screen.getByText("Selecione a unidade administrativa.")).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Selecione a unidade administrativa.")
         })
     })
 
@@ -145,7 +154,7 @@ describe("AdicionarBaixaPage", () => {
         await selectUA()
         fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
-            expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Adicione ao menos um item.")
         })
     })
 
@@ -285,7 +294,7 @@ describe("AdicionarBaixaPage", () => {
         fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
-            expect(screen.getByText("Erro de servidor")).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Erro de servidor")
         })
     })
 

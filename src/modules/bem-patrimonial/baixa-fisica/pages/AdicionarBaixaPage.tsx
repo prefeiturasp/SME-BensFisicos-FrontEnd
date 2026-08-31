@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -212,7 +213,6 @@ export default function AdicionarBaixaPage() {
     const [unidade, setUnidade] = useState("")
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
     const unidadeId = unidade ? Number(unidade) : null
@@ -241,13 +241,19 @@ export default function AdicionarBaixaPage() {
         setRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
+    // Fluxo de criação mantido — apenas as mensagens de feedback passaram
+    // a usar o padrão de toasts do sistema.
     const handleSolicitar = async () => {
-        setError(null)
-
-        if (!unidade) return setError("Selecione a unidade administrativa.")
+        if (!unidade) {
+            toast.error("Selecione a unidade administrativa.")
+            return
+        }
 
         const itens = rows.filter(r => r.bem)
-        if (itens.length === 0) return setError("Adicione ao menos um item.")
+        if (itens.length === 0) {
+            toast.error("Adicione ao menos um item.")
+            return
+        }
 
         setSubmitting(true)
         try {
@@ -255,10 +261,11 @@ export default function AdicionarBaixaPage() {
                 unidade_administrativa_origem: Number(unidade),
                 itens: itens.map(r => ({ bem: r.bem!.id })),
             })
+            toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
-            setError(message)
+            toast.error(message)
         } finally {
             setSubmitting(false)
         }
@@ -297,12 +304,6 @@ export default function AdicionarBaixaPage() {
                     </Button>
                 </div>
             </div>
-
-            {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {error}
-                </div>
-            )}
 
             <Card className="p-6 space-y-6">
 
