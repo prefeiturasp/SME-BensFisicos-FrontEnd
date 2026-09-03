@@ -21,6 +21,7 @@ import type {
     BaixaFisicaItem,
     EditRow,
 } from "../types/baixas-fisicas.types"
+import { LAUDO_TITULO } from "../types/baixas-fisicas.types"
 
 import { toast } from "sonner"
 
@@ -531,7 +532,7 @@ export default function VerBaixaPage() {
             const updated = await baixaFisicaService.aprovar(baixa.id)
             setShowConfirmarAceite(false)
             setSuccessMessage("Baixa física aceita com sucesso!")
-            if (updated) setBaixa(updated)
+            setBaixa(updated)
             navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
         } catch (err) {
             console.error(err)
@@ -590,10 +591,6 @@ export default function VerBaixaPage() {
 
     const handleGerarLaudo = async () => {
         if (!baixa) return
-        if (baixa.status !== "aceita") {
-            toast.error("Laudo só pode ser gerado para baixas com status Aceita.")
-            return
-        }
         try {
             const blob = await baixaFisicaService.gerarLaudo(baixa.id)
             const url = URL.createObjectURL(blob)
@@ -604,8 +601,7 @@ export default function VerBaixaPage() {
             URL.revokeObjectURL(url)
             toast.success("Laudo de Avaliação gerado com sucesso!")
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Erro ao gerar Laudo de Avaliação."
-            toast.error(message)
+            toast.error((err as Error).message)
             console.error(err)
         }
     }
@@ -704,8 +700,8 @@ export default function VerBaixaPage() {
                         <button
                             onClick={handleGerarLaudo}
                             className={ACTION_BUTTON_CLASS}
-                            title="LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
-                            aria-label="Baixar Laudo de Avaliação - LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
+                            title={LAUDO_TITULO}
+                            aria-label={`Baixar Laudo de Avaliação - ${LAUDO_TITULO}`}
                         >
                             <FileDown size={14} />
                             Baixar Laudo de Avaliação
