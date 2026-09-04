@@ -21,6 +21,9 @@ import type {
     BaixaFisicaItem,
     EditRow,
 } from "../types/baixas-fisicas.types"
+import { LAUDO_TITULO } from "../types/baixas-fisicas.types"
+
+import { toast } from "sonner"
 
 import { baixaFisicaService } from "../service/baixas.service"
 
@@ -521,18 +524,15 @@ export default function VerBaixaPage() {
         })
     }
 
-    // Confirma o aceite: chama aprovar() diretamente (sem endpoint de
-    // validação intermediário — os checkboxes são só conferência visual
-    // do gestor antes de decidir) e navega para a própria tela de
-    // detalhe, já em modo somente leitura.
     const handleConfirmarAceite = async () => {
         if (!baixa) return
         setAceitando(true)
         setActionError(null)
         try {
-            await baixaFisicaService.aprovar(baixa.id)
+            const updated = await baixaFisicaService.aprovar(baixa.id)
             setShowConfirmarAceite(false)
             setSuccessMessage("Baixa física aceita com sucesso!")
+            setBaixa(updated)
             navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
         } catch (err) {
             console.error(err)
@@ -574,8 +574,6 @@ export default function VerBaixaPage() {
         navigate(`/baixas-fisicas/${baixa.id}/solicitar-correcao`)
     }
 
-    // ── Gerar NBBPM ──────────────────────────────────────────────────────
-
     const handleGerarNbbpm = async () => {
         if (!baixa) return
         try {
@@ -601,7 +599,9 @@ export default function VerBaixaPage() {
             a.download = `Laudo-Avaliacao-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
             URL.revokeObjectURL(url)
+            toast.success("Laudo de Avaliação gerado com sucesso!")
         } catch (err) {
+            toast.error((err as Error).message)
             console.error(err)
         }
     }
@@ -697,7 +697,12 @@ export default function VerBaixaPage() {
                     )}
 
                     {baixa.status === "aceita" && baixa.url_gerar_laudo && (
-                        <button onClick={handleGerarLaudo} className={ACTION_BUTTON_CLASS}>
+                        <button
+                            onClick={handleGerarLaudo}
+                            className={ACTION_BUTTON_CLASS}
+                            title={LAUDO_TITULO}
+                            aria-label={`Baixar Laudo de Avaliação - ${LAUDO_TITULO}`}
+                        >
                             <FileDown size={14} />
                             Baixar Laudo de Avaliação
                         </button>

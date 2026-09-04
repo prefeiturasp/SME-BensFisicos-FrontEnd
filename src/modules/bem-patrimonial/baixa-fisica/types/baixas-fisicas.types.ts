@@ -172,6 +172,9 @@ export interface HistoricoGroup {
     items: HistoricoEntry[]
 }
 
+export const LAUDO_TITULO =
+    "LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
+
 // ============================================================================
 // COMPONENTES
 // ============================================================================
