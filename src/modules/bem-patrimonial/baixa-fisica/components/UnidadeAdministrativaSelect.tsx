@@ -87,7 +87,7 @@ export function UnidadeAdministrativaSelect({
     value,
     onChange,
     placeholder = "Selecione uma unidade",
-    className = "h-10 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white",
+    className = "h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white data-[size=default]:h-11",
     includeAll = false,
     scopedToUser = false,
 }: UnidadeAdministrativaSelectProps) {

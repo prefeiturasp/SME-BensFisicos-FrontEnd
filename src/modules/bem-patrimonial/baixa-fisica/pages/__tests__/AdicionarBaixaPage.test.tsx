@@ -44,6 +44,39 @@ vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
 }))
 
+vi.mock("@/components/ui/date-picker", () => ({
+    DatePicker: ({
+        value,
+        onChange,
+        ariaLabel,
+        id,
+    }: {
+        value?: Date
+        onChange: (d: Date | undefined) => void
+        ariaLabel?: string
+        id?: string
+        placeholder?: string
+        disabled?: unknown
+    }) => {
+        const today = new Date().toISOString().split("T")[0]
+        return (
+            <input
+                data-testid="data-baixa-picker"
+                id={id}
+                aria-label={ariaLabel}
+                max={today}
+                value={value ? value.toISOString().split("T")[0] : ""}
+                onChange={(e) => {
+                    const v = (e.target as HTMLInputElement).value
+                    if (!v) onChange(undefined)
+                    else onChange(new Date(`${v}T12:00:00`))
+                }}
+                type="date"
+            />
+        )
+    },
+}))
+
 // ===================== FACTORIES =====================
 
 function makeBem(overrides: Partial<Bem> = {}): Bem {
@@ -125,9 +158,13 @@ describe("AdicionarBaixaPage", () => {
         expect(screen.queryByPlaceholderText("Digite o número do processo")).not.toBeInTheDocument()
     })
 
-    it("não renderiza campo de data da baixa", () => {
+    it("renderiza campo de Data da Baixa com max hoje", () => {
         renderPage()
-        expect(screen.queryByLabelText("Data da Baixa")).not.toBeInTheDocument()
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        expect(input).toBeInTheDocument()
+        expect(input.type).toBe("date")
+        expect(input.max).toBe(new Date().toISOString().split("T")[0])
+        expect(input.value).toBe(new Date().toISOString().split("T")[0])
     })
 
     // --- Validações ---
@@ -249,11 +286,66 @@ describe("AdicionarBaixaPage", () => {
 
     // --- Submit ---
 
-    it("chama baixaFisicaService.create com dados corretos (sem processo e data)", async () => {
+    it("chama baixaFisicaService.create com dados corretos (sem processo, com data_baixa)", async () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
 
         renderPage()
         await selectBem()
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        const today = new Date().toISOString().split("T")[0]
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith({
+                unidade_administrativa_origem: 1,
+                data_baixa: today,
+                itens: [{ bem: 1 }],
+            })
+        })
+    })
+
+    it("permite data_baixa retroativa e envia no payload", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "2025-01-01" } })
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ data_baixa: "2025-01-01" })
+            )
+        })
+    })
+
+    it("bloqueia data_baixa futura", async () => {
+        renderPage()
+        await selectBem()
+
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: tomorrow } })
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(screen.getByText("Data da Baixa não pode ser futura.")).toBeInTheDocument()
+        })
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
+    it("não envia data_baixa quando campo é limpo (fica NULL)", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "" } })
 
         fireEvent.click(screen.getByText("Solicitar"))
 
@@ -262,6 +354,8 @@ describe("AdicionarBaixaPage", () => {
                 unidade_administrativa_origem: 1,
                 itens: [{ bem: 1 }],
             })
+            const payload = vi.mocked(baixaFisicaService.create).mock.calls[0][0] as unknown as Record<string, unknown>
+            expect(payload).not.toHaveProperty("data_baixa")
         })
     })
 
