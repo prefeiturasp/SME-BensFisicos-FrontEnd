@@ -289,6 +289,27 @@ describe("VerBaixaPage", () => {
         await waitFor(() => expect(screen.getAllByText("-").length).toBeGreaterThan(0))
     })
 
+    it("exibe data_baixa no dia correto sem -1 de timezone", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ data_baixa: "2026-09-08" })
+        )
+        renderPage()
+        await waitFor(() =>
+            expect(screen.getByText("8 de setembro de 2026")).toBeInTheDocument()
+        )
+        expect(screen.queryByText("7 de setembro de 2026")).not.toBeInTheDocument()
+    })
+
+    it("preserva a hora de datetimes (não zera para 00:00)", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ data_criacao: "2026-04-29T14:32:10-03:00" })
+        )
+        renderPage()
+        await waitFor(() =>
+            expect(screen.getByText("29/04/2026, 14:32:10")).toBeInTheDocument()
+        )
+    })
+
     it("renderiza '-' para data_aprovacao inválida", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ data_aprovacao: "data-invalida" })

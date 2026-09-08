@@ -58,18 +58,23 @@ vi.mock("@/components/ui/date-picker", () => ({
         placeholder?: string
         disabled?: unknown
     }) => {
-        const today = new Date().toISOString().split("T")[0]
+        const toLocalISODate = (d: Date) =>
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+        const today = toLocalISODate(new Date())
         return (
             <input
                 data-testid="data-baixa-picker"
                 id={id}
                 aria-label={ariaLabel}
                 max={today}
-                value={value ? value.toISOString().split("T")[0] : ""}
+                value={value ? toLocalISODate(value) : ""}
                 onChange={(e) => {
                     const v = (e.target as HTMLInputElement).value
                     if (!v) onChange(undefined)
-                    else onChange(new Date(`${v}T12:00:00`))
+                    else {
+                        const [y, m, day] = v.split("-").map(Number)
+                        onChange(new Date(y, m - 1, day))
+                    }
                 }}
                 type="date"
             />
@@ -161,10 +166,12 @@ describe("AdicionarBaixaPage", () => {
     it("renderiza campo de Data da Baixa com max hoje", () => {
         renderPage()
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        const now = new Date()
+        const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
         expect(input).toBeInTheDocument()
         expect(input.type).toBe("date")
-        expect(input.max).toBe(new Date().toISOString().split("T")[0])
-        expect(input.value).toBe(new Date().toISOString().split("T")[0])
+        expect(input.max).toBe(todayLocal)
+        expect(input.value).toBe(todayLocal)
     })
 
     // --- Validações ---
@@ -294,7 +301,8 @@ describe("AdicionarBaixaPage", () => {
 
         fireEvent.click(screen.getByText("Solicitar"))
 
-        const today = new Date().toISOString().split("T")[0]
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith({
                 unidade_administrativa_origem: 1,
@@ -326,7 +334,8 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         await selectBem()
 
-        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+        const t = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        const tomorrow = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
         fireEvent.change(input, { target: { value: tomorrow } })
 
