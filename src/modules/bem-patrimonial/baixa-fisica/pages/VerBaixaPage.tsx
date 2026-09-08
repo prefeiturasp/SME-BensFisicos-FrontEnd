@@ -41,9 +41,17 @@ const ACTION_BUTTON_CLASS =
 // HELPERS
 // ============================================================================
 
+function parseLocalDate(dateString: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString.trim())
+    if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    }
+    return new Date(dateString)
+}
+
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
@@ -54,7 +62,7 @@ function formatDateBR(dateString: string | null | undefined): string {
 
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleString("pt-BR")
 }
