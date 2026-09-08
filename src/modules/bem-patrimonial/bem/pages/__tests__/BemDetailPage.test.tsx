@@ -505,21 +505,45 @@ describe('BemDetailPage', () => {
     })
   })
 
-  describe('Data de criação (Criado em / RF)', () => {
-    it('deve exibir a data de criação formatada em pt-BR com o RF do responsável, sem timestamp ISO', async () => {
+  describe('Auditoria (Criado por / Criado em)', () => {
+    it('deve exibir o criador no padrao "Nome completo (RF)" usado em Conciliacoes', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve')
         .mockResolvedValue(bemMock as any)
       ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
 
       renderPage()
 
-      expect(
-        await screen.findByText('Criado em 21/05/2026, às 15:41 por RF 1234567')
-      ).toBeInTheDocument()
+      expect(await screen.findByTestId('bem-criado-por-value')).toHaveTextContent(
+        'Admin (RF 1234567)'
+      )
+    })
+
+    it('deve exibir a data de criação formatada em pt-BR, sem timestamp ISO', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue(bemMock as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+
+      expect(await screen.findByTestId('bem-criado-em')).toHaveTextContent(
+        '21/05/2026, às 15:41'
+      )
 
       expect(
         screen.queryByText(/2026-05-21T15:41:13/)
       ).not.toBeInTheDocument()
+    })
+
+    it('deve explicitar a excecao conhecida quando o registro historico nao possui autoria', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue({ ...bemMock, criado_por_nome: null, criado_por_rf: null } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+
+      const valor = await screen.findByTestId('bem-criado-por-value')
+      expect(valor).toHaveTextContent('Informação não disponível (registro anterior à migração)')
+      expect(valor).toHaveAttribute('data-autoria-indisponivel', 'true')
     })
 
     it('deve exibir mensagem alternativa quando não houver data de criação', async () => {

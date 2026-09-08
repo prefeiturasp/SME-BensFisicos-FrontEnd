@@ -146,7 +146,7 @@ describe('ConciliacaoAuditoria', () => {
     );
   });
 
-  it('exibe "-" quando nao ha informacoes do criador', () => {
+  it('explicita a excecao conhecida quando nao ha informacoes do criador', () => {
     const conciliacao: Conciliacao = {
       ...baseConciliacao,
       criado_por_nome: '',
@@ -155,7 +155,9 @@ describe('ConciliacaoAuditoria', () => {
 
     render(<ConciliacaoAuditoria conciliacao={conciliacao} />);
 
-    expect(screen.getByTestId('conciliacao-auditoria-criado-por')).toHaveTextContent('-');
+    expect(screen.getByTestId('conciliacao-auditoria-criado-por')).toHaveTextContent(
+      'Informação não disponível (registro anterior à migração)',
+    );
   });
 
   it('exibe "-" quando data de criacao e invalida', () => {

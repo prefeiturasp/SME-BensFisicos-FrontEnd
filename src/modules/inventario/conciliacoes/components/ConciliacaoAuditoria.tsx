@@ -1,5 +1,7 @@
 import { SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type { Conciliacao } from '../types/conciliacoes.types';
+import { CriadoPorValue } from '@/components/CriadoPorValue';
+import { formatUsuarioLabel } from '@/lib/usuario-label';
 
 interface ConciliacaoAuditoriaProps {
   conciliacao: Conciliacao;
@@ -29,24 +31,7 @@ function formatDateTime(value: string | null) {
   return `${DATE_FORMATTER.format(date)} às ${TIME_FORMATTER.format(date)}`;
 }
 
-function buildUsuarioLabel(nome: string | null | undefined, rf: string | null | undefined) {
-  const nomeLimpo = nome?.trim();
-  const rfLimpo = rf?.trim();
-
-  if (nomeLimpo && rfLimpo) {
-    return `${nomeLimpo} (RF ${rfLimpo})`;
-  }
-
-  if (nomeLimpo) {
-    return nomeLimpo;
-  }
-
-  if (rfLimpo) {
-    return `RF ${rfLimpo}`;
-  }
-
-  return '-';
-}
+const buildUsuarioLabel = formatUsuarioLabel;
 
 function buildDateTimeLabel(value: string | null) {
   return formatDateTime(value) ?? '-';
@@ -76,7 +61,9 @@ export function ConciliacaoAuditoria({ conciliacao }: Readonly<ConciliacaoAudito
       <div className='grid grid-cols-1 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4'>
         <div className='space-y-1' data-testid='conciliacao-auditoria-criado-por'>
           <p className='font-semibold text-gray-500'>Criado por</p>
-          <p className='font-semibold text-gray-700'>{criadoPor}</p>
+          <p className='font-semibold text-gray-700'>
+            <CriadoPorValue label={criadoPor} data-testid='conciliacao-criado-por-value' />
+          </p>
         </div>
 
         <div className='space-y-1' data-testid='conciliacao-auditoria-criado-em'>
