@@ -20,9 +20,19 @@ import VerBaixaPage from "../VerBaixaPage"
 import { toast } from "sonner"
 import { baixaFisicaService } from "../../service/baixas.service"
 import { bemService } from "../../../bem/services/bem.service"
+import { LAUDO_TITULO } from "../../types/baixas-fisicas.types"
 
 import type { BaixaFisicaDetail } from "../../types/baixas-fisicas.types"
 import type { Bem } from "../../../bem/services/bem.service"
+
+const toastSuccess = vi.fn()
+const toastError = vi.fn()
+vi.mock("sonner", () => ({
+    toast: {
+        success: (...args: unknown[]) => toastSuccess(...args),
+        error: (...args: unknown[]) => toastError(...args),
+    },
+}))
 
 // ===================== MOCKS =====================
 
@@ -1196,7 +1206,7 @@ describe("VerBaixaPage", () => {
         vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
         const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag)
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag) // NOSONAR - namespace XHTML obrigatório (http) não é URL de rede
             if (tag === "a") Object.defineProperty(el, "click", { value: clickMock })
             return el
         })
@@ -1219,7 +1229,7 @@ describe("VerBaixaPage", () => {
         vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
         const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag)
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag) // NOSONAR - namespace XHTML obrigatório (http) não é URL de rede
             if (tag === "a") Object.defineProperty(el, "click", { value: clickMock })
             return el
         })
@@ -1241,6 +1251,66 @@ describe("VerBaixaPage", () => {
         fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
         await waitFor(() => expect(consoleSpy).toHaveBeenCalled())
         consoleSpy.mockRestore()
+    })
+
+    it("botão Laudo expõe título oficial via title/aria-label", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo" })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
+        const btn = screen.getByLabelText(/LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE/)
+        expect(btn).toHaveAttribute("title", LAUDO_TITULO)
+    })
+
+    it("gerar Laudo mostra toast de sucesso e erro", async () => {
+        const clickMock = vi.fn()
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo" })
+        )
+        vi.mocked(baixaFisicaService.gerarLaudo).mockResolvedValue(new Blob(["pdf"]))
+        vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+        const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+            const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag) // NOSONAR - namespace XHTML obrigatório (http) não é URL de rede
+            if (tag === "a") Object.defineProperty(el, "click", { value: clickMock })
+            return el
+        })
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
+        fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
+        await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Laudo de Avaliação gerado com sucesso!"))
+        spy.mockRestore()
+
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        vi.mocked(baixaFisicaService.gerarLaudo).mockRejectedValue(new Error("Falha ao gerar"))
+        fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
+        await waitFor(() => expect(toastError).toHaveBeenCalledWith("Falha ao gerar"))
+        vi.restoreAllMocks()
+    })
+
+    it("aceite não dispara geração de NBBPM", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                id: 9,
+                status: "solicitada",
+                status_display: "Solicitada",
+                itens: [makeBaixaItem(10, { nome: "Mesa" })],
+            })
+        )
+        vi.mocked(baixaFisicaService.aprovar).mockResolvedValue(
+            makeBaixaDetail({ id: 9, status: "aceita", status_display: "Aceita", url_gerar_laudo: "/dl-laudo", itens: [makeBaixaItem(10, { nome: "Mesa" })] })
+        )
+        renderPage("9")
+        await waitFor(() => screen.getByText("Mesa"))
+        fireEvent.click(screen.getByRole("checkbox", { name: /Validar item/ }))
+        await waitFor(() => expect(screen.getByText("Aceitar")).not.toBeDisabled())
+        fireEvent.click(screen.getByText("Aceitar"))
+        await waitFor(() => screen.getByTestId("btn-confirmar"))
+        fireEvent.click(screen.getByTestId("btn-confirmar"))
+        await waitFor(() => expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(9))
+        expect(baixaFisicaService.gerarNbbpm).not.toHaveBeenCalled()
+        expect(baixaFisicaService.gerarLaudo).not.toHaveBeenCalled()
     })
 
     // ─────────────────────────────────────────────────────────────

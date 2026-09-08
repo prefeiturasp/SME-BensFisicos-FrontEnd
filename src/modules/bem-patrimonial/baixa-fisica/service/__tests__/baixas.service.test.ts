@@ -3,6 +3,7 @@ import { AxiosError } from "axios"
 
 import { api } from "@/api/http"
 import { baixaFisicaService, downloadBlob } from "../baixas.service"
+import { LAUDO_TITULO } from "../../types/baixas-fisicas.types"
 
 // ===================== MOCKS =====================
 
@@ -358,6 +359,36 @@ describe("baixaFisicaService", () => {
 
             await expect(baixaFisicaService.gerarNbbpm(1)).rejects.toThrow(
                 "Erro ao gerar NBBPM"
+            )
+        })
+    })
+
+    describe("gerarLaudo", () => {
+        it("retorna blob do laudo aceito", async () => {
+            const blob = new Blob(["pdf"], { type: "application/pdf" })
+            vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+            const result = await baixaFisicaService.gerarLaudo(1)
+
+            expect(result).toBe(blob)
+            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-laudo/", {
+                responseType: "blob",
+            })
+        })
+
+        it("propaga erro do backend quando status não é Aceita", async () => {
+            vi.mocked(api.get).mockRejectedValue(makeAxiosError(403, { detail: "Laudo só pode ser gerado para baixas com status Aceita." }))
+
+            await expect(baixaFisicaService.gerarLaudo(1)).rejects.toThrow(
+                "Laudo só pode ser gerado para baixas com status Aceita."
+            )
+        })
+    })
+
+    describe("LAUDO_TITULO", () => {
+        it("tem título oficial do laudo pós-aceite", () => {
+            expect(LAUDO_TITULO).toBe(
+                "LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
             )
         })
     })
