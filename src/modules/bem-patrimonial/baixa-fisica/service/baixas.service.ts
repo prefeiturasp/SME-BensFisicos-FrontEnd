@@ -7,6 +7,7 @@ import type {
     BaixaFisicaUpdatePayload,
     BaixaFisicaRecusarPayload,
     BaixaFisicaSolicitarCorrecaoPayload,
+    BaixaFisicaAprovarPayload,
     BaixaFisicaListParams,
     GerarNbbpmLotePayload,
     PaginatedResponse,
@@ -107,9 +108,9 @@ export const baixaFisicaService = {
         }
     },
 
-    aprovar: async (id: number): Promise<BaixaFisicaDetail> => {
+    aprovar: async (id: number, payload: BaixaFisicaAprovarPayload): Promise<BaixaFisicaDetail> => {
         try {
-            const { data } = await api.post(`/baixa-fisica/${id}/aprovar/`)
+            const { data } = await api.post(`/baixa-fisica/${id}/aprovar/`, payload)
             return data
 
         } catch (error) {
