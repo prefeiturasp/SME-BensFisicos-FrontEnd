@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { Button } from "@/components/ui/button"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
 import ConfirmarAceiteModal from "../modals/ConfirmarAceiteModal"
@@ -774,10 +775,10 @@ export default function VerBaixaPage() {
                         </button>
                     )}
 
-                    <button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
+                    <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={14} />
                         Voltar
-                    </button>
+                    </Button>
                 </div>
             </div>
 

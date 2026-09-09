@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { Button } from "@/components/ui/button"
 import { baixaFisicaService } from "../service/baixas.service"
 import type { BaixaFisicaDetail } from "../types/baixas-fisicas.types"
 
@@ -101,10 +102,10 @@ export default function SolicitarCorrecaoPage() {
                     >
                         {submitting ? "Enviando..." : "Solicitar correção"}
                     </button>
-                    <button onClick={handleVoltar} className={ACTION_BUTTON_CLASS}>
+                    <Button type="button" onClick={handleVoltar} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={14} />
                         Voltar
-                    </button>
+                    </Button>
                 </div>
             </div>
 

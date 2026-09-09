@@ -325,7 +325,7 @@ export default function BaixasListPage() {
                     Baixa Física de Bens Patrimoniais
                 </h1>
                 <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button onClick={() => globalThis.history.back()} className={ACTION_BUTTON_CLASS}>
+                    <Button onClick={() => navigate("/home")} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={16} />
                     </Button>
 
