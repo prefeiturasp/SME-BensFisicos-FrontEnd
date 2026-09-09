@@ -223,9 +223,9 @@ describe('VisualizarConciliacaoPage', () => {
     expect(screen.getByTestId('visualizar-conciliacao-subtitulo')).toHaveTextContent(
       '001.0002/2026/005 — COTIC',
     );
-    expect(screen.getByText('Informações gerais')).toBeInTheDocument();
+    expect(screen.getByText('Informações Gerais')).toBeInTheDocument();
     expect(screen.getByText('Auditoria')).toBeInTheDocument();
-    expect(screen.getByText('Itens de conciliação')).toBeInTheDocument();
+    expect(screen.getByText('Itens de Conciliação')).toBeInTheDocument();
   });
 
   it('renderiza apenas o numero no subtitulo quando a sigla da UA e vazia', () => {
