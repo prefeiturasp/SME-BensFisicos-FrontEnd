@@ -185,6 +185,18 @@ describe("ConfirmarAceiteModal", () => {
         expect(onConfirm).not.toHaveBeenCalled()
     })
 
+    it("aplica máscara parcial com 8 dígitos", () => {
+        render(
+            <ConfirmarAceiteModal
+                onConfirm={vi.fn()}
+                onCancel={vi.fn()}
+            />
+        )
+        const input = screen.getByLabelText("Número do Processo") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "60162025" } })
+        expect(input.value).toBe("6016.2025")
+    })
+
     it("desabilita ações e exibe estado de loading", () => {
         render(
             <ConfirmarAceiteModal

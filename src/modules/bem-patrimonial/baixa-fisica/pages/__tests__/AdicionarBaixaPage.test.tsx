@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import AdicionarBaixaPage from "../AdicionarBaixaPage"
+import { isDataFutura } from "../../utils/datas"
 import { baixaFisicaService } from "../../service/baixas.service"
 import { bemService } from "../../../bem/services/bem.service"
 import type { Bem } from "../../../bem/services/bem.service"
@@ -92,6 +93,8 @@ function makeBem(overrides: Partial<Bem> = {}): Bem {
         nome: "Cadeira Escritório",
         descricao: "Cadeira ergonômica",
         numero_patrimonial: "PAT-001",
+        numero_formato_antigo: false,
+        sem_numeracao: false,
         localizacao: "Sala 01",
         unidade_administrativa_codigo: "001",
         unidade_administrativa_nome: "Unidade 01",
@@ -421,6 +424,18 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         const input = screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
         expect(input).toBeDisabled()
+    })
+
+    it("isDataFutura bloqueia amanhã e libera hoje e ontem", () => {
+        const base = new Date()
+        base.setHours(0, 0, 0, 0)
+        const amanha = new Date(base)
+        amanha.setDate(base.getDate() + 1)
+        const ontem = new Date(base)
+        ontem.setDate(base.getDate() - 1)
+        expect(isDataFutura(amanha)).toBe(true)
+        expect(isDataFutura(base)).toBe(false)
+        expect(isDataFutura(ontem)).toBe(false)
     })
 
     it("troca de unidade administrativa reseta os itens", async () => {

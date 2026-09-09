@@ -24,8 +24,10 @@ import type {
 } from "../types/baixas-fisicas.types"
 import {
     LAUDO_TITULO,
-    isProcessoBaixaValido,
 } from "../types/baixas-fisicas.types"
+import {
+    isProcessoBaixaValido,
+} from "../utils/processo-baixa"
 
 import { toast } from "sonner"
 
@@ -337,8 +339,7 @@ function ValidacaoTable({ itens, checkedIds, onToggle, allChecked, onToggleAll }
                                     onChange={onToggleAll}
                                     className="accent-[#2F7D57] w-4 h-4 cursor-pointer"
                                     aria-label="Selecionar todos"
-                                />
-                                Selecionar todos
+                                /> Selecionar todos
                             </label>
                             <span className="sr-only">Validação</span>
                         </th>

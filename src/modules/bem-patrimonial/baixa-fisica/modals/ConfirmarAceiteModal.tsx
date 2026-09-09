@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import {
     maskProcessoBaixa,
     isProcessoBaixaValido,
-} from "../types/baixas-fisicas.types"
+} from "../utils/processo-baixa"
 
 interface ConfirmarAceiteModalProps {
     readonly onConfirm: (numeroProcesso: string) => void

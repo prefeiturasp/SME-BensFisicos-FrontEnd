@@ -11,6 +11,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
+import { isDataFutura } from "../utils/datas"
 import { baixaFisicaService } from "../service/baixas.service"
 import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
 import type { ItemRow } from '../types/baixas-fisicas.types'
@@ -359,13 +360,7 @@ export default function AdicionarBaixaPage() {
                             placeholder="Selecione a data"
                             ariaLabel="Data da Baixa"
                             className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm"
-                            disabled={(date) => {
-                                const today = new Date()
-                                today.setHours(0, 0, 0, 0)
-                                const d = new Date(date)
-                                d.setHours(0, 0, 0, 0)
-                                return d > today
-                            }}
+                            disabled={isDataFutura}
                         />
                     </div>
                 </div>

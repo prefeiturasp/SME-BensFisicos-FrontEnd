@@ -27,17 +27,9 @@ const ACTIVE_PAGE_CLASS = "border-[#00703C] bg-[#00703C] text-white hover:bg-[#0
 
 // ===================== HELPERS =====================
 
-function parseLocalDate(dateString: string): Date {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString.trim())
-    if (match) {
-        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-    }
-    return new Date(dateString)
-}
-
 function formatDateTimeBR(dateString: string): string {
     if (!dateString) return ""
-    const date = parseLocalDate(dateString)
+    const date = new Date(dateString)
     if (Number.isNaN(date.getTime())) return ""
     const day = String(date.getDate()).padStart(2, "0")
     const month = String(date.getMonth() + 1).padStart(2, "0")

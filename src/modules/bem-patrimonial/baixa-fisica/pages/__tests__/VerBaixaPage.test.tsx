@@ -305,8 +305,9 @@ describe("VerBaixaPage", () => {
             makeBaixaDetail({ data_criacao: "2026-04-29T14:32:10-03:00" })
         )
         renderPage()
+        const esperado = new Date("2026-04-29T14:32:10-03:00").toLocaleString("pt-BR")
         await waitFor(() =>
-            expect(screen.getByText("29/04/2026, 14:32:10")).toBeInTheDocument()
+            expect(screen.getByText(esperado)).toBeInTheDocument()
         )
     })
 
