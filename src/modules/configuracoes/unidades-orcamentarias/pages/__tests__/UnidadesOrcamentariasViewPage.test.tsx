@@ -97,6 +97,7 @@ describe('UnidadesOrcamentariasViewPage', () => {
     expect(screen.getByDisplayValue('10.10')).toBeInTheDocument();
     expect(screen.getByDisplayValue('SECRETARIA MUNICIPAL DE EDUCACAO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
   });
 
   it('exibe mensagem de id inválido quando rota é inválida', () => {
@@ -183,6 +184,8 @@ describe('UnidadesOrcamentariasViewPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
     });
+
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
 
     const nomeInput = screen.getByLabelText('Nome da UO');
 
@@ -311,14 +314,14 @@ describe('UnidadesOrcamentariasViewPage', () => {
     });
   });
 
-  it('volta para a listagem ao clicar em Cancelar', () => {
+  it('volta para a listagem ao clicar em Voltar', () => {
     render(
       <MemoryRouter>
         <UnidadesOrcamentariasViewPage />
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/unidades-orcamentarias');
   });

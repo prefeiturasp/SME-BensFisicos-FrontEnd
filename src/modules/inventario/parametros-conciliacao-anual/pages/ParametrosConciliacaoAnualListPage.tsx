@@ -77,7 +77,7 @@ function ParametrosConciliacaoAnualListContent() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className={ACTION_BUTTON_CLASS}
             aria-label='Voltar'
           >

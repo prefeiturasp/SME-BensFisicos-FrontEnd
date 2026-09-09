@@ -452,12 +452,12 @@ describe("UsuariosListPage", () => {
 
     describe("navegação", () => {
 
-        it("navega para -1 ao clicar no botão voltar", () => {
+        it("navega para a Home ao clicar no botão voltar", () => {
             renderComponent()
 
             fireEvent.click(screen.getAllByRole("button")[0])
 
-            expect(navigateMock).toHaveBeenCalledWith(-1)
+            expect(navigateMock).toHaveBeenCalledWith("/home")
         })
 
         it("navega para /usuarios/novo ao clicar em 'Adicionar Usuário'", () => {

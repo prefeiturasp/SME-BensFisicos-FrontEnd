@@ -329,6 +329,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Ex: 2026')).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
