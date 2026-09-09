@@ -202,7 +202,7 @@ export default function TransferenciaDetailPage() {
           </div>
 
           <div className='space-y-2 px-6 py-4'>
-            <h2 className='text-sm font-semibold text-[#00703C]'>Itens da Transferência</h2>
+            <h2 className='text-sm font-semibold text-[#00703C]'>Itens da Transferência de Bem</h2>
 
             {transferencia.itens.length === 0 ? (
               <div className='text-sm text-gray-400'>Nenhum item encontrado.</div>
