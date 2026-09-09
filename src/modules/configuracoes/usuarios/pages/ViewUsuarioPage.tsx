@@ -139,8 +139,11 @@ export default function ViewUsuarioPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Visualizar Usuário</h1>
         <div className="flex items-center gap-3">
-          <Button type="button" onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
           <Button onClick={() => navigate(`/usuarios/${id}/editar`)} className={ACTION_BUTTON_CLASS}>Editar</Button>
+          <Button type="button" onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>
+            <ArrowLeft size={16} />
+            Voltar
+          </Button>
         </div>
       </div>
       {errorMessage && <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">{errorMessage}</div>}

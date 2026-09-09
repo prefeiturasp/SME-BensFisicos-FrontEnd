@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -121,7 +122,8 @@ function FormActions({
       )}
 
       <Button type='button' onClick={onCancel} className={OUTLINE_BUTTON_CLASS}>
-        Cancelar
+        {isView && <ArrowLeft size={16} />}
+        {isView ? 'Voltar' : 'Cancelar'}
       </Button>
     </div>
   );

@@ -47,6 +47,7 @@ function renderPage(id = "1") {
             <Routes>
                 <Route path="/usuarios/:id" element={<ViewUsuarioPage />} />
                 <Route path="/usuarios/:id/editar" element={<div>Página de Edição</div>} />
+                <Route path="/usuarios" element={<div>Listagem de Usuários</div>} />
             </Routes>
         </MemoryRouter>
     )
@@ -248,6 +249,21 @@ describe("ViewUsuarioPage", () => {
         await user.click(screen.getByRole("button", { name: /editar/i }))
 
         expect(screen.getByText("Página de Edição")).toBeInTheDocument()
+    })
+
+    it("navega para a listagem ao clicar em 'Voltar'", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
+        const user = userEvent.setup()
+
+        renderPage()
+
+        await waitFor(() => {
+            expect(screen.getByDisplayValue("João da Silva")).toBeInTheDocument()
+        })
+
+        await user.click(screen.getByRole("button", { name: "Voltar" }))
+
+        expect(screen.getByText("Listagem de Usuários")).toBeInTheDocument()
     })
 
     it("exibe o título 'Visualizar Usuário'", async () => {

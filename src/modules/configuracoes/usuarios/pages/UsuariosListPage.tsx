@@ -160,7 +160,7 @@ export default function UsuariosListPage() {
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>Usuários</h1>
 
         <div className='flex items-center gap-3'>
-          <Button type='button' onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
+          <Button type='button' onClick={() => navigate('/home')} className={ACTION_BUTTON_CLASS}>
             <ArrowLeft size={18} />
           </Button>
 

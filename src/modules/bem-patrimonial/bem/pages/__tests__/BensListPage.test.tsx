@@ -297,7 +297,7 @@ describe('BensListPage', () => {
       .getAllByRole('button')
       .find(b => b.querySelector('svg.lucide-arrow-left'))!
     fireEvent.click(voltar)
-    expect(navigateMock).toHaveBeenCalledWith(-1)
+    expect(navigateMock).toHaveBeenCalledWith('/home')
   })
 
   it('exibe o botão de relatório sem disparar navegação', () => {

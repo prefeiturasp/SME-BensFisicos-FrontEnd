@@ -97,7 +97,7 @@ export default function UnidadesOrcamentariasListPage() {
 
           <UnidadesOrcamentariasActions
             reportLoading={reportLoading}
-            onBack={() => navigate(-1)}
+            onBack={() => navigate('/home')}
             onAdd={() => navigate('/unidades-orcamentarias/novo')}
             onReport={handleReport}
           />
