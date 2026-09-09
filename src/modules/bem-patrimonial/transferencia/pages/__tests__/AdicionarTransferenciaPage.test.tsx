@@ -267,6 +267,7 @@ describe('AdicionarTransferenciaPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Adicionar Transferência de Bem Patrimonial' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Filtrar por Unidade Administrativa')).toBeInTheDocument()
     expect(screen.getByDisplayValue('01.16.10 - SME')).toBeInTheDocument()
     expect(screen.getByTestId('select-item-20')).toBeInTheDocument()
     expect(screen.queryByTestId('select-item-21')).not.toBeInTheDocument()

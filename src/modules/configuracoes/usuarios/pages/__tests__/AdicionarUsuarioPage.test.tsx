@@ -167,7 +167,7 @@ async function fillForm(
     fireEvent.change(screen.getByPlaceholderText("Digite o nome completo"), {
         target: { value: data.nome },
     })
-    fireEvent.change(screen.getByPlaceholderText("Digite o rf"), {
+    fireEvent.change(screen.getByPlaceholderText("Digite o RF"), {
         target: { value: data.rf },
     })
     fireEvent.change(
@@ -244,7 +244,7 @@ describe("AdicionarUsuarioPage", () => {
             renderComponent()
 
             expect(screen.getByPlaceholderText("Digite o nome completo")).toBeInTheDocument()
-            expect(screen.getByPlaceholderText("Digite o rf")).toBeInTheDocument()
+            expect(screen.getByPlaceholderText("Digite o RF")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Digite o nome de usuário de acesso")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Digite o e-mail")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Cadastre uma senha")).toBeInTheDocument()

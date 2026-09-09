@@ -44,9 +44,9 @@ export function ConciliacaoInfoGerais({
     <section
       className='space-y-5 p-4'
       data-testid='conciliacao-info-gerais'
-      aria-label='Informações gerais da conciliação'
+      aria-label='Informações Gerais da Conciliação'
     >
-      <h2 className={SECTION_TITLE_CLASS}>Informações gerais</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Informações Gerais</h2>
 
       <div className='grid grid-cols-1 items-start gap-x-8 gap-y-5 lg:grid-cols-3'>
         <div className='space-y-1'>

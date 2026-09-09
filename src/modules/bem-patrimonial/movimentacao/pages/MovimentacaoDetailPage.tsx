@@ -280,21 +280,21 @@ export default function MovimentacaoDetailPage() {
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <BemDetailField label='Unidade orçamentária de origem'>
+            <BemDetailField label='Unidade Orçamentária de Origem'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_origem)}
             </BemDetailField>
 
-            <BemDetailField label='Unidade administrativa de origem'>
+            <BemDetailField label='Unidade Administrativa de Origem'>
               {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
             </BemDetailField>
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <BemDetailField label='Unidade orçamentária de destino'>
+            <BemDetailField label='Unidade Orçamentária de Destino'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_destino)}
             </BemDetailField>
 
-            <BemDetailField label='Unidade administrativa de destino'>
+            <BemDetailField label='Unidade Administrativa de Destino'>
               {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
             </BemDetailField>
           </div>
