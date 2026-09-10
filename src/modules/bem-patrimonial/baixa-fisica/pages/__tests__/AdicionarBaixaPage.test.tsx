@@ -149,6 +149,23 @@ describe("AdicionarBaixaPage", () => {
         })
     })
 
+    it("exibe todos os campos pendentes numa unica submissao", async () => {
+        renderPage()
+
+        // Nenhum campo preenchido: unidade e itens estao ambos pendentes.
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(
+                screen.getByText("Selecione a unidade administrativa.")
+            ).toBeInTheDocument()
+        })
+
+        // O segundo erro aparece junto, e nao apenas apos corrigir o primeiro.
+        expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument()
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
     // --- Dropdown de bem ---
 
     it("abre dropdown ao focar no input de bem", async () => {

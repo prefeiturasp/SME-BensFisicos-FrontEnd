@@ -277,12 +277,12 @@ describe('BemCreatePage', () => {
   // Validação de campos obrigatórios no front
   // ------------------------------------------------------------------
 
-  it('deve manter o botão Salvar desabilitado enquanto campos obrigatórios estiverem vazios', () => {
+  it('deve manter o botão Salvar habilitado para permitir o feedback inline', () => {
     renderPage()
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    expect(screen.getByText('Salvar')).toBeEnabled()
   })
 
-  it('não deve chamar createMulti se campos obrigatórios estiverem vazios (botão desabilitado)', async () => {
+  it('não deve chamar createMulti se campos obrigatórios estiverem vazios', async () => {
     const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
     fireEvent.click(screen.getByText('Salvar'))
@@ -292,13 +292,19 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve habilitar o botão Salvar somente após preencher todos os campos obrigatórios, incluindo a localização da linha', () => {
+  it('deve exibir todos os campos pendentes numa unica submissao', async () => {
     renderPage()
-    expect(screen.getByText('Salvar')).toBeDisabled()
 
-    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
 
-    expect(screen.getByText('Salvar')).toBeEnabled()
+    // Base e linhas sao validadas juntas: todos os erros aparecem de uma vez.
+    await waitFor(() => {
+      expect(screen.getByText('Nome do Bem é obrigatório.')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
   })
 
   it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
@@ -347,7 +353,8 @@ describe('BemCreatePage', () => {
     expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
   })
 
-  it('deve manter o botão Salvar desabilitado quando a localização da linha estiver vazia', () => {
+  it('deve sinalizar a localização pendente da linha ao submeter', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
@@ -357,25 +364,27 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
     // Localização propositalmente não preenchida
 
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
   })
 
-  it('deve habilitar o botão Salvar ao preencher a localização da linha que faltava', () => {
+  it('deve submeter apos preencher a localização da linha que faltava', async () => {
+    const spy = vi
+      .spyOn(bemServiceModule.bemService, 'createMulti')
+      .mockResolvedValue(undefined as never)
     renderPage()
 
-    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
-    fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), { target: { value: 'Desc' } })
-    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
-    fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
-    fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+    preencherCamposBase()
 
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    fireEvent.click(screen.getByText('Salvar'))
 
-    fireEvent.change(screen.getByPlaceholderText('Localização'), {
-      target: { value: 'Sala 1' },
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalled()
     })
-
-    expect(screen.getByText('Salvar')).toBeEnabled()
   })
 
   it('deve exibir erro de localização por linha quando retornado pelo backend', async () => {

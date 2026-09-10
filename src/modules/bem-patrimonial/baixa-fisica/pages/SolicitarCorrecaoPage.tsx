@@ -1,8 +1,23 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowLeft } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    solicitarCorrecaoSchema,
+    type SolicitarCorrecaoFormData,
+} from "../validators/baixa-form.schema"
 import { baixaFisicaService } from "../service/baixas.service"
 import type { BaixaFisicaDetail } from "../types/baixas-fisicas.types"
 
@@ -15,10 +30,14 @@ export default function SolicitarCorrecaoPage() {
 
     const [baixa, setBaixa] = useState<BaixaFisicaDetail | null>(null)
     const [loading, setLoading] = useState(true)
-    const [motivo, setMotivo] = useState("")
     const [submitting, setSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const [showToast, setShowToast] = useState(false)
+
+    const form = useForm<SolicitarCorrecaoFormData>({
+        resolver: zodResolver(solicitarCorrecaoSchema),
+        mode: "onSubmit",
+        defaultValues: { motivo: "" },
+    })
 
     useEffect(() => {
         const fetchBaixa = async () => {
@@ -35,30 +54,25 @@ export default function SolicitarCorrecaoPage() {
         fetchBaixa()
     }, [id])
 
-    const handleSolicitarCorrecao = async () => {
+    const handleSolicitarCorrecao = form.handleSubmit(async (values) => {
         if (!baixa) return
-        if (!motivo.trim()) {
-            setError("Descreva as orientações para a correção antes de enviar.")
-            return
-        }
 
         setSubmitting(true)
-        setError(null)
         try {
-            await baixaFisicaService.solicitarCorrecao(baixa.id, { motivo: motivo.trim() })
+            await baixaFisicaService.solicitarCorrecao(baixa.id, { motivo: values.motivo })
             setShowToast(true)
             setTimeout(() => {
                 navigate(-1)
             }, 1500)
         } catch (err) {
             console.error(err)
-            setError(
-                err instanceof Error ? err.message : "Erro ao solicitar correção da baixa."
-            )
+            form.setError("root.serverError", {
+                message: err instanceof Error ? err.message : "Erro ao solicitar correção da baixa.",
+            })
         } finally {
             setSubmitting(false)
         }
-    }
+    })
 
     const handleVoltar = () => {
         navigate(-1)
@@ -75,6 +89,7 @@ export default function SolicitarCorrecaoPage() {
     const ua = baixa.unidade_administrativa_origem
 
     return (
+        <Form {...form}>
         <div className="p-8 space-y-4">
             <AppBreadcrumb
                 items={[
@@ -92,11 +107,11 @@ export default function SolicitarCorrecaoPage() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleSolicitarCorrecao}
-                        disabled={submitting || !motivo.trim() || showToast}
+                        disabled={submitting || showToast}
                         className={`h-10 px-5 font-semibold rounded-md flex items-center gap-2 text-sm transition-colors ${
-                            motivo.trim() && !showToast
-                                ? "bg-[#2F7D57] text-white hover:bg-[#256947]"
-                                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            showToast
+                                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                : "bg-[#2F7D57] text-white hover:bg-[#256947]"
                         }`}
                     >
                         {submitting ? "Enviando..." : "Solicitar correção"}
@@ -108,9 +123,9 @@ export default function SolicitarCorrecaoPage() {
                 </div>
             </div>
 
-            {error && (
+            {form.formState.errors.root?.serverError?.message && (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {error}
+                    {form.formState.errors.root.serverError.message}
                 </div>
             )}
 
@@ -137,20 +152,31 @@ export default function SolicitarCorrecaoPage() {
                     <p className="text-sm font-bold text-[#2F7D57]">
                         Solicitar correção
                     </p>
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="observacoes-correcao" className="text-sm font-semibold text-gray-700">
-                            Observações
-                        </label>
-                        <textarea
-                            id="observacoes-correcao"
-                            value={motivo}
-                            onChange={(e) => setMotivo(e.target.value)}
-                            disabled={showToast}
-                            rows={6}
-                            placeholder="Descreva o que precisa ser corrigido..."
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 resize-none focus:outline-none focus:ring-1 focus:ring-[#2F7D57] focus:border-[#2F7D57] disabled:bg-gray-50 disabled:text-gray-400"
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="motivo"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col gap-1">
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="observacoes-correcao"
+                                >
+                                    Observações
+                                </FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        {...field}
+                                        id="observacoes-correcao"
+                                        disabled={showToast}
+                                        rows={6}
+                                        placeholder="Descreva o que precisa ser corrigido..."
+                                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 resize-none disabled:bg-gray-50 disabled:text-gray-400"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
 
                 {/* Itens — somente leitura, sem checkboxes */}
@@ -176,5 +202,6 @@ export default function SolicitarCorrecaoPage() {
             </div>
 
         </div>
+        </Form>
     )
 }

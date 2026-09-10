@@ -359,7 +359,36 @@ describe('AdicionarTransferenciaPage', () => {
         'Não há ponto central cadastrado na Unidade Orçamentária de destino. Por favor, entrar em contato com o gestor.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+
+    // O botão permanece habilitado: a pendência é comunicada pelo aviso e pela
+    // validação inline, não pelo estado do botão.
+    expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => {
+      expect(transferenciaService.create).not.toHaveBeenCalled()
+    })
+  })
+
+  it('exibe todos os campos pendentes numa unica submissao', async () => {
+    render(
+      <MemoryRouter initialEntries={['/transferencias/novo']}>
+        <AdicionarTransferenciaPage />
+      </MemoryRouter>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selecione a Unidade Orçamentária de destino.'),
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Informe o número do processo.')).toBeInTheDocument()
+    expect(screen.getByText('Adicione ao menos um item de transferência.')).toBeInTheDocument()
+    expect(transferenciaService.create).not.toHaveBeenCalled()
   })
 
   it('mantém a lista vazia quando não consegue carregar as opções de cadastro', async () => {
