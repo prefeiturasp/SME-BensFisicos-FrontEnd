@@ -1,13 +1,16 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
+import { AxiosError } from "axios"
 
 import GerarNBBPMPage from "../GerarNBBPMPage"
 import { baixaFisicaService, downloadBlob } from "../../service/baixas.service"
+import { useAuth } from "@/auth/useAuth"
+import { toast } from "sonner"
 
 // ===================== MOCKS =====================
 
 const mockNavigate = vi.fn()
-let mockLocationState: { baixaIds?: number[] } | null = null
+let mockLocationState: { baixaIds?: number[]; processo?: string } | null = null
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual("react-router-dom")
@@ -18,9 +21,21 @@ vi.mock("react-router-dom", async () => {
     }
 })
 
+vi.mock("@/auth/useAuth", () => ({
+    useAuth: vi.fn(),
+}))
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+    },
+}))
+
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
         gerarNbbpmLote: vi.fn(),
+        baixarNbbpmPdf: vi.fn(),
     },
     downloadBlob: vi.fn(),
 }))
@@ -43,8 +58,39 @@ function preencherFormularioValido() {
         target: { value: "2026-05-08" },
     })
     fireEvent.change(screen.getByLabelText(/Responsável/i), {
-        target: { value: "Priscila Padovesi" },
+        target: { value: "Responsavel Teste" },
     })
+}
+
+function preencherSomenteCamposEditaveis() {
+    fireEvent.change(screen.getByLabelText(/Data da Autorização/i), {
+        target: { value: "2026-05-08" },
+    })
+    fireEvent.change(screen.getByLabelText(/Responsável/i), {
+        target: { value: "Responsavel Teste" },
+    })
+}
+
+function makeAxiosFieldError(data: Record<string, unknown>) {
+    const error = new AxiosError("Request failed with status code 400")
+    error.response = {
+        status: 400,
+        data,
+        headers: {},
+        config: {} as never,
+        statusText: "",
+    }
+    return error
+}
+
+function makeNbbpm(overrides = {}) {
+    return {
+        id: 1,
+        numero: "001.0000001/2026",
+        numero_processo_baixa: "6016.2025/0117371-7",
+        baixas: [1, 2, 3],
+        ...overrides,
+    }
 }
 
 // ===================== TESTS =====================
@@ -53,6 +99,9 @@ describe("GerarNBBPMPage", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockLocationState = { baixaIds: [1, 2, 3] }
+        vi.mocked(useAuth).mockReturnValue({
+            user: { rf: "1234567" },
+        } as unknown as ReturnType<typeof useAuth>)
     })
 
     describe("baixaIds ausente", () => {
@@ -105,7 +154,7 @@ describe("GerarNBBPMPage", () => {
                 target: { value: "2026-05-08" },
             })
             fireEvent.change(screen.getByLabelText(/Responsável/i), {
-                target: { value: "Priscila Padovesi" },
+                target: { value: "Responsavel Teste" },
             })
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
@@ -123,7 +172,7 @@ describe("GerarNBBPMPage", () => {
                 target: { value: "6016.2025/0117371-7" },
             })
             fireEvent.change(screen.getByLabelText(/Responsável/i), {
-                target: { value: "Priscila Padovesi" },
+                target: { value: "Responsavel Teste" },
             })
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
@@ -183,9 +232,10 @@ describe("GerarNBBPMPage", () => {
     })
 
     describe("submissão com sucesso", () => {
-        it("chama o serviço com o payload correto, baixa o PDF e volta para a página anterior", async () => {
-            const fakeBlob = new Blob(["pdf"], { type: "application/pdf" })
-            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(fakeBlob)
+        it("chama o serviço com o payload correto, baixa o PDF, exibe toast de sucesso e volta", async () => {
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(makeNbbpm())
+            const fakePdf = new Blob(["pdf"], { type: "application/pdf" })
+            vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockResolvedValueOnce(fakePdf)
 
             renderPage()
             preencherFormularioValido()
@@ -197,21 +247,44 @@ describe("GerarNBBPMPage", () => {
                     baixas: [1, 2, 3],
                     numero_processo_baixa: "6016.2025/0117371-7",
                     data_autorizacao: "2026-05-08",
-                    responsavel: "Priscila Padovesi",
-                    numero_processo_destinacao_final: undefined,
+                    responsavel: "Responsavel Teste",
+                    numero_processo_destinacao_final: "",
                 })
             })
 
+            expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(1)
             expect(downloadBlob).toHaveBeenCalledWith(
-                fakeBlob,
-                "NBBPM_6016.2025/0117371-7.pdf"
+                fakePdf,
+                "NBBPM_001.0000001/2026.pdf"
+            )
+            expect(toast.success).toHaveBeenCalledWith(
+                "NBBPM 001.0000001/2026 gerada com sucesso!"
+            )
+            expect(mockNavigate).toHaveBeenCalledWith(-1)
+        })
+
+        it("conclui com toast de sucesso mesmo se o download do PDF falhar", async () => {
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(makeNbbpm())
+            vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockRejectedValueOnce(
+                new Error("Erro ao baixar NBBPM.")
+            )
+
+            renderPage()
+            preencherFormularioValido()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            await waitFor(() => {
+                expect(toast.error).toHaveBeenCalledWith("Erro ao baixar NBBPM.")
+            })
+            expect(toast.success).toHaveBeenCalledWith(
+                "NBBPM 001.0000001/2026 gerada com sucesso!"
             )
             expect(mockNavigate).toHaveBeenCalledWith(-1)
         })
 
         it("envia o número do processo de destinação final quando preenchido", async () => {
-            const fakeBlob = new Blob(["pdf"], { type: "application/pdf" })
-            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(fakeBlob)
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(makeNbbpm())
 
             renderPage()
             preencherFormularioValido()
@@ -231,8 +304,7 @@ describe("GerarNBBPMPage", () => {
         })
 
         it("faz trim dos campos de texto antes de enviar", async () => {
-            const fakeBlob = new Blob(["pdf"], { type: "application/pdf" })
-            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(fakeBlob)
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(makeNbbpm())
 
             renderPage()
             fireEvent.change(screen.getByLabelText(/Número do processo de Baixa/i), {
@@ -242,7 +314,7 @@ describe("GerarNBBPMPage", () => {
                 target: { value: "2026-05-08" },
             })
             fireEvent.change(screen.getByLabelText(/Responsável/i), {
-                target: { value: "  Priscila Padovesi  " },
+                target: { value: "  Responsavel Teste  " },
             })
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
@@ -251,14 +323,14 @@ describe("GerarNBBPMPage", () => {
                 expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith(
                     expect.objectContaining({
                         numero_processo_baixa: "6016.2025/0117371-7",
-                        responsavel: "Priscila Padovesi",
+                        responsavel: "Responsavel Teste",
                     })
                 )
             })
         })
 
         it("desabilita o botão e exibe 'Gerando...' durante o submit", async () => {
-            let resolveGerar: (value: Blob) => void = () => {}
+            let resolveGerar: (value: ReturnType<typeof makeNbbpm>) => void = () => {}
             vi.mocked(baixaFisicaService.gerarNbbpmLote).mockReturnValueOnce(
                 new Promise((resolve) => {
                     resolveGerar = resolve
@@ -272,7 +344,7 @@ describe("GerarNBBPMPage", () => {
 
             expect(await screen.findByRole("button", { name: /Gerando\.\.\./i })).toBeDisabled()
 
-            resolveGerar(new Blob(["pdf"], { type: "application/pdf" }))
+            resolveGerar(makeNbbpm())
 
             await waitFor(() => {
                 expect(mockNavigate).toHaveBeenCalledWith(-1)
@@ -294,7 +366,9 @@ describe("GerarNBBPMPage", () => {
             expect(
                 await screen.findByText(/não pertencem ao seu escopo de acesso/i)
             ).toBeInTheDocument()
-            expect(downloadBlob).not.toHaveBeenCalled()
+            expect(toast.error).toHaveBeenCalledWith(
+                "Uma ou mais Baixas selecionadas não pertencem ao seu escopo de acesso."
+            )
             expect(mockNavigate).not.toHaveBeenCalled()
         })
 
@@ -331,6 +405,95 @@ describe("GerarNBBPMPage", () => {
 
             expect(mockNavigate).toHaveBeenCalledWith(-1)
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
+        })
+    })
+
+    describe("processo único vindo da listagem", () => {
+        it("abre com o Número do processo preenchido e readOnly e o Gerado por com o RF logado e disabled", () => {
+            mockLocationState = { baixaIds: [10, 11], processo: "6016.2025/0117371-7" }
+            renderPage()
+
+            const processoInput = screen.getByLabelText(/Número do processo de Baixa/i) as HTMLInputElement
+            expect(processoInput.value).toBe("6016.2025/0117371-7")
+            expect(processoInput).toHaveAttribute("readonly")
+
+            const geradoPorInput = screen.getByLabelText(/Gerado por/i) as HTMLInputElement
+            expect(geradoPorInput.value).toBe("1234567")
+            expect(geradoPorInput).toBeDisabled()
+        })
+
+        it("mantém Responsável e Data da Autorização editáveis", () => {
+            mockLocationState = { baixaIds: [10, 11], processo: "6016.2025/0117371-7" }
+            renderPage()
+
+            const responsavelInput = screen.getByLabelText(/Responsável/i) as HTMLInputElement
+            const dataInput = screen.getByLabelText(/Data da Autorização/i) as HTMLInputElement
+
+            expect(responsavelInput).not.toHaveAttribute("readonly")
+            expect(responsavelInput).not.toBeDisabled()
+            expect(dataInput).not.toHaveAttribute("readonly")
+            expect(dataInput).not.toBeDisabled()
+        })
+
+        it("envia o processo travado do state sem precisar digitar", async () => {
+            mockLocationState = { baixaIds: [10, 11], processo: "6016.2025/0117371-7" }
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(
+                makeNbbpm({ baixas: [10, 11] })
+            )
+
+            renderPage()
+            preencherSomenteCamposEditaveis()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            await waitFor(() => {
+                expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith({
+                    baixas: [10, 11],
+                    numero_processo_baixa: "6016.2025/0117371-7",
+                    data_autorizacao: "2026-05-08",
+                    responsavel: "Responsavel Teste",
+                    numero_processo_destinacao_final: "",
+                })
+            })
+            expect(toast.success).toHaveBeenCalledWith(
+                "NBBPM 001.0000001/2026 gerada com sucesso!"
+            )
+        })
+
+        it("exibe toast com a mensagem de divergência do backend e não limpa o processo travado", async () => {
+            const mensagemDivergencia = "As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo."
+            mockLocationState = { baixaIds: [10, 11], processo: "6016.2025/0117371-7" }
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockRejectedValueOnce(
+                makeAxiosFieldError({ baixas: [mensagemDivergencia] })
+            )
+
+            renderPage()
+            preencherSomenteCamposEditaveis()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            expect(await screen.findByText(mensagemDivergencia)).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith(mensagemDivergencia)
+            expect(mockNavigate).not.toHaveBeenCalled()
+            expect((screen.getByLabelText(/Número do processo de Baixa/i) as HTMLInputElement).value).toBe(
+                "6016.2025/0117371-7"
+            )
+        })
+
+        it("exibe toast com a mensagem de numero_processo_baixa divergente do backend", async () => {
+            const mensagem = "O Número do processo informado diverge do Número de Processo das Baixas selecionadas."
+            mockLocationState = { baixaIds: [10, 11], processo: "6016.2025/0117371-7" }
+            vi.mocked(baixaFisicaService.gerarNbbpmLote).mockRejectedValueOnce(
+                makeAxiosFieldError({ numero_processo_baixa: [mensagem] })
+            )
+
+            renderPage()
+            preencherSomenteCamposEditaveis()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            expect(await screen.findByText(mensagem)).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith(mensagem)
         })
     })
 })
