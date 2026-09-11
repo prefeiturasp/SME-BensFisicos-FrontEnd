@@ -85,14 +85,12 @@ export interface BaixaFisicaItemPayload {
 }
 
 export interface BaixaFisicaCreatePayload {
-    numero_processo_baixa: string | null
     unidade_administrativa_origem: number
-    data_baixa: string | null
+    data_baixa?: string | null
     itens: BaixaFisicaItemPayload[]
 }
 
 export interface BaixaFisicaUpdatePayload {
-    numero_processo_baixa?: string | null
     data_baixa?: string | null
     itens: BaixaFisicaItemPayload[]
 }
@@ -113,6 +111,10 @@ export interface BaixaFisicaRecusarPayload {
  */
 export interface BaixaFisicaSolicitarCorrecaoPayload {
     motivo: string
+}
+
+export interface BaixaFisicaAprovarPayload {
+    numero_processo_baixa: string
 }
 
 /**
@@ -176,6 +178,7 @@ export interface HistoricoGroup {
 
 export const LAUDO_TITULO =
     "LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
+
 
 // ============================================================================
 // COMPONENTES

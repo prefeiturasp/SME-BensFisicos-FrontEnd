@@ -342,7 +342,7 @@ export function UserTopSection({
         label="RF"
         required
         value={rfValue}
-        placeholder="Digite o rf"
+        placeholder="Digite o RF"
         onChange={onRfChange}
         error={rfError}
       />

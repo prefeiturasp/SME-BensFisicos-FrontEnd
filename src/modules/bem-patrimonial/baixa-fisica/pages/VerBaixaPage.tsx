@@ -15,6 +15,7 @@ import {
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { CriadoPorValue } from "@/components/CriadoPorValue"
 import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
+import { Button } from "@/components/ui/button"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
 import ConfirmarAceiteModal from "../modals/ConfirmarAceiteModal"
@@ -23,7 +24,12 @@ import type {
     BaixaFisicaItem,
     EditRow,
 } from "../types/baixas-fisicas.types"
-import { LAUDO_TITULO } from "../types/baixas-fisicas.types"
+import {
+    LAUDO_TITULO,
+} from "../types/baixas-fisicas.types"
+import {
+    isProcessoBaixaValido,
+} from "../utils/processo-baixa"
 
 import { toast } from "sonner"
 
@@ -40,9 +46,17 @@ const ACTION_BUTTON_CLASS =
 // HELPERS
 // ============================================================================
 
+function parseLocalDate(dateString: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString.trim())
+    if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    }
+    return new Date(dateString)
+}
+
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
@@ -53,7 +67,7 @@ function formatDateBR(dateString: string | null | undefined): string {
 
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleString("pt-BR")
 }
@@ -305,9 +319,11 @@ interface ValidacaoTableProps {
     readonly itens: BaixaFisicaItem[]
     readonly checkedIds: Set<number>
     readonly onToggle: (itemId: number) => void
+    readonly allChecked: boolean
+    readonly onToggleAll: () => void
 }
 
-function ValidacaoTable({ itens, checkedIds, onToggle }: ValidacaoTableProps) {
+function ValidacaoTable({ itens, checkedIds, onToggle, allChecked, onToggleAll }: ValidacaoTableProps) {
     if (itens.length === 0) {
         return <p className="text-sm text-gray-400 px-1">Nenhum item corresponde ao filtro.</p>
     }
@@ -317,7 +333,18 @@ function ValidacaoTable({ itens, checkedIds, onToggle }: ValidacaoTableProps) {
             <table className="w-full text-sm">
                 <thead className="bg-[#F5F5F5] border-b border-gray-200">
                     <tr className="text-left text-gray-600 font-semibold">
-                        <th className="p-3 w-24">Validação</th>
+                        <th className="p-3 w-48">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={allChecked}
+                                    onChange={onToggleAll}
+                                    className="accent-[#2F7D57] w-4 h-4 cursor-pointer"
+                                    aria-label="Selecionar todos"
+                                /> Selecionar todos
+                            </label>
+                            <span className="sr-only">Validação</span>
+                        </th>
                         <th className="p-3 w-56">Número Patrimonial</th>
                         <th className="p-3">Nome do Bem</th>
                     </tr>
@@ -399,7 +426,6 @@ export default function VerBaixaPage() {
     const [recusando, setRecusando] = useState(false)
     const [motivoRecusa, setMotivoRecusa] = useState("")
     const [actionError, setActionError] = useState<string | null>(null)
-    const [successMessage, setSuccessMessage] = useState<string | null>(null)
     useEffect(() => {
         const fetchBaixa = async () => {
             try {
@@ -446,6 +472,9 @@ export default function VerBaixaPage() {
         baixa !== null &&
         baixa.itens.length > 0 &&
         baixa.itens.every((item) => checkedIds.has(item.id))
+
+    const todosFiltradosValidados =
+        itensFiltrados.length > 0 && itensFiltrados.every((item) => checkedIds.has(item.id))
 
     // ── Handlers — modo edição ──────────────────────────────────────────
 
@@ -526,21 +555,46 @@ export default function VerBaixaPage() {
         })
     }
 
-    const handleConfirmarAceite = async () => {
+    const toggleCheckAllFiltrados = () => {
+        setCheckedIds((prev) => {
+            const next = new Set(prev)
+            if (todosFiltradosValidados) {
+                itensFiltrados.forEach((item) => next.delete(item.id))
+            } else {
+                itensFiltrados.forEach((item) => next.add(item.id))
+            }
+            return next
+        })
+    }
+
+    const handleConfirmarAceite = async (numeroProcesso?: string) => {
         if (!baixa) return
+        const processo = numeroProcesso?.trim() ?? ""
+        if (!processo) {
+            toast.error("Número do Processo é obrigatório")
+            return
+        }
+        if (!isProcessoBaixaValido(processo)) {
+            toast.error(
+                "Número do Processo fora do padrão XXXX.XXXX/XXXXXXX-X. Exemplo: 6016.2025/0117371-7"
+            )
+            return
+        }
         setAceitando(true)
         setActionError(null)
         try {
-            const updated = await baixaFisicaService.aprovar(baixa.id)
-            setShowConfirmarAceite(false)
-            setSuccessMessage("Baixa física aceita com sucesso!")
+            const updated = await baixaFisicaService.aprovar(baixa.id, {
+                numero_processo_baixa: processo,
+            })
+            toast.success("Baixa física aceita com sucesso!")
             setBaixa(updated)
+            setShowConfirmarAceite(false)
             navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
         } catch (err) {
             console.error(err)
-            setActionError(
-                err instanceof Error ? err.message : "Erro ao confirmar aceite da baixa."
-            )
+            const msg = err instanceof Error ? err.message : "Erro ao confirmar aceite da baixa."
+            setActionError(msg)
+            toast.error(msg)
             setShowConfirmarAceite(false)
         } finally {
             setAceitando(false)
@@ -555,7 +609,7 @@ export default function VerBaixaPage() {
             await baixaFisicaService.recusar(baixa.id, { motivo: motivoRecusa.trim() || undefined })
             setShowRecusarModal(false)
             setMotivoRecusa("")
-            setSuccessMessage("Baixa física recusada.")
+            toast.success("Baixa física recusada.")
             setTimeout(() => {
                 navigate(-1)
             }, 1500)
@@ -724,10 +778,10 @@ export default function VerBaixaPage() {
                         </button>
                     )}
 
-                    <button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
+                    <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={14} />
                         Voltar
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -735,12 +789,6 @@ export default function VerBaixaPage() {
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
                     {actionError}
                 </div>
-            )}
-
-            {successMessage && (
-                <output className="block text-sm text-green-700 bg-green-50 border border-green-200 rounded px-4 py-2">
-                    {successMessage}
-                </output>
             )}
 
             <div className="bg-white border border-gray-200 rounded-md overflow-visible shadow-sm">
@@ -757,6 +805,8 @@ export default function VerBaixaPage() {
                         </label>
                     </div>
                 )}
+
+
 
                 {!isValidando && (
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -890,6 +940,8 @@ export default function VerBaixaPage() {
                             itens={itensFiltrados}
                             checkedIds={checkedIds}
                             onToggle={toggleCheck}
+                            allChecked={todosFiltradosValidados}
+                            onToggleAll={toggleCheckAllFiltrados}
                         />
                     )}
 

@@ -107,6 +107,7 @@ describe('TransferenciaDetailPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Solicitação #0009')).toBeInTheDocument()
     expect(screen.getByText('001.0000009.2026')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Itens da Transferência de Bem' })).toBeInTheDocument()
     expect(screen.getByText('12345')).toBeInTheDocument()
     expect(screen.getByText('Operador 1')).toBeInTheDocument()
     expect(screen.getByText('123 Notebook')).toBeInTheDocument()

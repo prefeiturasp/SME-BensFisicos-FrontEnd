@@ -153,6 +153,7 @@ describe('UnidadesAdministrativasViewPage', () => {
       screen.getByRole('heading', { name: 'Visualizar Unidade Administrativa' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
     expect(screen.getByTestId('ua-form')).toHaveAttribute('data-disabled', 'true');
   });
 
@@ -169,6 +170,7 @@ describe('UnidadesAdministrativasViewPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Editar Unidade Administrativa' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Salvar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     expect(screen.getByTestId('ua-form')).toHaveAttribute('data-disabled', 'false');
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
@@ -226,7 +228,7 @@ describe('UnidadesAdministrativasViewPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/unidades-administrativas');
   });
@@ -241,7 +243,7 @@ describe('UnidadesAdministrativasViewPage', () => {
     );
 
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
   });
 
   it('exibe mensagem quando identificador da rota é inválido', () => {

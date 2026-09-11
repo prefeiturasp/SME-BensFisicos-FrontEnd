@@ -55,7 +55,7 @@ describe('ParametroConciliacaoForm', () => {
     });
   });
 
-  it('oculta a mensagem de ajuda quando o campo exibe erro', async () => {
+  it('exibe mensagem específica quando a data final é anterior à inicial', async () => {
     render(<TestForm />);
 
     const periodoInicial = screen.getAllByPlaceholderText('dd/mm/aaaa')[0];
@@ -66,7 +66,7 @@ describe('ParametroConciliacaoForm', () => {
 
     await waitFor(() => {
       const messages = screen.getAllByText(
-        'Data final em que conciliações anuais podem ser criadas/fechadas.',
+        'A data final deve ser igual ou posterior à data inicial.',
       );
       expect(messages).toHaveLength(1);
     });

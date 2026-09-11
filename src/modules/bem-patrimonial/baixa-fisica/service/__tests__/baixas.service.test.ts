@@ -164,7 +164,6 @@ describe("baixaFisicaService", () => {
             const detail = makeBaixaDetail()
             const payload = {
                 unidade_administrativa_origem: 1,
-                numero_processo_baixa: "P-001",
                 data_baixa: "2024-01-01",
                 itens: [],
             }
@@ -183,7 +182,6 @@ describe("baixaFisicaService", () => {
             await expect(
                 baixaFisicaService.create({
                     unidade_administrativa_origem: 1,
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -196,7 +194,6 @@ describe("baixaFisicaService", () => {
             await expect(
                 baixaFisicaService.create({
                     unidade_administrativa_origem: 1,
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -208,7 +205,6 @@ describe("baixaFisicaService", () => {
         it("atualiza baixa e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
             const payload = {
-                numero_processo_baixa: "P-002",
                 data_baixa: "2024-02-01",
                 itens: [],
             }
@@ -225,7 +221,6 @@ describe("baixaFisicaService", () => {
 
             await expect(
                 baixaFisicaService.update(1, {
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -236,7 +231,7 @@ describe("baixaFisicaService", () => {
     describe("partialUpdate", () => {
         it("faz patch e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
-            const payload = { numero_processo_baixa: "P-003" }
+            const payload = { data_baixa: "2024-03-01" }
             vi.mocked(api.patch).mockResolvedValue({ data: detail })
 
             const result = await baixaFisicaService.partialUpdate(1, payload)
@@ -271,16 +266,16 @@ describe("baixaFisicaService", () => {
             const detail = makeBaixaDetail({ status: "aceita" })
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
-            const result = await baixaFisicaService.aprovar(1)
+            const result = await baixaFisicaService.aprovar(1, { numero_processo_baixa: "6016.2025/0117371-7" })
 
             expect(result).toEqual(detail)
-            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/aprovar/")
+            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/aprovar/", { numero_processo_baixa: "6016.2025/0117371-7" })
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
 
-            await expect(baixaFisicaService.aprovar(1)).rejects.toThrow(
+            await expect(baixaFisicaService.aprovar(1, { numero_processo_baixa: "6016.2025/0117371-7" })).rejects.toThrow(
                 "Erro ao aprovar baixa física"
             )
         })

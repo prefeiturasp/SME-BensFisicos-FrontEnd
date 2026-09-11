@@ -223,9 +223,9 @@ describe('VisualizarConciliacaoPage', () => {
     expect(screen.getByTestId('visualizar-conciliacao-subtitulo')).toHaveTextContent(
       '001.0002/2026/005 — COTIC',
     );
-    expect(screen.getByText('Informações gerais')).toBeInTheDocument();
+    expect(screen.getByText('Informações Gerais')).toBeInTheDocument();
     expect(screen.getByText('Auditoria')).toBeInTheDocument();
-    expect(screen.getByText('Itens de conciliação')).toBeInTheDocument();
+    expect(screen.getByText('Itens de Conciliação')).toBeInTheDocument();
   });
 
   it('renderiza apenas o numero no subtitulo quando a sigla da UA e vazia', () => {
@@ -336,12 +336,15 @@ describe('VisualizarConciliacaoPage', () => {
   it('navega para a listagem ao clicar em Voltar', () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    const voltarButton = screen.getByRole('button', { name: 'Voltar' });
+    expect(voltarButton).toHaveTextContent('Voltar');
+
+    fireEvent.click(voltarButton);
 
     expect(navigateMock).toHaveBeenCalledWith('/conciliacoes');
   });
 
-  it('navega para a listagem ao clicar em Cancelar no estado de erro', () => {
+  it('navega para a listagem ao clicar em Voltar no estado de erro', () => {
     useConciliacaoByIdMock.mockReturnValueOnce({
       data: undefined,
       isLoading: false,
@@ -351,7 +354,7 @@ describe('VisualizarConciliacaoPage', () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/conciliacoes');
   });

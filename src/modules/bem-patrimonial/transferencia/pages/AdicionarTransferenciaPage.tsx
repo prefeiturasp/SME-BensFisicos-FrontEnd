@@ -345,7 +345,7 @@ export default function AdicionarTransferenciaPage() {
 
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold text-gray-700'>
-                Filtrar bens por Unidade Administrativa
+                Filtrar por Unidade Administrativa
               </span>
               <TooltipProvider>
                 <Tooltip>
@@ -374,7 +374,7 @@ export default function AdicionarTransferenciaPage() {
             }}
           >
             <SelectTrigger
-              aria-label='Filtrar bens por Unidade Administrativa'
+              aria-label='Filtrar por Unidade Administrativa'
               className='h-11 w-full max-w-md rounded-xs border border-gray-300 bg-white px-4 py-0 text-sm text-gray-700'
             >
               <SelectValue placeholder='Todas as UAs da UO de Origem' />

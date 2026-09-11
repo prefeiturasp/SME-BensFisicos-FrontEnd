@@ -2,11 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Plus, Trash2, X, ChevronDown } from "lucide-react"
 
+import { format } from "date-fns"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
+import { isDataFutura } from "../utils/datas"
 import { baixaFisicaService } from "../service/baixas.service"
 import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
 import type { ItemRow } from '../types/baixas-fisicas.types'
@@ -211,6 +216,7 @@ export default function AdicionarBaixaPage() {
 
     const [unidade, setUnidade] = useState("")
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
+    const [dataBaixa, setDataBaixa] = useState<Date | undefined>(() => new Date())
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -223,7 +229,22 @@ export default function AdicionarBaixaPage() {
     }
 
     const handleSelect = (rowId: number, bem: Bem) => {
-        setRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem } : r))
+        setRows(prev =>
+            prev.map(r =>
+                r.rowId === rowId
+                    ? {
+                          ...r,
+                          bem: {
+                              id: bem.id,
+                              numero_patrimonial: bem.numero_patrimonial ?? "",
+                              nome: bem.nome,
+                              descricao: bem.descricao,
+                              status: bem.status,
+                          },
+                      }
+                    : r
+            )
+        )
     }
 
     const handleClear = (rowId: number) => {
@@ -249,10 +270,19 @@ export default function AdicionarBaixaPage() {
         const itens = rows.filter(r => r.bem)
         if (itens.length === 0) return setError("Adicione ao menos um item.")
 
+        if (dataBaixa) {
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            const d = new Date(dataBaixa)
+            d.setHours(0, 0, 0, 0)
+            if (d > today) return setError("Data da Baixa não pode ser futura.")
+        }
+
         setSubmitting(true)
         try {
             await baixaFisicaService.create({
                 unidade_administrativa_origem: Number(unidade),
+                ...(dataBaixa ? { data_baixa: format(dataBaixa, "yyyy-MM-dd") } : {}),
                 itens: itens.map(r => ({ bem: r.bem!.id })),
             })
             navigate(-1)
@@ -316,7 +346,21 @@ export default function AdicionarBaixaPage() {
                             value={unidade}
                             onChange={handleUnidadeChange}
                             scopedToUser={true}
-                            className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white"
+                            className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white data-[size=default]:h-11"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="data-baixa" className="text-sm font-semibold text-gray-700">
+                            Data da Baixa
+                        </Label>
+                        <DatePicker
+                            id="data-baixa"
+                            value={dataBaixa}
+                            onChange={setDataBaixa}
+                            placeholder="Selecione a data"
+                            ariaLabel="Data da Baixa"
+                            className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm"
+                            disabled={isDataFutura}
                         />
                     </div>
                 </div>
