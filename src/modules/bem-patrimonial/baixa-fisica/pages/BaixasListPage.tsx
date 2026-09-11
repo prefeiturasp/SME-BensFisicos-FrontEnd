@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
 import { format } from "date-fns"
+import { toast } from "sonner"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
 import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
 
@@ -228,16 +229,30 @@ export default function BaixasListPage() {
 
     // NOVO — leva para a tela de cadastro das informações básicas da
     // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    // Trava de processo único: só navega quando todas as Baixas aceitas
+    // selecionadas têm o mesmo numero_processo_baixa (já vem no list).
+    // Trava de NBBPM existente: Baixas que já possuem NBBPM não entram.
     const handleGerarNbbpm = () => {
         if (selectedAceitas.length === 0) return
-        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas } })
+        const selecionadas = baixas.filter(b => selectedAceitas.includes(b.id))
+        if (selecionadas.some(b => b.numero_nbbpm != null && b.numero_nbbpm !== "")) {
+            toast.error("Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM.")
+            return
+        }
+        const processos = new Set(selecionadas.map(b => (b.numero_processo_baixa ?? "").trim()))
+        if (processos.size > 1) {
+            toast.error("As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo.")
+            return
+        }
+        const processoUnico = [...processos][0] ?? ""
+        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas, processo: processoUnico } })
     }
 
     const renderTableBody = () => {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-500">
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -246,14 +261,15 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-400">
+                    <td colSpan={7} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || b.status === "aceita"
+            const jaTemNbbpm = b.status === "aceita" && b.numero_nbbpm != null && b.numero_nbbpm !== ""
+            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || (b.status === "aceita" && !jaTemNbbpm)
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -272,12 +288,16 @@ export default function BaixasListPage() {
                             <input
                                 type="checkbox"
                                 disabled
+                                title={jaTemNbbpm ? "Baixa já possui NBBPM" : undefined}
                                 className="opacity-30 cursor-not-allowed"
                             />
                         )}
                     </td>
                     <td className="p-3 text-sm text-gray-700">
                         {b.unidade_administrativa_origem.sigla}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.numero_nbbpm ?? "-"}
                     </td>
                     <td className="p-3 text-sm text-gray-600">
                         {b.criado_por.nome_completo}
@@ -470,6 +490,7 @@ export default function BaixasListPage() {
                                         Unidade Administrativa <ArrowUpDown size={14} />
                                     </div>
                                 </th>
+                                <th className="p-3">NBBPM</th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
                                     <div className="flex gap-2 items-center">
                                         Usuário que solicitou a Baixa <ArrowUpDown size={14} />
