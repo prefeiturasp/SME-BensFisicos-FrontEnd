@@ -13,6 +13,8 @@ import {
 } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { CriadoPorValue } from "@/components/CriadoPorValue"
+import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
 import { Button } from "@/components/ui/button"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
@@ -823,7 +825,10 @@ export default function VerBaixaPage() {
                                 Usuário que solicitou a baixa:
                             </span>
                             <span className="text-sm text-[#2F7D57]">
-                                {baixa.criado_por.nome_completo}
+                                <CriadoPorValue
+                                    label={formatUsuarioObjetoLabel(baixa.criado_por)}
+                                    data-testid="baixa-criado-por-value"
+                                />
                             </span>
                         </div>
 

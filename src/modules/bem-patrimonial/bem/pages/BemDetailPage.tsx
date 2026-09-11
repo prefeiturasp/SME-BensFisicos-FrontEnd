@@ -12,6 +12,8 @@ import HistoricoModal from '../modals/HistoricoModal'
 import ExcluirBemModal from '../components/ExcluirBemModal'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
+import { CriadoPorValue } from '@/components/CriadoPorValue'
+import { formatUsuarioLabel } from '@/lib/usuario-label'
 
 export const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
@@ -407,14 +409,21 @@ export default function BemDetailPage() {
         </div>
 
         {/* METADADOS */}
-        <div className="border-t pt-6 text-xs text-gray-500">
-          {formatarCriadoEm(bem.criado_em) ? (
-            <>
-              Criado em {formatarCriadoEm(bem.criado_em)} por RF {bem.criado_por_rf ?? '-'}
-            </>
-          ) : (
-            'Data de criação não disponível'
-          )}
+        <div
+          className="border-t pt-6 text-xs text-gray-500 space-y-1"
+          data-testid="bem-auditoria"
+        >
+          <div data-testid="bem-criado-por">
+            <span className="font-semibold">Criado por: </span>
+            <CriadoPorValue
+              label={formatUsuarioLabel(bem.criado_por_nome, bem.criado_por_rf)}
+              data-testid="bem-criado-por-value"
+            />
+          </div>
+          <div data-testid="bem-criado-em">
+            <span className="font-semibold">Criado em: </span>
+            {formatarCriadoEm(bem.criado_em) ?? 'Data de criação não disponível'}
+          </div>
         </div>
       </Card>
     </div>
