@@ -116,7 +116,7 @@ export interface BaixaFisicaAprovarPayload {
 }
 
 /**
- * NOVO — Payload do endpoint POST /baixa-fisica/gerar-nbbpm-lote/.
+ * Payload do endpoint POST /nbbpm/.
  * Usado na tela "Gerar NBBPM", acionada a partir da seleção em lote de
  * Baixas Físicas com status Aprovado (aceita) na listagem.
  */
@@ -126,6 +126,13 @@ export interface GerarNbbpmLotePayload {
     data_autorizacao: string
     responsavel: string
     numero_processo_destinacao_final?: string
+}
+
+export interface Nbbpm {
+    id: number
+    numero: string
+    numero_processo_baixa: string
+    baixas: number[]
 }
 
 // ============================================================================
