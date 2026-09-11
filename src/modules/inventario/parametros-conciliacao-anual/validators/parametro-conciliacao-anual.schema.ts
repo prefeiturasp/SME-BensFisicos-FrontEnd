@@ -41,7 +41,7 @@ export const parametroConciliacaoAnualSchema = z
     return Boolean(inicio && fim && inicio <= fim);
   }, {
     path: ['periodoFinal'],
-    message: 'Data final em que conciliações anuais podem ser criadas/fechadas.',
+    message: 'A data final deve ser igual ou posterior à data inicial.',
   });
 
 export type ParametroConciliacaoAnualFormData = z.infer<

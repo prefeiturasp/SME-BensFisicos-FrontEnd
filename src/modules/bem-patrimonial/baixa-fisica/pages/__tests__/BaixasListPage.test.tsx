@@ -390,6 +390,53 @@ describe("BaixasListPage", () => {
             })
         })
 
+        it("navega para home ao clicar em Voltar", async () => {
+            renderPage()
+
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalled()
+            })
+
+            const voltar = screen
+                .getAllByRole("button")
+                .find(b => b.querySelector("svg.lucide-arrow-left"))!
+            fireEvent.click(voltar)
+
+            expect(navigateMock).toHaveBeenCalledWith("/home")
+        })
+
+        it("navega entre páginas pela paginação", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([makeBaixa({ id: 1 })], 25)
+            )
+            renderPage()
+
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalled()
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Próxima página" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 2 })
+                )
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "3" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 3 })
+                )
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Página anterior" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 2 })
+                )
+            })
+        })
+
         it("navega para cadastro ao clicar em Adicionar Baixa", async () => {
             renderPage()
 

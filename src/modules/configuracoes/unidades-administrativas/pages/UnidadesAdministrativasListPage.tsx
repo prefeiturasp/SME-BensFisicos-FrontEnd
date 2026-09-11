@@ -98,7 +98,7 @@ export default function UnidadesAdministrativasListPage() {
         <UnidadesAdministrativasActions
           canManage={canManage}
           reportLoading={reportLoading}
-          onBack={() => navigate(-1)}
+          onBack={() => navigate('/home')}
           onAdd={() => navigate('/unidades-administrativas/novo')}
           onReport={handleReport}
         />

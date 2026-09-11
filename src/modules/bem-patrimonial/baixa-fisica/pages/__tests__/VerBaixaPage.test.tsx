@@ -25,15 +25,6 @@ import { LAUDO_TITULO } from "../../types/baixas-fisicas.types"
 import type { BaixaFisicaDetail } from "../../types/baixas-fisicas.types"
 import type { Bem } from "../../../bem/services/bem.service"
 
-const toastSuccess = vi.fn()
-const toastError = vi.fn()
-vi.mock("sonner", () => ({
-    toast: {
-        success: (...args: unknown[]) => toastSuccess(...args),
-        error: (...args: unknown[]) => toastError(...args),
-    },
-}))
-
 // ===================== MOCKS =====================
 
 const mockNavigate = vi.fn()
@@ -81,12 +72,12 @@ vi.mock("../../modals/ConfirmarAceiteModal", () => ({
         onCancel,
         loading,
     }: {
-        onConfirm: () => void
+        onConfirm: (p: string) => void
         onCancel: () => void
         loading?: boolean
     }) => (
         <div data-testid="confirmar-aceite-modal">
-            <button onClick={onConfirm} disabled={loading} data-testid="btn-confirmar">
+            <button onClick={() => onConfirm("6016.2025/0117371-7")} disabled={loading} data-testid="btn-confirmar">
                 {loading ? "Confirmando..." : "Confirmar"}
             </button>
             <button onClick={onCancel} data-testid="btn-cancelar-modal">
@@ -301,6 +292,28 @@ describe("VerBaixaPage", () => {
         )
         renderPage()
         await waitFor(() => expect(screen.getAllByText("-").length).toBeGreaterThan(0))
+    })
+
+    it("exibe data_baixa no dia correto sem -1 de timezone", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ data_baixa: "2026-09-08" })
+        )
+        renderPage()
+        await waitFor(() =>
+            expect(screen.getByText("8 de setembro de 2026")).toBeInTheDocument()
+        )
+        expect(screen.queryByText("7 de setembro de 2026")).not.toBeInTheDocument()
+    })
+
+    it("preserva a hora de datetimes (não zera para 00:00)", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ data_criacao: "2026-04-29T14:32:10-03:00" })
+        )
+        renderPage()
+        const esperado = new Date("2026-04-29T14:32:10-03:00").toLocaleString("pt-BR")
+        await waitFor(() =>
+            expect(screen.getByText(esperado)).toBeInTheDocument()
+        )
     })
 
     it("renderiza '-' para data_aprovacao inválida", async () => {
@@ -936,7 +949,7 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByTestId("btn-confirmar"))
         fireEvent.click(screen.getByTestId("btn-confirmar"))
         await waitFor(() => {
-            expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(7)
+            expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(7, { numero_processo_baixa: "6016.2025/0117371-7" })
             expect(mockNavigate).toHaveBeenCalledWith(
                 "/baixas-fisicas/7",
                 expect.objectContaining({ replace: true })
@@ -1279,13 +1292,13 @@ describe("VerBaixaPage", () => {
         renderPage()
         await waitFor(() => screen.getByText("Baixar Laudo de Avaliação"))
         fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
-        await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Laudo de Avaliação gerado com sucesso!"))
+        await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Laudo de Avaliação gerado com sucesso!"))
         spy.mockRestore()
 
         vi.spyOn(console, "error").mockImplementation(() => {})
         vi.mocked(baixaFisicaService.gerarLaudo).mockRejectedValue(new Error("Falha ao gerar"))
         fireEvent.click(screen.getByText("Baixar Laudo de Avaliação"))
-        await waitFor(() => expect(toastError).toHaveBeenCalledWith("Falha ao gerar"))
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Falha ao gerar"))
         vi.restoreAllMocks()
     })
 
@@ -1308,9 +1321,70 @@ describe("VerBaixaPage", () => {
         fireEvent.click(screen.getByText("Aceitar"))
         await waitFor(() => screen.getByTestId("btn-confirmar"))
         fireEvent.click(screen.getByTestId("btn-confirmar"))
-        await waitFor(() => expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(9))
+        await waitFor(() => expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(9, { numero_processo_baixa: "6016.2025/0117371-7" }))
         expect(baixaFisicaService.gerarNbbpm).not.toHaveBeenCalled()
         expect(baixaFisicaService.gerarLaudo).not.toHaveBeenCalled()
+    })
+
+    it("selecionar todos no header marca/desmarca todos os itens", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                status: "solicitada",
+                status_display: "Solicitada",
+                itens: [
+                    makeBaixaItem(10, { numero_patrimonial: "PAT-010", nome: "Mesa" }),
+                    makeBaixaItem(11, { numero_patrimonial: "PAT-011", nome: "Cadeira" }),
+                ],
+            })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText("Mesa"))
+        const selecionarTodos = screen.getByLabelText("Selecionar todos")
+        expect(selecionarTodos).not.toBeChecked()
+        fireEvent.click(selecionarTodos)
+        await waitFor(() => {
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-010/ })).toBeChecked()
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-011/ })).toBeChecked()
+            expect(screen.getByText("Aceitar")).not.toBeDisabled()
+        })
+        fireEvent.click(selecionarTodos)
+        await waitFor(() => {
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-010/ })).not.toBeChecked()
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-011/ })).not.toBeChecked()
+            expect(screen.getByText("Aceitar")).toBeDisabled()
+        })
+    })
+
+    it("selecionar todos respeita filtro - marca apenas filtrados", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({
+                status: "solicitada",
+                status_display: "Solicitada",
+                itens: [
+                    makeBaixaItem(10, { numero_patrimonial: "PAT-010", nome: "Mesa" }),
+                    makeBaixaItem(11, { numero_patrimonial: "PAT-011", nome: "Cadeira" }),
+                ],
+            })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText("Mesa"))
+        fireEvent.change(screen.getByPlaceholderText("Digite Número Patrimonial ou Nome do Bem"), { target: { value: "Mesa" } })
+        await waitFor(() => expect(screen.queryByText("Cadeira")).not.toBeInTheDocument())
+        const selecionarTodos = screen.getByLabelText("Selecionar todos")
+        fireEvent.click(selecionarTodos)
+        await waitFor(() => expect(screen.getByRole("checkbox", { name: /Validar item PAT-010/ })).toBeChecked())
+        fireEvent.change(screen.getByPlaceholderText("Digite Número Patrimonial ou Nome do Bem"), { target: { value: "" } })
+        await waitFor(() => {
+            expect(screen.getByText("Cadeira")).toBeInTheDocument()
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-010/ })).toBeChecked()
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-011/ })).not.toBeChecked()
+            expect(screen.getByText("Aceitar")).toBeDisabled()
+        })
+        fireEvent.click(screen.getByLabelText("Selecionar todos"))
+        await waitFor(() => {
+            expect(screen.getByRole("checkbox", { name: /Validar item PAT-011/ })).toBeChecked()
+            expect(screen.getByText("Aceitar")).not.toBeDisabled()
+        })
     })
 
     // ─────────────────────────────────────────────────────────────

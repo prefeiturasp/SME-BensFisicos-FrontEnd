@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { toast } from "sonner"
 import AdicionarBaixaPage from "../AdicionarBaixaPage"
+import { isDataFutura } from "../../utils/datas"
 import { baixaFisicaService } from "../../service/baixas.service"
 import { bemService } from "../../../bem/services/bem.service"
 import type { Bem } from "../../../bem/services/bem.service"
@@ -53,6 +54,44 @@ vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
 }))
 
+vi.mock("@/components/ui/date-picker", () => ({
+    DatePicker: ({
+        value,
+        onChange,
+        ariaLabel,
+        id,
+    }: {
+        value?: Date
+        onChange: (d: Date | undefined) => void
+        ariaLabel?: string
+        id?: string
+        placeholder?: string
+        disabled?: unknown
+    }) => {
+        const toLocalISODate = (d: Date) =>
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+        const today = toLocalISODate(new Date())
+        return (
+            <input
+                data-testid="data-baixa-picker"
+                id={id}
+                aria-label={ariaLabel}
+                max={today}
+                value={value ? toLocalISODate(value) : ""}
+                onChange={(e) => {
+                    const v = (e.target as HTMLInputElement).value
+                    if (!v) onChange(undefined)
+                    else {
+                        const [y, m, day] = v.split("-").map(Number)
+                        onChange(new Date(y, m - 1, day))
+                    }
+                }}
+                type="date"
+            />
+        )
+    },
+}))
+
 // ===================== FACTORIES =====================
 
 function makeBem(overrides: Partial<Bem> = {}): Bem {
@@ -63,6 +102,8 @@ function makeBem(overrides: Partial<Bem> = {}): Bem {
         nome: "Cadeira Escritório",
         descricao: "Cadeira ergonômica",
         numero_patrimonial: "PAT-001",
+        numero_formato_antigo: false,
+        sem_numeracao: false,
         localizacao: "Sala 01",
         unidade_administrativa_codigo: "001",
         unidade_administrativa_nome: "Unidade 01",
@@ -134,9 +175,15 @@ describe("AdicionarBaixaPage", () => {
         expect(screen.queryByPlaceholderText("Digite o número do processo")).not.toBeInTheDocument()
     })
 
-    it("não renderiza campo de data da baixa", () => {
+    it("renderiza campo de Data da Baixa com max hoje", () => {
         renderPage()
-        expect(screen.queryByLabelText("Data da Baixa")).not.toBeInTheDocument()
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        const now = new Date()
+        const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+        expect(input).toBeInTheDocument()
+        expect(input.type).toBe("date")
+        expect(input.max).toBe(todayLocal)
+        expect(input.value).toBe(todayLocal)
     })
 
     // --- Validações ---
@@ -258,11 +305,68 @@ describe("AdicionarBaixaPage", () => {
 
     // --- Submit ---
 
-    it("chama baixaFisicaService.create com dados corretos (sem processo e data)", async () => {
+    it("chama baixaFisicaService.create com dados corretos (sem processo, com data_baixa)", async () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
 
         renderPage()
         await selectBem()
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith({
+                unidade_administrativa_origem: 1,
+                data_baixa: today,
+                itens: [{ bem: 1 }],
+            })
+        })
+    })
+
+    it("permite data_baixa retroativa e envia no payload", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "2025-01-01" } })
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ data_baixa: "2025-01-01" })
+            )
+        })
+    })
+
+    it("bloqueia data_baixa futura", async () => {
+        renderPage()
+        await selectBem()
+
+        const t = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        const tomorrow = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: tomorrow } })
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(toast.error).toHaveBeenCalledWith("Data da Baixa não pode ser futura.")
+        })
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
+    it("não envia data_baixa quando campo é limpo (fica NULL)", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "" } })
 
         fireEvent.click(screen.getByText("Solicitar"))
 
@@ -271,6 +375,8 @@ describe("AdicionarBaixaPage", () => {
                 unidade_administrativa_origem: 1,
                 itens: [{ bem: 1 }],
             })
+            const payload = vi.mocked(baixaFisicaService.create).mock.calls[0][0] as unknown as Record<string, unknown>
+            expect(payload).not.toHaveProperty("data_baixa")
         })
     })
 
@@ -327,6 +433,18 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         const input = screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
         expect(input).toBeDisabled()
+    })
+
+    it("isDataFutura bloqueia amanhã e libera hoje e ontem", () => {
+        const base = new Date()
+        base.setHours(0, 0, 0, 0)
+        const amanha = new Date(base)
+        amanha.setDate(base.getDate() + 1)
+        const ontem = new Date(base)
+        ontem.setDate(base.getDate() - 1)
+        expect(isDataFutura(amanha)).toBe(true)
+        expect(isDataFutura(base)).toBe(false)
+        expect(isDataFutura(ontem)).toBe(false)
     })
 
     it("troca de unidade administrativa reseta os itens", async () => {

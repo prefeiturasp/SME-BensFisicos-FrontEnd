@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
+import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
 
 // ===================== CONSTANTES =====================
 
@@ -30,6 +31,8 @@ const ACTION_ICON_CLASS = "size-[22px] text-[#00703C]"
 
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
+
+const ACTIVE_PAGE_CLASS = "border-[#00703C] bg-[#00703C] text-white hover:bg-[#00703C]"
 
 // ===================== HELPERS =====================
 
@@ -65,7 +68,7 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
     // O backend já retorna "Em elaboração" no status_display após a alteração
     // em constants.py, então usamos statusDisplay diretamente.
     const cls = colorMap[status] ?? "text-gray-600"
-    return <span className={`text-xs font-medium ${cls}`}>{statusDisplay}</span>
+    return <span className={`text-sm font-semibold ${cls}`}>{statusDisplay}</span>
 }
 
 // ===================== PAGE =====================
@@ -88,7 +91,11 @@ export default function BaixasListPage() {
         ordering: "-data_criacao",
     })
 
-    const totalPages = Math.ceil(count / 10)
+    const { pages, totalPages } = useUnidadesPagination({
+        page,
+        totalItems: count,
+        pageSize: 10,
+    })
     const navigate = useNavigate()
 
     const fetchBaixas = useCallback(async () => {
@@ -286,16 +293,16 @@ export default function BaixasListPage() {
                     <td className="p-3 text-sm text-gray-700">
                         {b.unidade_administrativa_origem.sigla}
                     </td>
-                    <td className="p-3">
-                        <StatusBadge status={b.status} statusDisplay={b.status_display} />
-                    </td>
-                    <td className="p-3 text-xs text-gray-600">
+                    <td className="p-3 text-sm text-gray-600">
                         {b.criado_por.nome_completo}
                     </td>
-                    <td className="p-3 text-xs text-gray-500">
+                    <td className="p-3 text-sm text-gray-500">
                         {formatDateTimeBR(b.data_criacao)}
                     </td>
                     <td className="p-3">
+                        <StatusBadge status={b.status} statusDisplay={b.status_display} />
+                    </td>
+                    <td className="p-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -333,12 +340,12 @@ export default function BaixasListPage() {
             />
 
             {/* HEADER */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-700">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <h1 className="text-xl font-bold tracking-tight text-gray-700">
                     Baixa Física de Bens Patrimoniais
                 </h1>
-                <div className="flex gap-3 items-center">
-                    <Button onClick={() => globalThis.history.back()} className={ACTION_BUTTON_CLASS}>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Button onClick={() => navigate("/home")} className={ACTION_BUTTON_CLASS}>
                         <ArrowLeft size={16} />
                     </Button>
 
@@ -398,7 +405,7 @@ export default function BaixasListPage() {
             </div>
 
             {/* CARD */}
-            <Card className="p-6">
+            <Card className="space-y-6 p-6">
 
                 {/* FILTROS */}
                 <div className="flex flex-col md:flex-row gap-4 flex-wrap">
@@ -468,7 +475,7 @@ export default function BaixasListPage() {
                 </div>
 
                 {/* LABEL */}
-                <p className="text-sm font-semibold text-green-700 mt-4">
+                <p className="text-sm font-semibold text-[#00703C]">
                     Baixas Físicas Cadastradas
                 </p>
 
@@ -491,7 +498,6 @@ export default function BaixasListPage() {
                                         Unidade Administrativa <ArrowUpDown size={14} />
                                     </div>
                                 </th>
-                                <th className="p-3">Status</th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
                                     <div className="flex gap-2 items-center">
                                         Usuário que solicitou a Baixa <ArrowUpDown size={14} />
@@ -502,6 +508,7 @@ export default function BaixasListPage() {
                                         Atualização <ArrowUpDown size={14} />
                                     </div>
                                 </th>
+                                <th className="p-3">Status</th>
                                 <th className="p-3 text-center">Ações</th>
                             </tr>
                         </thead>
@@ -511,30 +518,51 @@ export default function BaixasListPage() {
                     </table>
                 </div>
 
-                {/* PAGINAÇÃO */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-end gap-2 mt-4">
+                {/* PAGINAÇÃO - padrão do sistema */}
+                <div className="flex justify-center">
+                    <div className="flex items-center gap-1">
                         <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === 1}
-                            onClick={() => setPage(p => p - 1)}
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            aria-label="Página anterior"
                         >
-                            Anterior
+                            ‹
                         </Button>
-                        <span className="text-sm text-gray-600">
-                            Página {page} de {totalPages}
-                        </span>
+
+                        {pages.map((item) =>
+                            item.type === "ellipsis" ? (
+                                <span key={item.id} className="px-2 text-gray-500">
+                                    ...
+                                </span>
+                            ) : (
+                                <Button
+                                    key={item.id}
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setPage(item.value)}
+                                    className={page === item.value ? ACTIVE_PAGE_CLASS : ""}
+                                >
+                                    {item.value}
+                                </Button>
+                            ),
+                        )}
+
                         <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === totalPages}
-                            onClick={() => setPage(p => p + 1)}
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            aria-label="Próxima página"
                         >
-                            Próxima
+                            ›
                         </Button>
                     </div>
-                )}
+                </div>
 
             </Card>
         </div>

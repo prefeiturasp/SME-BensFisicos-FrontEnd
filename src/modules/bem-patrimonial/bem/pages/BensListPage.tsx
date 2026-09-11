@@ -130,7 +130,7 @@ export default function BensListPage() {
         <div className='flex items-center gap-3'>
           <Button
             type='button'
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/home')}
             className={ACTION_BUTTON_CLASS}
           >
             <ArrowLeft size={18} />
