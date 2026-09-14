@@ -10,6 +10,7 @@ import type {
     BaixaFisicaAprovarPayload,
     BaixaFisicaListParams,
     GerarNbbpmLotePayload,
+    Nbbpm,
     PaginatedResponse,
 } from '../types/baixas-fisicas.types'
 
@@ -141,25 +142,23 @@ export const baixaFisicaService = {
         }
     },
 
-    gerarNbbpm: async (id: number): Promise<Blob> => {
+    baixarNbbpmPdf: async (nbbpmId: number): Promise<Blob> => {
         try {
-            const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
+            const { data } = await api.get(`/nbbpm/${nbbpmId}/pdf/`, {
                 responseType: 'blob',
             })
             return data
 
         } catch (error) {
-            handleApiError(error, 'Erro ao gerar NBBPM')
+            handleApiError(error, 'Erro ao baixar NBBPM')
         }
     },
 
-    // NOVO — geração da NBBPM consolidada (lote), a partir da seleção de
+    // Geração da NBBPM consolidada (lote), a partir da seleção de
     // uma ou mais Baixas Físicas aprovadas na listagem.
-    gerarNbbpmLote: async (payload: GerarNbbpmLotePayload): Promise<Blob> => {
+    gerarNbbpmLote: async (payload: GerarNbbpmLotePayload): Promise<Nbbpm> => {
         try {
-            const { data } = await api.post(`/baixa-fisica/gerar-nbbpm-lote/`, payload, {
-                responseType: 'blob',
-            })
+            const { data } = await api.post(`/nbbpm/`, payload)
             return data
 
         } catch (error) {
