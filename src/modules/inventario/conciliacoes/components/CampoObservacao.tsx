@@ -38,7 +38,7 @@ export function CampoObservacao<T extends FieldValues>({
               id={String(name)}
               data-testid='ocorrencia-observacao'
               placeholder={PLACEHOLDER}
-              value={(field.value as string | undefined) ?? ''}
+              value={field.value ?? ''}
               onChange={field.onChange}
               onBlur={field.onBlur}
               disabled={disabled}

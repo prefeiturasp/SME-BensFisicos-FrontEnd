@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { BemDetailField, BemItemRow } from '@/modules/bem-patrimonial/components/BemDetailParts'
 import { downloadBlobFile } from '@/lib/unidades-list-page'
+import { CriadoPorValue } from '@/components/CriadoPorValue'
+import { formatUsuarioObjetoLabel } from '@/lib/usuario-label'
 import { transferenciaService } from '../services/transferencia.service'
 import type { TransferenciaBemPatrimonialDetail } from '../types/transferencia.types'
 
@@ -45,7 +47,7 @@ function resolveUaLabel(
 }
 
 function resolveUsuario(usuario: TransferenciaBemPatrimonialDetail['criado_por']) {
-  return usuario.nome_completo ?? usuario.username
+  return formatUsuarioObjetoLabel(usuario)
 }
 
 export default function TransferenciaDetailPage() {
@@ -184,7 +186,10 @@ export default function TransferenciaDetailPage() {
             </BemDetailField>
 
             <BemDetailField label='Criado por'>
-              {resolveUsuario(transferencia.criado_por)}
+              <CriadoPorValue
+                label={resolveUsuario(transferencia.criado_por)}
+                data-testid='transferencia-criado-por-value'
+              />
             </BemDetailField>
           </div>
 

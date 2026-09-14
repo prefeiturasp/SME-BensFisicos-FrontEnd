@@ -15,6 +15,8 @@ export interface UsuarioSimple {
     username: string
     nome_completo: string
     email: string
+    /** RF do usuario. Depende de exposicao pelo serializer do backend. */
+    rf?: string | null
 }
 
 export interface BemPatrimonialSimple {
