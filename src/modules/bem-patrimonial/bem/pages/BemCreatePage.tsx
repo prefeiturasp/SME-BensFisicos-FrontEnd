@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { ValidatedField } from '@/components/form-fields/ValidatedField'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Boxes, Info } from 'lucide-react'
 import { toast } from 'sonner'
@@ -224,23 +225,16 @@ export default function BemCreatePage() {
     return errors
   }
 
-  // Habilita o botão Salvar apenas quando todos os campos obrigatórios do
-  // formulário e de todas as linhas de bens já foram preenchidos.
-  const formValido =
-    CAMPOS_OBRIGATORIOS.every(campo => !!formBase[campo]?.trim()) &&
-    linhas.every(linha => !!linha.localizacao?.trim())
-
   const handleSave = async () => {
+    // Todas as pendências são calculadas juntas para que o formulário e as
+    // linhas exibam simultaneamente os campos que precisam de correção.
     const baseErrors = validarBase()
-    if (Object.keys(baseErrors).length) {
-      setFormErrors(baseErrors)
-      toast.error('Preencha os campos obrigatórios.')
-      return
-    }
-
     const linhaErrors = validarLinhas()
-    if (Object.keys(linhaErrors).length) {
-      setLinhasErrors(linhaErrors)
+
+    setFormErrors(baseErrors)
+    setLinhasErrors(linhaErrors)
+
+    if (Object.keys(baseErrors).length || Object.keys(linhaErrors).length) {
       toast.error('Preencha os campos obrigatórios.')
       return
     }
@@ -302,7 +296,7 @@ export default function BemCreatePage() {
         <div className="flex gap-3">
           <Button
             onClick={handleSave}
-            disabled={loading || !formValido}
+            disabled={loading}
             className="h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold !rounded-sm transition-colors disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#00703C]/25 disabled:text-white disabled:hover:bg-[#00703C]/25"
           >
             {loading ? 'Salvando...' : 'Salvar'}
@@ -322,10 +316,12 @@ export default function BemCreatePage() {
 
         {exigeSelecaoManualDeUA && (
           <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
-                Unidade Administrativa <span className="text-red-500">*</span>
-              </label>
+            <ValidatedField
+              label="Unidade Administrativa"
+              htmlFor="unidade_administrativa"
+              error={formErrors.unidade_administrativa}
+              required
+            >
               <UASearchSelect
                 id="unidade_administrativa"
                 value={formBase.unidade_administrativa}
@@ -333,99 +329,92 @@ export default function BemCreatePage() {
                 uas={todasUAs}
                 error={formErrors.unidade_administrativa}
               />
-            </div>
+            </ValidatedField>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
-              Nome do Bem <span className="text-red-500">*</span>
-            </label>
+          <ValidatedField
+            label="Nome do Bem"
+            htmlFor="nome"
+            error={formErrors.nome} required
+          >
             <Input
               id="nome"
               className={INPUT_CLASS}
               placeholder="Nome do Bem"
+              aria-invalid={!!formErrors.nome}
               value={formBase.nome}
               onChange={e => setField('nome', e.target.value)}
             />
-            {formErrors.nome && (
-              <p className="text-xs text-red-500">{formErrors.nome}</p>
-            )}
-          </div>
+          </ValidatedField>
 
-          <div className="space-y-1">
-            <label htmlFor="marca" className="text-sm font-semibold text-gray-700">
-              Marca <span className="text-red-500">*</span>
-            </label>
+          <ValidatedField
+            label="Marca"
+            htmlFor="marca"
+            error={formErrors.marca} required
+          >
             <Input
               id="marca"
               className={INPUT_CLASS}
               placeholder="Marca"
+              aria-invalid={!!formErrors.marca}
               value={formBase.marca}
               onChange={e => setField('marca', e.target.value)}
             />
-            {formErrors.marca && (
-              <p className="text-xs text-red-500">{formErrors.marca}</p>
-            )}
-          </div>
+          </ValidatedField>
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
-              Modelo <span className="text-red-500">*</span>
-            </label>
+          <ValidatedField
+            label="Modelo"
+            htmlFor="modelo"
+            error={formErrors.modelo} required
+          >
             <Input
               id="modelo"
               className={INPUT_CLASS}
               placeholder="Modelo"
+              aria-invalid={!!formErrors.modelo}
               value={formBase.modelo}
               onChange={e => setField('modelo', e.target.value)}
             />
-            {formErrors.modelo && (
-              <p className="text-xs text-red-500">{formErrors.modelo}</p>
-            )}
-          </div>
+          </ValidatedField>
 
-          <div className="space-y-1">
-            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
-              Valor Unitário <span className="text-red-500">*</span>
-            </label>
+          <ValidatedField
+            label="Valor Unitário"
+            htmlFor="valor_unitario"
+            error={formErrors.valor_unitario} required
+          >
             <Input
               id="valor_unitario"
               className={INPUT_CLASS}
               placeholder="0,00"
+              aria-invalid={!!formErrors.valor_unitario}
               value={formBase.valor_unitario}
               onChange={e => setField('valor_unitario', e.target.value)}
             />
-            {formErrors.valor_unitario && (
-              <p className="text-xs text-red-500">{formErrors.valor_unitario}</p>
-            )}
-          </div>
+          </ValidatedField>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
-            Descrição do Bem <span className="text-red-500">*</span>
-          </label>
+        <ValidatedField
+          label="Descrição do Bem"
+          htmlFor="descricao"
+          error={formErrors.descricao}
+          required
+        >
           <Textarea
             id="descricao"
             className="min-h-25"
             placeholder="Descreva o bem"
+            aria-invalid={!!formErrors.descricao}
             value={formBase.descricao}
             onChange={e => setField('descricao', e.target.value)}
           />
-          {formErrors.descricao && (
-            <p className="text-xs text-red-500">{formErrors.descricao}</p>
-          )}
-        </div>
+        </ValidatedField>
 
         {/* OBSERVAÇÕES */}
-        <div className="space-y-1">
-          <label htmlFor="observacao" className="text-sm font-semibold text-gray-700">
-            Observações
-          </label>
+        <ValidatedField label="Observações" htmlFor="observacao" error={formErrors.observacao}>
           <Textarea
             id="observacao"
             className="min-h-25"
@@ -433,7 +422,7 @@ export default function BemCreatePage() {
             value={formBase.observacao}
             onChange={e => setField('observacao', e.target.value)}
           />
-        </div>
+        </ValidatedField>
 
         {/* LINHAS DOS BENS */}
         <div className="space-y-4">

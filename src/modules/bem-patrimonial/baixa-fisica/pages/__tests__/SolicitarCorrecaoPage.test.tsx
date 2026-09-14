@@ -131,13 +131,13 @@ describe("SolicitarCorrecaoPage", () => {
         })
     })
 
-    it("mantém botão desabilitado enquanto observação estiver vazia", async () => {
+    it("mantém o botão habilitado com observação vazia, para permitir o feedback inline", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
 
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "Solicitar correção" })).toBeDisabled()
+            expect(screen.getByRole("button", { name: "Solicitar correção" })).toBeEnabled()
         })
     })
 
@@ -165,7 +165,7 @@ describe("SolicitarCorrecaoPage", () => {
         })
     })
 
-    it("exibe erro de validação quando a função é acionada sem motivo", async () => {
+    it("exibe a validação inline no campo quando o motivo está em branco", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
 
         renderPage()
@@ -175,14 +175,19 @@ describe("SolicitarCorrecaoPage", () => {
         })
 
         fireEvent.change(screen.getByLabelText("Observações"), {
-            target: { value: "texto" },
-        })
-        fireEvent.change(screen.getByLabelText("Observações"), {
             target: { value: "   " },
         })
+        fireEvent.click(screen.getByRole("button", { name: "Solicitar correção" }))
 
-        // O botão fica desabilitado pela UI; essa asserção protege a regra visual.
-        expect(screen.getByRole("button", { name: "Solicitar correção" })).toBeDisabled()
+        await waitFor(() => {
+            expect(
+                screen.getByText("Descreva as orientações para a correção antes de enviar.")
+            ).toBeInTheDocument()
+        })
+
+        // O campo recebe o estado inválido (borda vermelha + label vermelha).
+        expect(screen.getByLabelText("Observações")).toHaveAttribute("aria-invalid", "true")
+        expect(baixaFisicaService.solicitarCorrecao).not.toHaveBeenCalled()
     })
 
     it("exibe erro retornado pelo serviço", async () => {

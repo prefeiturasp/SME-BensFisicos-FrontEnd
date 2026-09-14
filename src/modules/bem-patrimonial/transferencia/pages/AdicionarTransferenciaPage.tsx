@@ -6,6 +6,8 @@ import {
 } from 'react'
 import { CircleHelp, Network } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/auth/useAuth'
@@ -18,6 +20,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import {
   Tooltip,
   TooltipContent,
@@ -32,6 +42,7 @@ import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades
 import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
 import { transferenciaService } from '../services/transferencia.service'
 import type { TransferenciaBemPatrimonialCreatePayload, TransferenciaUoCadastroOption } from '../types/transferencia.types'
+import { transferenciaSchema, type TransferenciaFormData } from '../validators/transferencia-form.schema'
 
 type UoOption = {
   id: number
@@ -82,17 +93,27 @@ export default function AdicionarTransferenciaPage() {
   const originUoId = user?.uo_ativa?.id ?? null
   const originUoLabel = user?.uo_ativa?.label ?? user?.uo_ativa?.codigo ?? '-'
 
-  const [selectedUoId, setSelectedUoId] = useState('')
   const [selectedUaFilterId, setSelectedUaFilterId] = useState('todas')
-  const [numeroProcesso, setNumeroProcesso] = useState('')
-  const [observacao, setObservacao] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>([])
+
+  const form = useForm<TransferenciaFormData>({
+    resolver: zodResolver(transferenciaSchema),
+    mode: 'onSubmit',
+    defaultValues: {
+      unidade_orcamentaria_destino: '',
+      numero_processo: '',
+      observacao: '',
+      itens: [],
+    },
+  })
+
+  const selectedUoId = form.watch('unidade_orcamentaria_destino')
+
   const clearError = useCallback(() => {
-    setError(null)
-  }, [])
+    form.clearErrors('root.serverError')
+  }, [form])
   const {
     rows,
     allSelectedIds,
@@ -101,6 +122,16 @@ export default function AdicionarTransferenciaPage() {
     handleRemoveBem,
     handleAddBem,
   } = useBemSelectionRows(clearError)
+
+  /**
+   * As linhas de item têm UI própria; os ids selecionados são espelhados no
+   * formulário para que o zod valide itens junto com os demais campos e todos
+   * os erros apareçam na mesma submissão.
+   */
+  useEffect(() => {
+    const ids = rows.filter((row) => row.bem).map((row) => row.bem!.id)
+    form.setValue('itens', ids, { shouldValidate: form.formState.isSubmitted })
+  }, [rows, form])
 
   useEffect(() => {
     let isMounted = true
@@ -183,53 +214,28 @@ export default function AdicionarTransferenciaPage() {
     [originUoId, selectedUaFilterId],
   )
 
-  const canSave =
-    !!originUoId &&
-    !!selectedUoNumericId &&
-    !!numeroProcesso.trim() &&
-    rows.some((row) => row.bem) &&
-    !submitting &&
-    selectedUoHasPointCentral
-
-  const handleSave = async () => {
-    setError(null)
-
+  const handleSave = form.handleSubmit(async (values) => {
     if (!originUoId) {
-      setError('Não foi possível identificar a UO de origem.')
-      return
-    }
-
-    if (!selectedUoNumericId) {
-      setError('Selecione a Unidade Orçamentária de destino.')
-      return
-    }
-
-    if (!numeroProcesso.trim()) {
-      setError('Informe o número do processo.')
+      form.setError('root.serverError', {
+        message: 'Não foi possível identificar a UO de origem.',
+      })
       return
     }
 
     if (destinoSemPontoCentral) {
-      setError(MENSAGEM_SEM_PONTO_CENTRAL)
-      return
-    }
-
-    const itens = rows
-      .filter((row) => row.bem)
-      .map((row) => ({ bem: row.bem!.id }))
-
-    if (itens.length === 0) {
-      setError('Adicione ao menos um item de transferência.')
+      form.setError('unidade_orcamentaria_destino', {
+        message: MENSAGEM_SEM_PONTO_CENTRAL,
+      })
       return
     }
 
     setSubmitting(true)
     try {
       const payload: TransferenciaBemPatrimonialCreatePayload = {
-        unidade_orcamentaria_destino: selectedUoNumericId,
-        numero_processo: numeroProcesso.trim(),
-        observacao,
-        itens,
+        unidade_orcamentaria_destino: Number(values.unidade_orcamentaria_destino),
+        numero_processo: values.numero_processo,
+        observacao: values.observacao ?? '',
+        itens: values.itens.map((bemId) => ({ bem: bemId })),
       }
 
       await transferenciaService.create(payload)
@@ -240,12 +246,12 @@ export default function AdicionarTransferenciaPage() {
       navigate('/transferencias')
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao salvar transferência.'
-      setError(message)
+      form.setError('root.serverError', { message })
       toast.error(message)
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <BemCadastroPageShell
@@ -257,10 +263,10 @@ export default function AdicionarTransferenciaPage() {
       title='Adicionar Transferência de Bem Patrimonial'
       onCancel={() => navigate('/transferencias')}
       onSave={handleSave}
-      canSave={canSave}
       submitting={submitting}
-      error={error}
+      error={form.formState.errors.root?.serverError?.message ?? null}
     >
+      <Form {...form}>
         <div className='flex flex-col gap-2'>
           <label htmlFor='uo-origem' className='text-sm font-semibold text-gray-700'>
             Unidade Orçamentária de Origem
@@ -274,20 +280,26 @@ export default function AdicionarTransferenciaPage() {
         </div>
 
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <div className='flex flex-col gap-2'>
-            <label htmlFor='uo-destino' className='text-sm font-semibold text-gray-700'>
-              Unidade Orçamentária de Destino
-            </label>
+          <FormField
+            control={form.control}
+            name='unidade_orcamentaria_destino'
+            render={({ field, fieldState }) => (
+            <FormItem className='flex flex-col gap-2'>
+              <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='uo-destino'>
+                Unidade Orçamentária de Destino
+              </FormLabel>
             <Select
-              value={selectedUoId}
+              value={field.value}
               onValueChange={(value) => {
-                setSelectedUoId(value)
-                setError(null)
+                field.onChange(value)
+                clearError()
               }}
             >
-              <SelectTrigger id='uo-destino' className={FIELD_CLASS}>
+              <FormControl>
+              <SelectTrigger id='uo-destino' className={FIELD_CLASS} aria-invalid={!!fieldState.error}>
                 <SelectValue placeholder='Selecione a UO de destino' />
               </SelectTrigger>
+              </FormControl>
               <SelectContent>
                 {uoOptions.length === 0 ? (
                   <SelectItem value='__empty__' disabled>
@@ -302,46 +314,78 @@ export default function AdicionarTransferenciaPage() {
                 )}
               </SelectContent>
             </Select>
-          </div>
+              <FormMessage />
+            </FormItem>
+            )}
+          />
 
-          <div className='flex flex-col gap-2'>
-            <label htmlFor='numero-processo' className='text-sm font-semibold text-gray-700'>
-              Número do Processo
-            </label>
-            <Input
-              id='numero-processo'
-              value={numeroProcesso}
-              onChange={(event) => {
-                setNumeroProcesso(event.target.value)
-                setError(null)
-              }}
-              placeholder='Informe o número do processo'
-              className={FIELD_CLASS}
-            />
-          </div>
-        </div>
-
-        <div className='flex flex-col gap-2'>
-          <label htmlFor='observacao' className='text-sm font-semibold text-gray-700'>
-            Observações
-          </label>
-          <Textarea
-            id='observacao'
-            value={observacao}
-            onChange={(event) => {
-              setObservacao(event.target.value)
-              setError(null)
-            }}
-            placeholder='Digite uma observação'
-            className='min-h-28'
+          <FormField
+            control={form.control}
+            name='numero_processo'
+            render={({ field }) => (
+              <FormItem className='flex flex-col gap-2'>
+                <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='numero-processo'>
+                  Número do Processo
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    id='numero-processo'
+                    onChange={(event) => {
+                      field.onChange(event)
+                      clearError()
+                    }}
+                    placeholder='Informe o número do processo'
+                    className={FIELD_CLASS}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
+        <FormField
+          control={form.control}
+          name='observacao'
+          render={({ field }) => (
+            <FormItem className='flex flex-col gap-2'>
+              <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='observacao'>
+                Observações
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  id='observacao'
+                  onChange={(event) => {
+                    field.onChange(event)
+                    clearError()
+                  }}
+                  placeholder='Digite uma observação'
+                  className='min-h-28'
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className='space-y-3'>
           <div className='space-y-1'>
-            <h2 className='text-sm font-semibold text-[#00703C]'>
-              Itens da Transferência de Bem
-            </h2>
+            <FormField
+              control={form.control}
+              name='itens'
+              render={() => (
+                <FormItem>
+                  <FormLabel asChild>
+                    <h2 className='text-sm font-semibold text-[#00703C] data-[error=true]:text-destructive'>
+                      Itens da Transferência de Bem
+                    </h2>
+                  </FormLabel>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className='flex items-center gap-2'>
               <span className='text-sm font-semibold text-gray-700'>
@@ -370,7 +414,7 @@ export default function AdicionarTransferenciaPage() {
             value={selectedUaFilterId}
             onValueChange={(value) => {
               setSelectedUaFilterId(value)
-              setError(null)
+              clearError()
             }}
           >
             <SelectTrigger
@@ -423,6 +467,7 @@ export default function AdicionarTransferenciaPage() {
             ))}
           </div>
         </div>
+      </Form>
     </BemCadastroPageShell>
   )
 }

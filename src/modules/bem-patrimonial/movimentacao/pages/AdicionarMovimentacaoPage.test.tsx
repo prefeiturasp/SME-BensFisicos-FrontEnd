@@ -583,11 +583,31 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(2)
   })
 
-  it('deve manter o botão salvar desabilitado até preencher os critérios obrigatórios', async () => {
+  it('deve apresentar todos os campos pendentes numa unica submissao', async () => {
     renderPage()
 
+    await waitForUoOptions()
+
     const saveButton = screen.getByRole('button', { name: /^salvar$/i })
-    expect(saveButton).toBeDisabled()
+
+    // O botao permanece habilitado: a pendencia e comunicada pela validacao
+    // inline, e nao pelo estado do botao.
+    expect(saveButton).toBeEnabled()
+
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selecione a Unidade Orçamentária de destino.'),
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Adicione ao menos um item de movimentação.')).toBeInTheDocument()
+    expect(movimentacaoService.create).not.toHaveBeenCalled()
+  })
+
+  it('deve exigir a UA de destino somente quando o destino e a mesma UO', async () => {
+    renderPage()
 
     await waitForUoOptions()
 
@@ -597,19 +617,15 @@ describe('AdicionarMovimentacaoPage', () => {
       expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
     })
 
-    expect(saveButton).toBeDisabled()
-
-    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '11' } })
-    expect(saveButton).toBeDisabled()
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
 
     await waitFor(() => {
-      expect(saveButton).not.toBeDisabled()
+      expect(
+        screen.getByText('Selecione a Unidade Administrativa de destino.'),
+      ).toBeInTheDocument()
     })
+
+    expect(movimentacaoService.create).not.toHaveBeenCalled()
   })
 
   it('deve informar o erro retornado ao incluir uma faixa inválida', async () => {
@@ -808,7 +824,6 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(toast.error).toHaveBeenCalledWith(
       'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
     )
-    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeDisabled()
   })
 
   it('deve exibir o erro da API ao selecionar todos', async () => {

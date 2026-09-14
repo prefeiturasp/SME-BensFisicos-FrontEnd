@@ -481,6 +481,41 @@ describe('BemEditPage', () => {
     expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
   })
 
+  it('deve exibir numero invalido e justificativa pendente na mesma submissao', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockResolvedValue({
+      ...bemMock,
+    } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    // Altera o nome (exige justificativa) e deixa o numero em formato invalido.
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+    fireEvent.change(screen.getByDisplayValue('123'), {
+      target: { value: '999' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar Edição'))
+
+    // Os dois erros aparecem juntos, e nao um de cada vez.
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Número patrimonial inválido. Use o formato 000.000000000-0.'
+        )
+      ).toBeInTheDocument()
+    })
+
+    expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
+  })
+
   it('deve exibir asterisco vermelho na label justificativa ao alterar nome', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
       bemMock as any

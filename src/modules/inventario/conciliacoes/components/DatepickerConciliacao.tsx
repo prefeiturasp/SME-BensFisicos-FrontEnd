@@ -61,7 +61,12 @@ export function DatepickerConciliacao({
   return (
     <div className={cn('flex flex-col gap-1', className)}>
       <div className='flex h-6 items-center gap-2'>
-        <label htmlFor={id} className={LABEL_CLASS}>
+        {/* data-error espelha o FormLabel: rotulo vermelho quando invalido. */}
+        <label
+          htmlFor={id}
+          data-error={invalid}
+          className={cn(LABEL_CLASS, 'data-[error=true]:text-destructive')}
+        >
           {label}
         </label>
 
