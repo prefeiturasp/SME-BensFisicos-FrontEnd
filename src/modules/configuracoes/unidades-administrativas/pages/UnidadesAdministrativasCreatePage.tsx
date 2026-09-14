@@ -89,10 +89,18 @@ export default function UnidadesAdministrativasCreatePage() {
       <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>
           Adicionar Unidade Administrativa
-        </h1>
+          </h1>
 
-        <div className='flex items-center justify-end gap-3'>
-          <Button
+          <div className='flex items-center justify-end gap-3'>
+            <Button
+              type='button'
+              onClick={() => navigate('/unidades-administrativas')}
+              className={ACTION_BUTTON_CLASS}
+            >
+              Cancelar
+            </Button>
+
+            <Button
             type='button'
             className='h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md'
             disabled={isUoUnavailable || submitting}
@@ -101,14 +109,7 @@ export default function UnidadesAdministrativasCreatePage() {
             {submitting ? 'Salvando...' : 'Salvar'}
           </Button>
 
-          <Button
-            type='button'
-            onClick={() => navigate('/unidades-administrativas')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            Cancelar
-          </Button>
-        </div>
+          </div>
       </div>
 
       <Card className='p-6'>

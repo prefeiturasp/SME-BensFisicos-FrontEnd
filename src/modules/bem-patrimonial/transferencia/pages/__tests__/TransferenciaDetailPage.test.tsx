@@ -111,6 +111,12 @@ describe('TransferenciaDetailPage', () => {
     expect(screen.getByText('12345')).toBeInTheDocument()
     expect(screen.getByText('Operador 1')).toBeInTheDocument()
     expect(screen.getByText('123 Notebook')).toBeInTheDocument()
+
+    const voltar = screen.getByRole('button', { name: 'Voltar' })
+    const baixarNtbpm = screen.getByRole('button', { name: /Baixar NTBPM/i })
+    expect(
+      voltar.compareDocumentPosition(baixarNtbpm) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('baixa o documento NTBPM usando o blob retornado pela API', async () => {

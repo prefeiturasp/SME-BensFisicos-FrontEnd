@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info } from 'lucide-react'
+import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/button'
@@ -100,7 +100,7 @@ export default function BensListPage() {
     })
   }
 
-  const handleNovoCadastro = () => {
+  const handleAdicionarBem = () => {
     navigate('/bens-patrimoniais/novo')
   }
 
@@ -131,9 +131,15 @@ export default function BensListPage() {
           <Button
             type='button'
             onClick={() => navigate('/home')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            aria-label='Voltar'
           >
             <ArrowLeft size={18} />
+          </Button>
+
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           {possuiSelecionados && (
@@ -146,7 +152,7 @@ export default function BensListPage() {
                     'Erro ao aprovar bens'
                   )
                 }
-                className='h-10 px-4 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
+                className='h-10 px-4 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]'
               >
                 Aprovar ({selectedIds.length})
               </Button>
@@ -166,11 +172,6 @@ export default function BensListPage() {
             </>
           )}
 
-          <Button type='button' className={ACTION_BUTTON_CLASS}>
-            <FileText size={16} />
-            Relatório
-          </Button>
-
           <Button
             type='button'
             onClick={() => handleImportar()}
@@ -179,8 +180,9 @@ export default function BensListPage() {
             Importar Bens
           </Button>
 
-          <Button onClick={handleNovoCadastro} className={ACTION_BUTTON_CLASS}>
-            Novo Cadastro
+          <Button onClick={handleAdicionarBem} className={ACTION_BUTTON_CLASS}>
+            <Plus size={16} />
+            Adicionar Bem
           </Button>
         </div>
       </div>

@@ -338,6 +338,16 @@ function RegistarOcorrenciaContent() {
         </h1>
 
         <div className='flex flex-wrap items-center justify-end gap-3'>
+          <Button
+            type='button'
+            onClick={handleCancelar}
+            className={ACTION_BUTTON_CLASS}
+            disabled={upsertMutation.isPending}
+            data-testid='registrar-ocorrencia-cancelar'
+          >
+            Cancelar
+          </Button>
+
           {temOcorrencia && (
             <Button
               type='button'
@@ -360,15 +370,6 @@ function RegistarOcorrenciaContent() {
             {upsertMutation.isPending ? 'Salvando...' : 'Salvar'}
           </Button>
 
-          <Button
-            type='button'
-            onClick={handleCancelar}
-            className={ACTION_BUTTON_CLASS}
-            disabled={upsertMutation.isPending}
-            data-testid='registrar-ocorrencia-cancelar'
-          >
-            Cancelar
-          </Button>
         </div>
       </div>
 

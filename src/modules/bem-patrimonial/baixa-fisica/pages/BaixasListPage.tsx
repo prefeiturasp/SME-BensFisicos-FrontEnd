@@ -7,7 +7,7 @@ import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus, Search } from "lucide-react"
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
 import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
@@ -317,8 +317,13 @@ export default function BaixasListPage() {
                     Baixa Física de Bens Patrimoniais
                 </h1>
                 <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button onClick={() => navigate("/home")} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={16} />
+                    <Button onClick={() => navigate("/home")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
+
+                    <Button type="button" className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
+                        <FileText size={16} />
+                        Relatório
                     </Button>
 
                     {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
@@ -327,7 +332,7 @@ export default function BaixasListPage() {
                         <Button
                             onClick={handleSolicitar}
                             disabled={actionLoading}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Solicitar ({selectedEmElaboracao.length})
                         </Button>
@@ -340,7 +345,7 @@ export default function BaixasListPage() {
                         <>
                             <Button
                                 onClick={handleIrParaValidacao}
-                                className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                                className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                                 title="Abrir a tela de validação para aprovar"
                             >
                                 Aprovar
@@ -361,16 +366,14 @@ export default function BaixasListPage() {
                     {selectedAceitas.length > 0 && (
                         <Button
                             onClick={handleGerarNbbpm}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Gerar NBBPM ({selectedAceitas.length})
                         </Button>
                     )}
 
-                    <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
-                        Exportar Excel
-                    </Button>
                     <Button className={ACTION_BUTTON_CLASS} onClick={() => navigate("/baixas-fisicas/novo")}>
+                        <Plus size={16} />
                         Adicionar Baixa
                     </Button>
                 </div>

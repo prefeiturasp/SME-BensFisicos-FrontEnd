@@ -87,9 +87,8 @@ function VisualizarConciliacaoContent() {
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>
             Visualizar Conciliação
           </h1>
-          <Button type='button' onClick={() => navigate('/conciliacoes')} className={ACTION_BUTTON_CLASS}>
-            <ArrowLeft size={16} />
-            Voltar
+          <Button type='button' onClick={() => navigate('/conciliacoes')} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label='Voltar'>
+            <ArrowLeft size={18} />
           </Button>
         </div>
 
@@ -122,9 +121,8 @@ function VisualizarConciliacaoContent() {
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>
             Visualizar Conciliação
           </h1>
-          <Button type='button' onClick={() => navigate('/conciliacoes')} className={ACTION_BUTTON_CLASS}>
-            <ArrowLeft size={16} />
-            Voltar
+          <Button type='button' onClick={() => navigate('/conciliacoes')} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label='Voltar'>
+            <ArrowLeft size={18} />
           </Button>
         </div>
 
@@ -219,22 +217,22 @@ function VisualizarConciliacaoContent() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
+            onClick={() => navigate('/conciliacoes')}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            data-testid='visualizar-conciliacao-voltar'
+            aria-label='Voltar'
+          >
+            <ArrowLeft size={18} />
+          </Button>
+
+          <Button
+            type='button'
             onClick={() => setShowHistorico(true)}
             className={ACTION_BUTTON_CLASS}
             data-testid='visualizar-conciliacao-historico'
           >
             <History size={16} />
             Histórico
-          </Button>
-
-          <Button
-            type='button'
-            onClick={openFinalizar}
-            disabled={!isAberta}
-            className={PRIMARY_BUTTON_CLASS}
-            data-testid='visualizar-conciliacao-finalizar'
-          >
-            Finalizar Conciliação
           </Button>
 
           <Button
@@ -251,12 +249,12 @@ function VisualizarConciliacaoContent() {
 
           <Button
             type='button'
-            onClick={() => navigate('/conciliacoes')}
-            className={ACTION_BUTTON_CLASS}
-            data-testid='visualizar-conciliacao-voltar'
+            onClick={openFinalizar}
+            disabled={!isAberta}
+            className={PRIMARY_BUTTON_CLASS}
+            data-testid='visualizar-conciliacao-finalizar'
           >
-            <ArrowLeft size={16} />
-            Voltar
+            Finalizar Conciliação
           </Button>
         </div>
       </div>

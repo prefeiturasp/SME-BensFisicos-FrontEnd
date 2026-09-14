@@ -11,7 +11,7 @@ const ACTION_BUTTON_CLASS = `
 `
 
 const PRIMARY_BUTTON_CLASS =
-  'h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
+  'h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]'
 
 type BemCadastroPageShellProps = Readonly<{
   breadcrumbItems: BreadcrumbItemProps[]

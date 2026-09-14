@@ -204,6 +204,22 @@ describe('BemDetailPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('exibe Voltar antes das demais ações do cabeçalho', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+      .mockResolvedValue(bemMock as any)
+
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorComAcesso,
+    })
+
+    renderPage()
+
+    const voltar = await screen.findByRole('button', { name: 'Voltar' })
+    const editar = screen.getByRole('button', { name: 'Editar' })
+
+    expect(voltar.compareDocumentPosition(editar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it('deve exibir botão Editar quando gestor tem acesso à UA do bem', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
       .mockResolvedValue(bemUoAtivaMock as any)
@@ -344,7 +360,7 @@ describe('BemDetailPage', () => {
         ).toBeInTheDocument()
    })
 
-   it('deve navegar para lista ao clicar em Voltar', async () => {
+  it('deve navegar para lista ao clicar em Voltar', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')
         .mockResolvedValue(bemMock as any)
 
@@ -352,7 +368,7 @@ describe('BemDetailPage', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByText('Voltar'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Voltar' }))
 
     expect(
         await screen.findByText('Lista')

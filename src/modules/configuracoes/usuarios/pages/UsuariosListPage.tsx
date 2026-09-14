@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUpDown, Eye, FileText } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -160,7 +160,7 @@ export default function UsuariosListPage() {
         <h1 className='text-xl font-bold tracking-tight text-gray-700'>Usuários</h1>
 
         <div className='flex items-center gap-3'>
-          <Button type='button' onClick={() => navigate('/home')} className={ACTION_BUTTON_CLASS}>
+          <Button type='button' onClick={() => navigate('/home')} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label='Voltar'>
             <ArrowLeft size={18} />
           </Button>
 
@@ -177,6 +177,7 @@ export default function UsuariosListPage() {
           )}
 
           <Button onClick={handleNovoUsuario} className={ACTION_BUTTON_CLASS}>
+            <Plus size={16} />
             Adicionar Usuário
           </Button>
         </div>

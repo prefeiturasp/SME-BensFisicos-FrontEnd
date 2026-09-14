@@ -7,6 +7,7 @@ import {
   FileText,
   Network,
   Minus,
+  Plus,
   Search,
   X,
   CircleAlert,
@@ -593,18 +594,15 @@ export default function MovimentacoesListPage() {
           <Button
             type='button'
             onClick={() => navigate('/home')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             aria-label='Voltar'
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </Button>
 
-          <Button
-            type='button'
-            onClick={() => navigate('/movimentacoes/novo')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            Adicionar Movimentação
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           {isGestor ? (
@@ -643,9 +641,13 @@ export default function MovimentacoesListPage() {
             </Button>
           ) : null}
 
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            <FileText size={16} />
-            Relatório
+          <Button
+            type='button'
+            onClick={() => navigate('/movimentacoes/novo')}
+            className={ACTION_BUTTON_CLASS}
+          >
+            <Plus size={16} />
+            Adicionar Movimentação
           </Button>
         </div>
       </div>

@@ -368,7 +368,10 @@ describe("BaixasListPage", () => {
                 expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
             })
 
-            fireEvent.click(screen.getByText("Exportar Excel"))
+            const relatorio = screen.getByRole("button", { name: "Relatório" })
+            expect(relatorio.querySelector("svg.lucide-file-text")).toBeInTheDocument()
+            expect(relatorio.querySelector("svg.lucide-chevron-down")).not.toBeInTheDocument()
+            fireEvent.click(relatorio)
 
             await waitFor(() => {
                 expect(baixaFisicaService.exportarExcel).toHaveBeenCalledWith({

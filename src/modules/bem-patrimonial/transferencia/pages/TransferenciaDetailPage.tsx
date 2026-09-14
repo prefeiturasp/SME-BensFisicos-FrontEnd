@@ -123,6 +123,15 @@ export default function TransferenciaDetailPage() {
         </h1>
 
         <div className='flex flex-wrap items-center justify-end gap-3'>
+          <Button
+            type='button'
+            onClick={() => navigate('/transferencias')}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            aria-label='Voltar'
+          >
+            <ArrowLeft size={18} />
+          </Button>
+
           {transferencia.url_documento_ntbpm ? (
             <Button
               type='button'
@@ -134,15 +143,6 @@ export default function TransferenciaDetailPage() {
               {downloading ? 'Baixando...' : 'Baixar NTBPM'}
             </Button>
           ) : null}
-
-          <Button
-            type='button'
-            onClick={() => navigate('/transferencias')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            <ArrowLeft size={16} />
-            Voltar
-          </Button>
         </div>
       </div>
 

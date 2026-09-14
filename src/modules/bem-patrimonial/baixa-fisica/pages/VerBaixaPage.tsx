@@ -697,15 +697,18 @@ export default function VerBaixaPage() {
                 </h1>
 
                 <div className="flex items-center gap-2">
+                    <Button type="button" onClick={() => navigate(-1)} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
                     {/* Botão "Salvar Edição" só aparece quando Em elaboração.
                         Após "Solicitada" o botão some completamente. */}
                     {isEditing && (
                         <button
                             onClick={handleSave}
                             disabled={!hasChanges || saving}
-                            className={`h-10 px-5 font-semibold rounded-md flex items-center gap-2 text-sm transition-colors border ${hasChanges
-                                    ? "border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white bg-white"
-                                    : "border-gray-300 text-gray-400 bg-white cursor-not-allowed"
+                            className={`h-10 px-5 font-semibold rounded-md flex items-center gap-2 text-sm transition-colors ${hasChanges
+                                    ? "bg-[#2F7D57] text-white hover:bg-[#256947]"
+                                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                                 }`}
                         >
                             <Pencil size={14} />
@@ -776,10 +779,6 @@ export default function VerBaixaPage() {
                         </button>
                     )}
 
-                    <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={14} />
-                        Voltar
-                    </Button>
                 </div>
             </div>
 
