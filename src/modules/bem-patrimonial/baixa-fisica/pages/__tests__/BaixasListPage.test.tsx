@@ -32,6 +32,14 @@ vi.mock("react-router-dom", async () => {
     }
 })
 
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
+
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
         list: vi.fn(),
@@ -627,6 +635,32 @@ describe("BaixasListPage", () => {
             )
             expect(navigateMock).not.toHaveBeenCalled()
         })
+
+        it("nao permite selecionar baixa aceita que ja possui NBBPM", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({
+                        id: 10,
+                        status: "aceita",
+                        status_display: "Aceita",
+                        numero_nbbpm: "NBBPM-2024-001",
+                    }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(1)
+            })
+
+            // A Baixa ja gerou NBBPM: o checkbox fica desabilitado e explicado.
+            const checkboxes = screen.getAllByRole("checkbox")
+            expect(checkboxes[1]).toBeDisabled()
+            expect(checkboxes[1]).toHaveAttribute("title", "Baixa já possui NBBPM")
+        })
     })
 
     describe("filtros e ordenação", () => {
@@ -672,6 +706,29 @@ describe("BaixasListPage", () => {
                     })
                 )
             })
+        })
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // Ações padronizadas (Visualizar / Editar)
+    // ─────────────────────────────────────────────────────────────
+
+    describe("ações da listagem", () => {
+
+        it("exibe toast de erro quando a exportação falha", async () => {
+            vi.mocked(baixaFisicaService.exportarExcel).mockRejectedValue(new Error("falha"))
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Relatório" }))
+
+            await waitFor(() =>
+                expect(toast.error).toHaveBeenCalledWith("Erro ao exportar Excel.")
+            )
         })
     })
 })

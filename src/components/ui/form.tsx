@@ -99,12 +99,13 @@ function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPri
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const describedBy = error ? `${formDescriptionId} ${formMessageId}` : formDescriptionId;
 
   return (
     <Slot
       data-slot='form-control'
       id={formItemId}
-      aria-describedby={error ? `${formDescriptionId} ${formMessageId}` : `${formDescriptionId}`}
+      aria-describedby={describedBy}
       aria-invalid={!!error}
       {...props}
     />

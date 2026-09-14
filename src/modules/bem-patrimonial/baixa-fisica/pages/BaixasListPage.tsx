@@ -8,8 +8,9 @@ import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus, Search } from "lucide-react"
-import { format } from "date-fns"
 import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
 import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
 
@@ -20,6 +21,13 @@ h-10 px-6 bg-white border border-[#2F7D57]
 text-[#2F7D57] hover:bg-[#2F7D57]
 hover:text-white font-semibold rounded-md transition-colors
 `
+
+// Status "aguardando_envio" é exibido como "Em elaboração" na UI
+const STATUS_EM_ELABORACAO = "aguardando_envio"
+
+// Ícone padrão das ações de listagem do sistema (mesmo tamanho/cor usados
+// em Bens, Movimentações, Transferências e Conciliações)
+const ACTION_ICON_CLASS = "size-[22px] text-[#00703C]"
 
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
@@ -38,6 +46,14 @@ function formatDateTimeBR(dateString: string): string {
     const hours = String(date.getHours()).padStart(2, "0")
     const minutes = String(date.getMinutes()).padStart(2, "0")
     return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
+/**
+ * Uma Baixa aceita que já gerou NBBPM não pode gerar outra, então também não
+ * entra na seleção em lote.
+ */
+function possuiNbbpm(baixa: BaixaFisica): boolean {
+    return baixa.numero_nbbpm != null && baixa.numero_nbbpm !== ""
 }
 
 // ===================== COMPONENTS =====================
@@ -109,17 +125,19 @@ export default function BaixasListPage() {
 
     // Status "aguardando_envio" agora é chamado "Em elaboração" na UI
     const emElaboracaoIds = baixas
-        .filter(b => b.status === "aguardando_envio")
+        .filter(b => b.status === STATUS_EM_ELABORACAO)
         .map(b => b.id)
 
     const solicitadaIds = baixas
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
-    // NOVO — Baixas com status Aprovado (ACEITA) selecionáveis para a
-    // geração da NBBPM em lote. Só entram na seleção de "Selecionar
-    // todas" quando não há nenhuma baixa em elaboração/solicitada na
-    // página, para não misturar as duas ações em lote.
+    // Baixas com status Aprovado (ACEITA) selecionáveis para a geração da
+    // NBBPM em lote. Mantém todas as aceitas aqui para que seleção stale
+    // (feita antes da NBBPM aparecer) ainda mostre o botão e caia na trava
+    // de toast do handleGerarNbbpm. O bloqueio upfront é feito no checkbox
+    // via isSelectable/jaTemNbbpm. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na página.
     const aceitaIds = new Set(
         baixas.filter(b => b.status === "aceita").map(b => b.id)
     )
@@ -198,7 +216,7 @@ export default function BaixasListPage() {
             a.click()
             URL.revokeObjectURL(url)
         } catch {
-            alert("Erro ao exportar Excel")
+            toast.error("Erro ao exportar Excel.")
         }
     }
 
@@ -210,9 +228,14 @@ export default function BaixasListPage() {
         try {
             await Promise.all(selectedEmElaboracao.map(id => baixaFisicaService.enviarSolicitacao(id)))
             setSelectedIds([])
+            toast.success(
+                selectedEmElaboracao.length > 1
+                    ? "Baixas Físicas solicitadas com sucesso."
+                    : "Baixa Física solicitada com sucesso."
+            )
             fetchBaixas()
         } catch {
-            alert("Erro ao solicitar baixas.")
+            toast.error("Erro ao solicitar baixas.")
         } finally {
             setActionLoading(false)
         }
@@ -235,7 +258,7 @@ export default function BaixasListPage() {
     const handleGerarNbbpm = () => {
         if (selectedAceitas.length === 0) return
         const selecionadas = baixas.filter(b => selectedAceitas.includes(b.id))
-        if (selecionadas.some(b => b.numero_nbbpm != null && b.numero_nbbpm !== "")) {
+        if (selecionadas.some(possuiNbbpm)) {
             toast.error("Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM.")
             return
         }
@@ -268,8 +291,11 @@ export default function BaixasListPage() {
             )
         }
         return baixas.map((b) => {
-            const jaTemNbbpm = b.status === "aceita" && b.numero_nbbpm != null && b.numero_nbbpm !== ""
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || (b.status === "aceita" && !jaTemNbbpm)
+            const jaTemNbbpm = b.status === "aceita" && possuiNbbpm(b)
+            const isSelectable =
+                b.status === "solicitada" ||
+                b.status === STATUS_EM_ELABORACAO ||
+                (b.status === "aceita" && !jaTemNbbpm)
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -309,11 +335,25 @@ export default function BaixasListPage() {
                         <StatusBadge status={b.status} statusDisplay={b.status_display} />
                     </td>
                     <td className="p-3 text-center">
-                        <Link to={`/baixas-fisicas/${b.id}`}>
-                            <Button size="icon" variant="ghost" aria-label="Visualizar">
-                                <Eye className='size-[22px] text-[#00703C]' />
-                            </Button>
-                        </Link>
+                        <div className="flex items-center justify-center gap-1">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        asChild
+                                        size="icon"
+                                        variant="ghost"
+                                        aria-label={`Visualizar Baixa Física ${b.id}`}
+                                    >
+                                        <Link to={`/baixas-fisicas/${b.id}`}>
+                                            <Eye className={ACTION_ICON_CLASS} />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>
+                                    Visualizar as informações da Baixa Física.
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     </td>
                 </tr>
             )
@@ -380,7 +420,7 @@ export default function BaixasListPage() {
                         </>
                     )}
 
-                    {/* NOVO — "Gerar NBBPM": disponível quando há Baixas com status
+                    {/* "Gerar NBBPM": disponível quando há Baixas com status
                         Aprovado selecionadas. Leva à tela de cadastro das
                         informações básicas da NBBPM consolidada. */}
                     {selectedAceitas.length > 0 && (
