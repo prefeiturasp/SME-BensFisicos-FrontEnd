@@ -7,7 +7,7 @@ import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ArrowUpDown, Eye, FileText, Pencil, Plus, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
@@ -297,9 +297,6 @@ export default function BaixasListPage() {
                 b.status === STATUS_EM_ELABORACAO ||
                 (b.status === "aceita" && !jaTemNbbpm)
             const isChecked = selectedIds.includes(b.id)
-            // Só a Baixa "Em elaboração" pode ser editada; as demais já saíram
-            // do controle do solicitante.
-            const podeEditar = b.status === STATUS_EM_ELABORACAO
             return (
                 <tr
                     key={b.id}
@@ -356,31 +353,6 @@ export default function BaixasListPage() {
                                     Visualizar as informações da Baixa Física.
                                 </TooltipContent>
                             </Tooltip>
-
-                            {/*
-                              Editar: abre a tela de detalhe já em modo de edição
-                              (?editar=1). Disponível apenas para "Em elaboração",
-                              no mesmo padrão visual da ação de visualizar.
-                            */}
-                            {podeEditar && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            asChild
-                                            size="icon"
-                                            variant="ghost"
-                                            aria-label={`Editar Baixa Física ${b.id}`}
-                                        >
-                                            <Link to={`/baixas-fisicas/${b.id}?editar=1`}>
-                                                <Pencil className={ACTION_ICON_CLASS} />
-                                            </Link>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" sideOffset={6}>
-                                        Editar as informações da Baixa Física.
-                                    </TooltipContent>
-                                </Tooltip>
-                            )}
                         </div>
                     </td>
                 </tr>
