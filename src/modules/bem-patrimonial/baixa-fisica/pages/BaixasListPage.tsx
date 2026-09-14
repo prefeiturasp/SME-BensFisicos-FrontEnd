@@ -7,7 +7,7 @@ import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, Eye, Pencil, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
@@ -46,6 +46,14 @@ function formatDateTimeBR(dateString: string): string {
     const hours = String(date.getHours()).padStart(2, "0")
     const minutes = String(date.getMinutes()).padStart(2, "0")
     return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
+/**
+ * Uma Baixa aceita que já gerou NBBPM não pode gerar outra, então também não
+ * entra na seleção em lote.
+ */
+function possuiNbbpm(baixa: BaixaFisica): boolean {
+    return baixa.numero_nbbpm != null && baixa.numero_nbbpm !== ""
 }
 
 // ===================== COMPONENTS =====================
@@ -124,12 +132,13 @@ export default function BaixasListPage() {
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
-    // NOVO — Baixas com status Aprovado (ACEITA) selecionáveis para a
-    // geração da NBBPM em lote. Só entram na seleção de "Selecionar
-    // todas" quando não há nenhuma baixa em elaboração/solicitada na
-    // página, para não misturar as duas ações em lote.
+    // Baixas com status Aprovado (ACEITA) selecionáveis para a geração da
+    // NBBPM em lote. As que já possuem NBBPM ficam de fora: não podem gerar
+    // uma nova. Só entram na seleção de "Selecionar todas" quando não há
+    // nenhuma baixa em elaboração/solicitada na página, para não misturar as
+    // duas ações em lote.
     const aceitaIds = new Set(
-        baixas.filter(b => b.status === "aceita").map(b => b.id)
+        baixas.filter(b => b.status === "aceita" && !possuiNbbpm(b)).map(b => b.id)
     )
 
     const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
@@ -240,18 +249,32 @@ export default function BaixasListPage() {
         navigate(`/baixas-fisicas/${primeiraSelecionada}`)
     }
 
-    // NOVO — leva para a tela de cadastro das informações básicas da
-    // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    // Leva para a tela de cadastro das informações básicas da NBBPM
+    // consolidada, passando as Baixas Aprovadas selecionadas.
+    // Trava de processo único: só navega quando todas as Baixas aceitas
+    // selecionadas têm o mesmo numero_processo_baixa (já vem no list).
+    // Trava de NBBPM existente: Baixas que já possuem NBBPM não entram.
     const handleGerarNbbpm = () => {
         if (selectedAceitas.length === 0) return
-        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas } })
+        const selecionadas = baixas.filter(b => selectedAceitas.includes(b.id))
+        if (selecionadas.some(possuiNbbpm)) {
+            toast.error("Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM.")
+            return
+        }
+        const processos = new Set(selecionadas.map(b => (b.numero_processo_baixa ?? "").trim()))
+        if (processos.size > 1) {
+            toast.error("As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo.")
+            return
+        }
+        const processoUnico = [...processos][0] ?? ""
+        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas, processo: processoUnico } })
     }
 
     const renderTableBody = () => {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-500">
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -260,15 +283,22 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-400">
+                    <td colSpan={7} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === STATUS_EM_ELABORACAO || b.status === "aceita"
+            const jaTemNbbpm = b.status === "aceita" && possuiNbbpm(b)
+            const isSelectable =
+                b.status === "solicitada" ||
+                b.status === STATUS_EM_ELABORACAO ||
+                (b.status === "aceita" && !jaTemNbbpm)
             const isChecked = selectedIds.includes(b.id)
+            // Só a Baixa "Em elaboração" pode ser editada; as demais já saíram
+            // do controle do solicitante.
+            const podeEditar = b.status === STATUS_EM_ELABORACAO
             return (
                 <tr
                     key={b.id}
@@ -286,12 +316,16 @@ export default function BaixasListPage() {
                             <input
                                 type="checkbox"
                                 disabled
+                                title={jaTemNbbpm ? "Baixa já possui NBBPM" : undefined}
                                 className="opacity-30 cursor-not-allowed"
                             />
                         )}
                     </td>
                     <td className="p-3 text-sm text-gray-700">
                         {b.unidade_administrativa_origem.sigla}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.numero_nbbpm ?? "-"}
                     </td>
                     <td className="p-3 text-sm text-gray-600">
                         {b.criado_por.nome_completo}
@@ -321,6 +355,31 @@ export default function BaixasListPage() {
                                     Visualizar as informações da Baixa Física.
                                 </TooltipContent>
                             </Tooltip>
+
+                            {/*
+                              Editar: abre a tela de detalhe já em modo de edição
+                              (?editar=1). Disponível apenas para "Em elaboração",
+                              no mesmo padrão visual da ação de visualizar.
+                            */}
+                            {podeEditar && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            asChild
+                                            size="icon"
+                                            variant="ghost"
+                                            aria-label={`Editar Baixa Física ${b.id}`}
+                                        >
+                                            <Link to={`/baixas-fisicas/${b.id}?editar=1`}>
+                                                <Pencil className={ACTION_ICON_CLASS} />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" sideOffset={6}>
+                                        Editar as informações da Baixa Física.
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -383,7 +442,7 @@ export default function BaixasListPage() {
                         </>
                     )}
 
-                    {/* NOVO — "Gerar NBBPM": disponível quando há Baixas com status
+                    {/* "Gerar NBBPM": disponível quando há Baixas com status
                         Aprovado selecionadas. Leva à tela de cadastro das
                         informações básicas da NBBPM consolidada. */}
                     {selectedAceitas.length > 0 && (
@@ -498,6 +557,7 @@ export default function BaixasListPage() {
                                         Unidade Administrativa <ArrowUpDown size={14} />
                                     </div>
                                 </th>
+                                <th className="p-3">NBBPM</th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
                                     <div className="flex gap-2 items-center">
                                         Usuário que solicitou a Baixa <ArrowUpDown size={14} />

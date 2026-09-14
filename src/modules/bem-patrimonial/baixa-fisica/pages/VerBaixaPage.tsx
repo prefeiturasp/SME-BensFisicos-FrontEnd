@@ -8,7 +8,7 @@ import {
     Trash2,
     X,
     ChevronDown,
-    SquarePen,
+    Pencil,
     FileDown,
     Search,
 } from "lucide-react"
@@ -428,6 +428,15 @@ export default function VerBaixaPage() {
     // é liberada após o acionamento explícito da ação "Editar" — ou quando a
     // listagem já envia o usuário direto para a edição (?editar=1).
     const [modoEdicao, setModoEdicao] = useState(searchParams.get("editar") === "1")
+
+    /*
+      O estado inicial do useState so e lido na primeira renderizacao. Sem este
+      efeito, navegar de ?editar=1 para a mesma tela sem o parametro (ou o
+      contrario) manteria o modo anterior, porque o componente nao remonta.
+    */
+    useEffect(() => {
+        setModoEdicao(searchParams.get("editar") === "1")
+    }, [searchParams])
     const [editRows, setEditRows] = useState<EditRow[]>([])
     const [hasChanges, setHasChanges] = useState(false)
 
@@ -497,7 +506,6 @@ export default function VerBaixaPage() {
         setEditRows(mapItensParaLinhas(baixa.itens, gerarRowId))
         setHasChanges(false)
         setModoEdicao(true)
-        toast.info("Modo de edição habilitado.")
     }
 
     const handleCancelarEdicao = () => {
@@ -553,11 +561,20 @@ export default function VerBaixaPage() {
 
     const handleSave = async () => {
         if (!baixa) return
+
+        const itens = editRows
+            .filter((r) => r.item)
+            .map((r) => ({ bem: r.item!.bem.id }))
+
+        // Uma Baixa Fisica sem itens nao tem o que dar baixa: bloqueia o salvamento
+        // em vez de persistir um registro vazio.
+        if (itens.length === 0) {
+            toast.error("Adicione ao menos um item.")
+            return
+        }
+
         setSaving(true)
         try {
-            const itens = editRows
-                .filter((r) => r.item)
-                .map((r) => ({ bem: r.item!.bem.id }))
             const updated = await baixaFisicaService.update(baixa.id, { itens })
             setBaixa(updated)
             setEditRows(mapItensParaLinhas(updated.itens, gerarRowId))
@@ -685,9 +702,12 @@ export default function VerBaixaPage() {
             URL.revokeObjectURL(url)
             toast.success("Laudo de Avaliação gerado com sucesso!")
         } catch (err) {
-            toast.error((err as Error).message)
             console.error(err)
-            toast.error("Erro ao gerar o Laudo de Avaliação.")
+            // Um unico toast: a mensagem do backend quando houver, senao o texto padrao.
+            const mensagem = err instanceof Error && err.message
+                ? err.message
+                : "Erro ao gerar o Laudo de Avaliação."
+            toast.error(mensagem)
         }
     }
 
@@ -734,7 +754,7 @@ export default function VerBaixaPage() {
                             onClick={handleEntrarEmEdicao}
                             className={ACTION_BUTTON_CLASS}
                         >
-                            <SquarePen size={16} />
+                            <Pencil size={16} />
                             Editar
                         </Button>
                     )}

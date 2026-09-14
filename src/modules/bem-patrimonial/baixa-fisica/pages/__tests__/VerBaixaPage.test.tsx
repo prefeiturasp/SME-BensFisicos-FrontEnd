@@ -439,6 +439,35 @@ describe("VerBaixaPage", () => {
         await waitFor(() => expect(screen.getByText(/Cadeira Escritório/)).toBeInTheDocument())
     })
 
+    it("bloqueia salvar quando a baixa fica sem nenhum item", async () => {
+        // Salvar sem itens persistiria uma Baixa vazia, que nao tem o que dar baixa.
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
+        renderPage("1", true)
+
+        await waitFor(() => expect(screen.getByText("Salvar Edição")).toBeInTheDocument())
+
+        // Remove o unico item vinculado para habilitar o Salvar sem itens.
+        fireEvent.click(screen.getAllByTitle("Excluir linha")[0])
+
+        await waitFor(() => expect(screen.getByText("Salvar Edição")).toBeEnabled())
+
+        fireEvent.click(screen.getByText("Salvar Edição"))
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith("Adicione ao menos um item.")
+        )
+        expect(baixaFisicaService.update).not.toHaveBeenCalled()
+    })
+
+    it("nao exibe toast informativo apenas por entrar em modo de edicao", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
+        renderPage("1", true)
+
+        await waitFor(() => expect(screen.getByText("Salvar Edição")).toBeInTheDocument())
+
+        expect(toast.info).not.toHaveBeenCalled()
+    })
+
     it("clicar fora do dropdown fecha o dropdown", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail({ itens: [] }))
         renderPage("1", true)
