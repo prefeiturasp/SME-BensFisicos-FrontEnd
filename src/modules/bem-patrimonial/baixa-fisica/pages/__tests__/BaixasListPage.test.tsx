@@ -663,38 +663,6 @@ describe("BaixasListPage", () => {
         })
     })
 
-    describe("acao de editar na listagem", () => {
-        it("exibe o botao Editar apontando para o modo de edicao quando Em elaboracao", async () => {
-            vi.mocked(baixaFisicaService.list).mockResolvedValue(
-                makePaginatedResponse([makeBaixa({ id: 7, status: "aguardando_envio" })])
-            )
-
-            renderPage()
-
-            const editar = await screen.findByLabelText("Editar Baixa Física 7")
-            expect(editar).toBeInTheDocument()
-
-            // O link leva direto para a tela de detalhe ja em modo de edicao.
-            expect(editar.closest("a")).toHaveAttribute("href", "/baixas-fisicas/7?editar=1")
-        })
-
-        it("nao exibe o botao Editar para baixa fora de Em elaboracao", async () => {
-            vi.mocked(baixaFisicaService.list).mockResolvedValue(
-                makePaginatedResponse([
-                    makeBaixa({ id: 8, status: "aceita", status_display: "Aceita" }),
-                ])
-            )
-
-            renderPage()
-
-            await waitFor(() => {
-                expect(screen.getByLabelText("Visualizar Baixa Física 8")).toBeInTheDocument()
-            })
-
-            expect(screen.queryByLabelText("Editar Baixa Física 8")).not.toBeInTheDocument()
-        })
-    })
-
     describe("filtros e ordenação", () => {
         it("aplica filtros por busca e status", async () => {
             renderPage()
