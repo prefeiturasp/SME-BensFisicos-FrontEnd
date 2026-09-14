@@ -301,19 +301,19 @@ export default function BemCreatePage() {
 
         <div className="flex gap-3">
           <Button
-            onClick={handleSave}
-            disabled={loading || !formValido}
-            className="h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold !rounded-sm transition-colors disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#00703C]/25 disabled:text-white disabled:hover:bg-[#00703C]/25"
+            variant="outline"
+            onClick={() => navigate('/bens-patrimoniais')}
+            className="h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            Cancelar
           </Button>
 
           <Button
-            variant="outline"
-            onClick={() => navigate('/bens-patrimoniais')}
-            className="h-10 px-6 bg-white border border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white font-semibold !rounded-sm transition-colors"
+            onClick={handleSave}
+            disabled={loading || !formValido}
+            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Cancelar
+            {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </div>

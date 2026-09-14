@@ -48,3 +48,17 @@ npm run preview
 ```bash
 npm run lint
 ```
+
+## Padrões de Interface
+
+### Ações de Listagem
+
+Os botões do cabeçalho das telas de listagem seguem a ordem: `Voltar`, `Relatório` ou exportação, ações contextuais de itens selecionados e ação primária de criação. A ação de criação fica sempre mais à direita e usa o ícone `+` antes do texto.
+
+O chevron é exibido no botão `Relatório` somente quando o clique abre um menu para selecionar formatos de exportação.
+
+### Ações de Formulários e Detalhes
+
+Nas telas de detalhe, `Voltar` é o primeiro botão e usa somente o ícone de seta, com nome acessível. A ação `Editar`, quando disponível, usa o ícone de lápis antes do texto.
+
+Nos formulários, `Cancelar` é o primeiro botão e não usa ícone de seta. As ações de negócio ficam em seguida e a ação primária (`Salvar`, `Solicitar` ou equivalente) permanece mais à direita. Quando dois controles executam a mesma saída, apenas `Cancelar` é exibido.

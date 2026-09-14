@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Search } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -334,11 +334,16 @@ export default function TransferenciasListPage() {
         <div className='flex flex-wrap items-center gap-3'>
           <Button
             type='button'
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             aria-label='Voltar'
             onClick={() => navigate('/home')}
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
+          </Button>
+
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           <Button
@@ -346,12 +351,8 @@ export default function TransferenciasListPage() {
             className={ACTION_BUTTON_CLASS}
             onClick={() => navigate('/transferencias/novo')}
           >
+            <Plus size={16} />
             Adicionar Transferência
-          </Button>
-
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            <FileText size={16} />
-            Relatório
           </Button>
         </div>
       </div>

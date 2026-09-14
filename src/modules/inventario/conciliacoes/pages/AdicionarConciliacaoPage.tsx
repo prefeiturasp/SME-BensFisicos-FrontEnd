@@ -134,6 +134,15 @@ export default function AdicionarConciliacaoPage() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
+            onClick={() => navigate('/conciliacoes')}
+            className={ACTION_BUTTON_CLASS}
+            disabled={createConciliacao.isPending}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            type='button'
             className={SAVE_BUTTON_CLASS}
             disabled={isSaveDisabled}
             onClick={form.handleSubmit(handleSubmit)}
@@ -141,14 +150,6 @@ export default function AdicionarConciliacaoPage() {
             {createConciliacao.isPending ? 'Salvando...' : 'Salvar'}
           </Button>
 
-          <Button
-            type='button'
-            onClick={() => navigate('/conciliacoes')}
-            className={ACTION_BUTTON_CLASS}
-            disabled={createConciliacao.isPending}
-          >
-            Cancelar
-          </Button>
         </div>
       </div>
 

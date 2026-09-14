@@ -191,11 +191,11 @@ export default function MovimentacaoDetailPage() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
-            className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
-            disabled
+            onClick={() => navigate('/movimentacoes')}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            aria-label='Voltar'
           >
-            <Pencil size={16} />
-            Salvar Edição
+            <ArrowLeft size={18} />
           </Button>
 
           <Button
@@ -228,11 +228,11 @@ export default function MovimentacaoDetailPage() {
 
           <Button
             type='button'
-            onClick={() => navigate('/movimentacoes')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
+            disabled
           >
-            <ArrowLeft size={16} />
-            Voltar
+            <Pencil size={16} />
+            Editar
           </Button>
         </div>
       </div>

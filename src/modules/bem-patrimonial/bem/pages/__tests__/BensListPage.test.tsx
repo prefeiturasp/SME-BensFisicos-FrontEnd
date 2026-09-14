@@ -272,9 +272,9 @@ describe('BensListPage', () => {
   // NAVEGAÇÃO
   // ===============================
 
-  it('navega para novo cadastro', () => {
+  it('navega para adicionar bem', () => {
     renderWithProviders()
-    fireEvent.click(screen.getByText('Novo Cadastro'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Bem' }))
     expect(navigateMock).toHaveBeenCalledWith('/bens-patrimoniais/novo')
   })
 

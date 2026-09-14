@@ -119,6 +119,15 @@ export default function BemDetailPage() {
       </h1>
 
       <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => navigate('/bens-patrimoniais')}
+          className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+          aria-label="Voltar"
+        >
+          <ArrowLeft size={18} />
+        </Button>
+
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
@@ -199,14 +208,6 @@ export default function BemDetailPage() {
           />
         )}
 
-        <Button
-          variant="outline"
-          onClick={() => navigate('/bens-patrimoniais')}
-          className={`${ACTION_BUTTON_CLASS} px-6`}
-        >
-          <ArrowLeft size={16} className="mr-2" />
-          Voltar
-        </Button>
       </div>
     </div>
 

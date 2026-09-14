@@ -1403,8 +1403,8 @@ describe("VerBaixaPage", () => {
     it("navega -1 ao clicar em Voltar", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
         renderPage()
-        await waitFor(() => screen.getByText("Voltar"))
-        fireEvent.click(screen.getByText("Voltar"))
+        await waitFor(() => screen.getByRole("button", { name: "Voltar" }))
+        fireEvent.click(screen.getByRole("button", { name: "Voltar" }))
         expect(mockNavigate).toHaveBeenCalledWith(-1)
     })
 })
