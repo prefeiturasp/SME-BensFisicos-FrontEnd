@@ -650,7 +650,7 @@ export default function MovimentacoesListPage() {
         </div>
       </div>
 
-      <Card className='space-y-1 p-6'>
+      <Card className='space-y-6 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
           <label className='space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
             <span>Pesquisa Geral</span>
@@ -715,7 +715,7 @@ export default function MovimentacoesListPage() {
           Bens Patrimoniais Movimentados
         </h2>
 
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>

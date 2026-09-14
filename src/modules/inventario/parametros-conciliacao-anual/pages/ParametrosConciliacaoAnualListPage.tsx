@@ -97,7 +97,7 @@ function ParametrosConciliacaoAnualListContent() {
         </div>
       </div>
 
-      <Card className='space-y-6 p-8'>
+      <Card className='space-y-6 p-6'>
         <ParametrosConciliacaoFilters
           ano={anoInput}
           status={statusFilter}

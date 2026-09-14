@@ -146,10 +146,26 @@ describe("BaixasListPage", () => {
         it("exibe título e breadcrumb", async () => {
             renderPage()
 
+            await screen.findByText("Nenhum resultado encontrado.")
+
             expect(
                 screen.getByText("Baixa Física de Bens Patrimoniais")
             ).toBeInTheDocument()
             expect(screen.getByTestId("breadcrumb")).toBeInTheDocument()
+
+            const card = screen
+                .getByText("Buscar por Número/Nome do Bem ou NBBPM")
+                .closest<HTMLElement>('[data-slot="card"]')
+            const table = screen.getByRole("table")
+
+            expect(card).toHaveClass("space-y-6", "p-6")
+            expect(card).toContainElement(table)
+            expect(table.parentElement).toHaveClass(
+                "overflow-x-auto",
+                "rounded-md",
+                "border",
+                "border-gray-200"
+            )
         })
 
         it("chama list ao montar com ordenação padrão e página 1", async () => {

@@ -452,7 +452,7 @@ export default function BaixasListPage() {
                 </p>
 
                 {/* TABELA */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-md border border-gray-200">
                     <table className="w-full text-sm">
                         <thead className="bg-[#F5F5F5] border-b">
                             <tr className="text-left text-gray-600 font-semibold">

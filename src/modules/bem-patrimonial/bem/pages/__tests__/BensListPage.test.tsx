@@ -138,6 +138,20 @@ describe('BensListPage', () => {
     renderWithProviders()
     expect(screen.getByRole('heading')).toHaveTextContent('Bens Patrimoniais')
     expect(screen.getByText('Notebook')).toBeInTheDocument()
+
+    const card = screen
+      .getByText('Filtrar por Número ou Nome do Bem')
+      .closest<HTMLElement>('[data-slot="card"]')
+    const table = screen.getByRole('table')
+
+    expect(card).toHaveClass('space-y-6', 'p-6')
+    expect(card).toContainElement(table)
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    )
   })
 
   it('renderiza loading', () => {

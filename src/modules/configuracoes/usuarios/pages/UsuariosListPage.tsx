@@ -293,7 +293,7 @@ export default function UsuariosListPage() {
           </div>
         </div>
 
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>
