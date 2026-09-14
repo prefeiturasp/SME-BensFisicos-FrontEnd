@@ -3,15 +3,21 @@
 // NOVO — Tela de cadastro das informações básicas necessárias à emissão
 // da NBBPM consolidada. Aberta a partir da ação "Gerar NBBPM" na
 // listagem de Baixas Físicas, com as Baixas Aprovadas selecionadas
-// recebidas via router state (`{ baixaIds: number[] }`).
+// recebidas via router state (`{ baixaIds: number[], processo: string }`).
+// O Número do processo vem preenchido e travado (readOnly) e o Gerado por
+// exibe o RF logado (disabled, sem envio no payload).
 
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
+import { AxiosError } from "axios"
+import { toast } from "sonner"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { useAuth } from "@/auth/useAuth"
+import { extractErrorMessage } from "@/lib/backend-form-errors"
 import { baixaFisicaService, downloadBlob } from "../service/baixas.service"
 
 const ACTION_BUTTON_CLASS = `
@@ -25,15 +31,33 @@ const INPUT_CLASS =
 
 interface LocationState {
     baixaIds?: number[]
+    processo?: string
+}
+
+function getMensagemErroNbbpm(err: unknown, fallback = "Erro ao gerar NBBPM."): string {
+    if (err instanceof AxiosError) {
+        const data = err.response?.data as Record<string, unknown> | undefined
+        if (data && typeof data === "object") {
+            const mensagem =
+                extractErrorMessage(data.baixas) ??
+                extractErrorMessage(data.numero_processo_baixa) ??
+                extractErrorMessage(data.detail)
+            if (mensagem) return mensagem
+        }
+    }
+    if (err instanceof Error && err.message) return err.message
+    return fallback
 }
 
 export default function GerarNBBPMPage() {
     const navigate = useNavigate()
     const location = useLocation()
+    const { user } = useAuth()
 
     const baixaIds = (location.state as LocationState | null)?.baixaIds ?? []
+    const processoState = (location.state as LocationState | null)?.processo ?? ""
 
-    const [numeroProcessoBaixa, setNumeroProcessoBaixa] = useState("")
+    const [numeroProcessoBaixa, setNumeroProcessoBaixa] = useState(processoState)
     const [dataAutorizacao, setDataAutorizacao] = useState("")
     const [responsavel, setResponsavel] = useState("")
     const [numeroProcessoDestinacaoFinal, setNumeroProcessoDestinacaoFinal] = useState("")
@@ -67,18 +91,27 @@ export default function GerarNBBPMPage() {
 
         setSubmitting(true)
         try {
-            const blob = await baixaFisicaService.gerarNbbpmLote({
+            const nbbpm = await baixaFisicaService.gerarNbbpmLote({
                 baixas: baixaIds,
                 numero_processo_baixa: numeroProcessoBaixa.trim(),
                 data_autorizacao: dataAutorizacao,
                 responsavel: responsavel.trim(),
-                numero_processo_destinacao_final: numeroProcessoDestinacaoFinal.trim() || undefined,
+                numero_processo_destinacao_final: numeroProcessoDestinacaoFinal.trim() || "",
             })
-            downloadBlob(blob, `NBBPM_${numeroProcessoBaixa.trim()}.pdf`)
+            try {
+                const pdf = await baixaFisicaService.baixarNbbpmPdf(nbbpm.id)
+                downloadBlob(pdf, `NBBPM_${nbbpm.numero ?? numeroProcessoBaixa.trim()}.pdf`)
+            } catch (pdfErr) {
+                toast.error(getMensagemErroNbbpm(pdfErr, "Erro ao baixar NBBPM."))
+            }
+            toast.success(
+                nbbpm?.numero ? `NBBPM ${nbbpm.numero} gerada com sucesso!` : "NBBPM gerada com sucesso!"
+            )
             navigate(-1)
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Erro ao gerar NBBPM."
+            const message = getMensagemErroNbbpm(err)
             setError(message)
+            toast.error(message)
         } finally {
             setSubmitting(false)
         }
@@ -145,7 +178,21 @@ export default function GerarNBBPMPage() {
                             value={numeroProcessoBaixa}
                             onChange={(e) => setNumeroProcessoBaixa(e.target.value)}
                             placeholder="Ex.: 6016.2025/0117371-7"
-                            className={INPUT_CLASS}
+                            readOnly
+                            className={`${INPUT_CLASS} bg-gray-50`}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="gerado-por" className="text-sm font-semibold text-gray-700">
+                            Gerado por
+                        </label>
+                        <input
+                            id="gerado-por"
+                            value={user?.rf ?? ""}
+                            disabled
+                            placeholder="RF do usuário logado"
+                            className={`${INPUT_CLASS} bg-gray-50 disabled:opacity-100`}
                         />
                     </div>
 

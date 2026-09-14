@@ -630,12 +630,18 @@ export default function VerBaixaPage() {
 
     const handleGerarNbbpm = async () => {
         if (!baixa) return
+        const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
+        const nbbpmId = match ? Number(match[1]) : null
+        if (nbbpmId === null) {
+            toast.error("Não foi possível identificar a NBBPM para download.")
+            return
+        }
         try {
-            const blob = await baixaFisicaService.gerarNbbpm(baixa.id)
+            const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpmId)
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url
-            a.download = `NBBPM-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
+            a.download = `NBBPM-${baixa.numero_nbbpm ?? baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
             URL.revokeObjectURL(url)
         } catch (err) {
