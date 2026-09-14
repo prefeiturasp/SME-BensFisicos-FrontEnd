@@ -309,6 +309,20 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
             expect(screen.getByText("Ações")).toBeInTheDocument()
+
+            const card = screen
+                .getByText("Filtrar por Status")
+                .closest<HTMLElement>('[data-slot="card"]')
+            const table = screen.getByRole("table")
+
+            expect(card).toHaveClass("space-y-6", "p-6")
+            expect(card).toContainElement(table)
+            expect(table.parentElement).toHaveClass(
+                "overflow-x-auto",
+                "rounded-md",
+                "border",
+                "border-gray-200"
+            )
         })
     })
 

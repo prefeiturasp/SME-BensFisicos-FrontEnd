@@ -93,6 +93,20 @@ describe('ParametrosConciliacaoAnualListPage', () => {
     expect(screen.getByText('2026')).toBeInTheDocument();
     expect(screen.getByText('Ativo')).toBeInTheDocument();
 
+    const card = screen
+      .getByText('Filtrar por Ano de Referência')
+      .closest<HTMLElement>('[data-slot="card"]');
+    const table = screen.getByRole('table');
+
+    expect(card).toHaveClass('space-y-6', 'p-6');
+    expect(card).toContainElement(table);
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    );
+
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/i }));
 
     expect(dismissMock).toHaveBeenCalledTimes(1);

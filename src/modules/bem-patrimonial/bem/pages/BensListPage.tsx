@@ -188,7 +188,7 @@ export default function BensListPage() {
       </div>
 
       {/* CARD */}
-      <Card className='p-6 space-y-6'>
+      <Card className='space-y-6 p-6'>
         {/* FILTROS */}
         <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
           <div className='flex flex-col gap-2'>
@@ -302,7 +302,7 @@ export default function BensListPage() {
         </div>
 
         {/* TABELA */}
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='bg-[#F5F5F5] border-b'>
               <tr className='text-left text-gray-600 font-semibold'>
