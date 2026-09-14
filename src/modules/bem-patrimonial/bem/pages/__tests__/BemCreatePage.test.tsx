@@ -254,11 +254,11 @@ describe('BemCreatePage', () => {
   // Ordem dos botões e disposição conforme protótipo
   // ------------------------------------------------------------------
 
-  it('deve exibir o botão Salvar antes do botão Cancelar', () => {
+  it('deve exibir o botão Cancelar antes do botão Salvar', () => {
     renderPage()
     const buttons = screen.getAllByRole('button')
     const textos = buttons.map((b) => b.textContent)
-    expect(textos.indexOf('Salvar')).toBeLessThan(textos.indexOf('Cancelar'))
+    expect(textos.indexOf('Cancelar')).toBeLessThan(textos.indexOf('Salvar'))
   })
 
   // ------------------------------------------------------------------

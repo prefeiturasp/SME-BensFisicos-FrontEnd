@@ -7,7 +7,7 @@ import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ArrowUpDown, Eye, Pencil, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Pencil, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
@@ -133,12 +133,13 @@ export default function BaixasListPage() {
         .map(b => b.id)
 
     // Baixas com status Aprovado (ACEITA) selecionáveis para a geração da
-    // NBBPM em lote. As que já possuem NBBPM ficam de fora: não podem gerar
-    // uma nova. Só entram na seleção de "Selecionar todas" quando não há
-    // nenhuma baixa em elaboração/solicitada na página, para não misturar as
-    // duas ações em lote.
+    // NBBPM em lote. Mantém todas as aceitas aqui para que seleção stale
+    // (feita antes da NBBPM aparecer) ainda mostre o botão e caia na trava
+    // de toast do handleGerarNbbpm. O bloqueio upfront é feito no checkbox
+    // via isSelectable/jaTemNbbpm. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na página.
     const aceitaIds = new Set(
-        baixas.filter(b => b.status === "aceita" && !possuiNbbpm(b)).map(b => b.id)
+        baixas.filter(b => b.status === "aceita").map(b => b.id)
     )
 
     const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
@@ -249,8 +250,8 @@ export default function BaixasListPage() {
         navigate(`/baixas-fisicas/${primeiraSelecionada}`)
     }
 
-    // Leva para a tela de cadastro das informações básicas da NBBPM
-    // consolidada, passando as Baixas Aprovadas selecionadas.
+    // NOVO — leva para a tela de cadastro das informações básicas da
+    // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
     // Trava de processo único: só navega quando todas as Baixas aceitas
     // selecionadas têm o mesmo numero_processo_baixa (já vem no list).
     // Trava de NBBPM existente: Baixas que já possuem NBBPM não entram.
@@ -404,8 +405,13 @@ export default function BaixasListPage() {
                     Baixa Física de Bens Patrimoniais
                 </h1>
                 <div className="flex flex-wrap items-center justify-end gap-3">
-                    <Button onClick={() => navigate("/home")} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={16} />
+                    <Button onClick={() => navigate("/home")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
+
+                    <Button type="button" className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
+                        <FileText size={16} />
+                        Relatório
                     </Button>
 
                     {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
@@ -414,7 +420,7 @@ export default function BaixasListPage() {
                         <Button
                             onClick={handleSolicitar}
                             disabled={actionLoading}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Solicitar ({selectedEmElaboracao.length})
                         </Button>
@@ -427,7 +433,7 @@ export default function BaixasListPage() {
                         <>
                             <Button
                                 onClick={handleIrParaValidacao}
-                                className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                                className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                                 title="Abrir a tela de validação para aprovar"
                             >
                                 Aprovar
@@ -448,16 +454,14 @@ export default function BaixasListPage() {
                     {selectedAceitas.length > 0 && (
                         <Button
                             onClick={handleGerarNbbpm}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Gerar NBBPM ({selectedAceitas.length})
                         </Button>
                     )}
 
-                    <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
-                        Exportar Excel
-                    </Button>
                     <Button className={ACTION_BUTTON_CLASS} onClick={() => navigate("/baixas-fisicas/novo")}>
+                        <Plus size={16} />
                         Adicionar Baixa
                     </Button>
                 </div>
@@ -539,7 +543,7 @@ export default function BaixasListPage() {
                 </p>
 
                 {/* TABELA */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-md border border-gray-200">
                     <table className="w-full text-sm">
                         <thead className="bg-[#F5F5F5] border-b">
                             <tr className="text-left text-gray-600 font-semibold">

@@ -336,15 +336,15 @@ describe("baixaFisicaService", () => {
         })
     })
 
-    describe("gerarNbbpm", () => {
-        it("retorna blob", async () => {
+    describe("baixarNbbpmPdf", () => {
+        it("retorna blob do PDF da NBBPM", async () => {
             const blob = new Blob(["pdf"], { type: "application/pdf" })
             vi.mocked(api.get).mockResolvedValue({ data: blob })
 
-            const result = await baixaFisicaService.gerarNbbpm(1)
+            const result = await baixaFisicaService.baixarNbbpmPdf(1)
 
             expect(result).toBe(blob)
-            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-nbbpm/", {
+            expect(api.get).toHaveBeenCalledWith("/nbbpm/1/pdf/", {
                 responseType: "blob",
             })
         })
@@ -352,7 +352,42 @@ describe("baixaFisicaService", () => {
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
 
-            await expect(baixaFisicaService.gerarNbbpm(1)).rejects.toThrow(
+            await expect(baixaFisicaService.baixarNbbpmPdf(1)).rejects.toThrow(
+                "Erro ao baixar NBBPM"
+            )
+        })
+    })
+
+    describe("gerarNbbpmLote", () => {
+        const payload = {
+            baixas: [10, 11],
+            numero_processo_baixa: "6016.2025/0117371-7",
+            data_autorizacao: "2026-09-10",
+            responsavel: "Nome Responsável",
+            numero_processo_destinacao_final: "",
+        }
+
+        it("cria a NBBPM via POST /nbbpm/", async () => {
+            const nbbpm = { id: 1, numero: "001.0000001/2026", numero_processo_baixa: payload.numero_processo_baixa, baixas: payload.baixas }
+            vi.mocked(api.post).mockResolvedValue({ data: nbbpm })
+
+            const result = await baixaFisicaService.gerarNbbpmLote(payload)
+
+            expect(result).toBe(nbbpm)
+            expect(api.post).toHaveBeenCalledWith("/nbbpm/", payload)
+        })
+
+        it("propaga o AxiosError em 400 para a página exibir o toast", async () => {
+            const fieldError = makeAxiosError(400, { baixas: ["divergentes"] })
+            vi.mocked(api.post).mockRejectedValue(fieldError)
+
+            await expect(baixaFisicaService.gerarNbbpmLote(payload)).rejects.toBe(fieldError)
+        })
+
+        it("lança erro padrão", async () => {
+            vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
+
+            await expect(baixaFisicaService.gerarNbbpmLote(payload)).rejects.toThrow(
                 "Erro ao gerar NBBPM"
             )
         })

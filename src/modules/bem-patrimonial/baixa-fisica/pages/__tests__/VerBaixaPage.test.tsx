@@ -47,7 +47,7 @@ vi.mock("../../service/baixas.service", () => ({
         retrieve: vi.fn(),
         update: vi.fn(),
         aprovar: vi.fn(),
-        gerarNbbpm: vi.fn(),
+        baixarNbbpmPdf: vi.fn(),
         gerarLaudo: vi.fn(),
         historico: vi.fn(),
     },
@@ -135,6 +135,7 @@ function makeBaixaDetail(overrides: Partial<BaixaFisicaDetail> = {}): BaixaFisic
             nome_completo: "João Silva",
             username: "joao.silva",
             email: "joao@email.com",
+            rf: "1234567",
         },
         itens: [],
         url_solicitar: null,
@@ -246,10 +247,30 @@ describe("VerBaixaPage", () => {
         )
     })
 
-    it("renderiza nome do solicitante", async () => {
+    it("renderiza o solicitante no formato Nome + RF", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
         renderPage()
-        await waitFor(() => expect(screen.getByText("João Silva")).toBeInTheDocument())
+        await waitFor(() =>
+            expect(screen.getByTestId("baixa-criado-por-value")).toHaveTextContent(
+                "João Silva (RF 1234567)"
+            )
+        )
+    })
+
+    it("exibe texto neutro, sem mencionar migracao, quando o solicitante vem vazio", async () => {
+        // Em Baixa Fisica criado_por e null=False no backend: vazio aqui indica
+        // inconsistencia de dados, nao registro historico.
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ criado_por: null as never })
+        )
+        renderPage()
+
+        await waitFor(() =>
+            expect(screen.getByTestId("baixa-criado-por-value")).toHaveTextContent(
+                "Informação não disponível"
+            )
+        )
+        expect(screen.getByTestId("baixa-criado-por-value").textContent).not.toMatch(/migra/i)
     })
 
     it("renderiza '-' quando aprovado_por é nulo", async () => {
@@ -1121,7 +1142,7 @@ describe("VerBaixaPage", () => {
 
     it("exibe 'Baixar NBBPM' quando url_gerar_nbbpm está preenchida (status aceita)", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
-            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/dl" })
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/api/nbbpm/7/pdf/" })
         )
         renderPage()
         await waitFor(() => expect(screen.getByText("Baixar NBBPM")).toBeInTheDocument())
@@ -1141,7 +1162,7 @@ describe("VerBaixaPage", () => {
             makeBaixaDetail({
                 status: "solicitada",
                 status_display: "Solicitada",
-                url_gerar_nbbpm: "/dl",
+                url_gerar_nbbpm: "/api/nbbpm/7/pdf/",
             })
         )
         renderPage()
@@ -1149,12 +1170,12 @@ describe("VerBaixaPage", () => {
         expect(screen.queryByText("Baixar NBBPM")).not.toBeInTheDocument()
     })
 
-    it("executa download do NBBPM com sucesso", async () => {
+    it("executa download do NBBPM com sucesso via GET /nbbpm/{id}/pdf/", async () => {
         const clickMock = vi.fn()
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
-            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/download" })
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", numero_nbbpm: "001.0000001/2026", url_gerar_nbbpm: "/api/nbbpm/7/pdf/" })
         )
-        vi.mocked(baixaFisicaService.gerarNbbpm).mockResolvedValue(new Blob(["pdf"]))
+        vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockResolvedValue(new Blob(["pdf"]))
         vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
         const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
@@ -1166,18 +1187,18 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByText("Baixar NBBPM"))
         fireEvent.click(screen.getByText("Baixar NBBPM"))
         await waitFor(() => {
-            expect(baixaFisicaService.gerarNbbpm).toHaveBeenCalledWith(1)
+            expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(7)
             expect(clickMock).toHaveBeenCalled()
         })
         spy.mockRestore()
     })
 
-    it("download NBBPM usa id quando numero_processo_baixa é nulo", async () => {
+    it("download NBBPM usa id quando numero_nbbpm e processo são nulos", async () => {
         const clickMock = vi.fn()
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
-            makeBaixaDetail({ id: 42, status: "aceita", status_display: "Aceita", numero_processo_baixa: null, url_gerar_nbbpm: "/dl" })
+            makeBaixaDetail({ id: 42, status: "aceita", status_display: "Aceita", numero_processo_baixa: null, url_gerar_nbbpm: "/api/nbbpm/9/pdf/" })
         )
-        vi.mocked(baixaFisicaService.gerarNbbpm).mockResolvedValue(new Blob(["pdf"]))
+        vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockResolvedValue(new Blob(["pdf"]))
         vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
         const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
@@ -1188,16 +1209,29 @@ describe("VerBaixaPage", () => {
         renderPage()
         await waitFor(() => screen.getByText("Baixar NBBPM"))
         fireEvent.click(screen.getByText("Baixar NBBPM"))
-        await waitFor(() => expect(baixaFisicaService.gerarNbbpm).toHaveBeenCalledWith(42))
+        await waitFor(() => expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(9))
         spy.mockRestore()
     })
 
-    it("trata erro ao gerar NBBPM sem quebrar a UI", async () => {
+    it("exibe toast quando url_gerar_nbbpm não identifica a NBBPM", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/legado/sem-id" })
+        )
+        renderPage()
+        await waitFor(() => screen.getByText("Baixar NBBPM"))
+        fireEvent.click(screen.getByText("Baixar NBBPM"))
+        await waitFor(() => {
+            expect(toast.error).toHaveBeenCalledWith("Não foi possível identificar a NBBPM para download.")
+        })
+        expect(baixaFisicaService.baixarNbbpmPdf).not.toHaveBeenCalled()
+    })
+
+    it("trata erro ao baixar NBBPM sem quebrar a UI", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
-            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/download" })
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", url_gerar_nbbpm: "/api/nbbpm/7/pdf/" })
         )
-        vi.mocked(baixaFisicaService.gerarNbbpm).mockRejectedValue(new Error("Erro download"))
+        vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockRejectedValue(new Error("Erro download"))
         renderPage()
         await waitFor(() => screen.getByText("Baixar NBBPM"))
         fireEvent.click(screen.getByText("Baixar NBBPM"))
@@ -1351,7 +1385,7 @@ describe("VerBaixaPage", () => {
         await waitFor(() => screen.getByTestId("btn-confirmar"))
         fireEvent.click(screen.getByTestId("btn-confirmar"))
         await waitFor(() => expect(baixaFisicaService.aprovar).toHaveBeenCalledWith(9, { numero_processo_baixa: "6016.2025/0117371-7" }))
-        expect(baixaFisicaService.gerarNbbpm).not.toHaveBeenCalled()
+        expect(baixaFisicaService.baixarNbbpmPdf).not.toHaveBeenCalled()
         expect(baixaFisicaService.gerarLaudo).not.toHaveBeenCalled()
     })
 
@@ -1423,8 +1457,8 @@ describe("VerBaixaPage", () => {
     it("navega -1 ao clicar em Voltar", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
         renderPage()
-        await waitFor(() => screen.getByText("Voltar"))
-        fireEvent.click(screen.getByText("Voltar"))
+        await waitFor(() => screen.getByRole("button", { name: "Voltar" }))
+        fireEvent.click(screen.getByRole("button", { name: "Voltar" }))
         expect(mockNavigate).toHaveBeenCalledWith(-1)
     })
 

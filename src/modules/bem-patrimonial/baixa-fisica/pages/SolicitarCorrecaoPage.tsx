@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
-
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { baixaFisicaService } from "../service/baixas.service"
@@ -61,7 +59,7 @@ export default function SolicitarCorrecaoPage() {
         }
     }
 
-    const handleVoltar = () => {
+    const handleCancelar = () => {
         navigate(-1)
     }
 
@@ -91,6 +89,9 @@ export default function SolicitarCorrecaoPage() {
                 </h1>
 
                 <div className="flex items-center gap-2">
+                    <Button type="button" onClick={handleCancelar} className={ACTION_BUTTON_CLASS}>
+                        Cancelar
+                    </Button>
                     <button
                         onClick={handleSolicitarCorrecao}
                         disabled={submitting || !motivo.trim() || showToast}
@@ -102,10 +103,6 @@ export default function SolicitarCorrecaoPage() {
                     >
                         {submitting ? "Enviando..." : "Solicitar correção"}
                     </button>
-                    <Button type="button" onClick={handleVoltar} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={14} />
-                        Voltar
-                    </Button>
                 </div>
             </div>
 

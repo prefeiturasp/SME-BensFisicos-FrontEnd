@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { Plus, Trash2, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 
 import { format } from "date-fns"
@@ -323,17 +323,14 @@ export default function AdicionarBaixaPage() {
 
                 <div className="flex items-center gap-3">
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={18} />
+                        Cancelar
                     </Button>
                     <Button
                         onClick={handleSolicitar}
                         disabled={submitting}
-                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947]"
+                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {submitting ? "Solicitando..." : "Solicitar"}
-                    </Button>
-                    <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        Cancelar
                     </Button>
                 </div>
             </div>

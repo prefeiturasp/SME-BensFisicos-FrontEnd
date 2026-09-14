@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -31,9 +31,13 @@ const PRIMARY_SAVE_BUTTON_CLASS =
 
 function ExitButton({ isEditing, onClick }: Readonly<{ isEditing: boolean; onClick: () => void }>) {
   return (
-    <Button type='button' onClick={onClick} className={ACTION_BUTTON_CLASS}>
-      {!isEditing && <ArrowLeft size={16} />}
-      {isEditing ? 'Cancelar' : 'Voltar'}
+    <Button
+      type='button'
+      onClick={onClick}
+      className={isEditing ? ACTION_BUTTON_CLASS : `${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+      aria-label={isEditing ? undefined : 'Voltar'}
+    >
+      {isEditing ? 'Cancelar' : <ArrowLeft size={18} />}
     </Button>
   );
 }
@@ -266,16 +270,18 @@ export default function UnidadesOrcamentariasViewPage() {
           </h1>
 
           <div className='flex items-center justify-end gap-3'>
+            <ExitButton isEditing={isEditing} onClick={handleCancel} />
+
             <Button
               type='button'
               className={isEditing ? PRIMARY_SAVE_BUTTON_CLASS : ACTION_BUTTON_CLASS}
               disabled={updateMutation.isPending}
               onClick={handlePrimaryAction}
             >
+              {!isEditing && <Pencil size={16} />}
               {primaryActionLabel}
             </Button>
 
-            <ExitButton isEditing={isEditing} onClick={handleCancel} />
           </div>
         </div>
 

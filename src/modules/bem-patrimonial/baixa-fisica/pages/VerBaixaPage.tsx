@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { CriadoPorValue } from "@/components/CriadoPorValue"
+import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -676,12 +678,18 @@ export default function VerBaixaPage() {
 
     const handleGerarNbbpm = async () => {
         if (!baixa) return
+        const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
+        const nbbpmId = match ? Number(match[1]) : null
+        if (nbbpmId === null) {
+            toast.error("Não foi possível identificar a NBBPM para download.")
+            return
+        }
         try {
-            const blob = await baixaFisicaService.gerarNbbpm(baixa.id)
+            const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpmId)
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url
-            a.download = `NBBPM-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
+            a.download = `NBBPM-${baixa.numero_nbbpm ?? baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
             URL.revokeObjectURL(url)
         } catch (err) {
@@ -746,6 +754,9 @@ export default function VerBaixaPage() {
                 <h1 className="text-xl font-bold text-gray-700">{tituloPagina}</h1>
 
                 <div className="flex items-center gap-2">
+                    <Button type="button" onClick={() => navigate(-1)} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
                     {/* Em elaboração + modo visualização → ação "Editar".
                         É ela que habilita a alteração dos campos. */}
                     {isEmElaboracao && !modoEdicao && (
@@ -848,10 +859,6 @@ export default function VerBaixaPage() {
                         </Button>
                     )}
 
-                    <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={14} />
-                        Voltar
-                    </Button>
                 </div>
             </div>
 
@@ -889,7 +896,10 @@ export default function VerBaixaPage() {
                                 Usuário que solicitou a baixa:
                             </span>
                             <span className="text-sm text-[#2F7D57]">
-                                {baixa.criado_por.nome_completo}
+                                <CriadoPorValue
+                                    label={formatUsuarioObjetoLabel(baixa.criado_por)}
+                                    data-testid="baixa-criado-por-value"
+                                />
                             </span>
                         </div>
 

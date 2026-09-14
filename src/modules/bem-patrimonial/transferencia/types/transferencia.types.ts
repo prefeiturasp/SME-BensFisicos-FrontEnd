@@ -27,6 +27,8 @@ export interface TransferenciaUsuario {
   username: string
   nome_completo?: string | null
   email?: string | null
+  /** RF do usuario. Depende de exposicao pelo serializer do backend. */
+  rf?: string | null
 }
 
 export interface TransferenciaBem {

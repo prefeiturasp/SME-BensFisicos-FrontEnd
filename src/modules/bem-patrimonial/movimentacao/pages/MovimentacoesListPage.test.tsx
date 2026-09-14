@@ -312,6 +312,20 @@ describe('MovimentacoesListPage', () => {
     expect(screen.getByRole('button', { name: /aprovar/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /rejeitar/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
+
+    const card = screen
+      .getByText('Pesquisa Geral')
+      .closest<HTMLElement>('[data-slot="card"]')
+    const table = screen.getByRole('table')
+
+    expect(card).toHaveClass('space-y-6', 'p-6')
+    expect(card).toContainElement(table)
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    )
   })
 
   it('deve voltar para a home ao clicar em voltar', async () => {

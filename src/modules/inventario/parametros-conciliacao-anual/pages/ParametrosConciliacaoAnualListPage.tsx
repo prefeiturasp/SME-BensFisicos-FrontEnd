@@ -78,10 +78,10 @@ function ParametrosConciliacaoAnualListContent() {
           <Button
             type='button'
             onClick={() => navigate('/home')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             aria-label='Voltar'
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </Button>
           <Button
             type='button'
@@ -97,7 +97,7 @@ function ParametrosConciliacaoAnualListContent() {
         </div>
       </div>
 
-      <Card className='space-y-6 p-8'>
+      <Card className='space-y-6 p-6'>
         <ParametrosConciliacaoFilters
           ano={anoInput}
           status={statusFilter}

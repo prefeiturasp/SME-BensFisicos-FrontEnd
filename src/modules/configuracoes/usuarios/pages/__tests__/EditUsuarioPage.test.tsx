@@ -423,14 +423,15 @@ describe("EditarUsuarioPage", () => {
         })
     })
 
-    it("navega para '/usuarios' ao clicar em 'Cancelar'", async () => {
+    it("navega para os detalhes ao clicar em 'Cancelar'", async () => {
         renderPage()
         await aguardarCarregamento()
 
         const user = userEvent.setup()
         await user.click(screen.getByRole("button", { name: /cancelar/i }))
 
-        expect(screen.getByText("Lista de Usuários")).toBeInTheDocument()
+        expect(screen.getByText("Página de Detalhes")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Voltar" })).not.toBeInTheDocument()
     })
 
     it("exibe o username como campo desabilitado", async () => {
@@ -644,16 +645,6 @@ describe("helpers do EditarUsuarioPage", () => {
         await aguardarCarregamento()
 
         expect(screen.getAllByRole("combobox")[2]).toHaveTextContent("20 - UO Central")
-    })
-
-    it("volta para a tela anterior ao clicar no botão de retorno", async () => {
-        renderPage("1", ["/usuarios", "/usuarios/1/editar"], 1)
-        await aguardarCarregamento()
-
-        const user = userEvent.setup()
-        await user.click(screen.getAllByRole("button")[0])
-
-        expect(screen.getByText("Lista de Usuários")).toBeInTheDocument()
     })
 
     it("alterna a visibilidade das senhas ao clicar nos botões de olho", async () => {
