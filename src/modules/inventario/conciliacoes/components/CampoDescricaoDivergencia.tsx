@@ -38,7 +38,7 @@ export function CampoDescricaoDivergencia<T extends FieldValues>({
               id={String(name)}
               data-testid='ocorrencia-descricao-divergencia'
               placeholder={PLACEHOLDER}
-              value={(field.value as string | undefined) ?? ''}
+              value={field.value ?? ''}
               onChange={field.onChange}
               onBlur={field.onBlur}
               disabled={disabled}

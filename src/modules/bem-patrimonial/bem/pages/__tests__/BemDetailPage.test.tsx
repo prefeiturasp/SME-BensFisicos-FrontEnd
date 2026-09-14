@@ -534,7 +534,7 @@ describe('BemDetailPage', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('deve explicitar a excecao conhecida quando o registro historico nao possui autoria', async () => {
+    it('deve explicitar a ausencia de autoria sem atribuir causa', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve')
         .mockResolvedValue({ ...bemMock, criado_por_nome: null, criado_por_rf: null } as any)
       ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
@@ -542,7 +542,13 @@ describe('BemDetailPage', () => {
       renderPage()
 
       const valor = await screen.findByTestId('bem-criado-por-value')
-      expect(valor).toHaveTextContent('Informação não disponível (registro anterior à migração)')
+      /*
+        Em Bem Patrimonial criado_por usa SET_NULL + null=True: o vazio pode vir
+        de dado historico, usuario excluido ou criacao automatica. O texto e
+        neutro para nao mascarar uma eventual falha atual de gravacao.
+      */
+      expect(valor).toHaveTextContent('Informação não disponível')
+      expect(valor.textContent).not.toMatch(/migra/i)
       expect(valor).toHaveAttribute('data-autoria-indisponivel', 'true')
     })
 

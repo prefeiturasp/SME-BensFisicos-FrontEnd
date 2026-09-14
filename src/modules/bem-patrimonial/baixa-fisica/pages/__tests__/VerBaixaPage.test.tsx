@@ -135,6 +135,7 @@ function makeBaixaDetail(overrides: Partial<BaixaFisicaDetail> = {}): BaixaFisic
             nome_completo: "João Silva",
             username: "joao.silva",
             email: "joao@email.com",
+            rf: "1234567",
         },
         itens: [],
         url_solicitar: null,
@@ -241,10 +242,30 @@ describe("VerBaixaPage", () => {
         )
     })
 
-    it("renderiza nome do solicitante", async () => {
+    it("renderiza o solicitante no formato Nome + RF", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
         renderPage()
-        await waitFor(() => expect(screen.getByText("João Silva")).toBeInTheDocument())
+        await waitFor(() =>
+            expect(screen.getByTestId("baixa-criado-por-value")).toHaveTextContent(
+                "João Silva (RF 1234567)"
+            )
+        )
+    })
+
+    it("exibe texto neutro, sem mencionar migracao, quando o solicitante vem vazio", async () => {
+        // Em Baixa Fisica criado_por e null=False no backend: vazio aqui indica
+        // inconsistencia de dados, nao registro historico.
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ criado_por: null as never })
+        )
+        renderPage()
+
+        await waitFor(() =>
+            expect(screen.getByTestId("baixa-criado-por-value")).toHaveTextContent(
+                "Informação não disponível"
+            )
+        )
+        expect(screen.getByTestId("baixa-criado-por-value").textContent).not.toMatch(/migra/i)
     })
 
     it("renderiza '-' quando aprovado_por é nulo", async () => {

@@ -1,10 +1,10 @@
 import { Info } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { isAutoriaIndisponivel } from '@/lib/usuario-label';
+import { isAutoriaAutomatica, isAutoriaIndisponivel } from '@/lib/usuario-label';
 
 type CriadoPorValueProps = Readonly<{
-  /** Rótulo já formatado por `formatUsuarioLabel` / `formatUsuarioObjetoLabel`. */
+  /** Rótulo já formatado pelos helpers de `@/lib/usuario-label`. */
   label: string;
   className?: string;
   'data-testid'?: string;
@@ -13,13 +13,22 @@ type CriadoPorValueProps = Readonly<{
 /**
  * Renderiza o valor do campo "Criado por" de forma padronizada.
  *
- * Quando a autoria não está disponível (registro histórico não migrado), o
- * componente deixa a ausência explícita — em vez de silenciar com "-" — em
- * atendimento ao critério de aceite de não ocultar a exceção conhecida.
+ * Quando não há autoria, a ausência fica explícita — nunca é silenciada com
+ * "-" ou string vazia. O texto em si não atribui causa: quem decide o rótulo é
+ * o helper do módulo, porque o significado do vazio varia conforme as regras do
+ * backend (ver `@/lib/usuario-label`).
  */
 export function CriadoPorValue(props: CriadoPorValueProps) {
   const { label, className } = props;
   const indisponivel = isAutoriaIndisponivel(label);
+  const automatica = isAutoriaAutomatica(label);
+
+  let titulo: string | undefined;
+  if (automatica) {
+    titulo = 'Registro gerado pela rotina automática do sistema, sem usuário responsável.';
+  } else if (indisponivel) {
+    titulo = 'Este registro não possui a informação de autoria na origem.';
+  }
 
   return (
     <span
@@ -30,11 +39,8 @@ export function CriadoPorValue(props: CriadoPorValueProps) {
       )}
       data-testid={props['data-testid'] ?? 'criado-por-value'}
       data-autoria-indisponivel={indisponivel ? 'true' : 'false'}
-      title={
-        indisponivel
-          ? 'Este registro foi criado antes da migração e não possui a informação de autoria na origem.'
-          : undefined
-      }
+      data-autoria-automatica={automatica ? 'true' : 'false'}
+      title={titulo}
     >
       {indisponivel ? <Info className='size-3.5 shrink-0' aria-hidden='true' /> : null}
       {label}

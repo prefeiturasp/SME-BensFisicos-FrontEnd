@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  INFORMACAO_INDISPONIVEL_LABEL,
+  AUTORIA_INDISPONIVEL_LABEL,
   formatUsuarioLabel,
   formatUsuarioObjetoLabel,
   isAutoriaIndisponivel,
+  AUTORIA_AUTOMATICA_LABEL,
+  formatAutoriaConciliacao,
+  isAutoriaAutomatica,
 } from './usuario-label';
 
 describe('formatUsuarioLabel', () => {
@@ -29,9 +32,9 @@ describe('formatUsuarioLabel', () => {
   });
 
   it('retorna a excecao conhecida quando nao ha nenhuma informacao', () => {
-    expect(formatUsuarioLabel(null, null)).toBe(INFORMACAO_INDISPONIVEL_LABEL);
-    expect(formatUsuarioLabel(undefined, undefined)).toBe(INFORMACAO_INDISPONIVEL_LABEL);
-    expect(formatUsuarioLabel('  ', '  ')).toBe(INFORMACAO_INDISPONIVEL_LABEL);
+    expect(formatUsuarioLabel(null, null)).toBe(AUTORIA_INDISPONIVEL_LABEL);
+    expect(formatUsuarioLabel(undefined, undefined)).toBe(AUTORIA_INDISPONIVEL_LABEL);
+    expect(formatUsuarioLabel('  ', '  ')).toBe(AUTORIA_INDISPONIVEL_LABEL);
   });
 
   it('nao usa "-" para mascarar a ausencia da informacao', () => {
@@ -61,15 +64,57 @@ describe('formatUsuarioObjetoLabel', () => {
   });
 
   it('retorna a excecao conhecida quando o usuario e nulo', () => {
-    expect(formatUsuarioObjetoLabel(null)).toBe(INFORMACAO_INDISPONIVEL_LABEL);
-    expect(formatUsuarioObjetoLabel(undefined)).toBe(INFORMACAO_INDISPONIVEL_LABEL);
-    expect(formatUsuarioObjetoLabel({})).toBe(INFORMACAO_INDISPONIVEL_LABEL);
+    expect(formatUsuarioObjetoLabel(null)).toBe(AUTORIA_INDISPONIVEL_LABEL);
+    expect(formatUsuarioObjetoLabel(undefined)).toBe(AUTORIA_INDISPONIVEL_LABEL);
+    expect(formatUsuarioObjetoLabel({})).toBe(AUTORIA_INDISPONIVEL_LABEL);
   });
 });
 
 describe('isAutoriaIndisponivel', () => {
   it('identifica o rotulo de excecao conhecida', () => {
-    expect(isAutoriaIndisponivel(INFORMACAO_INDISPONIVEL_LABEL)).toBe(true);
+    expect(isAutoriaIndisponivel(AUTORIA_INDISPONIVEL_LABEL)).toBe(true);
     expect(isAutoriaIndisponivel('Maria da Silva (RF 1234567)')).toBe(false);
+  });
+});
+
+describe('texto neutro de indisponibilidade', () => {
+  it('nao atribui a ausencia a migracao', () => {
+    // A causa do vazio varia por modulo; afirmar migracao mascararia uma
+    // eventual falha atual de gravacao.
+    expect(AUTORIA_INDISPONIVEL_LABEL).toBe('Informação não disponível');
+    expect(AUTORIA_INDISPONIVEL_LABEL).not.toMatch(/migra/i);
+  });
+
+  it('nao usa texto de migracao para Baixa e Transferencia', () => {
+    // Nesses modulos criado_por e null=False: vazio e inconsistencia, nunca
+    // dado historico.
+    expect(formatUsuarioObjetoLabel(null)).not.toMatch(/migra/i);
+    expect(formatUsuarioObjetoLabel({})).toBe(AUTORIA_INDISPONIVEL_LABEL);
+  });
+});
+
+describe('formatAutoriaConciliacao', () => {
+  it('nomeia a origem automatica quando nao ha autor', () => {
+    expect(formatAutoriaConciliacao(null, null, true)).toBe(AUTORIA_AUTOMATICA_LABEL);
+    expect(AUTORIA_AUTOMATICA_LABEL).not.toMatch(/migra/i);
+  });
+
+  it('usa texto neutro quando a origem automatica nao se aplica', () => {
+    expect(formatAutoriaConciliacao(null, null, false)).toBe(AUTORIA_INDISPONIVEL_LABEL);
+  });
+
+  it('preserva a autoria real mesmo em conciliacao anual', () => {
+    expect(formatAutoriaConciliacao('Maria da Silva', '1234567', true)).toBe(
+      'Maria da Silva (RF 1234567)',
+    );
+  });
+});
+
+describe('isAutoriaAutomatica', () => {
+  it('distingue origem automatica de indisponibilidade generica', () => {
+    expect(isAutoriaAutomatica(AUTORIA_AUTOMATICA_LABEL)).toBe(true);
+    expect(isAutoriaAutomatica(AUTORIA_INDISPONIVEL_LABEL)).toBe(false);
+    // Ambas contam como ausencia de autoria para fins de estilo.
+    expect(isAutoriaIndisponivel(AUTORIA_AUTOMATICA_LABEL)).toBe(true);
   });
 });

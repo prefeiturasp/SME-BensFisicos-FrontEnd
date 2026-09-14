@@ -66,6 +66,7 @@ const transferenciaMock = {
     id: 3,
     username: 'operador',
     nome_completo: 'Operador 1',
+    rf: '7654321',
   },
   url_documento_ntbpm: '/api/transferencias/9/documento-ntbpm/',
   itens: [
@@ -109,7 +110,9 @@ describe('TransferenciaDetailPage', () => {
     expect(screen.getByText('001.0000009.2026')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Itens da Transferência de Bem' })).toBeInTheDocument()
     expect(screen.getByText('12345')).toBeInTheDocument()
-    expect(screen.getByText('Operador 1')).toBeInTheDocument()
+    expect(screen.getByTestId('transferencia-criado-por-value')).toHaveTextContent(
+      'Operador 1 (RF 7654321)',
+    )
     expect(screen.getByText('123 Notebook')).toBeInTheDocument()
   })
 

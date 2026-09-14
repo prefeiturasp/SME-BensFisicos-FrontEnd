@@ -1,7 +1,7 @@
 import { SECTION_TITLE_CLASS } from '../utils/form-styles';
 import type { Conciliacao } from '../types/conciliacoes.types';
 import { CriadoPorValue } from '@/components/CriadoPorValue';
-import { formatUsuarioLabel } from '@/lib/usuario-label';
+import { formatAutoriaConciliacao, formatUsuarioLabel } from '@/lib/usuario-label';
 
 interface ConciliacaoAuditoriaProps {
   conciliacao: Conciliacao;
@@ -38,7 +38,18 @@ function buildDateTimeLabel(value: string | null) {
 }
 
 export function ConciliacaoAuditoria({ conciliacao }: Readonly<ConciliacaoAuditoriaProps>) {
-  const criadoPor = buildUsuarioLabel(conciliacao.criado_por_nome, conciliacao.criado_por_rf);
+  /*
+    A conciliação anual nasce da rotina automática do sistema, que grava
+    `criado_por=None` (ver inventario/utils_conciliacao/conciliacao_automatica.py).
+    Como a FK usa PROTECT, um usuário com conciliações não pode ser excluído —
+    logo, autoria nula numa conciliação anual só tem essa origem, e nomeá-la
+    evita que o auditor leia o vazio como perda de dado.
+  */
+  const criadoPor = formatAutoriaConciliacao(
+    conciliacao.criado_por_nome,
+    conciliacao.criado_por_rf,
+    conciliacao.tipo === 'anual',
+  );
   const criadoEm = buildDateTimeLabel(conciliacao.criado_em);
 
   const isFechado =
