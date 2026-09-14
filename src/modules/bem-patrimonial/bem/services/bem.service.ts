@@ -187,17 +187,6 @@ export const bemService = {
     }
   },
 
-  gerarNbbpm: async (id: number): Promise<Blob> => {
-    try {
-      const { data } = await api.get(`/baixa-fisica/${id}/gerar-nbbpm/`, {
-        responseType: 'blob',
-      })
-      return data
-    } catch (error) {
-      handleApiError(error, 'Erro ao gerar PDF NBBPM')
-    }
-  },
-
   /**
    * Importa bens patrimoniais em lote a partir de uma planilha (XLSX, XLS ou CSV).
    *
