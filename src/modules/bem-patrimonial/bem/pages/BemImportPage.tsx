@@ -16,7 +16,7 @@ import { useBemImport } from '../hooks/useBemImport'
 // ---------------------------------------------------------------------------
 
 const BTN_PRIMARY =
-    'h-10 px-6 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+    'h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:opacity-50 disabled:cursor-not-allowed'
 
 const BTN_OUTLINE =
     'h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors'
@@ -302,19 +302,19 @@ export default function BemImportPage() {
                 <div className='flex items-center gap-3'>
                     <Button
                         type='button'
+                        onClick={cancelar}
+                        className={BTN_OUTLINE}
+                    >
+                        Cancelar
+                    </Button>
+
+                    <Button
+                        type='button'
                         onClick={importar}
                         disabled={!podeImportar}
                         className={BTN_PRIMARY}
                     >
                         {importando ? 'Importando...' : 'Importar'}
-                    </Button>
-
-                    <Button
-                        type='button'
-                        onClick={cancelar}
-                        className={BTN_OUTLINE}
-                    >
-                        Cancelar
                     </Button>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Pencil } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 
@@ -139,10 +139,12 @@ export default function ViewUsuarioPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Visualizar Usuário</h1>
         <div className="flex items-center gap-3">
-          <Button onClick={() => navigate(`/usuarios/${id}/editar`)} className={ACTION_BUTTON_CLASS}>Editar</Button>
-          <Button type="button" onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>
-            <ArrowLeft size={16} />
-            Voltar
+          <Button type="button" onClick={() => navigate("/usuarios")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+            <ArrowLeft size={18} />
+          </Button>
+          <Button onClick={() => navigate(`/usuarios/${id}/editar`)} className={ACTION_BUTTON_CLASS}>
+            <Pencil size={16} />
+            Editar
           </Button>
         </div>
       </div>

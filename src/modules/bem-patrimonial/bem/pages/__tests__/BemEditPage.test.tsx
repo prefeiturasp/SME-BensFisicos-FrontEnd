@@ -206,7 +206,7 @@ describe('BemEditPage', () => {
     renderPage()
 
     expect(await screen.findByDisplayValue('Notebook Dell')).toBeInTheDocument()
-    expect(screen.getByText('Salvar Edição')).toBeInTheDocument()
+    expect(screen.getByText('Salvar')).toBeInTheDocument()
   })
 
   it('deve redirecionar para lista se falhar ao carregar', async () => {
@@ -237,7 +237,7 @@ describe('BemEditPage', () => {
     expect(input).toBeDisabled()
   })
 
-  it('não deve exibir botão Salvar Edição se não for gestor', async () => {
+  it('não deve exibir botão Salvar se não for gestor', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
       bemMock as any
     )
@@ -248,7 +248,7 @@ describe('BemEditPage', () => {
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
-    expect(screen.queryByText('Salvar Edição')).not.toBeInTheDocument()
+    expect(screen.queryByText('Salvar')).not.toBeInTheDocument()
   })
 
   it('não deve permitir edição se status for baixa_fisica', async () => {
@@ -263,12 +263,12 @@ describe('BemEditPage', () => {
 
     const input = await screen.findByDisplayValue('Notebook Dell')
     expect(input).toBeDisabled()
-    expect(screen.queryByText('Salvar Edição')).not.toBeInTheDocument()
+    expect(screen.queryByText('Salvar')).not.toBeInTheDocument()
   })
 
   // ─── Navegação ───────────────────────────────────────────────────────────────
 
-  it('deve navegar para detail ao clicar em Voltar', async () => {
+  it('deve navegar para detail ao clicar em Cancelar', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
       bemMock as any
     )
@@ -276,7 +276,7 @@ describe('BemEditPage', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByText('Voltar'))
+    fireEvent.click(await screen.findByText('Cancelar'))
 
     expect(await screen.findByText('Detail Page')).toBeInTheDocument()
   })
@@ -305,7 +305,7 @@ describe('BemEditPage', () => {
       { target: { value: 'Justificativa de teste' } }
     )
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Bem atualizado com sucesso')
@@ -332,7 +332,7 @@ describe('BemEditPage', () => {
       target: { value: 'Sala 2' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalled()
@@ -355,7 +355,7 @@ describe('BemEditPage', () => {
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith(
@@ -380,7 +380,7 @@ describe('BemEditPage', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByText('Salvar Edição'))
+    fireEvent.click(await screen.findByText('Salvar'))
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
@@ -404,7 +404,7 @@ describe('BemEditPage', () => {
 
     renderPage()
 
-    fireEvent.click(await screen.findByText('Salvar Edição'))
+    fireEvent.click(await screen.findByText('Salvar'))
 
     expect(await screen.findByText('Campo obrigatório')).toBeInTheDocument()
   })
@@ -432,7 +432,7 @@ describe('BemEditPage', () => {
       target: { value: '999.999999999-9' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalled()
@@ -468,7 +468,7 @@ describe('BemEditPage', () => {
       target: { value: 'Novo Nome' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(
@@ -502,7 +502,7 @@ describe('BemEditPage', () => {
       target: { value: '999' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     // Os dois erros aparecem juntos, e nao um de cada vez.
     await waitFor(() => {
@@ -608,7 +608,7 @@ describe('BemEditPage', () => {
       target: { value: 'Novo Nome' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(
@@ -623,7 +623,7 @@ describe('BemEditPage', () => {
       { target: { value: 'Preenchendo agora' } }
     )
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Bem atualizado com sucesso')
@@ -649,7 +649,7 @@ describe('BemEditPage', () => {
       target: { value: 'NUMERO-INVALIDO' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     expect(
       await screen.findByText(
@@ -683,7 +683,7 @@ describe('BemEditPage', () => {
       target: { value: '999.999999999-9' },
     })
 
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     // Número válido → vai para API sem erro de formato
     await waitFor(() => {
@@ -711,7 +711,7 @@ describe('BemEditPage', () => {
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalled()
@@ -738,7 +738,7 @@ describe('BemEditPage', () => {
     renderPage()
 
     await screen.findByDisplayValue('Notebook Dell')
-    fireEvent.click(screen.getByText('Salvar Edição'))
+    fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalled()

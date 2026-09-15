@@ -143,16 +143,15 @@ export default function GerarNBBPMPage() {
                 </h1>
 
                 <div className="flex items-center gap-3">
+                    <Button onClick={handleCancelar} className={ACTION_BUTTON_CLASS}>
+                        Cancelar
+                    </Button>
                     <Button
                         onClick={handleGerarBaixa}
                         disabled={submitting || baixaIds.length === 0}
-                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947]"
+                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {submitting ? "Gerando..." : "Gerar Baixa"}
-                    </Button>
-                    <Button onClick={handleCancelar} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={18} />
-                        Cancelar
                     </Button>
                 </div>
             </div>

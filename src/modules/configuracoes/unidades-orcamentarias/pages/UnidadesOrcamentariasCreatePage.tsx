@@ -79,6 +79,14 @@ export default function UnidadesOrcamentariasCreatePage() {
           <div className='flex items-center justify-end gap-3'>
             <Button
               type='button'
+              onClick={() => navigate('/unidades-orcamentarias')}
+              className={ACTION_BUTTON_CLASS}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type='button'
               className='h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md'
               disabled={createUnidadeOrcamentaria.isPending}
               onClick={form.handleSubmit(handleSubmit)}
@@ -86,13 +94,6 @@ export default function UnidadesOrcamentariasCreatePage() {
               {createUnidadeOrcamentaria.isPending ? 'Salvando...' : 'Salvar'}
             </Button>
 
-            <Button
-              type='button'
-              onClick={() => navigate('/unidades-orcamentarias')}
-              className={ACTION_BUTTON_CLASS}
-            >
-              Cancelar
-            </Button>
           </div>
         </div>
 

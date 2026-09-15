@@ -2,8 +2,6 @@ import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ArrowLeft } from "lucide-react"
-
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import {
     Form,
@@ -75,7 +73,7 @@ export default function SolicitarCorrecaoPage() {
         }
     })
 
-    const handleVoltar = () => {
+    const handleCancelar = () => {
         navigate(-1)
     }
 
@@ -106,6 +104,9 @@ export default function SolicitarCorrecaoPage() {
                 </h1>
 
                 <div className="flex items-center gap-2">
+                    <Button type="button" onClick={handleCancelar} className={ACTION_BUTTON_CLASS}>
+                        Cancelar
+                    </Button>
                     <button
                         onClick={handleSolicitarCorrecao}
                         disabled={submitting || showToast}
@@ -117,10 +118,6 @@ export default function SolicitarCorrecaoPage() {
                     >
                         {submitting ? "Enviando..." : "Solicitar correção"}
                     </button>
-                    <Button type="button" onClick={handleVoltar} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={14} />
-                        Voltar
-                    </Button>
                 </div>
             </div>
 

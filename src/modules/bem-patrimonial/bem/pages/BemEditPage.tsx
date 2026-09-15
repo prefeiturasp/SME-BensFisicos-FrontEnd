@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader2, ArrowLeft, Info, Network } from 'lucide-react'
+import { Loader2, Info, Network } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 
@@ -208,19 +208,32 @@ export default function BemEditPage() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          className="h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
-          onClick={() => navigate(`/bens-patrimoniais/${bem.id}`)}
-        >
-          <ArrowLeft size={16} className="mr-2" />
-          Voltar
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
+            onClick={() => navigate(`/bens-patrimoniais/${bem.id}`)}
+          >
+            Cancelar
+          </Button>
+
+          {podeEditar && (
+            <Button
+              type="submit"
+              form="bem-edit-form"
+              disabled={form.formState.isSubmitting}
+              className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form id="bem-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="flex justify-end">
               <div className="text-sm font-semibold text-green-700">
                 Status: {bem.status_display}
@@ -414,19 +427,6 @@ export default function BemEditPage() {
               )}
             />
 
-            {podeEditar && (
-              <div className="flex justify-end pt-6 border-t">
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="h-11 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold px-8"
-                >
-                  {form.formState.isSubmitting
-                    ? 'Salvando...'
-                    : 'Salvar Edição'}
-                </Button>
-              </div>
-            )}
           </form>
         </Form>
       </Card>

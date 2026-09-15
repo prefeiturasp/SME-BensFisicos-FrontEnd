@@ -7,6 +7,7 @@ import {
   FileText,
   Network,
   Minus,
+  Plus,
   Search,
   X,
   CircleAlert,
@@ -593,18 +594,15 @@ export default function MovimentacoesListPage() {
           <Button
             type='button'
             onClick={() => navigate('/home')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             aria-label='Voltar'
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </Button>
 
-          <Button
-            type='button'
-            onClick={() => navigate('/movimentacoes/novo')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            Adicionar Movimentação
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           {isGestor ? (
@@ -643,14 +641,18 @@ export default function MovimentacoesListPage() {
             </Button>
           ) : null}
 
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            <FileText size={16} />
-            Relatório
+          <Button
+            type='button'
+            onClick={() => navigate('/movimentacoes/novo')}
+            className={ACTION_BUTTON_CLASS}
+          >
+            <Plus size={16} />
+            Adicionar Movimentação
           </Button>
         </div>
       </div>
 
-      <Card className='space-y-1 p-6'>
+      <Card className='space-y-6 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
           <label className='space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
             <span>Pesquisa Geral</span>
@@ -715,7 +717,7 @@ export default function MovimentacoesListPage() {
           Bens Patrimoniais Movimentados
         </h2>
 
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>

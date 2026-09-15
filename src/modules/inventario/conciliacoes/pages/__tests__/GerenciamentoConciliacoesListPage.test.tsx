@@ -173,6 +173,20 @@ describe('GerenciamentoConciliacoesListPage', () => {
     expect(screen.getByText('001.0002/2026/005')).toBeInTheDocument();
     expect(screen.getByText('00.00.00.002 - COTIC')).toBeInTheDocument();
     expect(screen.getByText('Até 27/02/2026')).toBeInTheDocument();
+
+    const card = screen
+      .getByText('Buscar Conciliação')
+      .closest<HTMLElement>('[data-slot="card"]');
+    const table = screen.getByRole('table');
+
+    expect(card).toHaveClass('space-y-6', 'p-6');
+    expect(card).toContainElement(table);
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    );
   });
 
   it('navega para a tela de adicionar conciliacao', () => {

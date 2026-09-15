@@ -1,4 +1,3 @@
-import { ArrowLeft } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
@@ -249,9 +248,8 @@ export default function EditarUsuarioPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-gray-700">Editar Usuário</h1>
         <div className="flex items-center gap-3">
-          <Button type="button" onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}><ArrowLeft size={18} /></Button>
-          <Button onClick={handleSubmit(onSubmit)} disabled={loadingSalvar} className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md font-semibold">{loadingSalvar ? "Salvando..." : "Salvar"}</Button>
-          <Button onClick={() => navigate("/usuarios")} className={ACTION_BUTTON_CLASS}>Cancelar</Button>
+          <Button type="button" onClick={() => navigate(`/usuarios/${id}`)} className={ACTION_BUTTON_CLASS}>Cancelar</Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={loadingSalvar} className="h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50">{loadingSalvar ? "Salvando..." : "Salvar"}</Button>
         </div>
       </div>
       {errorMessage && <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded">{errorMessage}</div>}

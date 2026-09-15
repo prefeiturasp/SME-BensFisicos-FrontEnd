@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Search } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, FileText, Network, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
@@ -334,11 +334,16 @@ export default function TransferenciasListPage() {
         <div className='flex flex-wrap items-center gap-3'>
           <Button
             type='button'
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             aria-label='Voltar'
             onClick={() => navigate('/home')}
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
+          </Button>
+
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           <Button
@@ -346,17 +351,13 @@ export default function TransferenciasListPage() {
             className={ACTION_BUTTON_CLASS}
             onClick={() => navigate('/transferencias/novo')}
           >
+            <Plus size={16} />
             Adicionar Transferência
-          </Button>
-
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
-            <FileText size={16} />
-            Relatório
           </Button>
         </div>
       </div>
 
-      <Card className='space-y-4 p-6'>
+      <Card className='space-y-6 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] xl:items-start'>
           <div className='flex min-w-0 flex-col gap-1 text-sm font-semibold text-gray-700'>
             <label
@@ -449,7 +450,7 @@ export default function TransferenciasListPage() {
           Transferências de Bem Patrimonial Cadastradas
         </h2>
 
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>

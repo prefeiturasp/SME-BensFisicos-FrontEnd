@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ArrowLeft, Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { toast } from "sonner"
 
 import { format } from "date-fns"
 
@@ -302,7 +303,8 @@ export default function AdicionarBaixaPage() {
         atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSolicitar = form.handleSubmit(async (values) => {
+    const handleSolicitar = form.handleSubmit(
+        async (values) => {
         setSubmitting(true)
         try {
             await baixaFisicaService.create({
@@ -312,14 +314,27 @@ export default function AdicionarBaixaPage() {
                     : {}),
                 itens: values.itens.map(bemId => ({ bem: bemId })),
             })
+            toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
-            form.setError("root.serverError", { message })
+            toast.error(message)
         } finally {
             setSubmitting(false)
         }
-    })
+        },
+        (errors) => {
+            // Compatibilidade: validação inline (zod/FormMessage) + toasts do padrão de test.
+            // Sem isso, os testes de test que esperam toast.error para validação quebrariam,
+            // e sem o inline o critério de exibir todos os pendentes de uma vez se perderia.
+            const mensagens = [
+                errors.unidade?.message,
+                errors.itens?.message,
+                errors.data_baixa?.message,
+            ].filter(Boolean) as string[]
+            mensagens.forEach((msg) => toast.error(msg))
+        }
+    )
 
     return (
         <Form {...form}>
@@ -341,26 +356,17 @@ export default function AdicionarBaixaPage() {
 
                 <div className="flex items-center gap-3">
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={18} />
+                        Cancelar
                     </Button>
                     <Button
                         onClick={handleSolicitar}
                         disabled={submitting}
-                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947]"
+                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {submitting ? "Solicitando..." : "Solicitar"}
                     </Button>
-                    <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        Cancelar
-                    </Button>
                 </div>
             </div>
-
-            {form.formState.errors.root?.serverError?.message && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {form.formState.errors.root.serverError.message}
-                </div>
-            )}
 
             <Card className="p-6 space-y-6">
 

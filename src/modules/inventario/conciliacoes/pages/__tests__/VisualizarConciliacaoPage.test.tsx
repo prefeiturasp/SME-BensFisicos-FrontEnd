@@ -337,11 +337,24 @@ describe('VisualizarConciliacaoPage', () => {
     renderPage();
 
     const voltarButton = screen.getByRole('button', { name: 'Voltar' });
-    expect(voltarButton).toHaveTextContent('Voltar');
+    expect(voltarButton).toHaveAttribute('aria-label', 'Voltar');
 
     fireEvent.click(voltarButton);
 
     expect(navigateMock).toHaveBeenCalledWith('/conciliacoes');
+  });
+
+  it('exibe as ações na ordem padronizada da tela de detalhe', () => {
+    renderPage();
+
+    const voltar = screen.getByTestId('visualizar-conciliacao-voltar');
+    const historico = screen.getByTestId('visualizar-conciliacao-historico');
+    const exportar = screen.getByTestId('visualizar-conciliacao-exportar');
+    const finalizar = screen.getByTestId('visualizar-conciliacao-finalizar');
+
+    expect(voltar.compareDocumentPosition(historico) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(historico.compareDocumentPosition(exportar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(exportar.compareDocumentPosition(finalizar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('navega para a listagem ao clicar em Voltar no estado de erro', () => {

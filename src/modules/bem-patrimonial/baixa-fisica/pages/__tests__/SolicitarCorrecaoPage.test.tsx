@@ -212,16 +212,16 @@ describe("SolicitarCorrecaoPage", () => {
         })
     })
 
-    it("botão Voltar navega para a rota anterior", async () => {
+    it("botão Cancelar navega para a rota anterior", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
 
         renderPage()
 
         await waitFor(() => {
-            expect(screen.getByText("Voltar")).toBeInTheDocument()
+            expect(screen.getByText("Cancelar")).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByText("Voltar"))
+        fireEvent.click(screen.getByText("Cancelar"))
 
         expect(mockNavigate).toHaveBeenCalledWith(-1)
     })

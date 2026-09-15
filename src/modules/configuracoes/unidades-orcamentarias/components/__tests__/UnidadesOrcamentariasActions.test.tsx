@@ -33,9 +33,23 @@ describe('UnidadesOrcamentariasActions', () => {
   it('dispara callback de adicionar unidade', () => {
     const { onAdd } = renderAcoes();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Unidade Orçamentária' }));
+    const botaoAdicionar = screen.getByRole('button', { name: 'Adicionar Unidade Orçamentária' });
+    expect(botaoAdicionar.querySelector('svg.lucide-plus')).toBeInTheDocument();
+
+    fireEvent.click(botaoAdicionar);
 
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém a ordem Voltar, Relatório e Adicionar', () => {
+    renderAcoes();
+
+    const voltar = screen.getByRole('button', { name: 'Voltar' });
+    const relatorio = screen.getByRole('button', { name: 'Relatório' });
+    const adicionar = screen.getByRole('button', { name: 'Adicionar Unidade Orçamentária' });
+
+    expect(voltar.compareDocumentPosition(relatorio)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(relatorio.compareDocumentPosition(adicionar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('abre menu de relatório e exporta no formato selecionado', () => {
