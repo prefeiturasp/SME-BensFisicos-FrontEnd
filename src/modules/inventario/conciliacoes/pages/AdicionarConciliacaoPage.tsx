@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { isAfter, startOfDay, subDays } from 'date-fns';
 import { useCallback, useMemo } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
@@ -72,13 +72,12 @@ export default function AdicionarConciliacaoPage() {
     [],
   );
 
-  const periodoFinalValue = useWatch({ control: form.control, name: 'periodoFinal' });
-  const isPeriodoFinalFilled = conciliacaoFormSchema.shape.periodoFinal.safeParse(
-    periodoFinalValue ?? '',
-  ).success;
-
   const isUaUnavailable = !unidadeAdministrativaId;
-  const isSaveDisabled = isUaUnavailable || createConciliacao.isPending || !isPeriodoFinalFilled;
+  /**
+   * Salvar permanece habilitado com campos pendentes: a submissão dispara a
+   * validação inline (rótulo e borda vermelhos + mensagem no campo).
+   */
+  const isSaveDisabled = createConciliacao.isPending;
 
   const showErrorToast = (description: string) => {
     toast.error(CONCILIACAO_ERROR_TOAST_TITLE, { description });

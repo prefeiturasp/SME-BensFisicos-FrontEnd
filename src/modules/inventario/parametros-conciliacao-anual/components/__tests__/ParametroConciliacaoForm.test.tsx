@@ -71,4 +71,19 @@ describe('ParametroConciliacaoForm', () => {
       expect(messages).toHaveLength(1);
     });
   });
+
+  it('pinta o rótulo e a borda do Ano de Referência quando o campo é inválido', async () => {
+    render(<TestForm />);
+
+    const input = screen.getByPlaceholderText('Ex: 2026');
+    fireEvent.change(input, { target: { value: '20' } });
+
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    const label = screen.getByText('Ano de Referência');
+    expect(label).toHaveAttribute('data-error', 'true');
+    expect(label.className).toContain('text-destructive');
+  });
 });

@@ -83,14 +83,30 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
+type FormLabelProps = React.ComponentProps<typeof LabelPrimitive.Root> & {
+  /**
+   * Força o estado inválido do rótulo independentemente do erro do
+   * react-hook-form. Usado por campos cujo controle valida fora do
+   * `FormField` (ex.: `fieldState.invalid` repassado manualmente).
+   */
+  invalid?: boolean;
+};
+
+function FormLabel({ className, invalid, ...props }: FormLabelProps) {
   const { error, formItemId } = useFormField();
+  const isInvalid = !!error || !!invalid;
 
   return (
     <Label
       data-slot='form-label'
-      data-error={!!error}
-      className={cn('data-[error=true]:text-destructive', className)}
+      data-error={isInvalid}
+      // `text-destructive` entra por último para vencer qualquer cor de texto
+      // vinda do `className` do chamador (ex.: `text-gray-700`).
+      className={cn(
+        'data-[error=true]:text-destructive',
+        className,
+        isInvalid && 'text-destructive',
+      )}
       htmlFor={formItemId}
       {...props}
     />
@@ -137,6 +153,7 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
     <p
       data-slot='form-message'
       id={formMessageId}
+      role='alert'
       className={cn('text-destructive text-sm', className)}
       {...props}
     >

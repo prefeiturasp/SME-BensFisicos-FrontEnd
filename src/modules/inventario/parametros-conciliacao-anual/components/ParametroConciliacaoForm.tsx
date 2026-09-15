@@ -142,7 +142,8 @@ function DateInput({
         placeholder='dd/mm/aaaa'
         onChange={(event) => onChange(maskDate(event.target.value))}
         disabled={disabled}
-        className={`${INPUT_CLASS} pr-12 ${invalid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+        aria-invalid={invalid}
+        className={`${INPUT_CLASS} pr-12`}
       />
       <button
         type='button'
@@ -262,10 +263,13 @@ export function ParametroConciliacaoForm({
           <FormField
             control={form.control}
             name='anoReferencia'
-            render={({ field }) => (
+            render={({ field, fieldState }) => (
               <FormItem>
                 <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700'>
+                  <FormLabel
+                    className='text-sm font-semibold text-gray-700'
+                    invalid={fieldState.invalid}
+                  >
                     Ano de Referência
                   </FormLabel>
                 </div>
@@ -274,6 +278,7 @@ export function ParametroConciliacaoForm({
                     inputMode='numeric'
                     maxLength={4}
                     placeholder='Ex: 2026'
+                    aria-invalid={fieldState.invalid}
                     className={INPUT_CLASS}
                     disabled={disabled || submitting}
                     value={field.value}
@@ -300,7 +305,10 @@ export function ParametroConciliacaoForm({
             render={({ field, fieldState }) => (
               <FormItem>
                 <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700'>
+                  <FormLabel
+                    className='text-sm font-semibold text-gray-700'
+                    invalid={fieldState.invalid}
+                  >
                     Período Inicial Permitido
                   </FormLabel>
                 </div>
@@ -328,7 +336,10 @@ export function ParametroConciliacaoForm({
             render={({ field, fieldState }) => (
               <FormItem>
                 <div className='flex h-6 items-center'>
-                  <FormLabel className='text-sm font-semibold text-gray-700'>
+                  <FormLabel
+                    className='text-sm font-semibold text-gray-700'
+                    invalid={fieldState.invalid}
+                  >
                     Período Final Permitido
                   </FormLabel>
                 </div>
@@ -357,11 +368,16 @@ export function ParametroConciliacaoForm({
           render={({ field, fieldState }) => (
             <FormItem className='max-w-md'>
               <div className='flex h-6 items-center'>
-                <FormLabel className='text-sm font-semibold text-gray-700'>Status</FormLabel>
+                <FormLabel
+                  className='text-sm font-semibold text-gray-700'
+                  invalid={fieldState.invalid}
+                >
+                  Status
+                </FormLabel>
               </div>
               <div
                 className={`flex items-center gap-3 rounded-xs px-2 py-2 ${
-                  fieldState.invalid ? 'border border-red-500' : ''
+                  fieldState.invalid ? 'border border-destructive' : ''
                 }`}
               >
                 <Checkbox

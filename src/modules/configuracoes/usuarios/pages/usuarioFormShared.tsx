@@ -1,10 +1,12 @@
 import { Eye, EyeOff } from "lucide-react"
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useId, useMemo } from "react"
 import type { Dispatch, InputHTMLAttributes, ReactNode, SetStateAction } from "react"
 import type { UseFormSetValue } from "react-hook-form"
 import type { EscopoGrupo, EscopoUa } from "../../../../auth/auth.service"
 
-import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ValidatedField } from "@/components/form-fields/ValidatedField"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UnidadesAdministrativasSelector } from "../components/UnidadesAdministrativasSelector"
 
@@ -222,6 +224,10 @@ type FormTextFieldProps = {
   rightNode?: ReactNode
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "value">
 
+/**
+ * Campo de texto no padrão de validação inline (rótulo vermelho + borda
+ * vermelha + mensagem por campo), igual ao usado em UO/UA.
+ */
 export function FormTextField({
   id,
   label,
@@ -234,25 +240,30 @@ export function FormTextField({
   rightNode,
   ...inputProps
 }: Readonly<FormTextFieldProps>) {
+  const generatedId = useId()
+  const fieldId = id ?? generatedId
+
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-sm font-semibold text-gray-700">
-        {label}
-        {required ? REQUIRED : null}
-      </label>
+    <ValidatedField
+      label={label}
+      htmlFor={fieldId}
+      error={error}
+      required={required}
+      className="flex flex-col gap-2"
+    >
       <div className="relative">
-        <input
-          id={id}
+        <Input
+          id={fieldId}
           disabled={disabled}
           placeholder={placeholder}
-          className={className ?? INPUT_TEXT_CLASS}
+          aria-invalid={!!error}
+          className={`${className ?? INPUT_TEXT_CLASS} ${error ? "border-red-500 focus-visible:ring-red-500" : ""}`}
           {...inputProps}
           value={value}
         />
         {rightNode}
       </div>
-      {error ? <span className="text-red-600 text-sm">{error}</span> : null}
-    </div>
+    </ValidatedField>
   )
 }
 
@@ -273,6 +284,7 @@ type UserTopSectionProps = {
   todasUnidades: boolean
   filtroUa: string
   unidadeError?: string
+  uoError?: string
   disableUaSelector?: boolean
   onNomeChange?: InputHTMLAttributes<HTMLInputElement>["onChange"]
   onRfChange?: InputHTMLAttributes<HTMLInputElement>["onChange"]
@@ -308,6 +320,7 @@ export function UserTopSection({
   todasUnidades,
   filtroUa,
   unidadeError,
+  uoError,
   disableUaSelector,
   onNomeChange,
   onRfChange,
@@ -365,17 +378,24 @@ export function UserTopSection({
         error={emailError}
       /> 
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="grupo" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-gray-700">
-          <span>Grupo de Permissionamento{REQUIRED}</span>
-          {isGestor ? (
-            <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-              {GESTOR_BADGE_TEXT}
-            </span>
-          ) : null}
-        </Label>
+      <ValidatedField
+        label={
+          <span className="inline-flex w-fit items-center gap-2">
+            <span>Grupo de Permissionamento</span>
+            {isGestor ? (
+              <span className="inline-flex items-center whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                {GESTOR_BADGE_TEXT}
+              </span>
+            ) : null}
+          </span>
+        }
+        htmlFor="grupo"
+        error={grupoError}
+        required
+        className="flex flex-col gap-2"
+      >
         <Select value={grupoValue} onValueChange={onGrupoChange}>
-          <SelectTrigger id="grupo" className={INPUT_CLASS}>
+          <SelectTrigger id="grupo" className={`${INPUT_CLASS} ${grupoError ? "border-red-500 focus:ring-red-500" : ""}`} aria-invalid={!!grupoError}>
             <SelectValue placeholder="Selecione os grupos" />
           </SelectTrigger>
           <SelectContent>
@@ -383,13 +403,9 @@ export function UserTopSection({
             <SelectItem value="OPERADOR_INVENTARIO">Operador</SelectItem>
           </SelectContent>
         </Select>
-        {grupoError ? <span className="text-red-600 text-sm">{grupoError}</span> : null}
-      </div>
+      </ValidatedField>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="status" className="text-sm font-semibold text-gray-700">
-          Status{REQUIRED}
-        </label>
+      <ValidatedField label="Status" htmlFor="status" required className="flex flex-col gap-2">
         <Select value={statusValue} onValueChange={onStatusChange}>
           <SelectTrigger id="status" className={INPUT_CLASS}>
             <SelectValue />
@@ -399,18 +415,21 @@ export function UserTopSection({
             <SelectItem value="inativo">Inativo</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </ValidatedField>
         </div>
       </FormSection>
 
       <FormSection title="Vinculação">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="uo" className="text-sm font-semibold text-gray-700">
-          Unidade Orçamentária{REQUIRED}
-        </Label>
+      <ValidatedField
+        label="Unidade Orçamentária"
+        htmlFor="uo"
+        error={uoError}
+        required
+        className="flex flex-col gap-2"
+      >
         <Select value={uoSelecionadaId ? String(uoSelecionadaId) : undefined} onValueChange={(value) => onUoChange(Number(value))}>
-          <SelectTrigger id="uo" className={INPUT_CLASS}>
+          <SelectTrigger id="uo" className={`${INPUT_CLASS} ${uoError ? "border-red-500 focus:ring-red-500" : ""}`} aria-invalid={!!uoError}>
             <SelectValue placeholder="Selecione a UO" />
           </SelectTrigger>
           <SelectContent>
@@ -421,7 +440,7 @@ export function UserTopSection({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </ValidatedField>
 
       <div>
         <UnidadesAdministrativasSelector
@@ -475,36 +494,58 @@ export function PasswordStatusSection({
     <div className="border-t pt-6">
       <FormSection title="Acesso">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="flex flex-col gap-2">
-        <label htmlFor={senhaId} className="text-sm font-semibold text-gray-700">
-          Cadastre uma Senha
-        </label>
+      <ValidatedField
+        label="Cadastre uma Senha"
+        htmlFor={senhaId}
+        error={senhaError}
+        className="flex flex-col gap-2"
+      >
         <div className="relative">
-          <input id={senhaId} type={showSenha ? "text" : "password"} placeholder="Cadastre uma senha" className={`${INPUT_TEXT_CLASS} pr-10`} {...senhaField} />
-          <button type="button" onClick={onToggleSenha} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <Input
+            id={senhaId}
+            type={showSenha ? "text" : "password"}
+            placeholder="Cadastre uma senha"
+            aria-invalid={!!senhaError}
+            className={`${INPUT_TEXT_CLASS} pr-10 ${senhaError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+            {...senhaField}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onToggleSenha}
+            aria-label={showSenha ? "Ocultar senha" : "Mostrar senha"}
+            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0 text-gray-400 hover:bg-transparent hover:text-gray-600"
+          >
             {showSenha ? <EyeOff className="size-[22px]" /> : <Eye className="size-[22px]" />}
-          </button>
+          </Button>
         </div>
-        {senhaError ? <span className="text-red-600 text-sm">{senhaError}</span> : null}
-      </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor={confirmarSenhaId} className="text-sm font-semibold text-gray-700">
-          Confirme a Senha
-        </label>
+      </ValidatedField>
+      <ValidatedField
+        label="Confirme a Senha"
+        htmlFor={confirmarSenhaId}
+        error={confirmarSenhaError}
+        className="flex flex-col gap-2"
+      >
         <div className="relative">
-          <input
+          <Input
             id={confirmarSenhaId}
             type={showConfirmarSenha ? "text" : "password"}
             placeholder="Confirme a senha"
-            className={`${INPUT_TEXT_CLASS} pr-10`}
+            aria-invalid={!!confirmarSenhaError}
+            className={`${INPUT_TEXT_CLASS} pr-10 ${confirmarSenhaError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             {...confirmarSenhaField}
           />
-          <button type="button" onClick={onToggleConfirmarSenha} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onToggleConfirmarSenha}
+            aria-label={showConfirmarSenha ? "Ocultar senha" : "Mostrar senha"}
+            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0 text-gray-400 hover:bg-transparent hover:text-gray-600"
+          >
             {showConfirmarSenha ? <EyeOff className="size-[22px]" /> : <Eye className="size-[22px]" />}
-          </button>
+          </Button>
         </div>
-        {confirmarSenhaError ? <span className="text-red-600 text-sm">{confirmarSenhaError}</span> : null}
-      </div>
+      </ValidatedField>
         </div>
       </FormSection>
     </div>

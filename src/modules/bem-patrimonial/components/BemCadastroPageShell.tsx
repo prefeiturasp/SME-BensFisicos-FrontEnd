@@ -18,9 +18,17 @@ type BemCadastroPageShellProps = Readonly<{
   title: string
   onCancel: () => void
   onSave: () => void
-  canSave: boolean
+  /**
+   * Mantém o botão desabilitado apenas em estados que impedem qualquer
+   * submissão (ex.: carregando). Pendências de campo NÃO devem desabilitar o
+   * botão: o usuário precisa poder submeter para receber a validação inline.
+   *
+   * Durante `submitting` o botão é sempre bloqueado, evitando envio duplicado.
+   */
+  canSave?: boolean
   submitting: boolean
-  error: string | null
+  /** Reservado a erros de servidor. Erros de campo são exibidos inline. */
+  error?: string | null
   saveLabel?: string
   cancelLabel?: string
   children: ReactNode
@@ -32,9 +40,9 @@ export function BemCadastroPageShell(props: BemCadastroPageShellProps) {
     title,
     onCancel,
     onSave,
-    canSave,
+    canSave = true,
     submitting,
-    error,
+    error = null,
     saveLabel = 'Salvar',
     cancelLabel = 'Cancelar',
     children,
@@ -54,7 +62,7 @@ export function BemCadastroPageShell(props: BemCadastroPageShellProps) {
           <Button
             type='button'
             onClick={onSave}
-            disabled={!canSave}
+            disabled={!canSave || submitting}
             className={`${PRIMARY_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {submitting ? 'Salvando...' : saveLabel}

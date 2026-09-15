@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ValidatedField } from '@/components/form-fields/ValidatedField'
 import {
   Select,
   SelectContent,
@@ -20,6 +21,8 @@ export type LinhaBem = {
   numero_processo: string
 }
 
+export type CampoLinhaBem = keyof LinhaBem
+
 export type LinhaBemRowProps = Readonly<{
   linha: LinhaBem
   index: number
@@ -30,6 +33,12 @@ export type LinhaBemRowProps = Readonly<{
   isLast: boolean
   podeRemover?: boolean
   errors?: Record<string, string>
+  /**
+   * Limpeza padronizada do erro inline: só o campo alterado é limpo, na
+   * digitação — o mesmo comportamento de `shouldValidate` do react-hook-form
+   * usado nas telas migradas.
+   */
+  onLimparErro?: (index: number, campo: CampoLinhaBem) => void
 }>
 
 const INPUT_CLASS =
@@ -45,6 +54,7 @@ export function LinhaBemRow({
   isLast,
   podeRemover = true,
   errors,
+  onLimparErro,
 }: LinhaBemRowProps) {
 
   const numeroHook = useNumeroPatrimonial({
@@ -66,71 +76,79 @@ export function LinhaBemRow({
   )
   const valorFormatoSelect = valorFormato === '' ? SELECIONE_SENTINEL : valorFormato
 
+  const atualizarCampo = (campo: CampoLinhaBem, valor: string) => {
+    const newLinhas = [...linhas]
+    newLinhas[index] = { ...newLinhas[index], [campo]: valor }
+    setLinhas(newLinhas)
+    onLimparErro?.(index, campo)
+  }
+
   const handleFormatoChange = (valorSelecionado: string) => {
     const valor = valorSelecionado === SELECIONE_SENTINEL ? '' : valorSelecionado
     const newLinhas = [...linhas]
+    const atual = { ...newLinhas[index] }
 
     if (valor === 'formato_anterior') {
-      newLinhas[index].numero_formato_antigo = true
-      newLinhas[index].sem_numeracao = false
+      atual.numero_formato_antigo = true
+      atual.sem_numeracao = false
       numeroHook.ativarFormatoAntigo()
     } else if (valor === 'sem_numeracao') {
-      newLinhas[index].numero_formato_antigo = false
-      newLinhas[index].sem_numeracao = true
-      newLinhas[index].numero_patrimonial = ''
+      atual.numero_formato_antigo = false
+      atual.sem_numeracao = true
+      atual.numero_patrimonial = ''
     } else {
-      newLinhas[index].numero_formato_antigo = false
-      newLinhas[index].sem_numeracao = false
+      atual.numero_formato_antigo = false
+      atual.sem_numeracao = false
       numeroHook.desativarFormatoAntigo()
     }
 
+    newLinhas[index] = atual
     setLinhas(newLinhas)
+    onLimparErro?.(index, 'numero_patrimonial')
   }
 
   return (
     <div className="grid grid-cols-[1.2fr_1fr_1fr_1.2fr_auto] gap-6 items-start border rounded p-4">
 
       {/* NÚMERO PATRIMONIAL */}
-      <div className="space-y-1">
-        <label htmlFor={`numero_patrimonial_${index}`} className="text-sm font-semibold text-gray-700">
-          Número Patrimonial <span className="text-red-500">*</span>
-        </label>
+      <ValidatedField
+        label="Número Patrimonial"
+        htmlFor={`numero_patrimonial_${index}`}
+        error={errors?.numero_patrimonial}
+        required
+      >
         <Input
           id={`numero_patrimonial_${index}`}
           className={INPUT_CLASS}
           placeholder="000.000000000-0"
           value={linha.numero_patrimonial}
           disabled={numeroHook.disabled}
-          onChange={(e) => {
-            const masked = numeroHook.applyMask(e.target.value)
-            const newLinhas = [...linhas]
-            newLinhas[index].numero_patrimonial = masked
-            setLinhas(newLinhas)
-          }}
+          aria-invalid={!!errors?.numero_patrimonial}
+          onChange={(e) =>
+            atualizarCampo('numero_patrimonial', numeroHook.applyMask(e.target.value))
+          }
         />
-        {errors?.numero_patrimonial && (
-          <p className="text-xs text-red-500">{errors.numero_patrimonial}</p>
-        )}
-      </div>
+      </ValidatedField>
 
       {/* FORMATO */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-1.5">
-          <label htmlFor={`formato_${index}`} className="text-sm font-semibold text-gray-700">
+      <ValidatedField
+        label={
+          <span className="flex items-center gap-1.5">
             Formato
-          </label>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info size={14} className="text-gray-400 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6} className="max-w-70">
-              Se marcado “Formato anterior”, não valida o formato do número (valor
-              livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
-              automaticamente.
-            </TooltipContent>
-          </Tooltip>
-        </div>
-
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info size={14} className="text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="max-w-70">
+                Se marcado “Formato anterior”, não valida o formato do número (valor
+                livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+                automaticamente.
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        }
+        htmlFor={`formato_${index}`}
+      >
         <Select value={valorFormatoSelect} onValueChange={handleFormatoChange}>
           <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
             <SelectValue placeholder="Selecione" />
@@ -141,49 +159,40 @@ export function LinhaBemRow({
             <SelectItem value="sem_numeracao">Sem número patrimonial</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </ValidatedField>
 
       {/* LOCALIZAÇÃO */}
-      <div className="space-y-1">
-        <label htmlFor={`localizacao_${index}`} className="text-sm font-semibold text-gray-700">
-          Localização <span className="text-red-500">*</span>
-        </label>
+      <ValidatedField
+        label="Localização"
+        htmlFor={`localizacao_${index}`}
+        error={errors?.localizacao}
+        required
+      >
         <Input
           id={`localizacao_${index}`}
           className={INPUT_CLASS}
           placeholder="Insira a localização do bem"
           value={linha.localizacao}
-          onChange={(e) => {
-            const newLinhas = [...linhas]
-            newLinhas[index].localizacao = e.target.value
-            setLinhas(newLinhas)
-          }}
+          aria-invalid={!!errors?.localizacao}
+          onChange={(e) => atualizarCampo('localizacao', e.target.value)}
         />
-        {errors?.localizacao && (
-          <p className="text-xs text-red-500">{errors.localizacao}</p>
-        )}
-      </div>
+      </ValidatedField>
 
       {/* NÚMERO DO PROCESSO DE INCORPORAÇÃO */}
-      <div className="space-y-1">
-        <label htmlFor={`numero_processo_${index}`} className="text-sm font-semibold text-gray-700">
-          Número do Processo de Incorporação
-        </label>
+      <ValidatedField
+        label="Número do Processo de Incorporação"
+        htmlFor={`numero_processo_${index}`}
+        error={errors?.numero_processo}
+      >
         <Input
           id={`numero_processo_${index}`}
           className={INPUT_CLASS}
           placeholder="Insira o nº do processo de incorporação"
           value={linha.numero_processo}
-          onChange={(e) => {
-            const newLinhas = [...linhas]
-            newLinhas[index].numero_processo = e.target.value
-            setLinhas(newLinhas)
-          }}
+          aria-invalid={!!errors?.numero_processo}
+          onChange={(e) => atualizarCampo('numero_processo', e.target.value)}
         />
-        {errors?.numero_processo && (
-          <p className="text-xs text-red-500">{errors.numero_processo}</p>
-        )}
-      </div>
+      </ValidatedField>
 
       {/* AÇÕES */}
       <div className="flex gap-2 pt-6">

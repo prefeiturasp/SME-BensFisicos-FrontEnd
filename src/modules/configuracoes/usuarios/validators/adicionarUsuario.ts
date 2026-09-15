@@ -3,14 +3,14 @@ import { newPasswordSchema } from "./password"
 
 export const adicionarUsuarioSchema = z
   .object({
-    nome: z.string().min(1, "Nome é obrigatório"),
-    rf: z.string().min(1, "RF é obrigatório"),
-    username: z.string().min(1, "Nome de usuário é obrigatório"),
-    email: z.email("E-mail inválido"),
+    nome: z.string({ error: "Nome é obrigatório" }).min(1, "Nome é obrigatório"),
+    rf: z.string({ error: "RF é obrigatório" }).min(1, "RF é obrigatório"),
+    username: z.string({ error: "Nome de usuário é obrigatório" }).min(1, "Nome de usuário é obrigatório"),
+    email: z.email({ error: "E-mail inválido" }),
     unidade: z.array(z.string()).default([]),
-    grupo: z.string().min(1, "Selecione um grupo"),
+    grupo: z.string({ error: "Selecione um grupo" }).min(1, "Selecione um grupo"),
     password: newPasswordSchema,
-    confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
+    confirmPassword: z.string({ error: "Confirmação de senha é obrigatória" }).min(1, "Confirmação de senha é obrigatória"),
     status: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

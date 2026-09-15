@@ -205,6 +205,23 @@ describe("AdicionarBaixaPage", () => {
         })
     })
 
+    it("exibe todos os campos pendentes numa unica submissao", async () => {
+        renderPage()
+
+        // Nenhum campo preenchido: unidade e itens estao ambos pendentes.
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(
+                screen.getByText("Selecione a unidade administrativa.")
+            ).toBeInTheDocument()
+        })
+
+        // O segundo erro aparece junto, e nao apenas apos corrigir o primeiro.
+        expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument()
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
     // --- Dropdown de bem ---
 
     it("abre dropdown ao focar no input de bem", async () => {
@@ -459,5 +476,18 @@ describe("AdicionarBaixaPage", () => {
         await waitFor(() => {
             expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
         })
+    })
+
+    it("renderiza 'Itens de Baixa Física' como título de seção", () => {
+        renderPage()
+
+        const titulo = screen.getByRole("heading", { name: "Itens de Baixa Física" })
+        expect(titulo.tagName).toBe("H2")
+    })
+
+    it("não duplica o rótulo da Data da Baixa", () => {
+        renderPage()
+
+        expect(screen.getAllByText("Data da Baixa")).toHaveLength(1)
     })
 })

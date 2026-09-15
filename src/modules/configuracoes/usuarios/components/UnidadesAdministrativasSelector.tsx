@@ -2,6 +2,7 @@ import { ChevronDown, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 import type { EscopoUa } from "../../../../auth/auth.service"
 
@@ -55,16 +56,26 @@ export function UnidadesAdministrativasSelector({
 
   return (
     <div className="flex flex-col gap-2" ref={containerRef}>
-      <Label className="text-sm font-semibold text-gray-700">
+      {/* data-error espelha o FormLabel: rótulo vermelho quando inválido. */}
+      <Label
+        data-error={!!errorMessage}
+        className={cn(
+          "text-sm font-semibold text-gray-700 data-[error=true]:text-destructive",
+          errorMessage && "text-destructive",
+        )}
+      >
         {label}
         {requiredNode ?? null}
       </Label>
 
       <div className="relative group">
         <div
-          className={`flex items-center gap-2 min-h-11 w-full rounded-xs border px-2 py-1.5 text-sm ${
-            disabled ? "border-gray-200 bg-gray-100 cursor-not-allowed" : "border-gray-300 bg-white cursor-text"
-          }`}
+          aria-invalid={!!errorMessage}
+          className={cn(
+            "flex items-center gap-2 min-h-11 w-full rounded-xs border px-2 py-1.5 text-sm",
+            disabled ? "border-gray-200 bg-gray-100 cursor-not-allowed" : "border-gray-300 bg-white cursor-text",
+            errorMessage && "border-destructive",
+          )}
         >
           <input
             value={filtroUa}
@@ -151,7 +162,11 @@ export function UnidadesAdministrativasSelector({
           Selecione uma Unidade Orçamentária para habilitar as Unidades Administrativas.
         </span>
       )}
-      {errorMessage && <span className="text-red-600 text-sm">{errorMessage}</span>}
+      {errorMessage && (
+        <p role="alert" className="text-destructive text-sm">
+          {errorMessage}
+        </p>
+      )}
     </div>
   )
 }

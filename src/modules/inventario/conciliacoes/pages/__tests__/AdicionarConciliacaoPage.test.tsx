@@ -10,16 +10,21 @@ vi.mock('../../components/DatepickerConciliacao', () => ({
     value,
     onChange,
     label,
+    invalid,
   }: {
     value: string;
     onChange: (value: string) => void;
     label: string;
+    invalid?: boolean;
   }) => (
     <div>
-      <label htmlFor='mock-datepicker'>{label}</label>
+      <label htmlFor='mock-datepicker' data-error={!!invalid}>
+        {label}
+      </label>
       <input
         id='mock-datepicker'
         aria-label='Período Final'
+        aria-invalid={!!invalid}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -129,19 +134,32 @@ describe('AdicionarConciliacaoPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('mantem o botao Salvar desabilitado ate o formulario estar valido', async () => {
+  it('mantem o botao Salvar habilitado e exibe a validacao inline do Periodo Final', async () => {
     render(
       <MemoryRouter>
         <AdicionarConciliacaoPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+    const salvar = screen.getByRole('button', { name: 'Salvar' });
+    expect(salvar).toBeEnabled();
+
+    fireEvent.click(salvar);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Data final do período da conciliação é obrigatória.'),
+      ).toBeInTheDocument();
+    });
+    expect(createMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Período Final')).toHaveAttribute('aria-invalid', 'true');
 
     fillPeriodoFinal();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled();
+      expect(
+        screen.queryByText('Data final do período da conciliação é obrigatória.'),
+      ).not.toBeInTheDocument();
     });
   });
 

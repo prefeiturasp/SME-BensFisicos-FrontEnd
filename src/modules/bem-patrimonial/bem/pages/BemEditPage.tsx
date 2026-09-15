@@ -132,12 +132,16 @@ export default function BemEditPage() {
     const houveAlteracaoNumero =
       (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
 
+    // As pendencias sao acumuladas e exibidas juntas, em vez de abortar na
+    // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
+    let temPendencia = false
+
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
       form.setError('numero_patrimonial' as any, {
         message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
       })
 
-      return
+      temPendencia = true
     }
 
     /*
@@ -158,8 +162,10 @@ export default function BemEditPage() {
           'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
       })
 
-      return
+      temPendencia = true
     }
+
+    if (temPendencia) return
 
     try {
       await bemService.update(values.id, {

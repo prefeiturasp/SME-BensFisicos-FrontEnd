@@ -1,23 +1,29 @@
-// pages/GerarNBBPMPage.tsx
-//
-// NOVO — Tela de cadastro das informações básicas necessárias à emissão
-// da NBBPM consolidada. Aberta a partir da ação "Gerar NBBPM" na
-// listagem de Baixas Físicas, com as Baixas Aprovadas selecionadas
-// recebidas via router state (`{ baixaIds: number[], processo: string }`).
-// O Número do processo vem preenchido e travado (readOnly) e o Gerado por
-// exibe o RF logado (disabled, sem envio no payload).
-
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
 import { toast } from "sonner"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
 import { useAuth } from "@/auth/useAuth"
 import { extractErrorMessage } from "@/lib/backend-form-errors"
+import {
+    gerarNbbpmSchema,
+    type GerarNbbpmFormData,
+} from "../validators/baixa-form.schema"
 import { baixaFisicaService, downloadBlob } from "../service/baixas.service"
 
 const ACTION_BUTTON_CLASS = `
@@ -28,6 +34,8 @@ const ACTION_BUTTON_CLASS = `
 
 const INPUT_CLASS =
     "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
+
+const LABEL_CLASS = "text-sm font-semibold text-gray-700"
 
 interface LocationState {
     baixaIds?: number[]
@@ -57,35 +65,30 @@ export default function GerarNBBPMPage() {
     const baixaIds = (location.state as LocationState | null)?.baixaIds ?? []
     const processoState = (location.state as LocationState | null)?.processo ?? ""
 
-    const [numeroProcessoBaixa, setNumeroProcessoBaixa] = useState(processoState)
-    const [dataAutorizacao, setDataAutorizacao] = useState("")
-    const [responsavel, setResponsavel] = useState("")
-    const [numeroProcessoDestinacaoFinal, setNumeroProcessoDestinacaoFinal] = useState("")
-
     const [submitting, setSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+
+    const form = useForm<GerarNbbpmFormData>({
+        resolver: zodResolver(gerarNbbpmSchema),
+        mode: "onSubmit",
+        defaultValues: {
+            // O número do processo vem da listagem e é apenas exibido (readOnly),
+            // mas continua no formulário para ser validado e enviado no payload.
+            numero_processo: processoState,
+            data_autorizacao: "",
+            responsavel: "",
+            numero_processo_destinacao_final: "",
+        },
+    })
 
     const handleCancelar = () => {
         navigate(-1)
     }
 
-    const handleGerarBaixa = async () => {
-        setError(null)
-
+    const handleGerarBaixa = form.handleSubmit(async (values) => {
         if (baixaIds.length === 0) {
-            setError("Nenhuma Baixa Física aprovada foi selecionada.")
-            return
-        }
-        if (!numeroProcessoBaixa.trim()) {
-            setError("Informe o número do processo de Baixa.")
-            return
-        }
-        if (!dataAutorizacao) {
-            setError("Informe a data da autorização.")
-            return
-        }
-        if (!responsavel.trim()) {
-            setError("Informe o responsável.")
+            form.setError("root.serverError", {
+                message: "Nenhuma Baixa Física aprovada foi selecionada.",
+            })
             return
         }
 
@@ -93,31 +96,35 @@ export default function GerarNBBPMPage() {
         try {
             const nbbpm = await baixaFisicaService.gerarNbbpmLote({
                 baixas: baixaIds,
-                numero_processo_baixa: numeroProcessoBaixa.trim(),
-                data_autorizacao: dataAutorizacao,
-                responsavel: responsavel.trim(),
-                numero_processo_destinacao_final: numeroProcessoDestinacaoFinal.trim() || "",
+                numero_processo_baixa: values.numero_processo,
+                data_autorizacao: values.data_autorizacao,
+                responsavel: values.responsavel,
+                numero_processo_destinacao_final:
+                    values.numero_processo_destinacao_final?.trim() || "",
             })
+
             try {
                 const pdf = await baixaFisicaService.baixarNbbpmPdf(nbbpm.id)
-                downloadBlob(pdf, `NBBPM_${nbbpm.numero ?? numeroProcessoBaixa.trim()}.pdf`)
+                downloadBlob(pdf, `NBBPM_${nbbpm.numero ?? values.numero_processo}.pdf`)
             } catch (pdfErr) {
                 toast.error(getMensagemErroNbbpm(pdfErr, "Erro ao baixar NBBPM."))
             }
+
             toast.success(
                 nbbpm?.numero ? `NBBPM ${nbbpm.numero} gerada com sucesso!` : "NBBPM gerada com sucesso!"
             )
             navigate(-1)
         } catch (err: unknown) {
             const message = getMensagemErroNbbpm(err)
-            setError(message)
+            form.setError("root.serverError", { message })
             toast.error(message)
         } finally {
             setSubmitting(false)
         }
-    }
+    })
 
     return (
+        <Form {...form}>
         <div className="p-8 space-y-4">
 
             <AppBreadcrumb
@@ -148,13 +155,13 @@ export default function GerarNBBPMPage() {
                 </div>
             </div>
 
-            {error && (
+            {form.formState.errors.root?.serverError?.message && (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {error}
+                    {form.formState.errors.root.serverError.message}
                 </div>
             )}
 
-            {baixaIds.length === 0 && !error && (
+            {baixaIds.length === 0 && !form.formState.errors.root?.serverError && (
                 <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-4 py-2" role="alert">
                     Nenhuma Baixa Física aceita foi selecionada. Volte para a listagem e
                     selecione ao menos uma Baixa com status Aceita.
@@ -168,74 +175,112 @@ export default function GerarNBBPMPage() {
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="numero-processo-baixa" className="text-sm font-semibold text-gray-700">
-                            Número do processo de Baixa *
-                        </label>
-                        <input
-                            id="numero-processo-baixa"
-                            value={numeroProcessoBaixa}
-                            onChange={(e) => setNumeroProcessoBaixa(e.target.value)}
-                            placeholder="Ex.: 6016.2025/0117371-7"
-                            readOnly
-                            className={`${INPUT_CLASS} bg-gray-50`}
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="numero_processo"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel className={LABEL_CLASS} htmlFor="numero-processo-baixa">
+                                    Número do processo de Baixa *
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        id="numero-processo-baixa"
+                                        placeholder="Ex.: 6016.2025/0117371-7"
+                                        readOnly
+                                        className={`${INPUT_CLASS} bg-gray-50`}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
+                    {/*
+                      Gerado por é apenas informativo: mostra o RF do usuário logado
+                      e não é enviado no payload, por isso fica fora do formulário.
+                    */}
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="gerado-por" className="text-sm font-semibold text-gray-700">
+                        <Label htmlFor="gerado-por" className={LABEL_CLASS}>
                             Gerado por
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             id="gerado-por"
                             value={user?.rf ?? ""}
+                            readOnly
                             disabled
                             placeholder="RF do usuário logado"
                             className={`${INPUT_CLASS} bg-gray-50 disabled:opacity-100`}
                         />
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="data-autorizacao" className="text-sm font-semibold text-gray-700">
-                            Data da Autorização *
-                        </label>
-                        <input
-                            id="data-autorizacao"
-                            type="date"
-                            value={dataAutorizacao}
-                            onChange={(e) => setDataAutorizacao(e.target.value)}
-                            className={INPUT_CLASS}
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="data_autorizacao"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel className={LABEL_CLASS} htmlFor="data-autorizacao">
+                                    Data da Autorização *
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        id="data-autorizacao"
+                                        type="date"
+                                        className={INPUT_CLASS}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="responsavel" className="text-sm font-semibold text-gray-700">
-                            Responsável *
-                        </label>
-                        <input
-                            id="responsavel"
-                            value={responsavel}
-                            onChange={(e) => setResponsavel(e.target.value)}
-                            placeholder="Nome do responsável"
-                            className={INPUT_CLASS}
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="responsavel"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel className={LABEL_CLASS} htmlFor="responsavel">
+                                    Responsável *
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        id="responsavel"
+                                        placeholder="Nome do responsável"
+                                        className={INPUT_CLASS}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="numero-processo-destinacao-final" className="text-sm font-semibold text-gray-700">
-                            Número do processo de destinação final
-                        </label>
-                        <input
-                            id="numero-processo-destinacao-final"
-                            value={numeroProcessoDestinacaoFinal}
-                            onChange={(e) => setNumeroProcessoDestinacaoFinal(e.target.value)}
-                            placeholder="Opcional"
-                            className={INPUT_CLASS}
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="numero_processo_destinacao_final"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel className={LABEL_CLASS} htmlFor="numero-processo-destinacao-final">
+                                    Número do processo de destinação final
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        id="numero-processo-destinacao-final"
+                                        placeholder="Opcional"
+                                        className={INPUT_CLASS}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
 
             </Card>
         </div>
+        </Form>
     )
 }

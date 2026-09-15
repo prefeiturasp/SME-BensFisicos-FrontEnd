@@ -1,4 +1,5 @@
 import { CircleHelp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +19,8 @@ interface FieldLabelWithTooltipProps {
   tooltip: string;
   required?: boolean;
   optional?: boolean;
+  /** Deixa o rótulo vermelho quando o campo está inválido (padrão UO/UA). */
+  invalid?: boolean;
 }
 
 export function FieldLabelWithTooltip({
@@ -26,10 +29,21 @@ export function FieldLabelWithTooltip({
   tooltip,
   required = false,
   optional = false,
+  invalid = false,
 }: Readonly<FieldLabelWithTooltipProps>) {
   return (
     <div className={LABEL_WITH_TOOLTIP_ROW_CLASS}>
-      <label htmlFor={htmlFor} className={LABEL_CLASS}>
+      {/* data-error espelha o comportamento do FormLabel: rótulo vermelho
+          quando o campo está inválido — mesmo padrão de UO/UA. */}
+      <label
+        htmlFor={htmlFor}
+        data-error={invalid}
+        className={cn(
+          LABEL_CLASS,
+          'data-[error=true]:text-destructive',
+          invalid && 'text-destructive',
+        )}
+      >
         {label}
         {required && (
           <span className={REQUIRED_ASTERISK_CLASS} aria-hidden='true'>
