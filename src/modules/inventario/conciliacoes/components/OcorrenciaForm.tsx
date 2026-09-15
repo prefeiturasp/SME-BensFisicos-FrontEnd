@@ -98,6 +98,7 @@ export function OcorrenciaForm({
               <FormLabel asChild invalid={fieldState.invalid}>
                 <span className={LABEL_CLASS}>
                   Situação da Ocorrência
+                  {' '}
                   <span className={REQUIRED_ASTERISK_CLASS} aria-hidden='true'>
                     *
                   </span>
