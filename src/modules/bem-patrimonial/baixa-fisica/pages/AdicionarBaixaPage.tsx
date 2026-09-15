@@ -9,7 +9,6 @@ import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
@@ -400,15 +399,13 @@ export default function AdicionarBaixaPage() {
                     <FormField
                         control={form.control}
                         name="data_baixa"
-                        render={({ field }) => (
+                        render={({ field, fieldState }) => (
                             <FormItem className="flex flex-col gap-2">
-                                <FormLabel asChild>
-                                    <Label
-                                        htmlFor="data-baixa"
-                                        className="text-sm font-semibold text-gray-700 data-[error=true]:text-destructive"
-                                    >
-                                        Data da Baixa
-                                    </Label>
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="data-baixa"
+                                >
+                                    Data da Baixa
                                 </FormLabel>
                                 <FormControl>
                                     <DatePicker
@@ -419,6 +416,7 @@ export default function AdicionarBaixaPage() {
                                         ariaLabel="Data da Baixa"
                                         className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm"
                                         disabled={isDataFutura}
+                                        invalid={fieldState.invalid}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -433,8 +431,15 @@ export default function AdicionarBaixaPage() {
                     name="itens"
                     render={() => (
                         <FormItem className="space-y-2">
-                            <FormLabel className="text-sm font-semibold text-green-700 data-[error=true]:text-destructive">
-                                Itens de Baixa Física
+                            {/* Título de seção: não rotula um campo único, por isso
+                                é renderizado como h2 via asChild. */}
+                            <FormLabel asChild>
+                                <h2
+                                    id="itens-baixa-fisica"
+                                    className="text-sm font-semibold text-green-700"
+                                >
+                                    Itens de Baixa Física
+                                </h2>
                             </FormLabel>
                             <FormMessage />
                         </FormItem>

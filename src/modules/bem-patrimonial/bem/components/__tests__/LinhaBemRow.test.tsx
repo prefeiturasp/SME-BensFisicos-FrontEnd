@@ -315,4 +315,54 @@ describe('LinhaBemRow', () => {
     )
     expect(tooltipMatches.length).toBeGreaterThan(0)
   })
+
+  it('deve pintar rótulo e borda no padrão inline quando a localização é inválida', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+      />
+    )
+
+    const input = screen.getByPlaceholderText('Insira a localização do bem')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    const mensagem = screen.getByRole('alert')
+    expect(mensagem).toHaveTextContent('Localização é obrigatória.')
+    expect(mensagem).toHaveClass('text-destructive')
+
+    const label = screen.getByText('Localização')
+    expect(label).toHaveAttribute('data-error', 'true')
+    expect(label.className).toContain('text-destructive')
+  })
+
+  it('deve limpar somente o erro do campo alterado', () => {
+    const onLimparErro = vi.fn()
+
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={2}
+        linhas={[linhaBase, linhaBase, linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        addLinha={addLinha}
+        isLast={true}
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+        onLimparErro={onLimparErro}
+      />
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Insira a localização do bem'), {
+      target: { value: 'Sala 10' },
+    })
+
+    expect(onLimparErro).toHaveBeenCalledWith(2, 'localizacao')
+  })
 })

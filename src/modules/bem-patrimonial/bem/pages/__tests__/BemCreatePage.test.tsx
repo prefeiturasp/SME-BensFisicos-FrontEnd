@@ -35,7 +35,16 @@ vi.mock('@/components/AppBreadcrumb', () => ({
 }))
 
 vi.mock('../../components/LinhaBemRow', () => ({
-  LinhaBemRow: ({ addLinha, removeLinha, index, errors, linha, linhas, setLinhas }: any) => (
+  LinhaBemRow: ({
+    addLinha,
+    removeLinha,
+    index,
+    errors,
+    linha,
+    linhas,
+    setLinhas,
+    onLimparErro,
+  }: any) => (
     <div data-testid={`linha-${index}`}>
       {errors?.numero_patrimonial && (
         <p data-testid={`erro-linha-${index}`}>{errors.numero_patrimonial}</p>
@@ -51,6 +60,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
           const newLinhas = [...linhas]
           newLinhas[index] = { ...newLinhas[index], localizacao: e.target.value }
           setLinhas(newLinhas)
+          onLimparErro?.(index, 'localizacao')
         }}
       />
       <input
@@ -61,6 +71,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
           const newLinhas = [...linhas]
           newLinhas[index] = { ...newLinhas[index], numero_processo: e.target.value }
           setLinhas(newLinhas)
+          onLimparErro?.(index, 'numero_processo')
         }}
       />
       <button onClick={() => removeLinha(index)}>Remover Linha</button>
@@ -442,6 +453,43 @@ describe('BemCreatePage', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
     })
+  })
+
+  it('deve limpar apenas o erro do campo alterado na linha', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': {
+            localizacao: 'Localização é obrigatória.',
+            numero_patrimonial: 'Inválido.',
+          },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('erro-localizacao-0')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Localização'), {
+      target: { value: 'Sala Nova' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
+    })
+    expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
   })
 
   // ------------------------------------------------------------------
@@ -826,5 +874,35 @@ describe('BemCreatePage', () => {
     )
 
     expect(screen.getByDisplayValue('PROC-2024-001')).toBeInTheDocument()
+  })
+
+  it('deve exibir uma única mensagem e borda vermelha na Unidade Administrativa', async () => {
+    mockUAs = [
+      { id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' },
+      { id: 2, unidade_administrativa_id: 20, label: 'UA Teste - 002' },
+    ]
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+
+    renderPage()
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText('Unidade Administrativa é obrigatório.'),
+      ).toHaveLength(1)
+    })
+
+    expect(
+      screen.getByPlaceholderText('Buscar Unidade Administrativa...'),
+    ).toHaveAttribute('aria-invalid', 'true')
   })
 })

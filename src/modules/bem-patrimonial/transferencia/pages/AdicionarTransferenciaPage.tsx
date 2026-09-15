@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { BemCadastroPageShell } from '@/modules/bem-patrimonial/components/BemCadastroPageShell'
+import { limparErroServidor } from '@/lib/inline-validation'
 import { BemSelectorRow } from '@/modules/bem-patrimonial/components/BemSelectorRow'
 import { useBemSelectionRows } from '@/modules/bem-patrimonial/components/useBemSelectionRows'
 import { bemService } from '@/modules/bem-patrimonial/bem/services/bem.service'
@@ -111,9 +112,12 @@ export default function AdicionarTransferenciaPage() {
 
   const selectedUoId = form.watch('unidade_orcamentaria_destino')
 
-  const clearError = useCallback(() => {
-    form.clearErrors('root.serverError')
-  }, [form])
+  /**
+   * Só o erro de servidor é limpo aqui: cada campo revalida sozinho na
+   * digitação (reValidateMode do react-hook-form), sem apagar o erro dos
+   * demais campos pendentes.
+   */
+  const clearError = useCallback(() => limparErroServidor(form), [form])
   const {
     rows,
     allSelectedIds,

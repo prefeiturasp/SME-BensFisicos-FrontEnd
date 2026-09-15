@@ -20,6 +20,11 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { BemCadastroPageShell } from '@/modules/bem-patrimonial/components/BemCadastroPageShell'
 import {
+  definirCampoValidado,
+  limparErroServidor,
+} from '@/lib/inline-validation'
+import { cn } from '@/lib/utils'
+import {
   Form,
   FormControl,
   FormField,
@@ -99,6 +104,8 @@ type NumeroPatrimonialAutocompleteProps = Readonly<{
   value: string
   unidadeAdministrativaId: number | null
   onChange: (value: string) => void
+  /** Rótulo vermelho + borda vermelha, mesmo padrão de UO/UA. */
+  invalid?: boolean
 }>
 
 function NumeroPatrimonialAutocomplete({
@@ -107,6 +114,7 @@ function NumeroPatrimonialAutocomplete({
   value,
   unidadeAdministrativaId,
   onChange,
+  invalid = false,
 }: NumeroPatrimonialAutocompleteProps) {
   const [aberto, setAberto] = useState(false)
   const [carregando, setCarregando] = useState(false)
@@ -158,7 +166,15 @@ function NumeroPatrimonialAutocomplete({
 
   return (
     <div className='relative flex flex-col gap-2' ref={containerRef}>
-      <label htmlFor={id} className='text-sm font-semibold text-gray-700'>
+      {/* data-error espelha o FormLabel: rótulo vermelho quando inválido. */}
+      <label
+        htmlFor={id}
+        data-error={invalid}
+        className={cn(
+          'text-sm font-semibold text-gray-700 data-[error=true]:text-destructive',
+          invalid && 'text-destructive',
+        )}
+      >
         {label}
       </label>
       <div className='relative'>
@@ -174,6 +190,7 @@ function NumeroPatrimonialAutocomplete({
           inputMode='numeric'
           maxLength={15}
           className={INPUT_CLASS}
+          aria-invalid={invalid}
           aria-autocomplete='list'
           aria-expanded={aberto}
         />
@@ -232,15 +249,25 @@ export default function AdicionarMovimentacaoPage() {
   const numeroDe = form.watch('numero_de') ?? ''
   const numeroAte = form.watch('numero_ate') ?? ''
   const setSelectedUaId = useCallback(
-    (value: string) => form.setValue('unidade_administrativa_destino', value),
+    (value: string) => definirCampoValidado(form, 'unidade_administrativa_destino', value),
     [form],
   )
+  /**
+   * A mensagem da faixa (De/Até) é sempre exibida em `numero_de`, então editar
+   * qualquer um dos dois campos limpa essa pendência — e somente ela.
+   */
   const setNumeroDe = useCallback(
-    (value: string) => form.setValue('numero_de', value),
+    (value: string) => {
+      definirCampoValidado(form, 'numero_de', value)
+      form.clearErrors('numero_de')
+    },
     [form],
   )
   const setNumeroAte = useCallback(
-    (value: string) => form.setValue('numero_ate', value),
+    (value: string) => {
+      definirCampoValidado(form, 'numero_ate', value)
+      form.clearErrors('numero_de')
+    },
     [form],
   )
   const [faixas, setFaixas] = useState<FaixaMovimentacao[]>([])
@@ -364,10 +391,17 @@ export default function AdicionarMovimentacaoPage() {
     [form],
   )
 
-  const limparErros = useCallback(() => {
+  /**
+   * Usado pelas sub-ações de itens (adicionar faixa / selecionar todos), que
+   * são as donas desses dois erros. A digitação de cada campo limpa apenas o
+   * próprio campo, via `definirCampoValidado`.
+   */
+  const limparErrosDeItens = useCallback(() => {
     form.clearErrors(['itens', 'numero_de'])
-    form.clearErrors('root.serverError')
+    limparErroServidor(form)
   }, [form])
+
+  const limparErroDeServidor = useCallback(() => limparErroServidor(form), [form])
 
   const addFaixa = useCallback(async () => {
     if (!originUaId || !numeroDe.trim()) {
@@ -401,7 +435,7 @@ export default function AdicionarMovimentacaoPage() {
         : { numero_patrimonial_ate: numeroAteNormalizado }),
     }
     setAdicionandoItens(true)
-    limparErros()
+    limparErrosDeItens()
     try {
       const { itens } = await movimentacaoService.resolverItensLote({
         unidade_administrativa_origem: originUaId,
@@ -432,7 +466,7 @@ export default function AdicionarMovimentacaoPage() {
     } finally {
       setAdicionandoItens(false)
     }
-  }, [exibirErro, limparErros, faixas, numeroAte, numeroDe, originUaId, setNumeroDe, setNumeroAte])
+  }, [exibirErro, limparErrosDeItens, faixas, numeroAte, numeroDe, originUaId, setNumeroDe, setNumeroAte])
 
   const handleSelecionarTodos = useCallback(
     async (checked: boolean) => {
@@ -447,7 +481,7 @@ export default function AdicionarMovimentacaoPage() {
       }
 
       setAdicionandoItens(true)
-      limparErros()
+      limparErrosDeItens()
       try {
         const { itens } = await movimentacaoService.resolverItensLote({
           unidade_administrativa_origem: originUaId,
@@ -470,7 +504,7 @@ export default function AdicionarMovimentacaoPage() {
         setAdicionandoItens(false)
       }
     },
-    [exibirErro, limparErros, originUaId],
+    [exibirErro, limparErrosDeItens, originUaId],
   )
 
   const removerFaixa = (faixaId: string) => {
@@ -563,7 +597,7 @@ export default function AdicionarMovimentacaoPage() {
             value={field.value}
             onValueChange={(value) => {
               field.onChange(value)
-              limparErros()
+              limparErroDeServidor()
             }}
           >
             <FormControl>
@@ -601,7 +635,7 @@ export default function AdicionarMovimentacaoPage() {
             value={field.value ?? ''}
             onValueChange={(value) => {
               field.onChange(value)
-              limparErros()
+              limparErroDeServidor()
             }}
             disabled={!selectedUoId || !destinoMesmaUo}
           >
@@ -653,7 +687,7 @@ export default function AdicionarMovimentacaoPage() {
                 id='observacao'
                 onChange={(event) => {
                   field.onChange(event)
-                  limparErros()
+                  limparErroDeServidor()
                 }}
                 placeholder='Digite uma observação'
                 className='min-h-28'
@@ -733,7 +767,7 @@ export default function AdicionarMovimentacaoPage() {
             <FormField
               control={form.control}
               name='numero_de'
-              render={() => (
+              render={({ fieldState }) => (
                 <FormItem>
                   <NumeroPatrimonialAutocomplete
                     id='numero-patrimonial-de'
@@ -741,6 +775,7 @@ export default function AdicionarMovimentacaoPage() {
                     value={numeroDe}
                     unidadeAdministrativaId={originUaId}
                     onChange={setNumeroDe}
+                    invalid={fieldState.invalid}
                   />
                   <FormMessage />
                 </FormItem>

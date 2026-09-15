@@ -758,7 +758,7 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(screen.getByRole('button', { name: /^salvar$/i })).toBeDisabled()
   })
 
-  it('deve limpar o alerta ao alterar a observação', async () => {
+  it('deve limpar o erro apenas do campo alterado', async () => {
     renderPage()
     await waitForUoOptions()
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
@@ -770,9 +770,35 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
     expect(screen.getByRole('alert')).toBeInTheDocument()
 
+    // Alterar outro campo não apaga a pendência do Número Patrimonial - De.
     fireEvent.change(screen.getByLabelText('Observação'), { target: { value: 'Teste' } })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Corrigir o próprio campo limpa a mensagem dele.
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000001-1' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+  })
+
+  it('deve marcar o campo Número Patrimonial - De como inválido', async () => {
+    renderPage()
+    await waitForUoOptions()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
+      target: { value: '001.000000012-0' },
+    })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
+      target: { value: '001.000000010-0' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
+
+    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
   })
 
   it('deve confirmar antes de substituir faixas pela seleção de todos', async () => {

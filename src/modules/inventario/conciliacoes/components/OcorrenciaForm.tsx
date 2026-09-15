@@ -1,11 +1,15 @@
 import { useEffect, useMemo } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
-import { Form } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CampoDescricaoDivergencia } from './CampoDescricaoDivergencia';
 import { CampoObservacao } from './CampoObservacao';
 import { OcorrenciaMensagemCondicional } from './OcorrenciaMensagemCondicional';
 import { OcorrenciaOpcoesList } from './OcorrenciaOpcoesList';
-import { ROOT_ERROR_ALERT_CLASS } from '../utils/form-styles';
+import {
+  LABEL_CLASS,
+  REQUIRED_ASTERISK_CLASS,
+  ROOT_ERROR_ALERT_CLASS,
+} from '../utils/form-styles';
 import type { OcorrenciaFormData } from '../validators/ocorrencia-form.schema';
 import type {
   ConciliacaoItemSituacao,
@@ -84,11 +88,30 @@ export function OcorrenciaForm({
           mostrar={mostrarMensagemCondicional}
         />
 
-        <OcorrenciaOpcoesList
-          opcoes={opcoesNormalizadas}
-          selected={(situacaoSelecionada as ConciliacaoItemSituacao) ?? ''}
-          onSelect={handleSelectSituacao}
-          disabled={disabled}
+        {/* A situação também recebe rótulo e mensagem inline, para que todos os
+            campos pendentes do fluxo apareçam de uma vez — padrão UO/UA. */}
+        <FormField
+          control={form.control}
+          name='situacao'
+          render={({ fieldState }) => (
+            <FormItem className='space-y-2'>
+              <FormLabel asChild invalid={fieldState.invalid}>
+                <span className={LABEL_CLASS}>
+                  Situação da Ocorrência
+                  <span className={REQUIRED_ASTERISK_CLASS} aria-hidden='true'>
+                    *
+                  </span>
+                </span>
+              </FormLabel>
+              <OcorrenciaOpcoesList
+                opcoes={opcoesNormalizadas}
+                selected={(situacaoSelecionada as ConciliacaoItemSituacao) ?? ''}
+                onSelect={handleSelectSituacao}
+                disabled={disabled}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
         />
 
         {situacaoSelecionada === 'divergente' ? (

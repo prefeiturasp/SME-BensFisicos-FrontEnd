@@ -1,4 +1,5 @@
 import { CircleHelp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -37,7 +38,11 @@ export function FieldLabelWithTooltip({
       <label
         htmlFor={htmlFor}
         data-error={invalid}
-        className={`${LABEL_CLASS} data-[error=true]:text-destructive`}
+        className={cn(
+          LABEL_CLASS,
+          'data-[error=true]:text-destructive',
+          invalid && 'text-destructive',
+        )}
       >
         {label}
         {required && (

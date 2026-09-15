@@ -53,13 +53,14 @@ function UASearchSelect({
   value,
   onChange,
   uas,
-  error,
+  invalid = false,
   id,
 }: Readonly<{
   value: string
   onChange: (id: string) => void
   uas: any[]
-  error?: string
+  /** Pinta a borda do input. A mensagem fica a cargo do ValidatedField. */
+  invalid?: boolean
   id?: string
 }>) {
   const [open, setOpen] = useState(false)
@@ -94,6 +95,7 @@ function UASearchSelect({
         id={id}
         className={INPUT_CLASS}
         placeholder="Buscar Unidade Administrativa..."
+        aria-invalid={invalid}
         value={open ? search : displayValue}
         onFocus={() => { setOpen(true); setSearch('') }}
         onChange={e => setSearch(e.target.value)}
@@ -126,7 +128,6 @@ function UASearchSelect({
           )}
         </div>
       )}
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
@@ -187,18 +188,38 @@ export default function BemCreatePage() {
     }
   }, [uaAtivaId, todasUAs.length])
 
-  const updateLinhas = (
+  /**
+   * Adicionar/remover linhas reordena os índices, então os erros das linhas
+   * são zerados nessas duas ações. A digitação limpa apenas o campo alterado
+   * (`limparErroLinha`), mesmo padrão das telas em react-hook-form.
+   */
+  const resetLinhas = (
     updater: React.SetStateAction<LinhaBemComId[]>
   ) => {
     setLinhas(updater)
     setLinhasErrors({})
   }
 
-  const addLinha = () => updateLinhas(prev => [...prev, novaLinha()])
+  const addLinha = () => resetLinhas(prev => [...prev, novaLinha()])
 
   const removeLinha = (index: number) => {
     if (linhas.length === 1) return
-    updateLinhas(prev => prev.filter((_, i) => i !== index))
+    resetLinhas(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const limparErroLinha = (index: number, campo: string) => {
+    setLinhasErrors(prev => {
+      if (!prev[index]?.[campo]) return prev
+      const next = { ...prev }
+      const errosLinha = { ...next[index] }
+      delete errosLinha[campo]
+      if (Object.keys(errosLinha).length === 0) {
+        delete next[index]
+      } else {
+        next[index] = errosLinha
+      }
+      return next
+    })
   }
 
   const validarBase = (): FormErrors => {
@@ -327,7 +348,7 @@ export default function BemCreatePage() {
                 value={formBase.unidade_administrativa}
                 onChange={id => setField('unidade_administrativa', id)}
                 uas={todasUAs}
-                error={formErrors.unidade_administrativa}
+                invalid={!!formErrors.unidade_administrativa}
               />
             </ValidatedField>
           </div>
@@ -448,12 +469,13 @@ export default function BemCreatePage() {
               linha={linha}
               index={index}
               linhas={linhas}
-              setLinhas={updateLinhas as any}
+              setLinhas={setLinhas as any}
               removeLinha={removeLinha}
               addLinha={addLinha}
               isLast={index === linhas.length - 1}
               podeRemover={linhas.length > 1}
               errors={linhasErrors[index]}
+              onLimparErro={limparErroLinha}
             />
           ))}
         </div>

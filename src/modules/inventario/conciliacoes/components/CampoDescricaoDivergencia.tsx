@@ -1,7 +1,6 @@
 import type { UseFormReturn, FieldPath, FieldValues } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { FieldLabelWithTooltip } from './FieldLabelWithTooltip';
 import { TEXTAREA_CLASS } from '../utils/form-styles';
 
@@ -44,7 +43,7 @@ export function CampoDescricaoDivergencia<T extends FieldValues>({
               onBlur={field.onBlur}
               disabled={disabled}
               aria-invalid={fieldState.invalid}
-              className={cn(TEXTAREA_CLASS, fieldState.invalid && 'border-red-500')}
+              className={TEXTAREA_CLASS}
             />
           </FormControl>
           <FormMessage />

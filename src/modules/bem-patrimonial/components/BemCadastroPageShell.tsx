@@ -22,6 +22,8 @@ type BemCadastroPageShellProps = Readonly<{
    * Mantém o botão desabilitado apenas em estados que impedem qualquer
    * submissão (ex.: carregando). Pendências de campo NÃO devem desabilitar o
    * botão: o usuário precisa poder submeter para receber a validação inline.
+   *
+   * Durante `submitting` o botão é sempre bloqueado, evitando envio duplicado.
    */
   canSave?: boolean
   submitting: boolean
@@ -60,7 +62,7 @@ export function BemCadastroPageShell(props: BemCadastroPageShellProps) {
           <Button
             type='button'
             onClick={onSave}
-            disabled={!canSave}
+            disabled={!canSave || submitting}
             className={`${PRIMARY_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {submitting ? 'Salvando...' : saveLabel}

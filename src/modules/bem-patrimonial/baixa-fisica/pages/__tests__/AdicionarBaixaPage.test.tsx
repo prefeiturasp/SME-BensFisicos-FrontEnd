@@ -477,4 +477,17 @@ describe("AdicionarBaixaPage", () => {
             expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
         })
     })
+
+    it("renderiza 'Itens de Baixa Física' como título de seção", () => {
+        renderPage()
+
+        const titulo = screen.getByRole("heading", { name: "Itens de Baixa Física" })
+        expect(titulo.tagName).toBe("H2")
+    })
+
+    it("não duplica o rótulo da Data da Baixa", () => {
+        renderPage()
+
+        expect(screen.getAllByText("Data da Baixa")).toHaveLength(1)
+    })
 })

@@ -65,7 +65,11 @@ export function DatepickerConciliacao({
         <label
           htmlFor={id}
           data-error={invalid}
-          className={cn(LABEL_CLASS, 'data-[error=true]:text-destructive')}
+          className={cn(
+            LABEL_CLASS,
+            'data-[error=true]:text-destructive',
+            invalid && 'text-destructive',
+          )}
         >
           {label}
         </label>

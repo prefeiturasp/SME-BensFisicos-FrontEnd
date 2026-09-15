@@ -54,6 +54,7 @@ export function ValidatedField(props: ValidatedFieldProps) {
         className={cn(
           'text-sm font-semibold text-gray-700 data-[error=true]:text-destructive',
           labelClassName,
+          temErro && 'text-destructive',
         )}
       >
         {label}
