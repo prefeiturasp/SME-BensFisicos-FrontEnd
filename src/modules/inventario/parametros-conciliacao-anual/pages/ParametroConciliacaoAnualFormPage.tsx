@@ -379,12 +379,12 @@ export default function ParametroConciliacaoAnualFormPage() {
     );
   }
 
-  const isSaveDisabled =
-    !unidadeOrcamentariaId ||
-    submitting ||
-    updateMutation.isPending ||
-    !form.formState.isValid ||
-    (isEdit && !form.formState.isDirty);
+  /**
+   * O botão só é bloqueado enquanto o envio está em andamento. Pendências de
+   * campo NÃO desabilitam Salvar: o usuário submete e recebe a validação
+   * inline em cada campo — mesmo padrão de UO/UA.
+   */
+  const isSaveDisabled = submitting || updateMutation.isPending;
 
   return (
     <div className='space-y-4 p-8' data-testid='parametro-conciliacao-form'>

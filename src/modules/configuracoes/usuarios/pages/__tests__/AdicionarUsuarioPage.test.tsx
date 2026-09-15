@@ -545,10 +545,11 @@ describe("AdicionarUsuarioPage", () => {
 
             fireEvent.click(screen.getByText("Salvar"))
 
+            // Padrão inline: mensagem por campo com role="alert" e text-destructive.
             await waitFor(() => {
-                const errors = screen.getAllByRole("generic").filter(el =>
-                    el.className.includes("text-red-600")
-                )
+                const errors = screen
+                    .getAllByRole("alert")
+                    .filter((el) => el.className.includes("text-destructive"))
                 expect(errors.length).toBeGreaterThan(0)
             })
         })

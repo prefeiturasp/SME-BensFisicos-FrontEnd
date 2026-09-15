@@ -154,6 +154,11 @@ export default function AdicionarUsuarioPage() {
           todasUnidades={todasUnidades}
           filtroUa={filtroUa}
           unidadeError={errors.unidade?.message}
+          nomeError={errors.nome?.message}
+          rfError={errors.rf?.message}
+          usernameError={errors.username?.message}
+          emailError={errors.email?.message}
+          grupoError={errors.grupo?.message}
           disableUaSelector={!uoSelecionadaId}
           onNomeChange={(event) => setValue("nome", event.target.value, { shouldValidate: true })}
           onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true })}
