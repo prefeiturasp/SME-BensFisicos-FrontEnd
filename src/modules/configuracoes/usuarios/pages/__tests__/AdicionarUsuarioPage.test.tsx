@@ -167,7 +167,7 @@ async function fillForm(
     fireEvent.change(screen.getByPlaceholderText("Digite o nome completo"), {
         target: { value: data.nome },
     })
-    fireEvent.change(screen.getByPlaceholderText("Digite o rf"), {
+    fireEvent.change(screen.getByPlaceholderText("Digite o RF"), {
         target: { value: data.rf },
     })
     fireEvent.change(
@@ -244,7 +244,7 @@ describe("AdicionarUsuarioPage", () => {
             renderComponent()
 
             expect(screen.getByPlaceholderText("Digite o nome completo")).toBeInTheDocument()
-            expect(screen.getByPlaceholderText("Digite o rf")).toBeInTheDocument()
+            expect(screen.getByPlaceholderText("Digite o RF")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Digite o nome de usuário de acesso")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Digite o e-mail")).toBeInTheDocument()
             expect(screen.getByPlaceholderText("Cadastre uma senha")).toBeInTheDocument()
@@ -464,8 +464,8 @@ describe("AdicionarUsuarioPage", () => {
         it("alterna campo de senha para 'text' ao clicar no botão olho", () => {
             renderComponent()
 
-            const toggleButtons = screen.getAllByRole("button", { name: "" })
-            fireEvent.click(toggleButtons[1])
+            const senhaInput = screen.getByPlaceholderText("Cadastre uma senha")
+            fireEvent.click(senhaInput.parentElement!.querySelector("button")!)
 
             expect(screen.getByPlaceholderText("Cadastre uma senha")).toHaveAttribute(
                 "type",
@@ -476,9 +476,10 @@ describe("AdicionarUsuarioPage", () => {
         it("volta campo de senha para 'password' ao clicar novamente", () => {
             renderComponent()
 
-            const toggleButtons = screen.getAllByRole("button", { name: "" })
-            fireEvent.click(toggleButtons[1])
-            fireEvent.click(toggleButtons[1])
+            const senhaInput = screen.getByPlaceholderText("Cadastre uma senha")
+            const toggleButton = senhaInput.parentElement!.querySelector("button")!
+            fireEvent.click(toggleButton)
+            fireEvent.click(toggleButton)
 
             expect(screen.getByPlaceholderText("Cadastre uma senha")).toHaveAttribute(
                 "type",
@@ -489,8 +490,8 @@ describe("AdicionarUsuarioPage", () => {
         it("alterna campo de confirmação de senha para 'text'", () => {
             renderComponent()
 
-            const toggleButtons = screen.getAllByRole("button", { name: "" })
-            fireEvent.click(toggleButtons[2])
+            const confirmarSenhaInput = screen.getByPlaceholderText("Confirme a senha")
+            fireEvent.click(confirmarSenhaInput.parentElement!.querySelector("button")!)
 
             expect(screen.getByPlaceholderText("Confirme a senha")).toHaveAttribute(
                 "type",
@@ -501,9 +502,10 @@ describe("AdicionarUsuarioPage", () => {
         it("volta campo de confirmação para 'password' ao clicar novamente", () => {
             renderComponent()
 
-            const toggleButtons = screen.getAllByRole("button", { name: "" })
-            fireEvent.click(toggleButtons[2])
-            fireEvent.click(toggleButtons[2])
+            const confirmarSenhaInput = screen.getByPlaceholderText("Confirme a senha")
+            const toggleButton = confirmarSenhaInput.parentElement!.querySelector("button")!
+            fireEvent.click(toggleButton)
+            fireEvent.click(toggleButton)
 
             expect(screen.getByPlaceholderText("Confirme a senha")).toHaveAttribute(
                 "type",
@@ -516,10 +518,11 @@ describe("AdicionarUsuarioPage", () => {
 
     describe("navegação", () => {
 
-        it("navega para -1 ao clicar no botão voltar", () => {
+        it("mantém apenas Cancelar como ação de saída", () => {
             renderComponent()
 
-            fireEvent.click(screen.getAllByRole("button")[0])
+            expect(screen.queryByRole("button", { name: "Voltar" })).not.toBeInTheDocument()
+            fireEvent.click(screen.getByRole("button", { name: "Cancelar" }))
 
             expect(navigateMock).toHaveBeenCalledWith("/usuarios")
         })
@@ -542,10 +545,11 @@ describe("AdicionarUsuarioPage", () => {
 
             fireEvent.click(screen.getByText("Salvar"))
 
+            // Padrão inline: mensagem por campo com role="alert" e text-destructive.
             await waitFor(() => {
-                const errors = screen.getAllByRole("generic").filter(el =>
-                    el.className.includes("text-red-600")
-                )
+                const errors = screen
+                    .getAllByRole("alert")
+                    .filter((el) => el.className.includes("text-destructive"))
                 expect(errors.length).toBeGreaterThan(0)
             })
         })

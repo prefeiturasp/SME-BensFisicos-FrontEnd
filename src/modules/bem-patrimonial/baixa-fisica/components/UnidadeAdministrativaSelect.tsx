@@ -27,6 +27,9 @@ interface UnidadeAdministrativaSelectProps {
      * Quando false (default), busca todas as UAs via serviço (uso em filtros gerais).
      */
     readonly scopedToUser?: boolean
+    /** Marca o campo como inválido (borda vermelha). Preenchido pelo FormControl. */
+    readonly "aria-invalid"?: boolean
+    readonly "aria-describedby"?: string
 }
 
 // ============================================================================
@@ -87,9 +90,10 @@ export function UnidadeAdministrativaSelect({
     value,
     onChange,
     placeholder = "Selecione uma unidade",
-    className = "h-10 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white",
+    className = "h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white data-[size=default]:h-11",
     includeAll = false,
     scopedToUser = false,
+    ...rest
 }: UnidadeAdministrativaSelectProps) {
     const unidadesEscopo = useUnidadesDoEscopo()
     // Passa enabled=false quando scopedToUser=true — nenhum request é feito
@@ -105,7 +109,7 @@ export function UnidadeAdministrativaSelect({
 
     return (
         <Select value={selectValue} onValueChange={handleChange}>
-            <SelectTrigger id={id} className={className}>
+            <SelectTrigger id={id} className={className} {...rest}>
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>

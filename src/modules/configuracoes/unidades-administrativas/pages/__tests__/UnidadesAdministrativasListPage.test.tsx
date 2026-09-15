@@ -180,7 +180,7 @@ describe('UnidadesAdministrativasListPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
 
-    expect(navigateMock).toHaveBeenCalledWith(-1);
+    expect(navigateMock).toHaveBeenCalledWith('/home');
   });
 
   it('dispara ordenação ao clicar no cabeçalho da tabela', () => {

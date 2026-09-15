@@ -2,10 +2,10 @@ import { z } from "zod"
 import { newPasswordSchema } from "./password" // ajuste o caminho se necessário
 
 export const editarUsuarioSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  rf: z.string().min(1, "RF é obrigatório"),
-  email: z.email("E-mail inválido"),
-  grupo: z.string().min(1, "Grupo é obrigatório"),
+  nome: z.string({ error: "Nome é obrigatório" }).min(1, "Nome é obrigatório"),
+  rf: z.string({ error: "RF é obrigatório" }).min(1, "RF é obrigatório"),
+  email: z.email({ error: "E-mail inválido" }),
+  grupo: z.string({ error: "Grupo é obrigatório" }).min(1, "Grupo é obrigatório"),
   unidade: z.array(z.string()).default([]),
   status: z.enum(["ativo", "inativo"]),
   // Senha opcional na edição, mas quando preenchida, usa as mesmas regras da criação

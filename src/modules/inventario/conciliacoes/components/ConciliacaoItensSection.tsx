@@ -59,9 +59,9 @@ export function ConciliacaoItensSection({
     <section
       className={SECTION_QUADRANTE_CLASS}
       data-testid='conciliacao-itens-section'
-      aria-label='Itens de conciliação'
+      aria-label='Itens de Conciliação'
     >
-      <h2 className={SECTION_TITLE_CLASS}>Itens de conciliação</h2>
+      <h2 className={SECTION_TITLE_CLASS}>Itens de Conciliação</h2>
 
       <ConciliacaoItensFilters
         numeroPatrimonial={numeroPatrimonial}

@@ -119,6 +119,15 @@ describe('BemImportPage — estado idle', () => {
     expect(btn).not.toBeDisabled()
   })
 
+  it('exibe Cancelar antes de Importar', () => {
+    render(<BemImportPage />)
+
+    const cancelar = screen.getByRole('button', { name: 'Cancelar' })
+    const importar = screen.getByRole('button', { name: 'Importar' })
+
+    expect(cancelar.compareDocumentPosition(importar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it('botão Cancelar chama cancelar do hook', async () => {
     const cancelar = vi.fn()
     mockHook({ cancelar })

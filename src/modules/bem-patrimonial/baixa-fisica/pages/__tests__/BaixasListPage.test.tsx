@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
 
 import BaixasListPage from "../BaixasListPage"
 import { baixaFisicaService } from "../../service/baixas.service"
+import { toast } from "sonner"
 
 import type { BaixaFisica } from "../../types/baixas-fisicas.types"
 
@@ -12,6 +13,13 @@ import type { BaixaFisica } from "../../types/baixas-fisicas.types"
 const navigateMock = vi.fn()
 const createObjectURLMock = vi.fn(() => "blob:excel")
 const revokeObjectURLMock = vi.fn()
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+    },
+}))
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<typeof import("react-router-dom")>(
@@ -23,6 +31,14 @@ vi.mock("react-router-dom", async () => {
         useNavigate: () => navigateMock,
     }
 })
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
 
 vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
@@ -146,10 +162,26 @@ describe("BaixasListPage", () => {
         it("exibe título e breadcrumb", async () => {
             renderPage()
 
+            await screen.findByText("Nenhum resultado encontrado.")
+
             expect(
                 screen.getByText("Baixa Física de Bens Patrimoniais")
             ).toBeInTheDocument()
             expect(screen.getByTestId("breadcrumb")).toBeInTheDocument()
+
+            const card = screen
+                .getByText("Buscar por Número/Nome do Bem ou NBBPM")
+                .closest<HTMLElement>('[data-slot="card"]')
+            const table = screen.getByRole("table")
+
+            expect(card).toHaveClass("space-y-6", "p-6")
+            expect(card).toContainElement(table)
+            expect(table.parentElement).toHaveClass(
+                "overflow-x-auto",
+                "rounded-md",
+                "border",
+                "border-gray-200"
+            )
         })
 
         it("chama list ao montar com ordenação padrão e página 1", async () => {
@@ -368,7 +400,10 @@ describe("BaixasListPage", () => {
                 expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
             })
 
-            fireEvent.click(screen.getByText("Exportar Excel"))
+            const relatorio = screen.getByRole("button", { name: "Relatório" })
+            expect(relatorio.querySelector("svg.lucide-file-text")).toBeInTheDocument()
+            expect(relatorio.querySelector("svg.lucide-chevron-down")).not.toBeInTheDocument()
+            fireEvent.click(relatorio)
 
             await waitFor(() => {
                 expect(baixaFisicaService.exportarExcel).toHaveBeenCalledWith({
@@ -378,6 +413,53 @@ describe("BaixasListPage", () => {
                 expect(createObjectURLMock).toHaveBeenCalledWith(expect.any(Blob))
                 expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
                 expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:excel")
+            })
+        })
+
+        it("navega para home ao clicar em Voltar", async () => {
+            renderPage()
+
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalled()
+            })
+
+            const voltar = screen
+                .getAllByRole("button")
+                .find(b => b.querySelector("svg.lucide-arrow-left"))!
+            fireEvent.click(voltar)
+
+            expect(navigateMock).toHaveBeenCalledWith("/home")
+        })
+
+        it("navega entre páginas pela paginação", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([makeBaixa({ id: 1 })], 25)
+            )
+            renderPage()
+
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalled()
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Próxima página" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 2 })
+                )
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "3" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 3 })
+                )
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Página anterior" }))
+            await waitFor(() => {
+                expect(baixaFisicaService.list).toHaveBeenCalledWith(
+                    expect.objectContaining({ page: 2 })
+                )
             })
         })
 
@@ -393,11 +475,11 @@ describe("BaixasListPage", () => {
             expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/novo")
         })
 
-        it("exibe o botão Gerar NBBPM ao selecionar baixas aprovadas e navega com os IDs selecionados", async () => {
+        it("exibe o botão Gerar NBBPM ao selecionar baixas aprovadas e navega com os IDs selecionados e o processo único no state", async () => {
             vi.mocked(baixaFisicaService.list).mockResolvedValue(
                 makePaginatedResponse([
-                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita" }),
-                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita" }),
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_processo_baixa: "6016.2025/0117371-7" }),
+                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita", numero_processo_baixa: "6016.2025/0117371-7" }),
                 ])
             )
 
@@ -420,8 +502,164 @@ describe("BaixasListPage", () => {
             fireEvent.click(screen.getByText("Gerar NBBPM (2)"))
 
             expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/gerar-nbbpm", {
-                state: { baixaIds: [10, 11] },
+                state: { baixaIds: [10, 11], processo: "6016.2025/0117371-7" },
             })
+            expect(toast.error).not.toHaveBeenCalled()
+        })
+
+        it("bloqueia com toast e não navega quando as baixas aceitas têm processos divergentes", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_processo_baixa: "6016.2025/0117371-7" }),
+                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita", numero_processo_baixa: "6016.2025/0000000-0" }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(2)
+            })
+
+            const checkboxes = screen.getAllByRole("checkbox")
+            fireEvent.click(checkboxes[1])
+            fireEvent.click(checkboxes[2])
+
+            fireEvent.click(screen.getByText("Gerar NBBPM (2)"))
+
+            expect(toast.error).toHaveBeenCalledWith(
+                "As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo."
+            )
+            expect(navigateMock).not.toHaveBeenCalled()
+        })
+
+        it("considera o processo igual após trim e navega normalmente", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_processo_baixa: "6016.2025/0117371-7" }),
+                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita", numero_processo_baixa: "  6016.2025/0117371-7  " }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(2)
+            })
+
+            const checkboxes = screen.getAllByRole("checkbox")
+            fireEvent.click(checkboxes[1])
+            fireEvent.click(checkboxes[2])
+
+            fireEvent.click(screen.getByText("Gerar NBBPM (2)"))
+
+            expect(toast.error).not.toHaveBeenCalled()
+            expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/gerar-nbbpm", {
+                state: { baixaIds: [10, 11], processo: "6016.2025/0117371-7" },
+            })
+        })
+
+        it("exibe a NBBPM da baixa na listagem e '-' quando não há", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_nbbpm: "001.0000001/2026" }),
+                    makeBaixa({ id: 11, status: "aceita", status_display: "Aceita", numero_nbbpm: null }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("001.0000001/2026")).toBeInTheDocument()
+            })
+            expect(screen.getByText("NBBPM")).toBeInTheDocument()
+        })
+
+        it("desabilita a seleção de baixa aceita que já possui NBBPM", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_nbbpm: "001.0000001/2026" }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("001.0000001/2026")).toBeInTheDocument()
+            })
+
+            const checkboxes = screen.getAllByRole("checkbox")
+            expect(checkboxes[1]).toBeDisabled()
+            expect(checkboxes[1]).toHaveAttribute("title", "Baixa já possui NBBPM")
+            expect(screen.queryByText(/Gerar NBBPM/)).not.toBeInTheDocument()
+        })
+
+        it("bloqueia com toast quando a selecionada passa a ter NBBPM (dados atualizados)", async () => {
+            vi.mocked(baixaFisicaService.list)
+                .mockResolvedValueOnce(
+                    makePaginatedResponse([
+                        makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_nbbpm: null }),
+                    ], 25)
+                )
+                .mockResolvedValue(
+                    makePaginatedResponse([
+                        makeBaixa({ id: 10, status: "aceita", status_display: "Aceita", numero_nbbpm: "001.0000001/2026" }),
+                    ], 25)
+                )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(1)
+            })
+
+            fireEvent.click(screen.getAllByRole("checkbox")[1])
+            expect(screen.getByText("Gerar NBBPM (1)")).toBeInTheDocument()
+
+            // seleção sobrevive à troca de página; os dados voltam com NBBPM
+            fireEvent.click(screen.getByRole("button", { name: "Próxima página" }))
+            await waitFor(() => {
+                expect(screen.getByText("001.0000001/2026")).toBeInTheDocument()
+            })
+
+            fireEvent.click(screen.getByText("Gerar NBBPM (1)"))
+
+            expect(toast.error).toHaveBeenCalledWith(
+                "Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM."
+            )
+            expect(navigateMock).not.toHaveBeenCalled()
+        })
+
+        it("nao permite selecionar baixa aceita que ja possui NBBPM", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({
+                        id: 10,
+                        status: "aceita",
+                        status_display: "Aceita",
+                        numero_nbbpm: "NBBPM-2024-001",
+                    }),
+                ])
+            )
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("Aceita", { selector: "span" })
+                ).toHaveLength(1)
+            })
+
+            // A Baixa ja gerou NBBPM: o checkbox fica desabilitado e explicado.
+            const checkboxes = screen.getAllByRole("checkbox")
+            expect(checkboxes[1]).toBeDisabled()
+            expect(checkboxes[1]).toHaveAttribute("title", "Baixa já possui NBBPM")
         })
     })
 
@@ -468,6 +706,29 @@ describe("BaixasListPage", () => {
                     })
                 )
             })
+        })
+    })
+
+    // ─────────────────────────────────────────────────────────────
+    // Ações padronizadas (Visualizar / Editar)
+    // ─────────────────────────────────────────────────────────────
+
+    describe("ações da listagem", () => {
+
+        it("exibe toast de erro quando a exportação falha", async () => {
+            vi.mocked(baixaFisicaService.exportarExcel).mockRejectedValue(new Error("falha"))
+
+            renderPage()
+
+            await waitFor(() => {
+                expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
+            })
+
+            fireEvent.click(screen.getByRole("button", { name: "Relatório" }))
+
+            await waitFor(() =>
+                expect(toast.error).toHaveBeenCalledWith("Erro ao exportar Excel.")
+            )
         })
     })
 })

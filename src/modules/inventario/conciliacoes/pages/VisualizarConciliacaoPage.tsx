@@ -31,13 +31,6 @@ const ACTION_BUTTON_CLASS = `
 const PRIMARY_BUTTON_CLASS =
   'h-10 px-6 bg-[#C20F06] text-white hover:bg-[#A70C05] rounded-md';
 
-const ICON_BUTTON_CLASS = `
-  h-10 w-10 bg-white border border-[#2F7D57]
-  text-[#2F7D57] hover:bg-[#2F7D57]
-  hover:text-white rounded-md transition-colors
-  flex items-center justify-center
-`;
-
 function buildSubtitulo(numeroConciliacao: string, siglaUa: string) {
   const sigla = siglaUa?.trim();
   if (sigla) {
@@ -94,8 +87,8 @@ function VisualizarConciliacaoContent() {
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>
             Visualizar Conciliação
           </h1>
-          <Button type='button' onClick={() => navigate('/conciliacoes')} className={ACTION_BUTTON_CLASS}>
-            Cancelar
+          <Button type='button' onClick={() => navigate('/conciliacoes')} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label='Voltar'>
+            <ArrowLeft size={18} />
           </Button>
         </div>
 
@@ -128,8 +121,8 @@ function VisualizarConciliacaoContent() {
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>
             Visualizar Conciliação
           </h1>
-          <Button type='button' onClick={() => navigate('/conciliacoes')} className={ACTION_BUTTON_CLASS}>
-            Cancelar
+          <Button type='button' onClick={() => navigate('/conciliacoes')} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label='Voltar'>
+            <ArrowLeft size={18} />
           </Button>
         </div>
 
@@ -224,10 +217,10 @@ function VisualizarConciliacaoContent() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
-            aria-label='Voltar'
             onClick={() => navigate('/conciliacoes')}
-            className={ICON_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
             data-testid='visualizar-conciliacao-voltar'
+            aria-label='Voltar'
           >
             <ArrowLeft size={18} />
           </Button>
@@ -244,16 +237,6 @@ function VisualizarConciliacaoContent() {
 
           <Button
             type='button'
-            onClick={openFinalizar}
-            disabled={!isAberta}
-            className={PRIMARY_BUTTON_CLASS}
-            data-testid='visualizar-conciliacao-finalizar'
-          >
-            Finalizar Conciliação
-          </Button>
-
-          <Button
-            type='button'
             disabled={exporting}
             onClick={handleExportar}
             className={ACTION_BUTTON_CLASS}
@@ -262,6 +245,16 @@ function VisualizarConciliacaoContent() {
           >
             <FileDown size={16} />
             Exportar
+          </Button>
+
+          <Button
+            type='button'
+            onClick={openFinalizar}
+            disabled={!isAberta}
+            className={PRIMARY_BUTTON_CLASS}
+            data-testid='visualizar-conciliacao-finalizar'
+          >
+            Finalizar Conciliação
           </Button>
         </div>
       </div>

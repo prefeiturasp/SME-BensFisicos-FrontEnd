@@ -7,9 +7,12 @@ import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ArrowUpDown, Eye, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus, Search } from "lucide-react"
+import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
+import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
 
 // ===================== CONSTANTES =====================
 
@@ -19,8 +22,17 @@ text-[#2F7D57] hover:bg-[#2F7D57]
 hover:text-white font-semibold rounded-md transition-colors
 `
 
+// Status "aguardando_envio" é exibido como "Em elaboração" na UI
+const STATUS_EM_ELABORACAO = "aguardando_envio"
+
+// Ícone padrão das ações de listagem do sistema (mesmo tamanho/cor usados
+// em Bens, Movimentações, Transferências e Conciliações)
+const ACTION_ICON_CLASS = "size-[22px] text-[#00703C]"
+
 const INPUT_SEARCH_CLASS =
     "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
+
+const ACTIVE_PAGE_CLASS = "border-[#00703C] bg-[#00703C] text-white hover:bg-[#00703C]"
 
 // ===================== HELPERS =====================
 
@@ -34,6 +46,14 @@ function formatDateTimeBR(dateString: string): string {
     const hours = String(date.getHours()).padStart(2, "0")
     const minutes = String(date.getMinutes()).padStart(2, "0")
     return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
+/**
+ * Uma Baixa aceita que já gerou NBBPM não pode gerar outra, então também não
+ * entra na seleção em lote.
+ */
+function possuiNbbpm(baixa: BaixaFisica): boolean {
+    return baixa.numero_nbbpm != null && baixa.numero_nbbpm !== ""
 }
 
 // ===================== COMPONENTS =====================
@@ -56,7 +76,7 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
     // O backend já retorna "Em elaboração" no status_display após a alteração
     // em constants.py, então usamos statusDisplay diretamente.
     const cls = colorMap[status] ?? "text-gray-600"
-    return <span className={`text-xs font-medium ${cls}`}>{statusDisplay}</span>
+    return <span className={`text-sm font-semibold ${cls}`}>{statusDisplay}</span>
 }
 
 // ===================== PAGE =====================
@@ -79,7 +99,11 @@ export default function BaixasListPage() {
         ordering: "-data_criacao",
     })
 
-    const totalPages = Math.ceil(count / 10)
+    const { pages, totalPages } = useUnidadesPagination({
+        page,
+        totalItems: count,
+        pageSize: 10,
+    })
     const navigate = useNavigate()
 
     const fetchBaixas = useCallback(async () => {
@@ -101,17 +125,19 @@ export default function BaixasListPage() {
 
     // Status "aguardando_envio" agora é chamado "Em elaboração" na UI
     const emElaboracaoIds = baixas
-        .filter(b => b.status === "aguardando_envio")
+        .filter(b => b.status === STATUS_EM_ELABORACAO)
         .map(b => b.id)
 
     const solicitadaIds = baixas
         .filter(b => b.status === "solicitada")
         .map(b => b.id)
 
-    // NOVO — Baixas com status Aprovado (ACEITA) selecionáveis para a
-    // geração da NBBPM em lote. Só entram na seleção de "Selecionar
-    // todas" quando não há nenhuma baixa em elaboração/solicitada na
-    // página, para não misturar as duas ações em lote.
+    // Baixas com status Aprovado (ACEITA) selecionáveis para a geração da
+    // NBBPM em lote. Mantém todas as aceitas aqui para que seleção stale
+    // (feita antes da NBBPM aparecer) ainda mostre o botão e caia na trava
+    // de toast do handleGerarNbbpm. O bloqueio upfront é feito no checkbox
+    // via isSelectable/jaTemNbbpm. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na página.
     const aceitaIds = new Set(
         baixas.filter(b => b.status === "aceita").map(b => b.id)
     )
@@ -190,7 +216,7 @@ export default function BaixasListPage() {
             a.click()
             URL.revokeObjectURL(url)
         } catch {
-            alert("Erro ao exportar Excel")
+            toast.error("Erro ao exportar Excel.")
         }
     }
 
@@ -202,9 +228,14 @@ export default function BaixasListPage() {
         try {
             await Promise.all(selectedEmElaboracao.map(id => baixaFisicaService.enviarSolicitacao(id)))
             setSelectedIds([])
+            toast.success(
+                selectedEmElaboracao.length > 1
+                    ? "Baixas Físicas solicitadas com sucesso."
+                    : "Baixa Física solicitada com sucesso."
+            )
             fetchBaixas()
         } catch {
-            alert("Erro ao solicitar baixas.")
+            toast.error("Erro ao solicitar baixas.")
         } finally {
             setActionLoading(false)
         }
@@ -221,16 +252,30 @@ export default function BaixasListPage() {
 
     // NOVO — leva para a tela de cadastro das informações básicas da
     // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    // Trava de processo único: só navega quando todas as Baixas aceitas
+    // selecionadas têm o mesmo numero_processo_baixa (já vem no list).
+    // Trava de NBBPM existente: Baixas que já possuem NBBPM não entram.
     const handleGerarNbbpm = () => {
         if (selectedAceitas.length === 0) return
-        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas } })
+        const selecionadas = baixas.filter(b => selectedAceitas.includes(b.id))
+        if (selecionadas.some(possuiNbbpm)) {
+            toast.error("Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM.")
+            return
+        }
+        const processos = new Set(selecionadas.map(b => (b.numero_processo_baixa ?? "").trim()))
+        if (processos.size > 1) {
+            toast.error("As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo.")
+            return
+        }
+        const processoUnico = [...processos][0] ?? ""
+        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas, processo: processoUnico } })
     }
 
     const renderTableBody = () => {
         if (loading) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-500">
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
                         Carregando...
                     </td>
                 </tr>
@@ -239,14 +284,18 @@ export default function BaixasListPage() {
         if (baixas.length === 0) {
             return (
                 <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-400">
+                    <td colSpan={7} className="text-center py-10 text-gray-400">
                         Nenhum resultado encontrado.
                     </td>
                 </tr>
             )
         }
         return baixas.map((b) => {
-            const isSelectable = b.status === "solicitada" || b.status === "aguardando_envio" || b.status === "aceita"
+            const jaTemNbbpm = b.status === "aceita" && possuiNbbpm(b)
+            const isSelectable =
+                b.status === "solicitada" ||
+                b.status === STATUS_EM_ELABORACAO ||
+                (b.status === "aceita" && !jaTemNbbpm)
             const isChecked = selectedIds.includes(b.id)
             return (
                 <tr
@@ -265,6 +314,7 @@ export default function BaixasListPage() {
                             <input
                                 type="checkbox"
                                 disabled
+                                title={jaTemNbbpm ? "Baixa já possui NBBPM" : undefined}
                                 className="opacity-30 cursor-not-allowed"
                             />
                         )}
@@ -272,21 +322,38 @@ export default function BaixasListPage() {
                     <td className="p-3 text-sm text-gray-700">
                         {b.unidade_administrativa_origem.sigla}
                     </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.numero_nbbpm ?? "-"}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.criado_por.nome_completo}
+                    </td>
+                    <td className="p-3 text-sm text-gray-500">
+                        {formatDateTimeBR(b.data_criacao)}
+                    </td>
                     <td className="p-3">
                         <StatusBadge status={b.status} statusDisplay={b.status_display} />
                     </td>
-                    <td className="p-3 text-xs text-gray-600">
-                        {b.criado_por.nome_completo}
-                    </td>
-                    <td className="p-3 text-xs text-gray-500">
-                        {formatDateTimeBR(b.data_criacao)}
-                    </td>
                     <td className="p-3 text-center">
-                        <Link to={`/baixas-fisicas/${b.id}`}>
-                            <Button size="icon" variant="ghost" aria-label="Visualizar">
-                                <Eye className='size-[22px] text-[#00703C]' />
-                            </Button>
-                        </Link>
+                        <div className="flex items-center justify-center gap-1">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        asChild
+                                        size="icon"
+                                        variant="ghost"
+                                        aria-label={`Visualizar Baixa Física ${b.id}`}
+                                    >
+                                        <Link to={`/baixas-fisicas/${b.id}`}>
+                                            <Eye className={ACTION_ICON_CLASS} />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>
+                                    Visualizar as informações da Baixa Física.
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     </td>
                 </tr>
             )
@@ -305,13 +372,18 @@ export default function BaixasListPage() {
             />
 
             {/* HEADER */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-700">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <h1 className="text-xl font-bold tracking-tight text-gray-700">
                     Baixa Física de Bens Patrimoniais
                 </h1>
-                <div className="flex gap-3 items-center">
-                    <Button onClick={() => globalThis.history.back()} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={16} />
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Button onClick={() => navigate("/home")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
+
+                    <Button type="button" className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
+                        <FileText size={16} />
+                        Relatório
                     </Button>
 
                     {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
@@ -320,7 +392,7 @@ export default function BaixasListPage() {
                         <Button
                             onClick={handleSolicitar}
                             disabled={actionLoading}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Solicitar ({selectedEmElaboracao.length})
                         </Button>
@@ -333,7 +405,7 @@ export default function BaixasListPage() {
                         <>
                             <Button
                                 onClick={handleIrParaValidacao}
-                                className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                                className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                                 title="Abrir a tela de validação para aprovar"
                             >
                                 Aprovar
@@ -348,29 +420,27 @@ export default function BaixasListPage() {
                         </>
                     )}
 
-                    {/* NOVO — "Gerar NBBPM": disponível quando há Baixas com status
+                    {/* "Gerar NBBPM": disponível quando há Baixas com status
                         Aprovado selecionadas. Leva à tela de cadastro das
                         informações básicas da NBBPM consolidada. */}
                     {selectedAceitas.length > 0 && (
                         <Button
                             onClick={handleGerarNbbpm}
-                            className="h-10 px-6 bg-[#00703C] text-white font-semibold rounded-md hover:bg-[#005a30] transition-colors"
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
                         >
                             Gerar NBBPM ({selectedAceitas.length})
                         </Button>
                     )}
 
-                    <Button className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
-                        Exportar Excel
-                    </Button>
                     <Button className={ACTION_BUTTON_CLASS} onClick={() => navigate("/baixas-fisicas/novo")}>
+                        <Plus size={16} />
                         Adicionar Baixa
                     </Button>
                 </div>
             </div>
 
             {/* CARD */}
-            <Card className="p-6">
+            <Card className="space-y-6 p-6">
 
                 {/* FILTROS */}
                 <div className="flex flex-col md:flex-row gap-4 flex-wrap">
@@ -440,12 +510,12 @@ export default function BaixasListPage() {
                 </div>
 
                 {/* LABEL */}
-                <p className="text-sm font-semibold text-green-700 mt-4">
+                <p className="text-sm font-semibold text-[#00703C]">
                     Baixas Físicas Cadastradas
                 </p>
 
                 {/* TABELA */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-md border border-gray-200">
                     <table className="w-full text-sm">
                         <thead className="bg-[#F5F5F5] border-b">
                             <tr className="text-left text-gray-600 font-semibold">
@@ -463,7 +533,7 @@ export default function BaixasListPage() {
                                         Unidade Administrativa <ArrowUpDown size={14} />
                                     </div>
                                 </th>
-                                <th className="p-3">Status</th>
+                                <th className="p-3">NBBPM</th>
                                 <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
                                     <div className="flex gap-2 items-center">
                                         Usuário que solicitou a Baixa <ArrowUpDown size={14} />
@@ -474,6 +544,7 @@ export default function BaixasListPage() {
                                         Atualização <ArrowUpDown size={14} />
                                     </div>
                                 </th>
+                                <th className="p-3">Status</th>
                                 <th className="p-3 text-center">Ações</th>
                             </tr>
                         </thead>
@@ -483,30 +554,51 @@ export default function BaixasListPage() {
                     </table>
                 </div>
 
-                {/* PAGINAÇÃO */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-end gap-2 mt-4">
+                {/* PAGINAÇÃO - padrão do sistema */}
+                <div className="flex justify-center">
+                    <div className="flex items-center gap-1">
                         <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === 1}
-                            onClick={() => setPage(p => p - 1)}
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            aria-label="Página anterior"
                         >
-                            Anterior
+                            ‹
                         </Button>
-                        <span className="text-sm text-gray-600">
-                            Página {page} de {totalPages}
-                        </span>
+
+                        {pages.map((item) =>
+                            item.type === "ellipsis" ? (
+                                <span key={item.id} className="px-2 text-gray-500">
+                                    ...
+                                </span>
+                            ) : (
+                                <Button
+                                    key={item.id}
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setPage(item.value)}
+                                    className={page === item.value ? ACTIVE_PAGE_CLASS : ""}
+                                >
+                                    {item.value}
+                                </Button>
+                            ),
+                        )}
+
                         <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page === totalPages}
-                            onClick={() => setPage(p => p + 1)}
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            aria-label="Próxima página"
                         >
-                            Próxima
+                            ›
                         </Button>
                     </div>
-                )}
+                </div>
 
             </Card>
         </div>

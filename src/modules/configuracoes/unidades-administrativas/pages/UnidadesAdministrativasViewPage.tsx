@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -28,6 +29,19 @@ const ACTION_BUTTON_CLASS =
 
 const PRIMARY_SAVE_BUTTON_CLASS =
   'h-10 px-6 bg-[#2F7D57] text-white hover:bg-[#256947] rounded-md';
+
+function ExitButton({ isEditing, onClick }: Readonly<{ isEditing: boolean; onClick: () => void }>) {
+  return (
+    <Button
+      type='button'
+      onClick={onClick}
+      className={isEditing ? ACTION_BUTTON_CLASS : `${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+      aria-label={isEditing ? undefined : 'Voltar'}
+    >
+      {isEditing ? 'Cancelar' : <ArrowLeft size={18} />}
+    </Button>
+  );
+}
 
 function extractCodigoFinal(codigoCompleto: string): string {
   const codigoFinal = codigoCompleto.split('.').at(-1) ?? '';
@@ -177,9 +191,7 @@ export default function UnidadesAdministrativasViewPage() {
         <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>Visualizar Unidade Administrativa</h1>
 
-          <Button type='button' onClick={handleCancel} className={ACTION_BUTTON_CLASS}>
-            Cancelar
-          </Button>
+          <ExitButton isEditing={false} onClick={handleCancel} />
         </div>
 
         <Card className='p-6'>
@@ -210,9 +222,7 @@ export default function UnidadesAdministrativasViewPage() {
         <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
           <h1 className='text-xl font-bold tracking-tight text-gray-700'>Visualizar Unidade Administrativa</h1>
 
-          <Button type='button' onClick={handleCancel} className={ACTION_BUTTON_CLASS}>
-            Cancelar
-          </Button>
+          <ExitButton isEditing={false} onClick={handleCancel} />
         </div>
 
         <Card className='p-6'>
@@ -238,6 +248,8 @@ export default function UnidadesAdministrativasViewPage() {
         </h1>
 
         <div className='flex items-center justify-end gap-3'>
+          <ExitButton isEditing={isEditing} onClick={handleCancel} />
+
           {canManage && (
             <Button
               type='button'
@@ -245,13 +257,10 @@ export default function UnidadesAdministrativasViewPage() {
               disabled={updateMutation.isPending}
               onClick={handlePrimaryAction}
             >
+              {!isEditing && <Pencil size={16} />}
               {primaryActionLabel}
             </Button>
           )}
-
-          <Button type='button' onClick={handleCancel} className={ACTION_BUTTON_CLASS}>
-            Cancelar
-          </Button>
         </div>
       </div>
 

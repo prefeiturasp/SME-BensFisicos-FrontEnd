@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info } from 'lucide-react'
+import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 import { Button } from '@/components/ui/button'
@@ -100,7 +100,7 @@ export default function BensListPage() {
     })
   }
 
-  const handleNovoCadastro = () => {
+  const handleAdicionarBem = () => {
     navigate('/bens-patrimoniais/novo')
   }
 
@@ -130,10 +130,16 @@ export default function BensListPage() {
         <div className='flex items-center gap-3'>
           <Button
             type='button'
-            onClick={() => navigate(-1)}
-            className={ACTION_BUTTON_CLASS}
+            onClick={() => navigate('/home')}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            aria-label='Voltar'
           >
             <ArrowLeft size={18} />
+          </Button>
+
+          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+            <FileText size={16} />
+            Relatório
           </Button>
 
           {possuiSelecionados && (
@@ -146,7 +152,7 @@ export default function BensListPage() {
                     'Erro ao aprovar bens'
                   )
                 }
-                className='h-10 px-4 bg-[#00703C] hover:bg-[#005a30] text-white font-semibold rounded-md'
+                className='h-10 px-4 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]'
               >
                 Aprovar ({selectedIds.length})
               </Button>
@@ -166,11 +172,6 @@ export default function BensListPage() {
             </>
           )}
 
-          <Button type='button' className={ACTION_BUTTON_CLASS}>
-            <FileText size={16} />
-            Relatório
-          </Button>
-
           <Button
             type='button'
             onClick={() => handleImportar()}
@@ -179,14 +180,15 @@ export default function BensListPage() {
             Importar Bens
           </Button>
 
-          <Button onClick={handleNovoCadastro} className={ACTION_BUTTON_CLASS}>
-            Novo Cadastro
+          <Button onClick={handleAdicionarBem} className={ACTION_BUTTON_CLASS}>
+            <Plus size={16} />
+            Adicionar Bem
           </Button>
         </div>
       </div>
 
       {/* CARD */}
-      <Card className='p-6 space-y-6'>
+      <Card className='space-y-6 p-6'>
         {/* FILTROS */}
         <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
           <div className='flex flex-col gap-2'>
@@ -300,7 +302,7 @@ export default function BensListPage() {
         </div>
 
         {/* TABELA */}
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full text-sm'>
             <thead className='bg-[#F5F5F5] border-b'>
               <tr className='text-left text-gray-600 font-semibold'>

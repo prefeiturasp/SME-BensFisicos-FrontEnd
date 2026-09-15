@@ -69,7 +69,7 @@ export function DatePicker({
           className={cn(
             'flex h-11 w-full items-center justify-between gap-2 rounded-xs border border-gray-300 bg-white px-4 text-left text-sm text-gray-700 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2F7D57]/30 disabled:cursor-not-allowed disabled:opacity-50',
             !value && 'text-gray-400',
-            invalid && 'border-red-500 focus-visible:ring-red-500/30',
+            invalid && 'border-destructive focus-visible:ring-destructive/30',
             className,
           )}
         >

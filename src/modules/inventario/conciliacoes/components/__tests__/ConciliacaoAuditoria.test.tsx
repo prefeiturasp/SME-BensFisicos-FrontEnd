@@ -54,6 +54,42 @@ describe('ConciliacaoAuditoria', () => {
     );
   });
 
+  it('indica criacao automatica quando conciliacao anual nao tem autor', () => {
+    /*
+      A conciliacao anual e gerada pela rotina automatica do sistema, que grava
+      criado_por=None. Exibir "migracao" induziria o auditor a interpretacao
+      incorreta.
+    */
+    const conciliacao = {
+      ...baseConciliacao,
+      tipo: 'anual' as const,
+      // O serializer usa default="": sem autor, o campo chega vazio, nao nulo.
+      criado_por_nome: '',
+      criado_por_rf: '',
+    };
+
+    render(<ConciliacaoAuditoria conciliacao={conciliacao} />);
+
+    const valor = screen.getByTestId('conciliacao-auditoria-criado-por');
+    expect(valor).toHaveTextContent('Criada automaticamente pelo sistema');
+    expect(valor.textContent).not.toMatch(/migra/i);
+  });
+
+  it('usa texto neutro quando conciliacao eventual nao tem autor', () => {
+    const conciliacao = {
+      ...baseConciliacao,
+      tipo: 'eventual' as const,
+      criado_por_nome: '',
+      criado_por_rf: '',
+    };
+
+    render(<ConciliacaoAuditoria conciliacao={conciliacao} />);
+
+    const valor = screen.getByTestId('conciliacao-auditoria-criado-por');
+    expect(valor).toHaveTextContent('Informação não disponível');
+    expect(valor.textContent).not.toMatch(/migra/i);
+  });
+
   it('exibe "Criado em" formatado em portugues', () => {
     const criadoEmFormatter = new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
@@ -146,7 +182,7 @@ describe('ConciliacaoAuditoria', () => {
     );
   });
 
-  it('exibe "-" quando nao ha informacoes do criador', () => {
+  it('explicita a ausencia de autoria sem atribuir causa', () => {
     const conciliacao: Conciliacao = {
       ...baseConciliacao,
       criado_por_nome: '',
@@ -155,7 +191,9 @@ describe('ConciliacaoAuditoria', () => {
 
     render(<ConciliacaoAuditoria conciliacao={conciliacao} />);
 
-    expect(screen.getByTestId('conciliacao-auditoria-criado-por')).toHaveTextContent('-');
+    expect(screen.getByTestId('conciliacao-auditoria-criado-por')).toHaveTextContent(
+      'Informação não disponível',
+    );
   });
 
   it('exibe "-" quando data de criacao e invalida', () => {

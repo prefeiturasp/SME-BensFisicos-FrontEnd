@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Printer } from 'lucide-react';
+import { ArrowLeft, FileText, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
@@ -102,27 +102,27 @@ function GerenciamentoConciliacoesListContent() {
 
           <Button
             type='button'
-            onClick={() => navigate('/conciliacoes/novo')}
-            className={ACTION_BUTTON_CLASS}
-          >
-            <Plus size={16} className='mr-1' />
-            Adicionar Conciliação
-          </Button>
-
-          <Button
-            type='button'
             disabled
             className={RELATORIO_BUTTON_CLASS}
             aria-label='Relatório'
             data-testid='relatorio-button'
           >
-            <Printer size={16} />
+            <FileText size={16} />
             Relatório
+          </Button>
+
+          <Button
+            type='button'
+            onClick={() => navigate('/conciliacoes/novo')}
+            className={ACTION_BUTTON_CLASS}
+          >
+            <Plus size={16} />
+            Adicionar Conciliação
           </Button>
         </div>
       </div>
 
-      <Card className='space-y-6 p-8'>
+      <Card className='space-y-6 p-6'>
         <ConciliacoesFilters
           search={searchInput}
           anoVigencia={anoVigenciaInput}

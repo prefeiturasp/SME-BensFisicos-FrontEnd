@@ -15,6 +15,8 @@ export interface UsuarioSimple {
     username: string
     nome_completo: string
     email: string
+    /** RF do usuario. Depende de exposicao pelo serializer do backend. */
+    rf?: string | null
 }
 
 export interface BemPatrimonialSimple {
@@ -83,14 +85,12 @@ export interface BaixaFisicaItemPayload {
 }
 
 export interface BaixaFisicaCreatePayload {
-    numero_processo_baixa: string | null
     unidade_administrativa_origem: number
-    data_baixa: string | null
+    data_baixa?: string | null
     itens: BaixaFisicaItemPayload[]
 }
 
 export interface BaixaFisicaUpdatePayload {
-    numero_processo_baixa?: string | null
     data_baixa?: string | null
     itens: BaixaFisicaItemPayload[]
 }
@@ -113,8 +113,12 @@ export interface BaixaFisicaSolicitarCorrecaoPayload {
     motivo: string
 }
 
+export interface BaixaFisicaAprovarPayload {
+    numero_processo_baixa: string
+}
+
 /**
- * NOVO — Payload do endpoint POST /baixa-fisica/gerar-nbbpm-lote/.
+ * Payload do endpoint POST /nbbpm/.
  * Usado na tela "Gerar NBBPM", acionada a partir da seleção em lote de
  * Baixas Físicas com status Aprovado (aceita) na listagem.
  */
@@ -124,6 +128,13 @@ export interface GerarNbbpmLotePayload {
     data_autorizacao: string
     responsavel: string
     numero_processo_destinacao_final?: string
+}
+
+export interface Nbbpm {
+    id: number
+    numero: string
+    numero_processo_baixa: string
+    baixas: number[]
 }
 
 // ============================================================================
@@ -171,6 +182,10 @@ export interface HistoricoGroup {
     time: string
     items: HistoricoEntry[]
 }
+
+export const LAUDO_TITULO =
+    "LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
+
 
 // ============================================================================
 // COMPONENTES

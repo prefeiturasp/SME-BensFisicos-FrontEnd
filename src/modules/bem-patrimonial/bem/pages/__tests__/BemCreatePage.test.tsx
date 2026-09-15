@@ -35,7 +35,16 @@ vi.mock('@/components/AppBreadcrumb', () => ({
 }))
 
 vi.mock('../../components/LinhaBemRow', () => ({
-  LinhaBemRow: ({ addLinha, removeLinha, index, errors, linha, linhas, setLinhas }: any) => (
+  LinhaBemRow: ({
+    addLinha,
+    removeLinha,
+    index,
+    errors,
+    linha,
+    linhas,
+    setLinhas,
+    onLimparErro,
+  }: any) => (
     <div data-testid={`linha-${index}`}>
       {errors?.numero_patrimonial && (
         <p data-testid={`erro-linha-${index}`}>{errors.numero_patrimonial}</p>
@@ -51,6 +60,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
           const newLinhas = [...linhas]
           newLinhas[index] = { ...newLinhas[index], localizacao: e.target.value }
           setLinhas(newLinhas)
+          onLimparErro?.(index, 'localizacao')
         }}
       />
       <input
@@ -61,6 +71,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
           const newLinhas = [...linhas]
           newLinhas[index] = { ...newLinhas[index], numero_processo: e.target.value }
           setLinhas(newLinhas)
+          onLimparErro?.(index, 'numero_processo')
         }}
       />
       <button onClick={() => removeLinha(index)}>Remover Linha</button>
@@ -254,11 +265,11 @@ describe('BemCreatePage', () => {
   // Ordem dos botões e disposição conforme protótipo
   // ------------------------------------------------------------------
 
-  it('deve exibir o botão Salvar antes do botão Cancelar', () => {
+  it('deve exibir o botão Cancelar antes do botão Salvar', () => {
     renderPage()
     const buttons = screen.getAllByRole('button')
     const textos = buttons.map((b) => b.textContent)
-    expect(textos.indexOf('Salvar')).toBeLessThan(textos.indexOf('Cancelar'))
+    expect(textos.indexOf('Cancelar')).toBeLessThan(textos.indexOf('Salvar'))
   })
 
   // ------------------------------------------------------------------
@@ -277,12 +288,12 @@ describe('BemCreatePage', () => {
   // Validação de campos obrigatórios no front
   // ------------------------------------------------------------------
 
-  it('deve manter o botão Salvar desabilitado enquanto campos obrigatórios estiverem vazios', () => {
+  it('deve manter o botão Salvar habilitado para permitir o feedback inline', () => {
     renderPage()
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    expect(screen.getByText('Salvar')).toBeEnabled()
   })
 
-  it('não deve chamar createMulti se campos obrigatórios estiverem vazios (botão desabilitado)', async () => {
+  it('não deve chamar createMulti se campos obrigatórios estiverem vazios', async () => {
     const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
     fireEvent.click(screen.getByText('Salvar'))
@@ -292,13 +303,19 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve habilitar o botão Salvar somente após preencher todos os campos obrigatórios, incluindo a localização da linha', () => {
+  it('deve exibir todos os campos pendentes numa unica submissao', async () => {
     renderPage()
-    expect(screen.getByText('Salvar')).toBeDisabled()
 
-    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
 
-    expect(screen.getByText('Salvar')).toBeEnabled()
+    // Base e linhas sao validadas juntas: todos os erros aparecem de uma vez.
+    await waitFor(() => {
+      expect(screen.getByText('Nome do Bem é obrigatório.')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
   })
 
   it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
@@ -347,7 +364,8 @@ describe('BemCreatePage', () => {
     expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
   })
 
-  it('deve manter o botão Salvar desabilitado quando a localização da linha estiver vazia', () => {
+  it('deve sinalizar a localização pendente da linha ao submeter', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
@@ -357,25 +375,27 @@ describe('BemCreatePage', () => {
     fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
     // Localização propositalmente não preenchida
 
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
   })
 
-  it('deve habilitar o botão Salvar ao preencher a localização da linha que faltava', () => {
+  it('deve submeter apos preencher a localização da linha que faltava', async () => {
+    const spy = vi
+      .spyOn(bemServiceModule.bemService, 'createMulti')
+      .mockResolvedValue(undefined as never)
     renderPage()
 
-    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), { target: { value: 'Notebook' } })
-    fireEvent.change(screen.getByPlaceholderText('Descreva o bem'), { target: { value: 'Desc' } })
-    fireEvent.change(screen.getByPlaceholderText('0,00'), { target: { value: '100' } })
-    fireEvent.change(screen.getByPlaceholderText('Marca'), { target: { value: 'Dell' } })
-    fireEvent.change(screen.getByPlaceholderText('Modelo'), { target: { value: 'X' } })
+    preencherCamposBase()
 
-    expect(screen.getByText('Salvar')).toBeDisabled()
+    fireEvent.click(screen.getByText('Salvar'))
 
-    fireEvent.change(screen.getByPlaceholderText('Localização'), {
-      target: { value: 'Sala 1' },
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalled()
     })
-
-    expect(screen.getByText('Salvar')).toBeEnabled()
   })
 
   it('deve exibir erro de localização por linha quando retornado pelo backend', async () => {
@@ -433,6 +453,43 @@ describe('BemCreatePage', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
     })
+  })
+
+  it('deve limpar apenas o erro do campo alterado na linha', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        linhas: {
+          '0': {
+            localizacao: 'Localização é obrigatória.',
+            numero_patrimonial: 'Inválido.',
+          },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('erro-localizacao-0')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Localização'), {
+      target: { value: 'Sala Nova' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('erro-localizacao-0')).not.toBeInTheDocument()
+    })
+    expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
   })
 
   // ------------------------------------------------------------------
@@ -817,5 +874,35 @@ describe('BemCreatePage', () => {
     )
 
     expect(screen.getByDisplayValue('PROC-2024-001')).toBeInTheDocument()
+  })
+
+  it('deve exibir uma única mensagem e borda vermelha na Unidade Administrativa', async () => {
+    mockUAs = [
+      { id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' },
+      { id: 2, unidade_administrativa_id: 20, label: 'UA Teste - 002' },
+    ]
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: null,
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+
+    renderPage()
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText('Unidade Administrativa é obrigatório.'),
+      ).toHaveLength(1)
+    })
+
+    expect(
+      screen.getByPlaceholderText('Buscar Unidade Administrativa...'),
+    ).toHaveAttribute('aria-invalid', 'true')
   })
 })
