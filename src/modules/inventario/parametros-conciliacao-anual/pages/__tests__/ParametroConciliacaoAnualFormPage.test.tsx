@@ -168,17 +168,23 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     deleteMutateAsyncMock.mockResolvedValue(undefined);
   });
 
-  it('mantem o salvar desabilitado ate o formulario ficar valido no cadastro', async () => {
+  it('mantem o salvar habilitado e exibe a validacao inline no cadastro', async () => {
     renderPage();
 
     const saveButton = screen.getByRole('button', { name: 'Salvar' });
-    expect(saveButton).toBeDisabled();
+    expect(saveButton).toBeEnabled();
 
-    fillCreateForm();
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(saveButton).toBeEnabled();
+      expect(createMock).not.toHaveBeenCalled();
+      expect(screen.getByPlaceholderText('Ex: 2026')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      );
     });
+
+    expect(screen.getByText('Ano de Referência')).toHaveAttribute('data-error', 'true');
   });
 
   it('envia o payload convertido para formato iso no cadastro', async () => {
@@ -205,13 +211,13 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     });
   });
 
-  it('na edicao so habilita salvar quando houver alteracao', async () => {
+  it('mantem o salvar habilitado na edicao', async () => {
     queryState.data = parametroEdit;
 
     renderPage('/parametros-conciliacao-anual/2/editar');
 
     const saveButton = await screen.findByRole('button', { name: 'Salvar' });
-    expect(saveButton).toBeDisabled();
+    expect(saveButton).toBeEnabled();
 
     fireEvent.change(screen.getByPlaceholderText('Ex: 2026'), {
       target: { value: '2027' },
@@ -329,6 +335,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Ex: 2026')).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Editar' }));

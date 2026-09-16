@@ -1,15 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { toast } from "sonner"
+
+import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { DatePicker } from "@/components/ui/date-picker"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
+import { isDataFutura } from "../utils/datas"
 import { baixaFisicaService } from "../service/baixas.service"
 import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
 import type { ItemRow } from '../types/baixas-fisicas.types'
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import {
+    adicionarBaixaSchema,
+    type AdicionarBaixaFormData,
+} from "../validators/baixa-form.schema"
 
 // ============================================================================
 // STYLES
@@ -209,62 +228,115 @@ let nextRowId = 1
 export default function AdicionarBaixaPage() {
     const navigate = useNavigate()
 
-    const [unidade, setUnidade] = useState("")
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
+    const form = useForm<AdicionarBaixaFormData>({
+        resolver: zodResolver(adicionarBaixaSchema),
+        mode: "onSubmit",
+        defaultValues: { unidade: "", itens: [], data_baixa: new Date() },
+    })
+
+    const unidade = form.watch("unidade")
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
     const unidadeId = unidade ? Number(unidade) : null
 
+    /**
+     * As linhas de item vivem em estado local (a UI de busca é própria), mas os
+     * ids selecionados são espelhados no formulário para que o zod valide
+     * unidade e itens no mesmo passe e ambos os erros apareçam juntos.
+     */
+    const sincronizarItens = useCallback((linhas: ItemRow[]) => {
+        const ids = linhas.filter(r => r.bem).map(r => r.bem!.id)
+        form.setValue("itens", ids, {
+            shouldValidate: form.formState.isSubmitted,
+        })
+    }, [form])
+
+    const atualizarRows = useCallback((atualizar: (prev: ItemRow[]) => ItemRow[]) => {
+        setRows(prev => {
+            const proximas = atualizar(prev)
+            sincronizarItens(proximas)
+            return proximas
+        })
+    }, [sincronizarItens])
+
     const handleUnidadeChange = (value: string) => {
-        setUnidade(value)
-        setRows([{ rowId: nextRowId++, bem: null }])
+        form.setValue("unidade", value, {
+            shouldValidate: form.formState.isSubmitted,
+        })
+        atualizarRows(() => [{ rowId: nextRowId++, bem: null }])
     }
 
     const handleSelect = (rowId: number, bem: Bem) => {
-        setRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem } : r))
+        atualizarRows(prev =>
+            prev.map(r =>
+                r.rowId === rowId
+                    ? {
+                          ...r,
+                          bem: {
+                              id: bem.id,
+                              numero_patrimonial: bem.numero_patrimonial ?? "",
+                              nome: bem.nome,
+                              descricao: bem.descricao,
+                              status: bem.status,
+                          },
+                      }
+                    : r
+            )
+        )
     }
 
     const handleClear = (rowId: number) => {
-        setRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem: null } : r))
+        atualizarRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem: null } : r))
     }
 
     const handleRemove = (rowId: number) => {
-        setRows(prev => {
+        atualizarRows(prev => {
             if (prev.length === 1) return [{ rowId: nextRowId++, bem: null }]
             return prev.filter(r => r.rowId !== rowId)
         })
     }
 
     const handleAddRow = () => {
-        setRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
+        atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSolicitar = async () => {
-        setError(null)
-
-        if (!unidade) return setError("Selecione a unidade administrativa.")
-
-        const itens = rows.filter(r => r.bem)
-        if (itens.length === 0) return setError("Adicione ao menos um item.")
-
+    const handleSolicitar = form.handleSubmit(
+        async (values) => {
         setSubmitting(true)
         try {
             await baixaFisicaService.create({
-                unidade_administrativa_origem: Number(unidade),
-                itens: itens.map(r => ({ bem: r.bem!.id })),
+                unidade_administrativa_origem: Number(values.unidade),
+                ...(values.data_baixa
+                    ? { data_baixa: format(values.data_baixa, "yyyy-MM-dd") }
+                    : {}),
+                itens: values.itens.map(bemId => ({ bem: bemId })),
             })
+            toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
-            setError(message)
+            toast.error(message)
         } finally {
             setSubmitting(false)
         }
-    }
+        },
+        (errors) => {
+            // Compatibilidade: validação inline (zod/FormMessage) + toasts do padrão de test.
+            // Sem isso, os testes de test que esperam toast.error para validação quebrariam,
+            // e sem o inline o critério de exibir todos os pendentes de uma vez se perderia.
+            const mensagens = [
+                errors.unidade?.message,
+                errors.itens?.message,
+                errors.data_baixa?.message,
+            ].filter(Boolean) as string[]
+            mensagens.forEach((msg) => toast.error(msg))
+        }
+    )
 
     return (
+        <Form {...form}>
         <div className="p-8 space-y-4">
 
             <AppBreadcrumb
@@ -283,49 +355,98 @@ export default function AdicionarBaixaPage() {
 
                 <div className="flex items-center gap-3">
                     <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={18} />
+                        Cancelar
                     </Button>
                     <Button
                         onClick={handleSolicitar}
                         disabled={submitting}
-                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947]"
+                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {submitting ? "Solicitando..." : "Solicitar"}
-                    </Button>
-                    <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        Cancelar
                     </Button>
                 </div>
             </div>
 
-            {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {error}
-                </div>
-            )}
-
             <Card className="p-6 space-y-6">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="unidade-select" className="text-sm font-semibold text-gray-700">
-                            Unidade Administrativa *
-                        </label>
-                        {/* ALTERADO: scopedToUser=true filtra pelo escopo do operador logado */}
-                        <UnidadeAdministrativaSelect
-                            value={unidade}
-                            onChange={handleUnidadeChange}
-                            scopedToUser={true}
-                            className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white"
-                        />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="unidade"
+                        render={() => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="unidade-select"
+                                >
+                                    Unidade Administrativa *
+                                </FormLabel>
+                                <FormControl>
+                                    {/* scopedToUser=true filtra pelo escopo do operador logado */}
+                                    <UnidadeAdministrativaSelect
+                                        id="unidade-select"
+                                        value={unidade}
+                                        onChange={handleUnidadeChange}
+                                        scopedToUser={true}
+                                        className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white data-[size=default]:h-11"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="data_baixa"
+                        render={({ field, fieldState }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="data-baixa"
+                                >
+                                    Data da Baixa
+                                </FormLabel>
+                                <FormControl>
+                                    <DatePicker
+                                        id="data-baixa"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Selecione a data"
+                                        ariaLabel="Data da Baixa"
+                                        className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm"
+                                        disabled={isDataFutura}
+                                        invalid={fieldState.invalid}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
 
                 {/* ITENS */}
+                <FormField
+                    control={form.control}
+                    name="itens"
+                    render={() => (
+                        <FormItem className="space-y-2">
+                            {/* Título de seção: não rotula um campo único, por isso
+                                é renderizado como h2 via asChild. */}
+                            <FormLabel asChild>
+                                <h2
+                                    id="itens-baixa-fisica"
+                                    className="text-sm font-semibold text-green-700"
+                                >
+                                    Itens de Baixa Física
+                                </h2>
+                            </FormLabel>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
                 <div className="space-y-2">
-                    <p className="text-sm font-semibold text-green-700">
-                        Itens de Baixa Física
-                    </p>
 
                     <div className="space-y-2">
                         {rows.map((row, index) => (
@@ -346,5 +467,6 @@ export default function AdicionarBaixaPage() {
 
             </Card>
         </div>
+        </Form>
     )
 }

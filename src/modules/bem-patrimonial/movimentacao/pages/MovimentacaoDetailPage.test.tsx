@@ -183,13 +183,32 @@ describe('MovimentacaoDetailPage', () => {
     expect(screen.getByText('01.02 - UO 02')).toBeInTheDocument()
     expect(screen.getByText('01.01.001 - UA Origem')).toBeInTheDocument()
     expect(screen.getByText('01.01.002 - UA Destino')).toBeInTheDocument()
+    expect(screen.getByText('Unidade Orçamentária de Origem')).toBeInTheDocument()
+    expect(screen.getByText('Unidade Administrativa de Origem')).toBeInTheDocument()
+    expect(screen.getByText('Unidade Orçamentária de Destino')).toBeInTheDocument()
+    expect(screen.getByText('Unidade Administrativa de Destino')).toBeInTheDocument()
     expect(screen.getByText('Movimentação de teste')).toBeInTheDocument()
     expect(screen.getByText('0001 Notebook')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /salvar edição/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /editar/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeEnabled()
     expect(screen.getByRole('link', { name: /histórico/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument()
     expect(movimentacaoService.retrieve).toHaveBeenCalledWith(1)
+  })
+
+  it('deve exibir as ações na ordem padronizada da tela de detalhe', async () => {
+    renderPage()
+
+    await screen.findByText('Visualizar Movimentação de Bem Patrimonial')
+
+    const voltar = screen.getByRole('button', { name: /voltar/i })
+    const cancelar = screen.getByRole('button', { name: /cancelar/i })
+    const historico = screen.getByRole('link', { name: /histórico/i })
+    const editar = screen.getByRole('button', { name: /editar/i })
+
+    expect(voltar.compareDocumentPosition(cancelar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(cancelar.compareDocumentPosition(historico) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(historico.compareDocumentPosition(editar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('deve cancelar a movimentação quando permitido', async () => {

@@ -138,6 +138,20 @@ describe('BensListPage', () => {
     renderWithProviders()
     expect(screen.getByRole('heading')).toHaveTextContent('Bens Patrimoniais')
     expect(screen.getByText('Notebook')).toBeInTheDocument()
+
+    const card = screen
+      .getByText('Filtrar por Número ou Nome do Bem')
+      .closest<HTMLElement>('[data-slot="card"]')
+    const table = screen.getByRole('table')
+
+    expect(card).toHaveClass('space-y-6', 'p-6')
+    expect(card).toContainElement(table)
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    )
   })
 
   it('renderiza loading', () => {
@@ -272,9 +286,9 @@ describe('BensListPage', () => {
   // NAVEGAÇÃO
   // ===============================
 
-  it('navega para novo cadastro', () => {
+  it('navega para adicionar bem', () => {
     renderWithProviders()
-    fireEvent.click(screen.getByText('Novo Cadastro'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar Bem' }))
     expect(navigateMock).toHaveBeenCalledWith('/bens-patrimoniais/novo')
   })
 
@@ -297,7 +311,7 @@ describe('BensListPage', () => {
       .getAllByRole('button')
       .find(b => b.querySelector('svg.lucide-arrow-left'))!
     fireEvent.click(voltar)
-    expect(navigateMock).toHaveBeenCalledWith(-1)
+    expect(navigateMock).toHaveBeenCalledWith('/home')
   })
 
   it('exibe o botão de relatório sem disparar navegação', () => {

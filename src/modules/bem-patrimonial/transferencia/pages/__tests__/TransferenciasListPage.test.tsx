@@ -192,6 +192,20 @@ describe('TransferenciasListPage', () => {
     expect(screen.getByText('12345')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Adicionar/i })).toBeInTheDocument()
+
+    const card = screen
+      .getByText('Filtrar por Nome do Bem')
+      .closest<HTMLElement>('[data-slot="card"]')
+    const table = screen.getByRole('table')
+
+    expect(card).toHaveClass('space-y-6', 'p-6')
+    expect(card).toContainElement(table)
+    expect(table.parentElement).toHaveClass(
+      'overflow-x-auto',
+      'rounded-md',
+      'border',
+      'border-gray-200',
+    )
   })
 
   it('permite selecionar e deselecionar a transferência exibida', async () => {

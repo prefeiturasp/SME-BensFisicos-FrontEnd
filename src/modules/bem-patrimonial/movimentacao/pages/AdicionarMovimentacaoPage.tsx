@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Network, Plus, Trash2 } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
@@ -17,6 +19,23 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { BemCadastroPageShell } from '@/modules/bem-patrimonial/components/BemCadastroPageShell'
+import {
+  definirCampoValidado,
+  limparErroServidor,
+} from '@/lib/inline-validation'
+import { cn } from '@/lib/utils'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import {
+  movimentacaoSchema,
+  type MovimentacaoFormData,
+} from '../validators/movimentacao-form.schema'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type {
@@ -85,6 +104,8 @@ type NumeroPatrimonialAutocompleteProps = Readonly<{
   value: string
   unidadeAdministrativaId: number | null
   onChange: (value: string) => void
+  /** Rótulo vermelho + borda vermelha, mesmo padrão de UO/UA. */
+  invalid?: boolean
 }>
 
 function NumeroPatrimonialAutocomplete({
@@ -93,6 +114,7 @@ function NumeroPatrimonialAutocomplete({
   value,
   unidadeAdministrativaId,
   onChange,
+  invalid = false,
 }: NumeroPatrimonialAutocompleteProps) {
   const [aberto, setAberto] = useState(false)
   const [carregando, setCarregando] = useState(false)
@@ -144,7 +166,15 @@ function NumeroPatrimonialAutocomplete({
 
   return (
     <div className='relative flex flex-col gap-2' ref={containerRef}>
-      <label htmlFor={id} className='text-sm font-semibold text-gray-700'>
+      {/* data-error espelha o FormLabel: rótulo vermelho quando inválido. */}
+      <label
+        htmlFor={id}
+        data-error={invalid}
+        className={cn(
+          'text-sm font-semibold text-gray-700 data-[error=true]:text-destructive',
+          invalid && 'text-destructive',
+        )}
+      >
         {label}
       </label>
       <div className='relative'>
@@ -160,6 +190,7 @@ function NumeroPatrimonialAutocomplete({
           inputMode='numeric'
           maxLength={15}
           className={INPUT_CLASS}
+          aria-invalid={invalid}
           aria-autocomplete='list'
           aria-expanded={aberto}
         />
@@ -199,18 +230,52 @@ export default function AdicionarMovimentacaoPage() {
   const referenceUoId = user?.uo_ativa?.id ?? null
   const originUaLabel = user?.ua_ativa?.label ?? user?.ua_ativa?.codigo ?? '-'
 
-  const [selectedUoId, setSelectedUoId] = useState('')
-  const [selectedUaId, setSelectedUaId] = useState('')
-  const [observacao, setObservacao] = useState('')
-  const [numeroDe, setNumeroDe] = useState('')
-  const [numeroAte, setNumeroAte] = useState('')
+  const form = useForm<MovimentacaoFormData>({
+    resolver: zodResolver(movimentacaoSchema),
+    mode: 'onSubmit',
+    defaultValues: {
+      unidade_orcamentaria_destino: '',
+      unidade_administrativa_destino: '',
+      observacao: '',
+      itens: [],
+      destino_mesma_uo: false,
+      numero_de: '',
+      numero_ate: '',
+    },
+  })
+
+  const selectedUoId = form.watch('unidade_orcamentaria_destino')
+  const selectedUaId = form.watch('unidade_administrativa_destino') ?? ''
+  const numeroDe = form.watch('numero_de') ?? ''
+  const numeroAte = form.watch('numero_ate') ?? ''
+  const setSelectedUaId = useCallback(
+    (value: string) => definirCampoValidado(form, 'unidade_administrativa_destino', value),
+    [form],
+  )
+  /**
+   * A mensagem da faixa (De/Até) é sempre exibida em `numero_de`, então editar
+   * qualquer um dos dois campos limpa essa pendência — e somente ela.
+   */
+  const setNumeroDe = useCallback(
+    (value: string) => {
+      definirCampoValidado(form, 'numero_de', value)
+      form.clearErrors('numero_de')
+    },
+    [form],
+  )
+  const setNumeroAte = useCallback(
+    (value: string) => {
+      definirCampoValidado(form, 'numero_ate', value)
+      form.clearErrors('numero_de')
+    },
+    [form],
+  )
   const [faixas, setFaixas] = useState<FaixaMovimentacao[]>([])
   const [selecionarTodos, setSelecionarTodos] = useState(false)
   const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
   const [bensSelecionarTodos, setBensSelecionarTodos] = useState<MovimentacaoBem[]>([])
   const [adicionandoItens, setAdicionandoItens] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>(
     [],
@@ -270,34 +335,39 @@ export default function AdicionarMovimentacaoPage() {
   )
   useEffect(() => {
     if (!selectedUoId && uoOptions.length === 1) {
-      setSelectedUoId(String(uoOptions[0].id))
+      form.setValue('unidade_orcamentaria_destino', String(uoOptions[0].id))
     }
-  }, [selectedUoId, uoOptions])
+  }, [selectedUoId, uoOptions, form])
 
   useEffect(() => {
     if (destinoMesmaUo && !selectedUaId && uaOptions.length === 1) {
       setSelectedUaId(String(uaOptions[0].id))
     }
-  }, [destinoMesmaUo, selectedUaId, uaOptions])
+  }, [destinoMesmaUo, selectedUaId, uaOptions, setSelectedUaId])
 
   const itensSelecionados = useMemo(() => {
     if (selecionarTodos) return bensSelecionarTodos
     return faixas.flatMap((faixa) => faixa.bens)
   }, [bensSelecionarTodos, faixas, selecionarTodos])
+  useEffect(() => {
+    form.setValue('itens', itensSelecionados.map((bem) => bem.id), {
+      shouldValidate: form.formState.isSubmitted,
+    })
+  }, [itensSelecionados, form])
+
+  useEffect(() => {
+    form.setValue('destino_mesma_uo', destinoMesmaUo)
+  }, [destinoMesmaUo, form])
+
   const uaDestinoPlaceholder = getUaDestinoPlaceholder(
     selectedUoId,
     destinoSemPontoCentral,
     destinoMesmaUo,
     uaOptions.length > 0,
   )
-  const canSave = Boolean(
-    originUaId &&
-    selectedUoNumericId &&
-    (destinoMesmaUo ? selectedUaId : selectedUoOption?.tem_ponto_central) &&
-    itensSelecionados.length > 0 &&
-    !adicionandoItens &&
-    !submitting,
-  )
+  // O botão só é bloqueado por estados que impedem qualquer submissão.
+  // Pendências de campo são comunicadas pela validação inline.
+  const canSave = !adicionandoItens && !submitting
 
   useEffect(() => {
     if (!destinoMesmaUo || !selectedUoId) {
@@ -309,21 +379,43 @@ export default function AdicionarMovimentacaoPage() {
     }
   }, [destinoMesmaUo, selectedUaId, selectedUoId, uaOptions])
 
-  const exibirErro = useCallback((message: string) => {
-    setError(message)
-    toast.error(message)
-  }, [])
+  /**
+   * Erros da sub-ação de itens (adicionar faixa / selecionar todos) são
+   * exibidos inline no campo correspondente, além do toast.
+   */
+  const exibirErro = useCallback(
+    (message: string, campo: 'numero_de' | 'itens' = 'itens') => {
+      form.setError(campo, { message })
+      toast.error(message)
+    },
+    [form],
+  )
+
+  /**
+   * Usado pelas sub-ações de itens (adicionar faixa / selecionar todos), que
+   * são as donas desses dois erros. A digitação de cada campo limpa apenas o
+   * próprio campo, via `definirCampoValidado`.
+   */
+  const limparErrosDeItens = useCallback(() => {
+    form.clearErrors(['itens', 'numero_de'])
+    limparErroServidor(form)
+  }, [form])
+
+  const limparErroDeServidor = useCallback(() => limparErroServidor(form), [form])
 
   const addFaixa = useCallback(async () => {
     if (!originUaId || !numeroDe.trim()) {
-      exibirErro('Informe o Número Patrimonial - De.')
+      exibirErro('Informe o Número Patrimonial - De.', 'numero_de')
       return
     }
 
     const numeroDeNormalizado = numeroDe.trim()
     const numeroAteNormalizado = numeroAte.trim() || numeroDeNormalizado
     if (numeroAteNormalizado < numeroDeNormalizado) {
-      exibirErro('O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.')
+      exibirErro(
+        'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
+        'numero_de',
+      )
       return
     }
     if (
@@ -343,7 +435,7 @@ export default function AdicionarMovimentacaoPage() {
         : { numero_patrimonial_ate: numeroAteNormalizado }),
     }
     setAdicionandoItens(true)
-    setError(null)
+    limparErrosDeItens()
     try {
       const { itens } = await movimentacaoService.resolverItensLote({
         unidade_administrativa_origem: originUaId,
@@ -374,7 +466,7 @@ export default function AdicionarMovimentacaoPage() {
     } finally {
       setAdicionandoItens(false)
     }
-  }, [exibirErro, faixas, numeroAte, numeroDe, originUaId])
+  }, [exibirErro, limparErrosDeItens, faixas, numeroAte, numeroDe, originUaId, setNumeroDe, setNumeroAte])
 
   const handleSelecionarTodos = useCallback(
     async (checked: boolean) => {
@@ -389,7 +481,7 @@ export default function AdicionarMovimentacaoPage() {
       }
 
       setAdicionandoItens(true)
-      setError(null)
+      limparErrosDeItens()
       try {
         const { itens } = await movimentacaoService.resolverItensLote({
           unidade_administrativa_origem: originUaId,
@@ -412,42 +504,33 @@ export default function AdicionarMovimentacaoPage() {
         setAdicionandoItens(false)
       }
     },
-    [exibirErro, originUaId],
+    [exibirErro, limparErrosDeItens, originUaId],
   )
 
   const removerFaixa = (faixaId: string) => {
     setFaixas((current) => current.filter((item) => item.id !== faixaId))
   }
 
-  const handleSave = async () => {
-    setError(null)
+  const handleSave = form.handleSubmit(async (values) => {
     if (!originUaId) {
-      exibirErro('Unidade Administrativa de origem não informada.')
-      return
-    }
-    if (!selectedUoNumericId) {
-      exibirErro('Selecione a Unidade Orçamentária de destino.')
+      form.setError('root.serverError', {
+        message: 'Unidade Administrativa de origem não informada.',
+      })
       return
     }
     if (destinoSemPontoCentral) {
-      exibirErro(MENSAGEM_SEM_PONTO_CENTRAL)
+      form.setError('unidade_orcamentaria_destino', { message: MENSAGEM_SEM_PONTO_CENTRAL })
       return
     }
-    if (destinoMesmaUo && !selectedUaId) {
-      exibirErro('Selecione a Unidade Administrativa de destino.')
-      return
-    }
-    if (itensSelecionados.length === 0) {
-      exibirErro('Adicione ao menos um item de movimentação.')
-      return
-    }
+
+    const selectedUoNumericId = Number(values.unidade_orcamentaria_destino)
 
     setSubmitting(true)
     try {
       await movimentacaoService.create({
         unidade_administrativa_origem: originUaId,
         unidade_orcamentaria_destino: selectedUoNumericId,
-        observacao,
+        observacao: values.observacao ?? '',
         ...(selecionarTodos
           ? { selecionar_todos: true }
           : {
@@ -456,7 +539,9 @@ export default function AdicionarMovimentacaoPage() {
                 ...(de === ate ? {} : { numero_patrimonial_ate: ate }),
               })),
             }),
-        ...(destinoMesmaUo ? { unidade_administrativa_destino: Number(selectedUaId) } : {}),
+        ...(destinoMesmaUo
+          ? { unidade_administrativa_destino: Number(values.unidade_administrativa_destino) }
+          : {}),
       })
       toast.success(
         'Cadastro realizado com sucesso - A movimentação do bem foi cadastrada e enviada para aprovação.',
@@ -465,12 +550,12 @@ export default function AdicionarMovimentacaoPage() {
     } catch (requestError: unknown) {
       const message =
         requestError instanceof Error ? requestError.message : 'Erro ao salvar movimentação.'
-      setError(message)
+      form.setError('root.serverError', { message })
       toast.error(message)
     } finally {
       setSubmitting(false)
     }
-  }
+  })
 
   return (
     <BemCadastroPageShell
@@ -484,8 +569,9 @@ export default function AdicionarMovimentacaoPage() {
       onSave={handleSave}
       canSave={canSave}
       submitting={submitting}
-      error={error}
+      error={form.formState.errors.root?.serverError?.message ?? null}
     >
+      <Form {...form}>
       <div className='flex flex-col gap-2'>
         <label htmlFor='ua-origem' className='text-sm font-semibold text-gray-700'>
           Unidade Administrativa de Origem
@@ -499,20 +585,26 @@ export default function AdicionarMovimentacaoPage() {
       </div>
 
       <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-        <div className='flex flex-col gap-2'>
-          <label htmlFor='uo-destino' className='text-sm font-semibold text-gray-700'>
-            Unidade Orçamentária de Destino
-          </label>
+        <FormField
+          control={form.control}
+          name='unidade_orcamentaria_destino'
+          render={({ field, fieldState }) => (
+          <FormItem className='flex flex-col gap-2'>
+            <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='uo-destino'>
+              Unidade Orçamentária de Destino
+            </FormLabel>
           <Select
-            value={selectedUoId}
+            value={field.value}
             onValueChange={(value) => {
-              setSelectedUoId(value)
-              setError(null)
+              field.onChange(value)
+              limparErroDeServidor()
             }}
           >
-            <SelectTrigger id='uo-destino' className={INPUT_CLASS}>
+            <FormControl>
+            <SelectTrigger id='uo-destino' className={INPUT_CLASS} aria-invalid={!!fieldState.error}>
               <SelectValue placeholder='Selecione a UO de destino' />
             </SelectTrigger>
+            </FormControl>
             <SelectContent>
               {uoOptions.length === 0 ? (
                 <SelectItem value='__empty__' disabled>
@@ -527,19 +619,31 @@ export default function AdicionarMovimentacaoPage() {
               )}
             </SelectContent>
           </Select>
-        </div>
-        <div className='flex flex-col gap-2'>
-          <label htmlFor='ua-destino' className='text-sm font-semibold text-gray-700'>
-            Unidade Administrativa de Destino
-          </label>
+            <FormMessage />
+          </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name='unidade_administrativa_destino'
+          render={({ field, fieldState }) => (
+          <FormItem className='flex flex-col gap-2'>
+            <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='ua-destino'>
+              Unidade Administrativa de Destino
+            </FormLabel>
           <Select
-            value={selectedUaId}
-            onValueChange={setSelectedUaId}
+            value={field.value ?? ''}
+            onValueChange={(value) => {
+              field.onChange(value)
+              limparErroDeServidor()
+            }}
             disabled={!selectedUoId || !destinoMesmaUo}
           >
-            <SelectTrigger id='ua-destino' className={INPUT_CLASS}>
+            <FormControl>
+            <SelectTrigger id='ua-destino' className={INPUT_CLASS} aria-invalid={!!fieldState.error}>
               <SelectValue placeholder={uaDestinoPlaceholder} />
             </SelectTrigger>
+            </FormControl>
             <SelectContent>
               {uaOptions.length === 0 ? (
                 <SelectItem value='__empty__' disabled>
@@ -554,7 +658,10 @@ export default function AdicionarMovimentacaoPage() {
               )}
             </SelectContent>
           </Select>
-        </div>
+            <FormMessage />
+          </FormItem>
+          )}
+        />
       </div>
 
       {destinoSemPontoCentral ? (
@@ -566,26 +673,49 @@ export default function AdicionarMovimentacaoPage() {
         </div>
       ) : null}
 
-      <div className='flex flex-col gap-2'>
-        <label htmlFor='observacao' className='text-sm font-semibold text-gray-700'>
-          Observação
-        </label>
-        <Textarea
-          id='observacao'
-          value={observacao}
-          onChange={(event) => {
-            setObservacao(event.target.value)
-            setError(null)
-          }}
-          placeholder='Digite uma observação'
-          className='min-h-28'
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name='observacao'
+        render={({ field }) => (
+          <FormItem className='flex flex-col gap-2'>
+            <FormLabel className='text-sm font-semibold text-gray-700' htmlFor='observacao'>
+              Observação
+            </FormLabel>
+            <FormControl>
+              <Textarea
+                {...field}
+                id='observacao'
+                onChange={(event) => {
+                  field.onChange(event)
+                  limparErroDeServidor()
+                }}
+                placeholder='Digite uma observação'
+                className='min-h-28'
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <section className='space-y-3' aria-labelledby='itens-movimentacao'>
-        <h2 id='itens-movimentacao' className='text-sm font-semibold text-[#00703C]'>
-          Itens de Movimentação
-        </h2>
+        <FormField
+          control={form.control}
+          name='itens'
+          render={() => (
+            <FormItem>
+              <FormLabel asChild>
+                <h2
+                  id='itens-movimentacao'
+                  className='text-sm font-semibold text-[#00703C] data-[error=true]:text-destructive'
+                >
+                  Itens de Movimentação
+                </h2>
+              </FormLabel>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className='flex items-center gap-2'>
           <Checkbox
             id='selecionar-todos-bens'
@@ -634,12 +764,22 @@ export default function AdicionarMovimentacaoPage() {
           </div>
         ) : (
           <div className='grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end'>
-            <NumeroPatrimonialAutocomplete
-              id='numero-patrimonial-de'
-              label='Número Patrimonial - De'
-              value={numeroDe}
-              unidadeAdministrativaId={originUaId}
-              onChange={setNumeroDe}
+            <FormField
+              control={form.control}
+              name='numero_de'
+              render={({ fieldState }) => (
+                <FormItem>
+                  <NumeroPatrimonialAutocomplete
+                    id='numero-patrimonial-de'
+                    label='Número Patrimonial - De'
+                    value={numeroDe}
+                    unidadeAdministrativaId={originUaId}
+                    onChange={setNumeroDe}
+                    invalid={fieldState.invalid}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <NumeroPatrimonialAutocomplete
               id='numero-patrimonial-ate'
@@ -704,6 +844,7 @@ export default function AdicionarMovimentacaoPage() {
           void handleSelecionarTodos(true)
         }}
       />
+      </Form>
     </BemCadastroPageShell>
   )
 }

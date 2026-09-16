@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { describe, expect, it } from 'vitest';
 import { OcorrenciaForm } from '../OcorrenciaForm';
@@ -180,5 +180,26 @@ describe('OcorrenciaForm', () => {
     expect(
       screen.queryByTestId('ocorrencia-mensagem-condicional'),
     ).not.toBeInTheDocument();
+  });
+
+  it('exibe rótulo e mensagem inline para a situação pendente', async () => {
+    let formRef: ReturnType<typeof useForm<OcorrenciaFormData>> | undefined;
+
+    render(<FormHarness onFormReady={(form) => { formRef = form; }} />);
+
+    const label = screen.getByText('Situação da Ocorrência');
+    expect(label).toBeInTheDocument();
+    expect(label).toHaveAttribute('data-error', 'false');
+
+    await act(async () => {
+      await formRef!.trigger('situacao');
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selecione a situação da ocorrência.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText('Situação da Ocorrência')).toHaveAttribute('data-error', 'true');
   });
 });

@@ -309,6 +309,20 @@ describe("UsuariosListPage", () => {
             expect(screen.getByText("Grupo de Permissionamento")).toBeInTheDocument()
             expect(screen.getByText("Status")).toBeInTheDocument()
             expect(screen.getByText("Ações")).toBeInTheDocument()
+
+            const card = screen
+                .getByText("Filtrar por Status")
+                .closest<HTMLElement>('[data-slot="card"]')
+            const table = screen.getByRole("table")
+
+            expect(card).toHaveClass("space-y-6", "p-6")
+            expect(card).toContainElement(table)
+            expect(table.parentElement).toHaveClass(
+                "overflow-x-auto",
+                "rounded-md",
+                "border",
+                "border-gray-200"
+            )
         })
     })
 
@@ -452,12 +466,12 @@ describe("UsuariosListPage", () => {
 
     describe("navegação", () => {
 
-        it("navega para -1 ao clicar no botão voltar", () => {
+        it("navega para a Home ao clicar no botão voltar", () => {
             renderComponent()
 
             fireEvent.click(screen.getAllByRole("button")[0])
 
-            expect(navigateMock).toHaveBeenCalledWith(-1)
+            expect(navigateMock).toHaveBeenCalledWith("/home")
         })
 
         it("navega para /usuarios/novo ao clicar em 'Adicionar Usuário'", () => {

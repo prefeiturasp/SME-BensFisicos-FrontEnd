@@ -3,6 +3,7 @@ import { AxiosError } from "axios"
 
 import { api } from "@/api/http"
 import { baixaFisicaService, downloadBlob } from "../baixas.service"
+import { LAUDO_TITULO } from "../../types/baixas-fisicas.types"
 
 // ===================== MOCKS =====================
 
@@ -163,7 +164,6 @@ describe("baixaFisicaService", () => {
             const detail = makeBaixaDetail()
             const payload = {
                 unidade_administrativa_origem: 1,
-                numero_processo_baixa: "P-001",
                 data_baixa: "2024-01-01",
                 itens: [],
             }
@@ -182,7 +182,6 @@ describe("baixaFisicaService", () => {
             await expect(
                 baixaFisicaService.create({
                     unidade_administrativa_origem: 1,
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -195,7 +194,6 @@ describe("baixaFisicaService", () => {
             await expect(
                 baixaFisicaService.create({
                     unidade_administrativa_origem: 1,
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -207,7 +205,6 @@ describe("baixaFisicaService", () => {
         it("atualiza baixa e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
             const payload = {
-                numero_processo_baixa: "P-002",
                 data_baixa: "2024-02-01",
                 itens: [],
             }
@@ -224,7 +221,6 @@ describe("baixaFisicaService", () => {
 
             await expect(
                 baixaFisicaService.update(1, {
-                    numero_processo_baixa: "",
                     data_baixa: "",
                     itens: [],
                 })
@@ -235,7 +231,7 @@ describe("baixaFisicaService", () => {
     describe("partialUpdate", () => {
         it("faz patch e retorna detalhe", async () => {
             const detail = makeBaixaDetail()
-            const payload = { numero_processo_baixa: "P-003" }
+            const payload = { data_baixa: "2024-03-01" }
             vi.mocked(api.patch).mockResolvedValue({ data: detail })
 
             const result = await baixaFisicaService.partialUpdate(1, payload)
@@ -270,16 +266,16 @@ describe("baixaFisicaService", () => {
             const detail = makeBaixaDetail({ status: "aceita" })
             vi.mocked(api.post).mockResolvedValue({ data: detail })
 
-            const result = await baixaFisicaService.aprovar(1)
+            const result = await baixaFisicaService.aprovar(1, { numero_processo_baixa: "6016.2025/0117371-7" })
 
             expect(result).toEqual(detail)
-            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/aprovar/")
+            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/aprovar/", { numero_processo_baixa: "6016.2025/0117371-7" })
         })
 
         it("lança erro padrão", async () => {
             vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
 
-            await expect(baixaFisicaService.aprovar(1)).rejects.toThrow(
+            await expect(baixaFisicaService.aprovar(1, { numero_processo_baixa: "6016.2025/0117371-7" })).rejects.toThrow(
                 "Erro ao aprovar baixa física"
             )
         })
@@ -340,15 +336,15 @@ describe("baixaFisicaService", () => {
         })
     })
 
-    describe("gerarNbbpm", () => {
-        it("retorna blob", async () => {
+    describe("baixarNbbpmPdf", () => {
+        it("retorna blob do PDF da NBBPM", async () => {
             const blob = new Blob(["pdf"], { type: "application/pdf" })
             vi.mocked(api.get).mockResolvedValue({ data: blob })
 
-            const result = await baixaFisicaService.gerarNbbpm(1)
+            const result = await baixaFisicaService.baixarNbbpmPdf(1)
 
             expect(result).toBe(blob)
-            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-nbbpm/", {
+            expect(api.get).toHaveBeenCalledWith("/nbbpm/1/pdf/", {
                 responseType: "blob",
             })
         })
@@ -356,8 +352,73 @@ describe("baixaFisicaService", () => {
         it("lança erro padrão", async () => {
             vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
 
-            await expect(baixaFisicaService.gerarNbbpm(1)).rejects.toThrow(
+            await expect(baixaFisicaService.baixarNbbpmPdf(1)).rejects.toThrow(
+                "Erro ao baixar NBBPM"
+            )
+        })
+    })
+
+    describe("gerarNbbpmLote", () => {
+        const payload = {
+            baixas: [10, 11],
+            numero_processo_baixa: "6016.2025/0117371-7",
+            data_autorizacao: "2026-09-10",
+            responsavel: "Nome Responsável",
+            numero_processo_destinacao_final: "",
+        }
+
+        it("cria a NBBPM via POST /nbbpm/", async () => {
+            const nbbpm = { id: 1, numero: "001.0000001/2026", numero_processo_baixa: payload.numero_processo_baixa, baixas: payload.baixas }
+            vi.mocked(api.post).mockResolvedValue({ data: nbbpm })
+
+            const result = await baixaFisicaService.gerarNbbpmLote(payload)
+
+            expect(result).toBe(nbbpm)
+            expect(api.post).toHaveBeenCalledWith("/nbbpm/", payload)
+        })
+
+        it("propaga o AxiosError em 400 para a página exibir o toast", async () => {
+            const fieldError = makeAxiosError(400, { baixas: ["divergentes"] })
+            vi.mocked(api.post).mockRejectedValue(fieldError)
+
+            await expect(baixaFisicaService.gerarNbbpmLote(payload)).rejects.toBe(fieldError)
+        })
+
+        it("lança erro padrão", async () => {
+            vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
+
+            await expect(baixaFisicaService.gerarNbbpmLote(payload)).rejects.toThrow(
                 "Erro ao gerar NBBPM"
+            )
+        })
+    })
+
+    describe("gerarLaudo", () => {
+        it("retorna blob do laudo aceito", async () => {
+            const blob = new Blob(["pdf"], { type: "application/pdf" })
+            vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+            const result = await baixaFisicaService.gerarLaudo(1)
+
+            expect(result).toBe(blob)
+            expect(api.get).toHaveBeenCalledWith("/baixa-fisica/1/gerar-laudo/", {
+                responseType: "blob",
+            })
+        })
+
+        it("propaga erro do backend quando status não é Aceita", async () => {
+            vi.mocked(api.get).mockRejectedValue(makeAxiosError(403, { detail: "Laudo só pode ser gerado para baixas com status Aceita." }))
+
+            await expect(baixaFisicaService.gerarLaudo(1)).rejects.toThrow(
+                "Laudo só pode ser gerado para baixas com status Aceita."
+            )
+        })
+    })
+
+    describe("LAUDO_TITULO", () => {
+        it("tem título oficial do laudo pós-aceite", () => {
+            expect(LAUDO_TITULO).toBe(
+                "LAUDO DE AVALIAÇÃO DE BENS PATRIMONIAIS MÓVEIS BAIXADOS CONTABILMENTE PARA DESCARTE"
             )
         })
     })

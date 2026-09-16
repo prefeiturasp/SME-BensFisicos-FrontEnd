@@ -191,11 +191,11 @@ export default function MovimentacaoDetailPage() {
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
             type='button'
-            className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
-            disabled
+            onClick={() => navigate('/movimentacoes')}
+            className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+            aria-label='Voltar'
           >
-            <Pencil size={16} />
-            Salvar Edição
+            <ArrowLeft size={18} />
           </Button>
 
           <Button
@@ -228,11 +228,11 @@ export default function MovimentacaoDetailPage() {
 
           <Button
             type='button'
-            onClick={() => navigate('/movimentacoes')}
-            className={ACTION_BUTTON_CLASS}
+            className={`${ACTION_BUTTON_CLASS} disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white disabled:hover:text-gray-400`}
+            disabled
           >
-            <ArrowLeft size={16} />
-            Voltar
+            <Pencil size={16} />
+            Editar
           </Button>
         </div>
       </div>
@@ -280,21 +280,21 @@ export default function MovimentacaoDetailPage() {
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <BemDetailField label='Unidade orçamentária de origem'>
+            <BemDetailField label='Unidade Orçamentária de Origem'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_origem)}
             </BemDetailField>
 
-            <BemDetailField label='Unidade administrativa de origem'>
+            <BemDetailField label='Unidade Administrativa de Origem'>
               {resolveUaLabel(movimentacao.unidade_administrativa_origem)}
             </BemDetailField>
           </div>
 
           <div className='grid gap-x-8 gap-y-2 px-6 py-2.5 lg:grid-cols-2'>
-            <BemDetailField label='Unidade orçamentária de destino'>
+            <BemDetailField label='Unidade Orçamentária de Destino'>
               {resolveUoLabel(movimentacao.unidade_orcamentaria_destino)}
             </BemDetailField>
 
-            <BemDetailField label='Unidade administrativa de destino'>
+            <BemDetailField label='Unidade Administrativa de Destino'>
               {resolveUaLabel(movimentacao.unidade_administrativa_destino)}
             </BemDetailField>
           </div>

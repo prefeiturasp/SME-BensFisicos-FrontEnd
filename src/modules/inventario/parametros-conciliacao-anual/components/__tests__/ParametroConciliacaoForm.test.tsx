@@ -55,7 +55,7 @@ describe('ParametroConciliacaoForm', () => {
     });
   });
 
-  it('oculta a mensagem de ajuda quando o campo exibe erro', async () => {
+  it('exibe mensagem específica quando a data final é anterior à inicial', async () => {
     render(<TestForm />);
 
     const periodoInicial = screen.getAllByPlaceholderText('dd/mm/aaaa')[0];
@@ -66,9 +66,24 @@ describe('ParametroConciliacaoForm', () => {
 
     await waitFor(() => {
       const messages = screen.getAllByText(
-        'Data final em que conciliações anuais podem ser criadas/fechadas.',
+        'A data final deve ser igual ou posterior à data inicial.',
       );
       expect(messages).toHaveLength(1);
     });
+  });
+
+  it('pinta o rótulo e a borda do Ano de Referência quando o campo é inválido', async () => {
+    render(<TestForm />);
+
+    const input = screen.getByPlaceholderText('Ex: 2026');
+    fireEvent.change(input, { target: { value: '20' } });
+
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    const label = screen.getByText('Ano de Referência');
+    expect(label).toHaveAttribute('data-error', 'true');
+    expect(label.className).toContain('text-destructive');
   });
 });

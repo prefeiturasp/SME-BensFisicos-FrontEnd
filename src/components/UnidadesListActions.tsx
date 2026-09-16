@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, ChevronDown, FileText } from 'lucide-react';
+import { ArrowLeft, ChevronDown, FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export interface UnidadesListReportFormatOption<T extends string> {
@@ -67,16 +67,14 @@ export function UnidadesListActions<T extends string>({
 
   return (
     <div className={containerClassName}>
-      <Button type='button' onClick={onBack} className={buttonClassName} aria-label='Voltar'>
+      <Button
+        type='button'
+        onClick={onBack}
+        className={`${buttonClassName} h-10 w-10 p-0`}
+        aria-label='Voltar'
+      >
         <ArrowLeft size={18} />
       </Button>
-
-      {canManage && onAdd && addLabel && (
-        <Button type='button' onClick={onAdd} className={buttonClassName}>
-          {addIcon}
-          {addLabel}
-        </Button>
-      )}
 
       {canManage && (
         <div className='relative' ref={reportMenuRef}>
@@ -116,6 +114,13 @@ export function UnidadesListActions<T extends string>({
             </div>
           )}
         </div>
+      )}
+
+      {canManage && onAdd && addLabel && (
+        <Button type='button' onClick={onAdd} className={buttonClassName}>
+          {addIcon ?? <Plus size={16} />}
+          {addLabel}
+        </Button>
       )}
     </div>
   );

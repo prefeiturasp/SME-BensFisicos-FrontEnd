@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -97,8 +98,18 @@ function FormActions({
 
   return (
     <div className='flex flex-wrap items-center justify-end gap-3'>
+      <Button
+        type='button'
+        onClick={onCancel}
+        className={isView ? `${OUTLINE_BUTTON_CLASS} h-10 w-10 p-0` : OUTLINE_BUTTON_CLASS}
+        aria-label={isView ? 'Voltar' : undefined}
+      >
+        {isView ? <ArrowLeft size={18} /> : 'Cancelar'}
+      </Button>
+
       {isView && (
         <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={onEdit}>
+          <Pencil size={16} />
           Editar
         </Button>
       )}
@@ -120,9 +131,6 @@ function FormActions({
         </Button>
       )}
 
-      <Button type='button' onClick={onCancel} className={OUTLINE_BUTTON_CLASS}>
-        Cancelar
-      </Button>
     </div>
   );
 }
@@ -371,12 +379,12 @@ export default function ParametroConciliacaoAnualFormPage() {
     );
   }
 
-  const isSaveDisabled =
-    !unidadeOrcamentariaId ||
-    submitting ||
-    updateMutation.isPending ||
-    !form.formState.isValid ||
-    (isEdit && !form.formState.isDirty);
+  /**
+   * O botão só é bloqueado enquanto o envio está em andamento. Pendências de
+   * campo NÃO desabilitam Salvar: o usuário submete e recebe a validação
+   * inline em cada campo — mesmo padrão de UO/UA.
+   */
+  const isSaveDisabled = submitting || updateMutation.isPending;
 
   return (
     <div className='space-y-4 p-8' data-testid='parametro-conciliacao-form'>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 import {
     ArrowLeft,
     History,
@@ -13,6 +14,11 @@ import {
 } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { CriadoPorValue } from "@/components/CriadoPorValue"
+import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
 import ConfirmarAceiteModal from "../modals/ConfirmarAceiteModal"
@@ -21,6 +27,12 @@ import type {
     BaixaFisicaItem,
     EditRow,
 } from "../types/baixas-fisicas.types"
+import {
+    LAUDO_TITULO,
+} from "../types/baixas-fisicas.types"
+import {
+    isProcessoBaixaValido,
+} from "../utils/processo-baixa"
 
 import { baixaFisicaService } from "../service/baixas.service"
 
@@ -31,13 +43,27 @@ import { baixaFisicaService } from "../service/baixas.service"
 const ACTION_BUTTON_CLASS =
     "h-10 px-5 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors flex items-center gap-2 text-sm"
 
+const PRIMARY_BUTTON_CLASS =
+    "h-10 px-5 bg-[#2F7D57] text-white font-semibold rounded-md hover:bg-[#256947] transition-colors flex items-center gap-2 text-sm"
+
+// Status "aguardando_envio" é exibido como "Em elaboração" na UI
+const STATUS_EM_ELABORACAO = "aguardando_envio"
+
 // ============================================================================
 // HELPERS
 // ============================================================================
 
+function parseLocalDate(dateString: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString.trim())
+    if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    }
+    return new Date(dateString)
+}
+
 function formatDateBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleDateString("pt-BR", {
         day: "numeric",
@@ -48,9 +74,14 @@ function formatDateBR(dateString: string | null | undefined): string {
 
 function formatDateTimeBR(dateString: string | null | undefined): string {
     if (!dateString) return "-"
-    const date = new Date(dateString)
+    const date = parseLocalDate(dateString)
     if (Number.isNaN(date.getTime())) return "-"
     return date.toLocaleString("pt-BR")
+}
+
+function mapItensParaLinhas(itens: BaixaFisicaItem[], gerarRowId: () => number): EditRow[] {
+    if (itens.length === 0) return [{ rowId: gerarRowId(), item: null }]
+    return itens.map((i) => ({ rowId: gerarRowId(), item: i }))
 }
 
 // ============================================================================
@@ -81,7 +112,7 @@ function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
 }
 
 // ============================================================================
-// BEM SELECTOR (modo edição — status aguardando_envio)
+// BEM SELECTOR (modo edição — status Em elaboração)
 // ============================================================================
 
 interface BemSelectorProps {
@@ -175,8 +206,8 @@ function BemSelectorDropdown({
                     disabled={already}
                     onClick={() => handleSelect(bem)}
                     className={`w-full text-left px-3 py-2 text-sm border-b border-gray-100 last:border-0 ${already
-                            ? "text-gray-300 cursor-not-allowed bg-gray-50"
-                            : "hover:bg-[#2F7D57] hover:text-white cursor-pointer"
+                        ? "text-gray-300 cursor-not-allowed bg-gray-50"
+                        : "hover:bg-[#2F7D57] hover:text-white cursor-pointer"
                         }`}
                 >
                     <span className="font-mono mr-2">{bem.numero_patrimonial}</span>
@@ -205,7 +236,7 @@ function BemSelectorDropdown({
 }
 
 // ============================================================================
-// ITEM ROW — modo edição (aguardando_envio)
+// ITEM ROW — modo edição (Em elaboração + ação "Editar" acionada)
 // ============================================================================
 
 interface EditItemRowProps {
@@ -300,9 +331,11 @@ interface ValidacaoTableProps {
     readonly itens: BaixaFisicaItem[]
     readonly checkedIds: Set<number>
     readonly onToggle: (itemId: number) => void
+    readonly allChecked: boolean
+    readonly onToggleAll: () => void
 }
 
-function ValidacaoTable({ itens, checkedIds, onToggle }: ValidacaoTableProps) {
+function ValidacaoTable({ itens, checkedIds, onToggle, allChecked, onToggleAll }: ValidacaoTableProps) {
     if (itens.length === 0) {
         return <p className="text-sm text-gray-400 px-1">Nenhum item corresponde ao filtro.</p>
     }
@@ -312,7 +345,18 @@ function ValidacaoTable({ itens, checkedIds, onToggle }: ValidacaoTableProps) {
             <table className="w-full text-sm">
                 <thead className="bg-[#F5F5F5] border-b border-gray-200">
                     <tr className="text-left text-gray-600 font-semibold">
-                        <th className="p-3 w-24">Validação</th>
+                        <th className="p-3 w-48">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={allChecked}
+                                    onChange={onToggleAll}
+                                    className="accent-[#2F7D57] w-4 h-4 cursor-pointer"
+                                    aria-label="Selecionar todos"
+                                /> Selecionar todos
+                            </label>
+                            <span className="sr-only">Validação</span>
+                        </th>
                         <th className="p-3 w-56">Número Patrimonial</th>
                         <th className="p-3">Nome do Bem</th>
                     </tr>
@@ -353,7 +397,7 @@ function ValidacaoTable({ itens, checkedIds, onToggle }: ValidacaoTableProps) {
 }
 
 // ============================================================================
-// ITEM ROW — modo somente leitura (aceita, recusada)
+// ITEM ROW — modo somente leitura (Em elaboração sem edição, aceita, recusada)
 // ============================================================================
 
 function ReadOnlyItemRow({ item }: { readonly item: BaixaFisicaItem }) {
@@ -370,15 +414,31 @@ function ReadOnlyItemRow({ item }: { readonly item: BaixaFisicaItem }) {
 // ============================================================================
 
 let nextRowId = 1
+const gerarRowId = () => nextRowId++
 
 export default function VerBaixaPage() {
     const navigate = useNavigate()
     const { id } = useParams()
+    const [searchParams] = useSearchParams()
+
     const [baixa, setBaixa] = useState<BaixaFisicaDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    // ---- Modo edição (aguardando_envio) ----
+    // ---- Modo edição (Em elaboração) ----
+    // A tela abre sempre em modo de VISUALIZAÇÃO. A alteração dos campos só
+    // é liberada após o acionamento explícito da ação "Editar" — ou quando a
+    // listagem já envia o usuário direto para a edição (?editar=1).
+    const [modoEdicao, setModoEdicao] = useState(searchParams.get("editar") === "1")
+
+    /*
+      O estado inicial do useState so e lido na primeira renderizacao. Sem este
+      efeito, navegar de ?editar=1 para a mesma tela sem o parametro (ou o
+      contrario) manteria o modo anterior, porque o componente nao remonta.
+    */
+    useEffect(() => {
+        setModoEdicao(searchParams.get("editar") === "1")
+    }, [searchParams])
     const [editRows, setEditRows] = useState<EditRow[]>([])
     const [hasChanges, setHasChanges] = useState(false)
 
@@ -387,25 +447,19 @@ export default function VerBaixaPage() {
     const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set())
     const [aceitando, setAceitando] = useState(false)
 
-    // ---- Modais / avisos ----
+    // ---- Modais ----
     const [showHistorico, setShowHistorico] = useState(false)
     const [showConfirmarAceite, setShowConfirmarAceite] = useState(false)
     const [showRecusarModal, setShowRecusarModal] = useState(false)
     const [recusando, setRecusando] = useState(false)
     const [motivoRecusa, setMotivoRecusa] = useState("")
-    const [actionError, setActionError] = useState<string | null>(null)
-    const [successMessage, setSuccessMessage] = useState<string | null>(null)
     useEffect(() => {
         const fetchBaixa = async () => {
             try {
                 if (!id) return
                 const data = await baixaFisicaService.retrieve(Number(id))
                 setBaixa(data)
-                setEditRows(
-                    data.itens.length > 0
-                        ? data.itens.map((i) => ({ rowId: nextRowId++, item: i }))
-                        : [{ rowId: nextRowId++, item: null }]
-                )
+                setEditRows(mapItensParaLinhas(data.itens, gerarRowId))
                 // Os checkboxes de validação SEMPRE começam vazios: não há
                 // persistência no backend, então não há estado anterior
                 // para restaurar (cada visita à tela começa do zero).
@@ -421,8 +475,10 @@ export default function VerBaixaPage() {
 
     // ── Derivados ────────────────────────────────────────────────────────
 
-    // Edição só permitida enquanto status for "aguardando_envio" (Em elaboração)
-    const isEditing = baixa?.status === "aguardando_envio"
+    // Somente baixas "Em elaboração" podem ser editadas...
+    const isEmElaboracao = baixa?.status === STATUS_EM_ELABORACAO
+    // ...e apenas depois que o usuário aciona a ação "Editar".
+    const podeEditar = isEmElaboracao && modoEdicao
     // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
     const isValidando = baixa?.status === "solicitada"
 
@@ -442,7 +498,24 @@ export default function VerBaixaPage() {
         baixa.itens.length > 0 &&
         baixa.itens.every((item) => checkedIds.has(item.id))
 
+    const todosFiltradosValidados =
+        itensFiltrados.length > 0 && itensFiltrados.every((item) => checkedIds.has(item.id))
+
     // ── Handlers — modo edição ──────────────────────────────────────────
+
+    const handleEntrarEmEdicao = () => {
+        if (!baixa) return
+        setEditRows(mapItensParaLinhas(baixa.itens, gerarRowId))
+        setHasChanges(false)
+        setModoEdicao(true)
+    }
+
+    const handleCancelarEdicao = () => {
+        if (!baixa) return
+        setEditRows(mapItensParaLinhas(baixa.itens, gerarRowId))
+        setHasChanges(false)
+        setModoEdicao(false)
+    }
 
     const handleSelectBem = (rowId: number, bem: Bem) => {
         const numeroPatrimonial = bem.numero_patrimonial ?? `SEM-NUMERO-${bem.id}`
@@ -478,33 +551,44 @@ export default function VerBaixaPage() {
     const handleRemoveRow = (rowId: number) => {
         setEditRows((prev) => {
             const next = prev.filter((r) => r.rowId !== rowId)
-            if (next.length === 0) return [{ rowId: nextRowId++, item: null }]
+            if (next.length === 0) return [{ rowId: gerarRowId(), item: null }]
             return next
         })
         setHasChanges(true)
     }
 
     const handleAddRow = () => {
-        setEditRows((prev) => [...prev, { rowId: nextRowId++, item: null }])
+        setEditRows((prev) => [...prev, { rowId: gerarRowId(), item: null }])
     }
 
     const handleSave = async () => {
         if (!baixa) return
+
+        const itens = editRows
+            .filter((r) => r.item)
+            .map((r) => ({ bem: r.item!.bem.id }))
+
+        // Uma Baixa Fisica sem itens nao tem o que dar baixa: bloqueia o salvamento
+        // em vez de persistir um registro vazio.
+        if (itens.length === 0) {
+            toast.error("Adicione ao menos um item.")
+            return
+        }
+
         setSaving(true)
         try {
-            const itens = editRows
-                .filter((r) => r.item)
-                .map((r) => ({ bem: r.item!.bem.id }))
             const updated = await baixaFisicaService.update(baixa.id, { itens })
             setBaixa(updated)
-            setEditRows(
-                updated.itens.length > 0
-                    ? updated.itens.map((i) => ({ rowId: nextRowId++, item: i }))
-                    : [{ rowId: nextRowId++, item: null }]
-            )
+            setEditRows(mapItensParaLinhas(updated.itens, gerarRowId))
             setHasChanges(false)
+            // Após salvar, a tela volta ao modo de visualização.
+            setModoEdicao(false)
+            toast.success("Baixa Física atualizada com sucesso.")
         } catch (err) {
             console.error(err)
+            toast.error(
+                err instanceof Error ? err.message : "Erro ao salvar as alterações da Baixa Física."
+            )
         } finally {
             setSaving(false)
         }
@@ -521,22 +605,43 @@ export default function VerBaixaPage() {
         })
     }
 
-    // Confirma o aceite: chama aprovar() diretamente (sem endpoint de
-    // validação intermediário — os checkboxes são só conferência visual
-    // do gestor antes de decidir) e navega para a própria tela de
-    // detalhe, já em modo somente leitura.
-    const handleConfirmarAceite = async () => {
+    const toggleCheckAllFiltrados = () => {
+        setCheckedIds((prev) => {
+            const next = new Set(prev)
+            if (todosFiltradosValidados) {
+                itensFiltrados.forEach((item) => next.delete(item.id))
+            } else {
+                itensFiltrados.forEach((item) => next.add(item.id))
+            }
+            return next
+        })
+    }
+
+    const handleConfirmarAceite = async (numeroProcesso?: string) => {
         if (!baixa) return
+        const processo = numeroProcesso?.trim() ?? ""
+        if (!processo) {
+            toast.error("Número do Processo é obrigatório")
+            return
+        }
+        if (!isProcessoBaixaValido(processo)) {
+            toast.error(
+                "Número do Processo fora do padrão XXXX.XXXX/XXXXXXX-X. Exemplo: 6016.2025/0117371-7"
+            )
+            return
+        }
         setAceitando(true)
-        setActionError(null)
         try {
-            await baixaFisicaService.aprovar(baixa.id)
+            const updated = await baixaFisicaService.aprovar(baixa.id, {
+                numero_processo_baixa: processo,
+            })
+            toast.success("Baixa física aceita com sucesso!")
+            setBaixa(updated)
             setShowConfirmarAceite(false)
-            setSuccessMessage("Baixa física aceita com sucesso!")
             navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
         } catch (err) {
             console.error(err)
-            setActionError(
+            toast.error(
                 err instanceof Error ? err.message : "Erro ao confirmar aceite da baixa."
             )
             setShowConfirmarAceite(false)
@@ -548,20 +653,17 @@ export default function VerBaixaPage() {
     const handleRecusar = async () => {
         if (!baixa) return
         setRecusando(true)
-        setActionError(null)
         try {
             await baixaFisicaService.recusar(baixa.id, { motivo: motivoRecusa.trim() || undefined })
             setShowRecusarModal(false)
             setMotivoRecusa("")
-            setSuccessMessage("Baixa física recusada.")
+            toast.success("Baixa física recusada.")
             setTimeout(() => {
                 navigate(-1)
             }, 1500)
         } catch (err) {
             console.error(err)
-            setActionError(
-                err instanceof Error ? err.message : "Erro ao recusar a baixa."
-            )
+            toast.error(err instanceof Error ? err.message : "Erro ao recusar a baixa.")
             setShowRecusarModal(false)
         } finally {
             setRecusando(false)
@@ -574,20 +676,25 @@ export default function VerBaixaPage() {
         navigate(`/baixas-fisicas/${baixa.id}/solicitar-correcao`)
     }
 
-    // ── Gerar NBBPM ──────────────────────────────────────────────────────
-
     const handleGerarNbbpm = async () => {
         if (!baixa) return
+        const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
+        const nbbpmId = match ? Number(match[1]) : null
+        if (nbbpmId === null) {
+            toast.error("Não foi possível identificar a NBBPM para download.")
+            return
+        }
         try {
-            const blob = await baixaFisicaService.gerarNbbpm(baixa.id)
+            const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpmId)
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url
-            a.download = `NBBPM-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
+            a.download = `NBBPM-${baixa.numero_nbbpm ?? baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
             URL.revokeObjectURL(url)
         } catch (err) {
             console.error(err)
+            toast.error("Erro ao gerar a NBBPM.")
         }
     }
 
@@ -601,8 +708,14 @@ export default function VerBaixaPage() {
             a.download = `Laudo-Avaliacao-${baixa.numero_processo_baixa ?? baixa.id}.pdf`
             a.click()
             URL.revokeObjectURL(url)
+            toast.success("Laudo de Avaliação gerado com sucesso!")
         } catch (err) {
             console.error(err)
+            // Um unico toast: a mensagem do backend quando houver, senao o texto padrao.
+            const mensagem = err instanceof Error && err.message
+                ? err.message
+                : "Erro ao gerar o Laudo de Avaliação."
+            toast.error(mensagem)
         }
     }
 
@@ -618,6 +731,13 @@ export default function VerBaixaPage() {
 
     const ua = baixa.unidade_administrativa_origem
 
+    let tituloPagina = "Visualizar Baixa Física de Bem Patrimonial"
+    if (isValidando) {
+        tituloPagina = "Validar Baixa Física de Bem Patrimonial"
+    } else if (podeEditar) {
+        tituloPagina = "Editar Baixa Física de Bem Patrimonial"
+    }
+
     // ── Render ───────────────────────────────────────────────────────────
 
     return (
@@ -626,37 +746,50 @@ export default function VerBaixaPage() {
                 items={[
                     { label: "Bem Patrimonial" },
                     { label: "Baixa Física de Bens Patrimoniais" },
-                    {
-                        label: isValidando
-                            ? "Validar Baixa Física de Bem Patrimonial"
-                            : "Visualizar Baixa Física de Bem Patrimonial",
-                        isActive: true,
-                    },
+                    { label: tituloPagina, isActive: true },
                 ]}
             />
 
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-700">
-                    {isValidando
-                        ? "Validar Baixa Física de Bem Patrimonial"
-                        : "Visualizar Baixa Física de Bem Patrimonial"}
-                </h1>
+                <h1 className="text-xl font-bold text-gray-700">{tituloPagina}</h1>
 
                 <div className="flex items-center gap-2">
-                    {/* Botão "Salvar Edição" só aparece quando Em elaboração.
-                        Após "Solicitada" o botão some completamente. */}
-                    {isEditing && (
-                        <button
-                            onClick={handleSave}
-                            disabled={!hasChanges || saving}
-                            className={`h-10 px-5 font-semibold rounded-md flex items-center gap-2 text-sm transition-colors border ${hasChanges
-                                    ? "border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white bg-white"
-                                    : "border-gray-300 text-gray-400 bg-white cursor-not-allowed"
-                                }`}
+                    <Button type="button" onClick={() => navigate(-1)} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
+                    {/* Em elaboração + modo visualização → ação "Editar".
+                        É ela que habilita a alteração dos campos. */}
+                    {isEmElaboracao && !modoEdicao && (
+                        <Button
+                            type="button"
+                            onClick={handleEntrarEmEdicao}
+                            className={ACTION_BUTTON_CLASS}
                         >
-                            <Pencil size={14} />
-                            {saving ? "Salvando..." : "Salvar Edição"}
-                        </button>
+                            <Pencil size={16} />
+                            Editar
+                        </Button>
+                    )}
+
+                    {/* Em elaboração + modo edição → "Salvar Edição" e "Cancelar Edição" */}
+                    {podeEditar && (
+                        <>
+                            <Button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={!hasChanges || saving}
+                                className={PRIMARY_BUTTON_CLASS}
+                            >
+                                {saving ? "Salvando..." : "Salvar Edição"}
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleCancelarEdicao}
+                                disabled={saving}
+                                className={ACTION_BUTTON_CLASS}
+                            >
+                                Cancelar Edição
+                            </Button>
+                        </>
                     )}
 
                     {/* Ações da tela "Validar Baixa" — apenas status "solicitada" */}
@@ -665,20 +798,23 @@ export default function VerBaixaPage() {
                             {/* "Solicitar correção" some quando todos os itens já
                                 estão validados (replica o protótipo) */}
                             {!todosValidados && (
-                                <button
+                                <Button
+                                    type="button"
                                     onClick={handleIrParaSolicitarCorrecao}
-                                    className="h-10 px-5 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md flex items-center gap-2 text-sm transition-colors"
+                                    className={ACTION_BUTTON_CLASS}
                                 >
                                     Solicitar correção
-                                </button>
+                                </Button>
                             )}
-                            <button
+                            <Button
+                                type="button"
                                 onClick={() => setShowRecusarModal(true)}
                                 className="h-10 px-5 bg-white border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-semibold rounded-md flex items-center gap-2 text-sm transition-colors"
                             >
                                 Recusar
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                type="button"
                                 onClick={() => setShowConfirmarAceite(true)}
                                 disabled={!todosValidados}
                                 title={
@@ -686,70 +822,62 @@ export default function VerBaixaPage() {
                                         ? "Aceitar solicitação"
                                         : "Valide todos os itens para habilitar"
                                 }
-                                className={`h-10 px-5 font-semibold rounded-md flex items-center gap-2 text-sm transition-colors ${todosValidados
-                                        ? "bg-[#2F7D57] text-white hover:bg-[#256947]"
-                                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                    }`}
+                                className={PRIMARY_BUTTON_CLASS}
                             >
                                 Aceitar
-                            </button>
+                            </Button>
                         </>
                     )}
 
                     {baixa.status === "aceita" && baixa.url_gerar_laudo && (
-                        <button onClick={handleGerarLaudo} className={ACTION_BUTTON_CLASS}>
+                        <Button
+                            onClick={handleGerarLaudo}
+                            className={ACTION_BUTTON_CLASS}
+                            title={LAUDO_TITULO}
+                            aria-label={`Baixar Laudo de Avaliação - ${LAUDO_TITULO}`}
+                        >
                             <FileDown size={14} />
                             Baixar Laudo de Avaliação
-                        </button>
+                        </Button>
                     )}
 
                     {baixa.status === "aceita" && baixa.url_gerar_nbbpm && (
-                        <button onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
+                        <Button type="button" onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
                             <FileDown size={14} />
                             Baixar NBBPM
-                        </button>
+                        </Button>
                     )}
 
                     {!isValidando && (
-                        <button onClick={() => setShowHistorico(true)} className={ACTION_BUTTON_CLASS}>
+                        <Button
+                            type="button"
+                            onClick={() => setShowHistorico(true)}
+                            className={ACTION_BUTTON_CLASS}
+                        >
                             <History size={14} />
                             Histórico
-                        </button>
+                        </Button>
                     )}
 
-                    <button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
-                        <ArrowLeft size={14} />
-                        Voltar
-                    </button>
                 </div>
             </div>
-
-            {actionError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {actionError}
-                </div>
-            )}
-
-            {successMessage && (
-                <output className="block text-sm text-green-700 bg-green-50 border border-green-200 rounded px-4 py-2">
-                    {successMessage}
-                </output>
-            )}
 
             <div className="bg-white border border-gray-200 rounded-md overflow-visible shadow-sm">
                 {/* Unidade Administrativa — exibida em destaque no modo Validar Baixa,
                     refletindo o protótipo */}
                 {isValidando && (
                     <div className="px-6 py-4 border-b border-gray-200">
-                        <label className="text-sm font-semibold text-gray-700 block mb-1">
+                        <Label className="text-sm font-semibold text-gray-700 block mb-1">
                             Unidade Administrativa
 
                             <div className="h-11 w-full max-w-md rounded border border-gray-200 bg-gray-50 px-3 flex items-center text-sm text-gray-400">
                                 {ua.codigo} - {ua.nome}
                             </div>
-                        </label>
+                        </Label>
                     </div>
                 )}
+
+
 
                 {!isValidando && (
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -768,7 +896,10 @@ export default function VerBaixaPage() {
                                 Usuário que solicitou a baixa:
                             </span>
                             <span className="text-sm text-[#2F7D57]">
-                                {baixa.criado_por.nome_completo}
+                                <CriadoPorValue
+                                    label={formatUsuarioObjetoLabel(baixa.criado_por)}
+                                    data-testid="baixa-criado-por-value"
+                                />
                             </span>
                         </div>
 
@@ -839,12 +970,20 @@ export default function VerBaixaPage() {
                         Itens de Baixa Física
                     </p>
 
+                    {/* Aviso do modo visualização para baixas Em elaboração */}
+                    {isEmElaboracao && !modoEdicao && (
+                        <p className="text-xs text-gray-500">
+                            As informações estão em modo de visualização. Acione
+                            &quot;Editar&quot; para alterar os itens desta Baixa Física.
+                        </p>
+                    )}
+
                     {/* Filtro — apenas no modo "Validar Baixa" */}
                     {isValidando && (
                         <div className="space-y-1 max-w-sm">
-                            <label htmlFor="filtro-validacao" className="text-sm font-semibold text-gray-700">
+                            <Label htmlFor="filtro-validacao" className="text-sm font-semibold text-gray-700">
                                 Filtro por Número Patrimonial ou Nome do Bem
-                            </label>
+                            </Label>
                             <div className="relative">
                                 <Search
                                     size={15}
@@ -880,11 +1019,13 @@ export default function VerBaixaPage() {
                             itens={itensFiltrados}
                             checkedIds={checkedIds}
                             onToggle={toggleCheck}
+                            allChecked={todosFiltradosValidados}
+                            onToggleAll={toggleCheckAllFiltrados}
                         />
                     )}
 
-                    {/* Lista — modo edição (aguardando_envio) */}
-                    {isEditing && (
+                    {/* Lista editável — Em elaboração com a ação "Editar" acionada */}
+                    {podeEditar && (
                         <div className="space-y-2">
                             {editRows.length === 0 && (
                                 <p className="text-sm text-gray-400">Nenhum item vinculado</p>
@@ -905,8 +1046,8 @@ export default function VerBaixaPage() {
                         </div>
                     )}
 
-                    {/* Lista — modo somente leitura (aceita, recusada) */}
-                    {!isEditing && !isValidando && (
+                    {/* Lista somente leitura — Em elaboração (sem edição), aceita, recusada */}
+                    {!podeEditar && !isValidando && (
                         <div className="space-y-2">
                             {(baixa.itens ?? []).length === 0 && (
                                 <p className="text-sm text-gray-400">Nenhum item vinculado</p>
@@ -939,52 +1080,54 @@ export default function VerBaixaPage() {
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <h2 className="text-base font-bold text-gray-800">Recusar Baixa Física</h2>
-                            <button
+                            <Button
                                 type="button"
+                                size="icon"
+                                variant="ghost"
                                 onClick={() => { setShowRecusarModal(false); setMotivoRecusa("") }}
                                 disabled={recusando}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-gray-400 hover:text-gray-600"
                                 aria-label="Fechar"
                             >
-                                ✕
-                            </button>
+                                <X size={16} />
+                            </Button>
                         </div>
                         <div className="px-6 py-5 space-y-3">
                             <p className="text-sm text-gray-600">
                                 Tem certeza que deseja recusar esta solicitação de Baixa Física?
                             </p>
                             <div className="flex flex-col gap-1">
-                                <label htmlFor="motivo-recusa" className="text-sm font-semibold text-gray-700">
+                                <Label htmlFor="motivo-recusa" className="text-sm font-semibold text-gray-700">
                                     Motivo (opcional)
-                                </label>
-                                <textarea
+                                </Label>
+                                <Textarea
                                     id="motivo-recusa"
                                     value={motivoRecusa}
                                     onChange={(e) => setMotivoRecusa(e.target.value)}
                                     disabled={recusando}
                                     rows={4}
                                     placeholder="Descreva o motivo da recusa..."
-                                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 resize-none focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400 disabled:bg-gray-50 disabled:text-gray-400"
+                                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 resize-none"
                                 />
                             </div>
                         </div>
                         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                            <button
+                            <Button
                                 type="button"
                                 onClick={() => { setShowRecusarModal(false); setMotivoRecusa("") }}
                                 disabled={recusando}
-                                className="h-10 px-5 rounded-md border border-gray-300 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                className="h-10 px-5 rounded-md border border-gray-300 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 onClick={handleRecusar}
                                 disabled={recusando}
-                                className="h-10 px-5 rounded-md bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
+                                className="h-10 px-5 rounded-md bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
                             >
                                 {recusando ? "Recusando..." : "Confirmar Recusa"}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

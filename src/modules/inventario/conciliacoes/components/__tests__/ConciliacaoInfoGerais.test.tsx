@@ -39,10 +39,10 @@ const baseConciliacao: Conciliacao = {
 };
 
 describe('ConciliacaoInfoGerais', () => {
-  it('renderiza a secao com titulo "Informações gerais"', () => {
+  it('renderiza a secao com titulo "Informações Gerais"', () => {
     render(<ConciliacaoInfoGerais conciliacao={baseConciliacao} />);
 
-    expect(screen.getByText('Informações gerais')).toBeInTheDocument();
+    expect(screen.getByText('Informações Gerais')).toBeInTheDocument();
     expect(screen.getByTestId('conciliacao-info-gerais')).toBeInTheDocument();
   });
 
