@@ -9,6 +9,8 @@ import { valorSelectFormato } from '../utils/formato-bem'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
+import { getBemStatusTone } from '../utils/status'
+import { StatusBadge } from '@/components/status/StatusBadge'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -234,10 +236,13 @@ export default function BemEditPage() {
       <Card className="p-6">
         <Form {...form}>
           <form id="bem-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="flex justify-end">
-              <div className="text-sm font-semibold text-green-700">
-                Status: {bem.status_display}
-              </div>
+            <div className="flex justify-end items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">Status:</span>
+              <StatusBadge
+                tone={getBemStatusTone(bem.status)}
+                label={bem.status_display}
+                testId={`bem-status-${bem.status}`}
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-8 items-start">
