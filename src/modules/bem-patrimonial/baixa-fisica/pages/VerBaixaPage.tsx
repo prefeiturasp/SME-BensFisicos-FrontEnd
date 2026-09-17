@@ -35,6 +35,8 @@ import {
 } from "../utils/processo-baixa"
 
 import { baixaFisicaService } from "../service/baixas.service"
+import { StatusBadge } from "@/components/status/StatusBadge"
+import { getBaixaStatusTone } from "../utils/status"
 
 // ============================================================================
 // STYLES
@@ -82,33 +84,6 @@ function formatDateTimeBR(dateString: string | null | undefined): string {
 function mapItensParaLinhas(itens: BaixaFisicaItem[], gerarRowId: () => number): EditRow[] {
     if (itens.length === 0) return [{ rowId: gerarRowId(), item: null }]
     return itens.map((i) => ({ rowId: gerarRowId(), item: i }))
-}
-
-// ============================================================================
-// STATUS BADGE
-// ============================================================================
-
-interface StatusBadgeProps {
-    readonly status: string
-    readonly statusDisplay: string
-}
-
-function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
-    const colorMap: Record<string, string> = {
-        aguardando_envio: "text-yellow-700",
-        aceita: "text-[#2F7D57]",
-        recusada: "text-red-600",
-        cancelada: "text-gray-500",
-        solicitada: "text-blue-700",
-    }
-
-    const cls = colorMap[status] ?? "text-gray-600"
-
-    return (
-        <span className={`text-sm font-bold ${cls}`}>
-            Status: {statusDisplay}
-        </span>
-    )
 }
 
 // ============================================================================
@@ -885,7 +860,14 @@ export default function VerBaixaPage() {
                             Baixa Física #{String(baixa.id).padStart(3, "0")} - UA:{" "}
                             {ua.codigo} - {ua.sigla}
                         </span>
-                        <StatusBadge status={baixa.status} statusDisplay={baixa.status_display} />
+                        <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                            Status:
+                            <StatusBadge
+                                tone={getBaixaStatusTone(baixa.status)}
+                                label={baixa.status_display}
+                                testId={`baixa-status-${baixa.status}`}
+                            />
+                        </span>
                     </div>
                 )}
 

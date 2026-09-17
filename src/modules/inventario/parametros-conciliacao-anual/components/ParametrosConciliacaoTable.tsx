@@ -3,8 +3,10 @@ import {
   type UnidadesListTableColumn,
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
+import { StatusBadge } from '@/components/status/StatusBadge';
 import type { UnidadesPaginationItem } from '@/hooks/useUnidadesPagination';
 import type { ParametroConciliacaoAnual } from '../types/parametros-conciliacao-anual.types';
+import { getParametroConciliacaoStatusTone } from '../utils/status';
 
 export type ParametroConciliacaoSortableField =
   | 'unidade_orcamentaria__codigo'
@@ -47,7 +49,16 @@ const COLUMNS: ReadonlyArray<UnidadesListTableColumn<ParametroConciliacaoAnual>>
   { key: 'uo', render: formatUo },
   { key: 'ano', render: (parametro) => parametro.ano_referencia },
   { key: 'periodo_final', render: (parametro) => formatDate(parametro.periodo_final) },
-  { key: 'status', render: (parametro) => (parametro.ativo ? 'Ativo' : 'Inativo') },
+  {
+    key: 'status',
+    render: (parametro) => (
+      <StatusBadge
+        tone={getParametroConciliacaoStatusTone(parametro.ativo)}
+        label={parametro.ativo ? 'Ativo' : 'Inativo'}
+        testId={`parametro-status-${parametro.ativo ? 'ativo' : 'inativo'}`}
+      />
+    ),
+  },
 ];
 
 export function ParametrosConciliacaoTable({

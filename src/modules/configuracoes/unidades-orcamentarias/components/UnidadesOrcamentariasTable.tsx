@@ -3,8 +3,10 @@ import {
   type UnidadesListTableColumn,
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
+import { StatusBadge } from '@/components/status/StatusBadge';
 import type { PaginationItem } from '../hooks/usePagination';
 import type { UnidadeOrcamentaria } from '../types/unidades-orcamentarias.types';
+import { getUnidadeOrcamentariaStatusTone } from '../utils/status';
 
 export type UnidadeOrcamentariaSortableField =
   | 'codigo'
@@ -43,7 +45,16 @@ const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeOrcamentaria>> = [
   { key: 'codigo_orgao', render: (unidade) => unidade.codigo_orgao || '-' },
   { key: 'sigla_orgao', render: (unidade) => unidade.sigla_orgao || '-' },
   { key: 'orgao', render: (unidade) => unidade.orgao || '-' },
-  { key: 'status', render: (unidade) => unidade.ativa_display },
+  {
+    key: 'status',
+    render: (unidade) => (
+      <StatusBadge
+        tone={getUnidadeOrcamentariaStatusTone(unidade.ativa)}
+        label={unidade.ativa_display}
+        testId={`uo-status-${unidade.ativa ? 'ativa' : 'inativa'}`}
+      />
+    ),
+  },
 ];
 
 export function UnidadesOrcamentariasTable({

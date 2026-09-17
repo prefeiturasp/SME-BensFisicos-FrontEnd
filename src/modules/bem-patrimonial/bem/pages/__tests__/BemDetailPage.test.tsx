@@ -184,9 +184,8 @@ describe('BemDetailPage', () => {
       screen.getByDisplayValue('Sala 1')
     ).toBeInTheDocument()
 
-    expect(
-      screen.getByText('Status: Ativo')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Status:')).toBeInTheDocument()
+    expect(screen.getByTestId('bem-status-ativo')).toHaveTextContent('Ativo')
   })
 
   it('deve exibir botão Editar quando gestor e não baixa física', async () => {

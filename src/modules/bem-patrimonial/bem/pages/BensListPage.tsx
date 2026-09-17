@@ -18,9 +18,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { StatusBadge } from '@/components/status/StatusBadge'
 import { BuscaEspecialFilter } from '../components/BuscaEspecialFilter'
 import { useBensList } from '../hooks/useBensList'
 import { usePagination } from '../hooks/usePagination'
+import { getBemStatusTone } from '../utils/status'
 
 const PAGE_SIZE = 10
 
@@ -371,7 +373,13 @@ export default function BensListPage() {
                       {bem.unidade_administrativa_codigo} -{' '}
                       {bem.unidade_administrativa_nome}
                     </td>
-                    <td className='p-3 whitespace-nowrap'>{bem.status_display}</td>
+                    <td className='p-3 whitespace-nowrap'>
+                      <StatusBadge
+                        tone={getBemStatusTone(bem.status)}
+                        label={bem.status_display}
+                        testId={`bem-status-${bem.status}`}
+                      />
+                    </td>
                     <td className='p-3 text-center'>
                       <Button
                         aria-label="Visualizar bem"
