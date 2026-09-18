@@ -187,10 +187,11 @@ async function fillForm(
     const { grupo: selectGrupo, uo: selectUo } = getSelects()
     fireEvent.change(selectGrupo, { target: { value: grupo } })
 
-    if (unidadeId) {
-        await screen.findByText("02.17.20 - UO Teste")
-        fireEvent.change(selectUo, { target: { value: "2" } })
+    // Unidade Orçamentária é obrigatória para qualquer grupo
+    await screen.findByText("02.17.20 - UO Teste")
+    fireEvent.change(selectUo, { target: { value: "2" } })
 
+    if (unidadeId) {
         openUaDropdown()
         fireEvent.click(screen.getAllByText(/^\d{3}\s*-\s*/i)[0])
     }
@@ -574,6 +575,68 @@ describe("AdicionarUsuarioPage", () => {
             await waitFor(() => {
                 expect(mockUsuarioCreate).not.toHaveBeenCalled()
             })
+        })
+
+        it("exibe erro quando Unidade Orçamentária não é selecionada", async () => {
+            renderComponent()
+            expect(mockGetCurrentUser).toHaveBeenCalled()
+
+            fireEvent.change(screen.getByPlaceholderText("Digite o nome completo"), {
+                target: { value: VALID_FORM_DATA.nome },
+            })
+            fireEvent.change(screen.getByPlaceholderText("Digite o RF"), {
+                target: { value: VALID_FORM_DATA.rf },
+            })
+            fireEvent.change(screen.getByPlaceholderText("Digite o nome de usuário de acesso"), {
+                target: { value: VALID_FORM_DATA.username },
+            })
+            fireEvent.change(screen.getByPlaceholderText("Digite o e-mail"), {
+                target: { value: VALID_FORM_DATA.email },
+            })
+            fireEvent.change(screen.getByPlaceholderText("Cadastre uma senha"), {
+                target: { value: VALID_FORM_DATA.password },
+            })
+            fireEvent.change(screen.getByPlaceholderText("Confirme a senha"), {
+                target: { value: VALID_FORM_DATA.confirmPassword },
+            })
+
+            const { grupo } = getSelects()
+            fireEvent.change(grupo, { target: { value: "GESTOR_PATRIMONIO" } })
+            // Unidade Orçamentária deliberadamente não selecionada
+
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(
+                    screen.getByText("Unidade Orçamentária é obrigatória")
+                ).toBeInTheDocument()
+            })
+
+            expect(mockUsuarioCreate).not.toHaveBeenCalled()
+        })
+
+        it("exibe erro em cada campo obrigatório pendente, mesmo com preenchimento parcial", async () => {
+            renderComponent()
+            expect(mockGetCurrentUser).toHaveBeenCalled()
+
+            // Apenas Nome Completo preenchido; RF, e-mail, grupo e UO ficam vazios
+            fireEvent.change(screen.getByPlaceholderText("Digite o nome completo"), {
+                target: { value: "Maria Souza" },
+            })
+
+            fireEvent.click(screen.getByText("Salvar"))
+
+            await waitFor(() => {
+                expect(screen.getByText("RF é obrigatório")).toBeInTheDocument()
+                expect(screen.getByText("E-mail inválido")).toBeInTheDocument()
+                expect(screen.getByText("Selecione um grupo")).toBeInTheDocument()
+                expect(
+                    screen.getByText("Unidade Orçamentária é obrigatória")
+                ).toBeInTheDocument()
+            })
+
+            expect(screen.queryByText("Nome é obrigatório")).not.toBeInTheDocument()
+            expect(mockUsuarioCreate).not.toHaveBeenCalled()
         })
     })
 

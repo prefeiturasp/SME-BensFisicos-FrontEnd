@@ -9,6 +9,7 @@ export const adicionarUsuarioSchema = z
     email: z.email({ error: "E-mail inválido" }),
     unidade: z.array(z.string()).default([]),
     grupo: z.string({ error: "Selecione um grupo" }).min(1, "Selecione um grupo"),
+    uo: z.string({ error: "Unidade Orçamentária é obrigatória" }).min(1, "Unidade Orçamentária é obrigatória"),
     password: newPasswordSchema,
     confirmPassword: z.string({ error: "Confirmação de senha é obrigatória" }).min(1, "Confirmação de senha é obrigatória"),
     status: z.string(),

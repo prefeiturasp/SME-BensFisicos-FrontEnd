@@ -10,6 +10,7 @@ const VALID_FORM = {
     email: "joao@email.com",
     unidade: ["001"],
     grupo: "GESTOR_PATRIMONIO",
+    uo: "2",
     password: VALID_PWD,
     confirmPassword: VALID_PWD,
     status: "ativo",
@@ -111,6 +112,18 @@ describe("adicionarUsuarioSchema", () => {
 
         it("aceita OPERADOR_INVENTARIO com unidade preenchida", () => {
             expect(parseForm({ grupo: "OPERADOR_INVENTARIO", unidade: ["001"] }).success).toBe(true)
+        })
+    })
+
+    describe("campo uo", () => {
+
+        it("rejeita uo vazio", () => {
+            const result = parseForm({ uo: "" })
+            expect(getError(result, "uo")).toBe("Unidade Orçamentária é obrigatória")
+        })
+
+        it("aceita uo preenchido", () => {
+            expect(parseForm({ uo: "2" }).success).toBe(true)
         })
     })
 
