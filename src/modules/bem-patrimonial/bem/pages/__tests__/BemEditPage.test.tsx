@@ -192,7 +192,8 @@ describe('BemEditPage', () => {
 
     expect(await screen.findByDisplayValue('Notebook Dell')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
-    expect(screen.getByText('Status: Ativo')).toBeInTheDocument()
+    expect(screen.getByText('Status:')).toBeInTheDocument()
+    expect(screen.getByTestId('bem-status-ativo')).toHaveTextContent('Ativo')
   })
 
   it('deve permitir edição quando gestor tem acesso à UA do bem', async () => {

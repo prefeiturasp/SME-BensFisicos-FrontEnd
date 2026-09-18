@@ -3,8 +3,10 @@ import {
   type UnidadesListTableColumn,
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
+import { StatusBadge } from '@/components/status/StatusBadge';
 import type { PaginationItem } from '../hooks/usePagination';
 import type { UnidadeAdministrativa } from '../types/unidades-administrativas.types';
+import { getUnidadeAdministrativaStatusTone } from '../utils/status';
 
 interface UnidadesAdministrativasTableProps {
   unidades: UnidadeAdministrativa[];
@@ -28,7 +30,16 @@ const COLUMNS: ReadonlyArray<UnidadesListTableColumn<UnidadeAdministrativa>> = [
   { key: 'codigo', render: (unidade) => unidade.codigo },
   { key: 'sigla', render: (unidade) => unidade.sigla },
   { key: 'nome', render: (unidade) => unidade.nome },
-  { key: 'status', render: (unidade) => unidade.status_display },
+  {
+    key: 'status',
+    render: (unidade) => (
+      <StatusBadge
+        tone={getUnidadeAdministrativaStatusTone(unidade.status)}
+        label={unidade.status_display}
+        testId={`ua-status-${unidade.status}`}
+      />
+    ),
+  },
 ];
 
 export function UnidadesAdministrativasTable({

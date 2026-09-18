@@ -14,6 +14,8 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
 import { CriadoPorValue } from '@/components/CriadoPorValue'
 import { formatUsuarioLabel } from '@/lib/usuario-label'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { getBemStatusTone } from '../utils/status'
 
 export const FIELD_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
@@ -215,10 +217,13 @@ export default function BemDetailPage() {
 
       <Card className="p-6 space-y-0">
         {/* STATUS */}
-        <div className="flex justify-end">
-          <div className="text-sm font-semibold text-[#00703C]">
-            Status: {bem.status_display}
-          </div>
+        <div className="flex justify-end items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">Status:</span>
+          <StatusBadge
+            tone={getBemStatusTone(bem.status)}
+            label={bem.status_display}
+            testId={`bem-status-${bem.status}`}
+          />
         </div>
 
         {/* PRIMEIRA LINHA */}

@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { format } from "date-fns"
 import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
 import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
+import { StatusBadge } from "@/components/status/StatusBadge"
+import { getBaixaStatusTone } from "../utils/status"
 
 // ===================== CONSTANTES =====================
 
@@ -57,27 +59,6 @@ function possuiNbbpm(baixa: BaixaFisica): boolean {
 }
 
 // ===================== COMPONENTS =====================
-
-interface StatusBadgeProps {
-    readonly status: string
-    readonly statusDisplay: string
-}
-
-function StatusBadge({ status, statusDisplay }: StatusBadgeProps) {
-    const colorMap: Record<string, string> = {
-        // "aguardando_envio" é exibido como "Em elaboração"
-        aguardando_envio: "text-yellow-700",
-        solicitada: "text-blue-700",
-        aceita: "text-[#2F7D57]",
-        recusada: "text-red-600",
-        cancelada: "text-gray-500",
-    }
-
-    // O backend já retorna "Em elaboração" no status_display após a alteração
-    // em constants.py, então usamos statusDisplay diretamente.
-    const cls = colorMap[status] ?? "text-gray-600"
-    return <span className={`text-sm font-semibold ${cls}`}>{statusDisplay}</span>
-}
 
 // ===================== PAGE =====================
 
@@ -332,7 +313,11 @@ export default function BaixasListPage() {
                         {formatDateTimeBR(b.data_criacao)}
                     </td>
                     <td className="p-3">
-                        <StatusBadge status={b.status} statusDisplay={b.status_display} />
+                        <StatusBadge
+                          tone={getBaixaStatusTone(b.status)}
+                          label={b.status_display}
+                          testId={`baixa-status-${b.status}`}
+                        />
                     </td>
                     <td className="p-3 text-center">
                         <div className="flex items-center justify-center gap-1">

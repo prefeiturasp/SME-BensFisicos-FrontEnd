@@ -18,6 +18,8 @@ import { Card } from '@/components/ui/card'
 import { BemDetailField, BemItemRow } from '@/modules/bem-patrimonial/components/BemDetailParts'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoBemPatrimonialDetail } from '../types/movimentacao.types'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { getMovimentacaoStatusTone } from '../utils/status'
 
 const ACTION_BUTTON_CLASS = `
   h-10 px-6 bg-white border border-[#2F7D57]
@@ -242,8 +244,13 @@ export default function MovimentacaoDetailPage() {
           <span className='text-sm font-bold text-[#2F7D57]'>
             Solicitação #{String(movimentacao.id).padStart(4, '0')}
           </span>
-          <span className='text-sm font-semibold text-[#00703C]'>
-            Status: {movimentacao.status_display}
+          <span className='flex items-center gap-2 text-sm font-semibold text-gray-700'>
+            Status:
+            <StatusBadge
+              tone={getMovimentacaoStatusTone(movimentacao.status)}
+              label={movimentacao.status_display}
+              testId={`movimentacao-status-${movimentacao.status}`}
+            />
           </span>
         </div>
 
