@@ -41,7 +41,7 @@ export default function AdicionarUsuarioPage() {
 
   const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(adicionarUsuarioSchema) as Resolver<FormData>,
-    defaultValues: { status: "ativo", unidade: [], grupo: "" },
+    defaultValues: { status: "ativo", unidade: [], grupo: "", uo: "" },
   })
 
   const grupoSelecionado = watch("grupo")
@@ -159,6 +159,7 @@ export default function AdicionarUsuarioPage() {
           usernameError={errors.username?.message}
           emailError={errors.email?.message}
           grupoError={errors.grupo?.message}
+          uoError={errors.uo?.message}
           disableUaSelector={!uoSelecionadaId}
           onNomeChange={(event) => setValue("nome", event.target.value, { shouldValidate: true })}
           onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true })}
@@ -171,7 +172,10 @@ export default function AdicionarUsuarioPage() {
             setTodasUnidades
           )}
           onStatusChange={(value) => setValue("status", value)}
-          onUoChange={setUoSelecionadaId}
+          onUoChange={(value) => {
+            setUoSelecionadaId(value)
+            setValue("uo", String(value), { shouldValidate: true })
+          }}
           onFiltroUaChange={setFiltroUa}
           onToggleTodasUnidades={buildToggleTodasHandler(
             grupoSelecionado,
