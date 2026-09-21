@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
 import ConfirmarAceiteModal from "../modals/ConfirmarAceiteModal"
+import CorrigirProcessoModal from "../modals/CorrigirProcessoModal"
 import type {
     BaixaFisicaDetail,
     BaixaFisicaItem,
@@ -37,6 +38,9 @@ import {
 import { baixaFisicaService } from "../service/baixas.service"
 import { StatusBadge } from "@/components/status/StatusBadge"
 import { getBaixaStatusTone } from "../utils/status"
+import { useAuth } from "@/auth/useAuth"
+import { AxiosError } from "axios"
+import { extractErrorMessage } from "@/lib/backend-form-errors"
 
 // ============================================================================
 // STYLES
@@ -50,6 +54,20 @@ const PRIMARY_BUTTON_CLASS =
 
 // Status "aguardando_envio" é exibido como "Em elaboração" na UI
 const STATUS_EM_ELABORACAO = "aguardando_envio"
+
+function getMensagemErroCorrigirProcesso(err: unknown): string {
+    if (err instanceof AxiosError) {
+        const data = err.response?.data as Record<string, unknown> | undefined
+        if (data && typeof data === "object") {
+            const mensagem =
+                extractErrorMessage(data.numero_processo_baixa) ??
+                extractErrorMessage(data.detail)
+            if (mensagem) return mensagem
+        }
+    }
+    if (err instanceof Error && err.message) return err.message
+    return "Erro ao corrigir número do processo."
+}
 
 // ============================================================================
 // HELPERS
@@ -395,6 +413,7 @@ export default function VerBaixaPage() {
     const navigate = useNavigate()
     const { id } = useParams()
     const [searchParams] = useSearchParams()
+    const { user } = useAuth()
 
     const [baixa, setBaixa] = useState<BaixaFisicaDetail | null>(null)
     const [loading, setLoading] = useState(true)
@@ -428,6 +447,8 @@ export default function VerBaixaPage() {
     const [showRecusarModal, setShowRecusarModal] = useState(false)
     const [recusando, setRecusando] = useState(false)
     const [motivoRecusa, setMotivoRecusa] = useState("")
+    const [showCorrigirProcesso, setShowCorrigirProcesso] = useState(false)
+    const [corrigindoProcesso, setCorrigindoProcesso] = useState(false)
     useEffect(() => {
         const fetchBaixa = async () => {
             try {
@@ -456,6 +477,12 @@ export default function VerBaixaPage() {
     const podeEditar = isEmElaboracao && modoEdicao
     // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
     const isValidando = baixa?.status === "solicitada"
+    // Correção do número do processo — apenas Gestor (ou superuser) em baixa
+    // Aceita sem Nota gerada (numero_nbbpm vazio).
+    const isGestorPatrimonio = user?.is_gestor_patrimonio === true || user?.is_superuser === true
+    const isAceita = baixa?.status === "aceita"
+    const semNbbpm = !baixa?.numero_nbbpm || baixa.numero_nbbpm.trim() === ""
+    const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
 
     const allSelectedEditIds = editRows.filter((r) => r.item).map((r) => r.item!.bem.id)
 
@@ -651,6 +678,29 @@ export default function VerBaixaPage() {
         navigate(`/baixas-fisicas/${baixa.id}/solicitar-correcao`)
     }
 
+    const handleAbrirCorrigirProcesso = () => {
+        setShowCorrigirProcesso(true)
+    }
+
+    const handleCorrigirProcesso = async (novoNumero: string) => {
+        if (!baixa) return
+        setCorrigindoProcesso(true)
+        try {
+            const updated = await baixaFisicaService.corrigirProcesso(baixa.id, {
+                numero_processo_baixa: novoNumero,
+            })
+            setBaixa(updated)
+            setShowCorrigirProcesso(false)
+            toast.success("Número do processo atualizado com sucesso.")
+        } catch (err) {
+            console.error(err)
+            toast.error(getMensagemErroCorrigirProcesso(err))
+            setShowCorrigirProcesso(false)
+        } finally {
+            setCorrigindoProcesso(false)
+        }
+    }
+
     const handleGerarNbbpm = async () => {
         if (!baixa) return
         const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
@@ -820,6 +870,17 @@ export default function VerBaixaPage() {
                         <Button type="button" onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
                             <FileDown size={14} />
                             Baixar NBBPM
+                        </Button>
+                    )}
+
+                    {podeCorrigirProcesso && (
+                        <Button
+                            type="button"
+                            onClick={handleAbrirCorrigirProcesso}
+                            className={ACTION_BUTTON_CLASS}
+                        >
+                            <Pencil size={14} />
+                            Corrigir Processo
                         </Button>
                     )}
 
@@ -1054,6 +1115,19 @@ export default function VerBaixaPage() {
                     onConfirm={handleConfirmarAceite}
                     onCancel={() => setShowConfirmarAceite(false)}
                     loading={aceitando}
+                />
+            )}
+
+            {showCorrigirProcesso && baixa && (
+                <CorrigirProcessoModal
+                    valorAtual={baixa.numero_processo_baixa}
+                    onConfirm={handleCorrigirProcesso}
+                    onCancel={() => {
+                        if (!corrigindoProcesso) {
+                            setShowCorrigirProcesso(false)
+                        }
+                    }}
+                    loading={corrigindoProcesso}
                 />
             )}
 

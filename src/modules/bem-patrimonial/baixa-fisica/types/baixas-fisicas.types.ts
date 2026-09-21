@@ -118,6 +118,14 @@ export interface BaixaFisicaAprovarPayload {
 }
 
 /**
+ * Payload do endpoint POST /baixa-fisica/{id}/corrigir-processo/.
+ * Correção pontual do número em baixa Aceita, sem Nota gerada.
+ */
+export interface BaixaFisicaCorrigirProcessoPayload {
+    numero_processo_baixa: string
+}
+
+/**
  * Payload do endpoint POST /nbbpm/.
  * Usado na tela "Gerar NBBPM", acionada a partir da seleção em lote de
  * Baixas Físicas com status Aprovado (aceita) na listagem.

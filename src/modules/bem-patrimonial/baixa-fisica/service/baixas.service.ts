@@ -8,6 +8,7 @@ import type {
     BaixaFisicaRecusarPayload,
     BaixaFisicaSolicitarCorrecaoPayload,
     BaixaFisicaAprovarPayload,
+    BaixaFisicaCorrigirProcessoPayload,
     BaixaFisicaListParams,
     GerarNbbpmLotePayload,
     Nbbpm,
@@ -116,6 +117,22 @@ export const baixaFisicaService = {
 
         } catch (error) {
             handleApiError(error, 'Erro ao aprovar baixa física')
+        }
+    },
+
+    corrigirProcesso: async (
+        id: number,
+        payload: BaixaFisicaCorrigirProcessoPayload
+    ): Promise<BaixaFisicaDetail> => {
+        try {
+            const { data } = await api.post(`/baixa-fisica/${id}/corrigir-processo/`, payload)
+            return data
+
+        } catch (error) {
+            if (error instanceof AxiosError && error.response?.status === 400) {
+                throw error
+            }
+            handleApiError(error, 'Erro ao corrigir número do processo')
         }
     },
 
