@@ -47,10 +47,15 @@ vi.mock("../../service/baixas.service", () => ({
         retrieve: vi.fn(),
         update: vi.fn(),
         aprovar: vi.fn(),
+        corrigirProcesso: vi.fn(),
         baixarNbbpmPdf: vi.fn(),
         gerarLaudo: vi.fn(),
         historico: vi.fn(),
     },
+}))
+
+vi.mock("@/auth/useAuth", () => ({
+    useAuth: () => ({ user: null }),
 }))
 
 vi.mock("../../../bem/services/bem.service", () => ({

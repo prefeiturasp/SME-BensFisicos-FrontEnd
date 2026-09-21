@@ -281,6 +281,46 @@ describe("baixaFisicaService", () => {
         })
     })
 
+    describe("corrigirProcesso", () => {
+        it("corrige o número e retorna o detalhe atualizado", async () => {
+            const detail = makeBaixaDetail({
+                status: "aceita",
+                numero_processo_baixa: "6016.2025/0117371-7",
+            })
+            vi.mocked(api.post).mockResolvedValue({ data: detail })
+
+            const result = await baixaFisicaService.corrigirProcesso(1, {
+                numero_processo_baixa: "6016.2025/0117371-7",
+            })
+
+            expect(result).toEqual(detail)
+            expect(api.post).toHaveBeenCalledWith("/baixa-fisica/1/corrigir-processo/", {
+                numero_processo_baixa: "6016.2025/0117371-7",
+            })
+        })
+
+        it("propaga AxiosError em 400 para exibição no campo", async () => {
+            const fieldError = makeAxiosError(400, {
+                numero_processo_baixa: ["Formato inválido."],
+            })
+            vi.mocked(api.post).mockRejectedValue(fieldError)
+
+            await expect(
+                baixaFisicaService.corrigirProcesso(1, { numero_processo_baixa: "invalido" })
+            ).rejects.toBe(fieldError)
+        })
+
+        it("lança erro padrão em falha sem detail", async () => {
+            vi.mocked(api.post).mockRejectedValue(makeAxiosError(500, {}))
+
+            await expect(
+                baixaFisicaService.corrigirProcesso(1, {
+                    numero_processo_baixa: "6016.2025/0117371-7",
+                })
+            ).rejects.toThrow("Erro ao corrigir número do processo")
+        })
+    })
+
     describe("recusar", () => {
         it("recusa sem payload e retorna detalhe", async () => {
             const detail = makeBaixaDetail({ status: "recusada" })
