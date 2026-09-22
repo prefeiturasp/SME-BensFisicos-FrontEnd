@@ -264,11 +264,11 @@ describe('LinhaBemRow', () => {
     expect(screen.getAllByText('*')).toHaveLength(2)
   })
 
-  it('deve renderizar o campo Número do Processo de Incorporação', () => {
+  it('deve renderizar o campo Número do Processo', () => {
     renderComponent()
 
     expect(
-      screen.getByPlaceholderText('Insira o nº do processo de incorporação')
+      screen.getByPlaceholderText('Informe o número do processo')
     ).toBeInTheDocument()
   })
 
@@ -276,7 +276,7 @@ describe('LinhaBemRow', () => {
     renderComponent()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Insira o nº do processo de incorporação'),
+      screen.getByPlaceholderText('Informe o número do processo'),
       { target: { value: 'PROC-01' } }
     )
 
@@ -364,5 +364,54 @@ describe('LinhaBemRow', () => {
     })
 
     expect(onLimparErro).toHaveBeenCalledWith(2, 'localizacao')
+  })
+
+  describe('label unificado Número do Processo', () => {
+    it('caminho válido: renderiza label unificado e envia campo numero_processo', () => {
+      renderComponent({ numero_processo: '' })
+
+      expect(screen.getByText('Número do Processo')).toBeInTheDocument()
+
+      const input = screen.getByPlaceholderText('Informe o número do processo')
+      fireEvent.change(input, { target: { value: 'PROC-2024-001' } })
+
+      expect(setLinhas).toHaveBeenCalled()
+      const newLinhas = setLinhas.mock.calls[0][0]
+      expect(newLinhas[0].numero_processo).toBe('PROC-2024-001')
+    })
+
+    it('caminho inválido: exibe mensagem de erro ligada ao campo numero_processo', () => {
+      render(
+        <LinhaBemRow
+          linha={linhaBase}
+          index={0}
+          linhas={[linhaBase]}
+          setLinhas={setLinhas}
+          removeLinha={removeLinha}
+          addLinha={addLinha}
+          isLast={true}
+          errors={{ numero_processo: 'Informe o número do processo.' }}
+        />
+      )
+
+      expect(screen.getByText('Número do Processo')).toBeInTheDocument()
+      expect(
+        screen.getByText('Informe o número do processo.')
+      ).toBeInTheDocument()
+    })
+
+    it('regressão: labels antigos não aparecem mais', () => {
+      renderComponent()
+
+      expect(
+        screen.queryByText('Número do Processo de Incorporação')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Número do Processo de Baixa')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText('Insira o nº do processo de incorporação')
+      ).not.toBeInTheDocument()
+    })
   })
 })
