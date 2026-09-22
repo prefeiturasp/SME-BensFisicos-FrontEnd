@@ -65,7 +65,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
       />
       <input
         data-testid={`numero-processo-${index}`}
-        placeholder="Número do Processo de Incorporação"
+        placeholder="Número do Processo"
         value={linha.numero_processo}
         onChange={(e) => {
           const newLinhas = [...linhas]
@@ -550,7 +550,7 @@ describe('BemCreatePage', () => {
     preencherCamposBase()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Número do Processo de Incorporação'),
+      screen.getByPlaceholderText('Número do Processo'),
       { target: { value: 'PROC-2024-001' } }
     )
 
@@ -574,7 +574,7 @@ describe('BemCreatePage', () => {
     fireEvent.click(screen.getByText('Adicionar Linha'))
 
     const camposProcesso = screen.getAllByPlaceholderText(
-      'Número do Processo de Incorporação'
+      'Número do Processo'
     )
     fireEvent.change(camposProcesso[0], { target: { value: 'PROC-A' } })
     fireEvent.change(camposProcesso[1], { target: { value: 'PROC-B' } })
@@ -864,12 +864,12 @@ describe('BemCreatePage', () => {
     })
   })
 
-  it('deve permitir preencher campo número do processo de incorporação (por linha)', () => {
+  it('deve permitir preencher campo número do processo (por linha)', () => {
     mockUAs = [{ id: 1, unidade_administrativa_id: 10, label: 'UA Teste - 001' }]
     renderPage()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Número do Processo de Incorporação'),
+      screen.getByPlaceholderText('Número do Processo'),
       { target: { value: 'PROC-2024-001' } }
     )
 

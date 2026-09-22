@@ -590,9 +590,13 @@ describe('BemDetailPage', () => {
       await screen.findByDisplayValue('Notebook Dell')
 
       expect(screen.getByText('Valor Unitário')).toBeInTheDocument()
+      expect(screen.getAllByText('Número do Processo')).toHaveLength(1)
       expect(
-        screen.getByText('Número do Processo de Incorporação')
-      ).toBeInTheDocument()
+        screen.queryByText('Número do Processo de Incorporação')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Número do Processo de Baixa')
+      ).not.toBeInTheDocument()
     })
 
     it('deve exibir o tooltip informativo no campo Formato ao passar o mouse', async () => {

@@ -771,9 +771,9 @@ describe('BemEditPage', () => {
     expect(unidadeInput).toBeDisabled()
   })
 
-  // ─── numero_processo_baixa ────────────────────────────────────────────────────
+  // ─── numero_processo (campo único) ────────────────────────────────────────────
 
-  it('campo numero_processo_baixa deve estar sempre desabilitado para gestor', async () => {
+  it('exibe um único campo Número do Processo ligado a numero_processo', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
       bemMock as any
     )
@@ -785,14 +785,15 @@ describe('BemEditPage', () => {
 
     await screen.findByDisplayValue('Notebook Dell')
 
-    // // numero_processo_baixa é null no mock, então o input estará vazio
-    // const inputs = screen.getAllByRole('textbox')
-    // const baixaInput = inputs.find(
-    //   (el) => el.getAttribute('id') === undefined && (el as HTMLInputElement).disabled
-    // )
-    // Verifica pelo label Número do Processo de Baixa
-    const label = screen.getByText('Número do Processo de Baixa')
-    expect(label).toBeInTheDocument()
+    expect(screen.getAllByText('Número do Processo')).toHaveLength(1)
+    expect(
+      screen.queryByText('Número do Processo de Incorporação')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Número do Processo de Baixa')
+    ).not.toBeInTheDocument()
+    // O valor do backend (numero_processo) continua exibido no campo único
+    expect(screen.getByDisplayValue('PROC-01')).toBeInTheDocument()
   })
 
   describe('Breadcrumb', () => {
