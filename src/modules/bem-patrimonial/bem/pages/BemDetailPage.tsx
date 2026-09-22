@@ -373,27 +373,14 @@ export default function BemDetailPage() {
             />
           </div>
 
-          {/* PROCESSO INCORPORAÇÃO */}
+          {/* PROCESSO */}
           <div>
             <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
-              Número do Processo de Incorporação
+              Número do Processo
             </label>
             <input
               id="numero_processo"
               value={bem.numero_processo ?? ''}
-              disabled
-              className={FIELD_CLASS}
-            />
-          </div>
-
-          {/* PROCESSO BAIXA */}
-          <div>
-            <label htmlFor="numero_processo_baixa" className="text-sm font-semibold text-gray-700">
-              Número do Processo de Baixa
-            </label>
-            <input
-              id="numero_processo_baixa"
-              value={bem.numero_processo_baixa ?? ''}
               disabled
               className={FIELD_CLASS}
             />

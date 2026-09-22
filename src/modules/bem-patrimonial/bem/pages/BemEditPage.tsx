@@ -39,8 +39,7 @@ const FIELD_LABELS: Record<string, string> = {
   marca: 'Marca',
   modelo: 'Modelo',
   localizacao: 'Localização',
-  numero_processo: 'Número do Processo de Incorporação',
-  numero_processo_baixa: 'Número do Processo de Baixa',
+  numero_processo: 'Número do Processo',
 }
 
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
@@ -343,7 +342,6 @@ export default function BemEditPage() {
                 'modelo',
                 'localizacao',
                 'numero_processo',
-                'numero_processo_baixa',
               ].map((fieldName) => (
                 <FormField
                   key={fieldName}
@@ -365,10 +363,7 @@ export default function BemEditPage() {
                           <Input
                             {...field}
                             value={field.value ?? ''}
-                            disabled={
-                              !podeEditar ||
-                              fieldName === 'numero_processo_baixa'
-                            }
+                            disabled={!podeEditar}
                             className={INPUT_CLASS}
                           />
                         )}
