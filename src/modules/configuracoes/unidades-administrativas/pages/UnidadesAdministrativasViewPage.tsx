@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, History, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
 import { UnidadeAdministrativaForm } from '../components/UnidadeAdministrativaForm';
 import { UnidadeAdministrativaUsuariosSection } from '../components/UnidadeAdministrativaUsuariosSection';
 import { UnidadesAdministrativasViewBreadcrumb } from '../components/UnidadesAdministrativasViewBreadcrumb';
@@ -89,6 +90,7 @@ export default function UnidadesAdministrativasViewPage() {
   const { user } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const unidadeId = Number(id);
   const hasValidId = Number.isInteger(unidadeId) && unidadeId > 0;
@@ -250,6 +252,13 @@ export default function UnidadesAdministrativasViewPage() {
         <div className='flex items-center justify-end gap-3'>
           <ExitButton isEditing={isEditing} onClick={handleCancel} />
 
+          {!isEditing && (
+            <Button type='button' className={ACTION_BUTTON_CLASS} onClick={() => setShowHistorico(true)}>
+              <History size={16} />
+              Histórico
+            </Button>
+          )}
+
           {canManage && (
             <Button
               type='button'
@@ -276,6 +285,9 @@ export default function UnidadesAdministrativasViewPage() {
       </Card>
 
       <UnidadeAdministrativaUsuariosSection unidadeId={unidade.id} />
+      {showHistorico && (
+        <HistoricoConsultaModal endpoint={`/unidades-administrativas/${unidade.id}/historico/`} onClose={() => setShowHistorico(false)} />
+      )}
     </div>
   );
 }

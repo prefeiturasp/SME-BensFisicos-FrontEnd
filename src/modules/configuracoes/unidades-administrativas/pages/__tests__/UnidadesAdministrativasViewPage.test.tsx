@@ -124,6 +124,10 @@ vi.mock('../../components/UnidadeAdministrativaUsuariosSection', () => ({
   ),
 }));
 
+vi.mock('@/components/HistoricoConsultaModal', () => ({
+  HistoricoConsultaModal: ({ endpoint }: { endpoint: string }) => <div data-testid='historico-endpoint'>{endpoint}</div>,
+}));
+
 describe('UnidadesAdministrativasViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -155,6 +159,14 @@ describe('UnidadesAdministrativasViewPage', () => {
     expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
     expect(screen.getByTestId('ua-form')).toHaveAttribute('data-disabled', 'true');
+  });
+
+  it('abre o histórico da unidade administrativa consultada', () => {
+    render(<MemoryRouter><UnidadesAdministrativasViewPage /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }));
+
+    expect(screen.getByTestId('historico-endpoint')).toHaveTextContent('/unidades-administrativas/10/historico/');
   });
 
   it('volta para visualização sem salvar quando não há alterações', async () => {

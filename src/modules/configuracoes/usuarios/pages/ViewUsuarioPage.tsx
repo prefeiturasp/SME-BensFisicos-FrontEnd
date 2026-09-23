@@ -1,9 +1,10 @@
-import { ArrowLeft, Pencil } from "lucide-react"
+import { ArrowLeft, History, Pencil } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { HistoricoConsultaModal } from "@/components/HistoricoConsultaModal"
 import { Label } from "@/components/ui/label"
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { usuarioService, type Usuario } from "../service/usuario.service"
@@ -97,6 +98,7 @@ export default function ViewUsuarioPage() {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [showHistorico, setShowHistorico] = useState(false)
   const [maps, setMaps] = useState<EscopoMaps>({ uaLabelsById: {}, uoLabelsById: {}, uasByUoId: {} })
 
   useEffect(() => {
@@ -152,6 +154,12 @@ export default function ViewUsuarioPage() {
           <Button type="button" onClick={() => navigate("/usuarios")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
             <ArrowLeft size={18} />
           </Button>
+          {usuario && (
+            <Button type="button" onClick={() => setShowHistorico(true)} className={ACTION_BUTTON_CLASS}>
+              <History size={16} />
+              Histórico
+            </Button>
+          )}
           <Button onClick={() => navigate(`/usuarios/${id}/editar`)} className={ACTION_BUTTON_CLASS}>
             <Pencil size={16} />
             Editar
@@ -187,6 +195,9 @@ export default function ViewUsuarioPage() {
             />
           </div>
         </Card>
+      )}
+      {usuario && showHistorico && (
+        <HistoricoConsultaModal endpoint={`/user/${usuario.id}/historico/`} onClose={() => setShowHistorico(false)} />
       )}
     </div>
   )

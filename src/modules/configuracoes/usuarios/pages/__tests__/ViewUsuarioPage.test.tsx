@@ -26,6 +26,10 @@ vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
 }))
 
+vi.mock("@/components/HistoricoConsultaModal", () => ({
+    HistoricoConsultaModal: ({ endpoint }: { endpoint: string }) => <div data-testid="historico-endpoint">{endpoint}</div>,
+}))
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const usuarioMock = {
@@ -60,6 +64,15 @@ describe("ViewUsuarioPage", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(authService.getCurrentUser).mockResolvedValue({ data: { opcoes_escopo: { grupos: [] } } } as any)
+    })
+
+    it("abre o histórico do usuário consultado", async () => {
+        vi.mocked(usuarioService.retrieve).mockResolvedValue(usuarioMock)
+
+        renderPage()
+
+        await userEvent.click(await screen.findByRole("button", { name: "Histórico" }))
+        expect(screen.getByTestId("historico-endpoint")).toHaveTextContent("/user/1/historico/")
     })
 
     // ── Estado de carregamento ─────────────────────────────────────────────────
