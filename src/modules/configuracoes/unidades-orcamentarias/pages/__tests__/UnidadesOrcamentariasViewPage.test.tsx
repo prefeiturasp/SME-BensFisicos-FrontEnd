@@ -62,6 +62,10 @@ vi.mock('../../utils/form-error-handler', () => ({
     handleUnidadeOrcamentariaBadRequestErrorMock(...args),
 }));
 
+vi.mock('@/components/HistoricoConsultaModal', () => ({
+  HistoricoConsultaModal: ({ endpoint }: { endpoint: string }) => <div data-testid='historico-endpoint'>{endpoint}</div>,
+}));
+
 describe('UnidadesOrcamentariasViewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,6 +102,14 @@ describe('UnidadesOrcamentariasViewPage', () => {
     expect(screen.getByDisplayValue('SECRETARIA MUNICIPAL DE EDUCACAO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
+  });
+
+  it('abre o histórico da unidade orçamentária consultada', () => {
+    render(<MemoryRouter><UnidadesOrcamentariasViewPage /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }));
+
+    expect(screen.getByTestId('historico-endpoint')).toHaveTextContent('/unidades-orcamentarias/12/historico/');
   });
 
   it('exibe mensagem de id inválido quando rota é inválida', () => {

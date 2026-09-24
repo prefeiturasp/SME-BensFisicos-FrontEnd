@@ -1,11 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, History, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
 import { UnidadeOrcamentariaForm } from '../components/UnidadeOrcamentariaForm';
 import { UnidadesOrcamentariasViewBreadcrumb } from '../components/UnidadesOrcamentariasViewBreadcrumb';
 import { UnidadesOrcamentariasGuard } from '../components/UnidadesOrcamentariasGuard';
@@ -113,6 +114,7 @@ export default function UnidadesOrcamentariasViewPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [isEditing, setIsEditing] = useState(false);
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const unidadeId = Number(id);
   const hasValidId = Number.isInteger(unidadeId) && unidadeId > 0;
@@ -272,6 +274,13 @@ export default function UnidadesOrcamentariasViewPage() {
           <div className='flex items-center justify-end gap-3'>
             <ExitButton isEditing={isEditing} onClick={handleCancel} />
 
+            {!isEditing && (
+              <Button type='button' className={ACTION_BUTTON_CLASS} onClick={() => setShowHistorico(true)}>
+                <History size={16} />
+                Histórico
+              </Button>
+            )}
+
             <Button
               type='button'
               className={isEditing ? PRIMARY_SAVE_BUTTON_CLASS : ACTION_BUTTON_CLASS}
@@ -293,6 +302,9 @@ export default function UnidadesOrcamentariasViewPage() {
             onSubmit={handleSave}
           />
         </Card>
+        {showHistorico && (
+          <HistoricoConsultaModal endpoint={`/unidades-orcamentarias/${unidade.id}/historico/`} onClose={() => setShowHistorico(false)} />
+        )}
       </div>
     </UnidadesOrcamentariasGuard>
   );
