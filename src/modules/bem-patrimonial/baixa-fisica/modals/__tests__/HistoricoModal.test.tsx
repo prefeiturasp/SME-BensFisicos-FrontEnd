@@ -247,4 +247,68 @@ describe("HistoricoModal", () => {
         fireEvent.click(screen.getByLabelText("Fechar histórico"))
         expect(onClose).toHaveBeenCalledTimes(1)
     })
+
+    it("exibe rótulo 'Nota gerada' para evento de NBBPM com usuário e data", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 10,
+                campo: "nbbpm",
+                valor_antigo: null,
+                valor_novo: "001.0000001/2026",
+                alterado_por: "gestor.patrimonio",
+                data_alteracao: "2026-09-10T14:00:00Z",
+                justificativa: "UO 123 - UA 456 - Processo 6016.2025/0117371-7 - Responsável Fulano",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("Nota gerada")).toBeInTheDocument()
+        })
+        expect(screen.getAllByText(/gestor\.patrimonio/).length).toBeGreaterThan(0)
+    })
+
+    it("exibe número da nota e justificativa com UO/UA/processo/responsável", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 11,
+                campo: "nbbpm",
+                valor_antigo: null,
+                valor_novo: "001.0000001/2026",
+                justificativa: "UO 123 - UA 456 - Processo 6016.2025/0117371-7 - Responsável Fulano",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText(/NBBPM 001\.0000001\/2026/)).toBeInTheDocument()
+            expect(screen.getByText(/UO 123 - UA 456/)).toBeInTheDocument()
+        })
+    })
+
+    it("formata justificativa completa em linhas rotuladas sem texto corrido", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 13,
+                campo: "nbbpm",
+                valor_antigo: null,
+                valor_novo: "001.0000001/2026",
+                justificativa: "NBBPM 001.0000001/2026 gerada por usuario.teste em 01/01/2026 - UO 00.00.00 - UNIDADE TESTE - 00.00.00.001 - TST - Processo 0000.0000/0000000-0 - Responsável Responsável Teste",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("NBBPM:")).toBeInTheDocument()
+        })
+        expect(screen.getByText("Gerada por:")).toBeInTheDocument()
+        expect(screen.getByText("usuario.teste")).toBeInTheDocument()
+        expect(screen.getByText("01/01/2026")).toBeInTheDocument()
+        expect(screen.getByText("UO:")).toBeInTheDocument()
+        expect(screen.getByText("00.00.00 - UNIDADE TESTE")).toBeInTheDocument()
+        expect(screen.getByText("UA:")).toBeInTheDocument()
+        expect(screen.getByText("00.00.00.001 - TST")).toBeInTheDocument()
+        expect(screen.getByText("Processo:")).toBeInTheDocument()
+        expect(screen.getByText("0000.0000/0000000-0")).toBeInTheDocument()
+        expect(screen.getByText("Responsável:")).toBeInTheDocument()
+        expect(screen.getByText("Responsável Teste")).toBeInTheDocument()
+        expect(screen.getAllByText(/001\.0000001\/2026/).length).toBe(1)
+    })
 })

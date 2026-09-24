@@ -72,6 +72,7 @@ function makeBaixa(overrides: Partial<BaixaFisica> = {}): BaixaFisica {
         status_display: "Em elaboração",
         numero_processo_baixa: "PROC-001",
         numero_nbbpm: null,
+        nbbpm_id: null,
         total_itens: 1,
         data_criacao: "2024-01-15T10:00:00Z",
         data_baixa: "2024-01-15",
@@ -729,6 +730,23 @@ describe("BaixasListPage", () => {
             await waitFor(() =>
                 expect(toast.error).toHaveBeenCalledWith("Erro ao exportar Excel.")
             )
+        })
+    })
+
+    describe("consulta histórica com NBBPM vinculada", () => {
+        it("exibe número como link clicável para o detalhe (listagem 200)", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 20, status: "aceita", status_display: "Aceita", nbbpm_id: 7, numero_nbbpm: "001.0000001/2026" }),
+                ])
+            )
+
+            renderPage()
+
+            const link = await screen.findByRole("link", { name: /Ver NBBPM 001\.0000001\/2026/ })
+            expect(link).toBeInTheDocument()
+            expect(link).toHaveTextContent("001.0000001/2026")
+            expect(link.getAttribute("href")).toBe("/baixas-fisicas/20")
         })
     })
 })

@@ -124,6 +124,7 @@ function makeBaixaDetail(overrides: Partial<BaixaFisicaDetail> = {}): BaixaFisic
         status_display: "Aguardando Envio",
         numero_processo_baixa: "PROC-001",
         numero_nbbpm: null,
+        nbbpm_id: null,
         data_criacao: "2024-01-15T10:00:00Z",
         data_baixa: "2024-01-15",
         aprovado_por: null,
@@ -1564,6 +1565,47 @@ describe("VerBaixaPage", () => {
             fireEvent.click(screen.getByText("Salvar Edição"))
             await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Falha ao salvar"))
             errorSpy.mockRestore()
+        })
+    })
+
+    describe("consulta histórica com NBBPM vinculada", () => {
+        it("número no detalhe baixa via nbbpm_id com nome contendo o número", async () => {
+            const clickMock = vi.fn()
+            let downloadAttr = ""
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeBaixaDetail({
+                    status: "aceita",
+                    status_display: "Aceita",
+                    nbbpm_id: 12,
+                    numero_nbbpm: "001.0000012/2026",
+                    url_gerar_nbbpm: "/api/nbbpm/99/pdf/",
+                    itens: [makeBaixaItem(1)],
+                })
+            )
+            vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockResolvedValue(new Blob(["pdf"]))
+            vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:url")
+            vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {})
+            const spy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+                const el = document.createElementNS("http://www.w3.org/1999/xhtml", tag) as HTMLAnchorElement
+                if (tag === "a") {
+                    Object.defineProperty(el, "click", { value: clickMock })
+                    Object.defineProperty(el, "download", {
+                        get() { return downloadAttr },
+                        set(v: string) { downloadAttr = v },
+                    })
+                }
+                return el
+            })
+            renderPage()
+            const link = await screen.findByRole("button", { name: /Baixar NBBPM 001\.0000012\/2026/ })
+            expect(link).toHaveTextContent("001.0000012/2026")
+            fireEvent.click(link)
+            await waitFor(() => {
+                expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(12)
+                expect(clickMock).toHaveBeenCalled()
+            })
+            expect(downloadAttr).toContain("001.0000012/2026")
+            spy.mockRestore()
         })
     })
 })
