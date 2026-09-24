@@ -304,7 +304,17 @@ export default function BaixasListPage() {
                         {b.unidade_administrativa_origem.sigla}
                     </td>
                     <td className="p-3 text-sm text-gray-600">
-                        {b.numero_nbbpm ?? "-"}
+                        {b.numero_nbbpm ? (
+                            <Link
+                                to={`/baixas-fisicas/${b.id}`}
+                                className="text-[#00703C] underline hover:text-[#005a30] cursor-pointer"
+                                aria-label={`Ver NBBPM ${b.numero_nbbpm} da Baixa ${b.id}`}
+                            >
+                                {b.numero_nbbpm}
+                            </Link>
+                        ) : (
+                            "-"
+                        )}
                     </td>
                     <td className="p-3 text-sm text-gray-600">
                         {b.criado_por.nome_completo}
