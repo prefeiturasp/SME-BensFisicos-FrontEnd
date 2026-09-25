@@ -191,13 +191,13 @@ function NbbpmListContent() {
 
       <Card className='space-y-6 p-6'>
         {/* FILTRO */}
-        <div className='flex flex-col gap-4 md:flex-row'>
-          <div className='min-w-[200px] flex-1'>
+        <div className='flex flex-col md:flex-row gap-4 flex-wrap'>
+          <div className='flex-1 min-w-[200px]'>
             <label htmlFor='nbbpm-filtro-busca' className='text-sm font-semibold text-gray-700'>
               Buscar por NBBPM, Nº do Processo ou Unidade Administrativa
             </label>
-            <div className='relative mt-1'>
-              <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
+            <div className='relative mt-1 w-1/3'>
+              <Search size={16} className='absolute left-3 top-3 text-gray-400' />
               <Input
                 id='nbbpm-filtro-busca'
                 type='text'
