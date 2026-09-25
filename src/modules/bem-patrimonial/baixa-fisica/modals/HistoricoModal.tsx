@@ -54,13 +54,21 @@ interface NbbpmDetalhes {
 }
 
 function parseNbbpmJustificativa(justificativa: string): NbbpmDetalhes | null {
-    const match = /^NBBPM\s+(.+?)\s+gerada por\s+(.+?)\s+em\s+(.+?)\s+-\s+UO\s+(.+)\s+-\s+Processo\s+(.+?)\s+-\s+Responsável\s+(.+)$/.exec(
-        justificativa.trim()
-    )
-    if (!match) return null
-    const [, numero, geradaPor, data, meio, processo, responsavel] = match
-    const partes = meio.split(" - ").map(p => p.trim()).filter(Boolean)
-    let uo = meio.trim()
+    const seg = justificativa.trim().split(" - ")
+    const inicio = /^NBBPM (\S+) gerada por (\S+) em (\S+)$/.exec(seg[0] ?? "")
+    const processoSeg = seg.length > 2 ? (seg[seg.length - 2] ?? "") : ""
+    const responsavelSeg = seg.length > 1 ? (seg[seg.length - 1] ?? "") : ""
+    const meio = seg.slice(1, -2)
+    if (!inicio || !processoSeg.startsWith("Processo ") || !responsavelSeg.startsWith("Responsável ") || !(meio[0] ?? "").startsWith("UO ")) return null
+    const partes = meio.join(" - ").slice("UO ".length).split(" - ").map(p => p.trim()).filter(Boolean)
+    if (partes.length === 0) return null
+    const numero = inicio[1] ?? ""
+    const geradaPor = inicio[2] ?? ""
+    const data = inicio[3] ?? ""
+    const processo = processoSeg.slice("Processo ".length).trim()
+    const responsavel = responsavelSeg.slice("Responsável ".length).trim()
+    if (!processo || !responsavel) return null
+    let uo = partes.join(" - ")
     let ua = ""
     if (partes.length >= 4) {
         uo = `${partes[0]} - ${partes[1]}`
@@ -69,15 +77,7 @@ function parseNbbpmJustificativa(justificativa: string): NbbpmDetalhes | null {
         uo = partes[0]
         ua = partes[1]
     }
-    return {
-        numero: numero.trim(),
-        geradaPor: geradaPor.trim(),
-        data: data.trim(),
-        uo,
-        ua,
-        processo: processo.trim(),
-        responsavel: responsavel.trim(),
-    }
+    return { numero, geradaPor, data, uo, ua, processo, responsavel }
 }
 
 function getGroupLabel(items: HistoricoEntry[]): string {
