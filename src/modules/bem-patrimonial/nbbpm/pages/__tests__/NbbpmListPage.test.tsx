@@ -143,6 +143,18 @@ describe('NbbpmListPage', () => {
       await screen.findByText('001.0000001/2026');
     });
 
+    it('não exibe a coluna de Baixas Físicas Vinculadas', async () => {
+      renderPage();
+      await screen.findByText('001.0000001/2026');
+
+      expect(
+        screen.queryByRole('columnheader', { name: 'Baixas Físicas Vinculadas' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: /Visualizar Baixa Física/ }),
+      ).not.toBeInTheDocument();
+    });
+
     it('volta para a Home pelo botão Voltar', async () => {
       const user = userEvent.setup();
       renderPage();
@@ -177,43 +189,16 @@ describe('NbbpmListPage', () => {
       expect(within(row).getByText('18/07/2026 - 14:30')).toBeInTheDocument();
     });
 
-    it('mantém o vínculo com a Baixa Física por link para o detalhe', async () => {
-      renderPage();
-
-      const link = await screen.findByRole('link', { name: 'Visualizar Baixa Física 12' });
-
-      expect(link).toHaveAttribute('href', '/baixas-fisicas/12');
-      expect(link).toHaveTextContent('#012');
-    });
-
-    it('exibe todas as Baixas Físicas quando a NBBPM é de um lote', async () => {
+    it('usa placeholder quando não há Unidade Administrativa vinculada', async () => {
       vi.mocked(nbbpmService.list).mockResolvedValue(
-        makeResponse([makeNbbpm({ baixas: [3, 4, 25] })]),
-      );
-
-      renderPage();
-
-      const links = await screen.findAllByRole('link', { name: /Visualizar Baixa Física/ });
-
-      expect(links.map((link) => link.getAttribute('href'))).toEqual([
-        '/baixas-fisicas/3',
-        '/baixas-fisicas/4',
-        '/baixas-fisicas/25',
-      ]);
-      expect(links.map((link) => link.textContent)).toEqual(['#003', '#004', '#025']);
-    });
-
-    it('usa placeholder quando não há Baixa vinculada nem Unidade Administrativa', async () => {
-      vi.mocked(nbbpmService.list).mockResolvedValue(
-        makeResponse([makeNbbpm({ baixas: [], unidade_administrativa_origem: null })]),
+        makeResponse([makeNbbpm({ unidade_administrativa_origem: null })]),
       );
 
       renderPage();
 
       const row = (await screen.findByText('001.0000001/2026')).closest('tr') as HTMLElement;
 
-      expect(within(row).queryByRole('link')).not.toBeInTheDocument();
-      expect(within(row).getAllByText('-')).toHaveLength(2);
+      expect(within(row).getByText('-')).toBeInTheDocument();
     });
 
     it('usa o nome da UA quando a sigla não está disponível', async () => {

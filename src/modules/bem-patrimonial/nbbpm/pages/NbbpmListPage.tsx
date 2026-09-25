@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowUpDown, Search } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import { AppBreadcrumb } from '@/components/AppBreadcrumb';
@@ -7,17 +7,16 @@ import { CriadoPorValue } from '@/components/CriadoPorValue';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUnidadesPagination } from '@/hooks/useUnidadesPagination';
 import { formatUsuarioObjetoLabel } from '@/lib/usuario-label';
 import { useNbbpmList } from '../hooks/useNbbpmList';
 import type { NbbpmListItem } from '../types/nbbpm.types';
-import { formatBaixaRef, formatDataBR, formatDataHoraBR } from '../utils/formatters';
+import { formatDataBR, formatDataHoraBR } from '../utils/formatters';
 import type { NbbpmSort, NbbpmSortField } from '../utils/ordering';
 import { canAccessNbbpm } from '../utils/permissions';
 
 const PAGE_SIZE = 10;
-const TABLE_COLUMNS_COUNT = 7;
+const TABLE_COLUMNS_COUNT = 6;
 const PAGE_TITLE = 'Notas de Baixa de Bens Patrimoniais (NBBPM)';
 
 const ACTION_BUTTON_CLASS = `
@@ -66,34 +65,6 @@ function SortableHeader({ label, field, sort, onSort }: SortableHeaderProps) {
   );
 }
 
-function BaixasVinculadas({ baixas }: Readonly<{ baixas: number[] }>) {
-  if (baixas.length === 0) {
-    return <span className='text-gray-400'>-</span>;
-  }
-
-  return (
-    <div className='flex flex-wrap gap-x-3 gap-y-1'>
-      {baixas.map((baixaId) => (
-        <Tooltip key={baixaId}>
-          <TooltipTrigger asChild>
-            <Button
-              asChild
-              variant='link'
-              className='h-auto p-0 font-semibold text-[#00703C]'
-              aria-label={`Visualizar Baixa Física ${baixaId}`}
-            >
-              <Link to={`/baixas-fisicas/${baixaId}`}>{formatBaixaRef(baixaId)}</Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side='top' sideOffset={6} className='max-w-70'>
-            Visualizar as informações da Baixa Física.
-          </TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
-  );
-}
-
 function NbbpmTableRow({ nbbpm }: Readonly<{ nbbpm: NbbpmListItem }>) {
   const ua = nbbpm.unidade_administrativa_origem;
 
@@ -102,9 +73,6 @@ function NbbpmTableRow({ nbbpm }: Readonly<{ nbbpm: NbbpmListItem }>) {
       <td className='p-3 font-mono text-sm text-gray-700'>{nbbpm.numero || '-'}</td>
       <td className='p-3 text-sm text-gray-700'>{nbbpm.numero_processo_baixa || '-'}</td>
       <td className='p-3 text-sm text-gray-700'>{ua?.sigla || ua?.nome || '-'}</td>
-      <td className='p-3 text-sm'>
-        <BaixasVinculadas baixas={nbbpm.baixas} />
-      </td>
       <td className='p-3 text-sm text-gray-600'>{formatDataBR(nbbpm.data_autorizacao)}</td>
       <td className='p-3 text-sm text-gray-600'>
         <CriadoPorValue
@@ -252,7 +220,6 @@ function NbbpmListContent() {
                 <th className='p-3'>Número da NBBPM</th>
                 <th className='p-3'>Nº do Processo de Baixa</th>
                 <th className='p-3'>Unidade Administrativa</th>
-                {/* <th className='p-3'>Baixas Físicas Vinculadas</th> */}
                 <SortableHeader
                   label='Data da Autorização'
                   field='data_autorizacao'

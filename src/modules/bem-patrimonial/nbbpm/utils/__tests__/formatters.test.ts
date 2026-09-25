@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatBaixaRef, formatDataBR, formatDataHoraBR } from '../formatters';
+import { formatDataBR, formatDataHoraBR } from '../formatters';
 
 describe('formatDataBR', () => {
   it('formata data pura sem deslocar o dia por fuso horário', () => {
@@ -29,13 +29,5 @@ describe('formatDataHoraBR', () => {
     expect(formatDataHoraBR(undefined)).toBe('-');
     expect(formatDataHoraBR('')).toBe('-');
     expect(formatDataHoraBR('não é data')).toBe('-');
-  });
-});
-
-describe('formatBaixaRef', () => {
-  it('usa o mesmo formato da tela de detalhe da Baixa Física', () => {
-    expect(formatBaixaRef(3)).toBe('#003');
-    expect(formatBaixaRef(42)).toBe('#042');
-    expect(formatBaixaRef(1234)).toBe('#1234');
   });
 });

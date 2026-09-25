@@ -32,8 +32,3 @@ export function formatDataHoraBR(value: string | null | undefined): string {
 
   return `${dia}/${mes}/${ano} - ${horas}:${minutos}`;
 }
-
-/** Identificação da Baixa Física no padrão da tela de detalhe: `#003`. */
-export function formatBaixaRef(id: number): string {
-  return `#${String(id).padStart(3, '0')}`;
-}
