@@ -40,6 +40,7 @@ export interface BaixaFisica {
     id: number
     numero_processo_baixa: string | null
     numero_nbbpm: string | null
+    nbbpm_id?: number | null
     unidade_administrativa_origem: UnidadeAdministrativaSimple
     status: string
     status_display: string

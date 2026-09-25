@@ -104,6 +104,13 @@ function mapItensParaLinhas(itens: BaixaFisicaItem[], gerarRowId: () => number):
     return itens.map((i) => ({ rowId: gerarRowId(), item: i }))
 }
 
+function extrairNbbpmId(baixa: Pick<BaixaFisicaDetail, "nbbpm_id" | "url_gerar_nbbpm"> | null | undefined): number | null {
+    if (!baixa) return null
+    if (baixa.nbbpm_id != null) return baixa.nbbpm_id
+    const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
+    return match ? Number(match[1]) : null
+}
+
 // ============================================================================
 // BEM SELECTOR (modo edição — status Em elaboração)
 // ============================================================================
@@ -703,8 +710,7 @@ export default function VerBaixaPage() {
 
     const handleGerarNbbpm = async () => {
         if (!baixa) return
-        const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
-        const nbbpmId = match ? Number(match[1]) : null
+        const nbbpmId = extrairNbbpmId(baixa)
         if (nbbpmId === null) {
             toast.error("Não foi possível identificar a NBBPM para download.")
             return
@@ -990,7 +996,15 @@ export default function VerBaixaPage() {
                                     Número NBBPM:
                                 </span>
                                 <span className="text-sm text-gray-700">
-                                    {baixa.numero_nbbpm}
+                                    <button
+                                        type="button"
+                                        onClick={handleGerarNbbpm}
+                                        className="text-[#00703C] underline hover:text-[#005a30] cursor-pointer"
+                                        aria-label={`Baixar NBBPM ${baixa.numero_nbbpm}`}
+                                        title={`Baixar NBBPM ${baixa.numero_nbbpm}`}
+                                    >
+                                        {baixa.numero_nbbpm}
+                                    </button>
                                 </span>
                             </div>
                         )}
