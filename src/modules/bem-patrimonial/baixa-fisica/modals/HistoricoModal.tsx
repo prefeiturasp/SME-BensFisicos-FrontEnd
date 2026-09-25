@@ -56,8 +56,8 @@ interface NbbpmDetalhes {
 function parseNbbpmJustificativa(justificativa: string): NbbpmDetalhes | null {
     const seg = justificativa.trim().split(" - ")
     const inicio = /^NBBPM (\S+) gerada por (\S+) em (\S+)$/.exec(seg[0] ?? "")
-    const processoSeg = seg.length > 2 ? (seg[seg.length - 2] ?? "") : ""
-    const responsavelSeg = seg.length > 1 ? (seg[seg.length - 1] ?? "") : ""
+    const processoSeg = seg.at(-2) ?? ""
+    const responsavelSeg = seg.at(-1) ?? ""
     const meio = seg.slice(1, -2)
     if (!inicio || !processoSeg.startsWith("Processo ") || !responsavelSeg.startsWith("Responsável ") || !(meio[0] ?? "").startsWith("UO ")) return null
     const partes = meio.join(" - ").slice("UO ".length).split(" - ").map(p => p.trim()).filter(Boolean)

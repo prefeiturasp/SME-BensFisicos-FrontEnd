@@ -311,4 +311,41 @@ describe("HistoricoModal", () => {
         expect(screen.getByText("Responsável Teste")).toBeInTheDocument()
         expect(screen.getAllByText(/001\.0000001\/2026/).length).toBe(1)
     })
+
+    it("formata UO e UA quando o meio tem duas partes", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 14,
+                campo: "nbbpm",
+                valor_antigo: null,
+                valor_novo: "001.0000001/2026",
+                justificativa: "NBBPM 001.0000001/2026 gerada por usuario.teste em 01/01/2026 - UO 00.00.00 - UNIDADE TESTE - Processo 0000.0000/0000000-0 - Responsável Responsável Teste",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("UO:")).toBeInTheDocument()
+        })
+        expect(screen.getByText("00.00.00")).toBeInTheDocument()
+        expect(screen.getByText("UA:")).toBeInTheDocument()
+        expect(screen.getByText("UNIDADE TESTE")).toBeInTheDocument()
+    })
+
+    it("exibe texto original quando a justificativa foge do padrão mas contém o número", async () => {
+        const texto = "NBBPM 001.0000001/2026 avulsa sem padrão"
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 15,
+                campo: "nbbpm",
+                valor_antigo: null,
+                valor_novo: "001.0000001/2026",
+                justificativa: texto,
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText(texto)).toBeInTheDocument()
+        })
+        expect(screen.getAllByText(/001\.0000001\/2026/).length).toBe(1)
+    })
 })
