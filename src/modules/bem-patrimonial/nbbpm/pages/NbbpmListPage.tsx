@@ -252,7 +252,7 @@ function NbbpmListContent() {
                 <th className='p-3'>Número da NBBPM</th>
                 <th className='p-3'>Nº do Processo de Baixa</th>
                 <th className='p-3'>Unidade Administrativa</th>
-                <th className='p-3'>Baixas Físicas Vinculadas</th>
+                {/* <th className='p-3'>Baixas Físicas Vinculadas</th> */}
                 <SortableHeader
                   label='Data da Autorização'
                   field='data_autorizacao'

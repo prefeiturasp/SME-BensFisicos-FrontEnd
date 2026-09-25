@@ -133,7 +133,6 @@ describe('NbbpmListPage', () => {
         'Número da NBBPM',
         'Nº do Processo de Baixa',
         'Unidade Administrativa',
-        'Baixas Físicas Vinculadas',
         'Data da Autorização',
         'Gerada por',
         'Data de Criação',
