@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 import { CriadoPorValue } from "@/components/CriadoPorValue"
 import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
 import { Button } from "@/components/ui/button"
@@ -442,6 +443,10 @@ export default function VerBaixaPage() {
     }, [searchParams])
     const [editRows, setEditRows] = useState<EditRow[]>([])
     const [hasChanges, setHasChanges] = useState(false)
+    // Fica true após uma tentativa de salvar sem itens; volta a false ao
+    // entrar/cancelar a edição ou assim que a pendência é corrigida (ver
+    // `errosEdicao`, derivado a cada render a partir de `editRows`).
+    const [tentouSalvarSemItens, setTentouSalvarSemItens] = useState(false)
 
     // ---- Modo "Validar Baixa" (solicitada) — estado 100% local ----
     const [filtroValidacao, setFiltroValidacao] = useState("")
@@ -493,6 +498,15 @@ export default function VerBaixaPage() {
 
     const allSelectedEditIds = editRows.filter((r) => r.item).map((r) => r.item!.bem.id)
 
+    // Consolida, no banner do topo, a pendência que impede o salvamento da
+    // edição. Recalculado a cada render a partir de `editRows`, então some
+    // sozinho assim que o usuário adiciona um item — sem exigir novo clique
+    // em "Salvar Edição".
+    const errosEdicao =
+        podeEditar && tentouSalvarSemItens && allSelectedEditIds.length === 0
+            ? ["Adicione ao menos um item de Baixa Física antes de salvar."]
+            : []
+
     const filtroLower = filtroValidacao.trim().toLowerCase()
     const itensFiltrados = (baixa?.itens ?? []).filter((item) => {
         if (!filtroLower) return true
@@ -516,6 +530,7 @@ export default function VerBaixaPage() {
         if (!baixa) return
         setEditRows(mapItensParaLinhas(baixa.itens, gerarRowId))
         setHasChanges(false)
+        setTentouSalvarSemItens(false)
         setModoEdicao(true)
     }
 
@@ -523,6 +538,7 @@ export default function VerBaixaPage() {
         if (!baixa) return
         setEditRows(mapItensParaLinhas(baixa.itens, gerarRowId))
         setHasChanges(false)
+        setTentouSalvarSemItens(false)
         setModoEdicao(false)
     }
 
@@ -578,9 +594,10 @@ export default function VerBaixaPage() {
             .map((r) => ({ bem: r.item!.bem.id }))
 
         // Uma Baixa Fisica sem itens nao tem o que dar baixa: bloqueia o salvamento
-        // em vez de persistir um registro vazio.
+        // em vez de persistir um registro vazio. A pendência fica consolidada
+        // no banner do topo em vez de um toast que some sozinho.
         if (itens.length === 0) {
-            toast.error("Adicione ao menos um item.")
+            setTentouSalvarSemItens(true)
             return
         }
 
@@ -590,6 +607,7 @@ export default function VerBaixaPage() {
             setBaixa(updated)
             setEditRows(mapItensParaLinhas(updated.itens, gerarRowId))
             setHasChanges(false)
+            setTentouSalvarSemItens(false)
             // Após salvar, a tela volta ao modo de visualização.
             setModoEdicao(false)
             toast.success("Baixa Física atualizada com sucesso.")
@@ -903,6 +921,8 @@ export default function VerBaixaPage() {
 
                 </div>
             </div>
+
+            <BannerErrosValidacao mensagens={errosEdicao} />
 
             <div className="bg-white border border-gray-200 rounded-md overflow-visible shadow-sm">
                 {/* Unidade Administrativa — exibida em destaque no modo Validar Baixa,
