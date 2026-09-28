@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpDown, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Eye, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
@@ -16,7 +16,7 @@ import type { NbbpmSort, NbbpmSortField } from '../utils/ordering';
 import { canAccessNbbpm } from '../utils/permissions';
 
 const PAGE_SIZE = 10;
-const TABLE_COLUMNS_COUNT = 6;
+const TABLE_COLUMNS_COUNT = 7;
 const PAGE_TITLE = 'Notas de Baixa de Bens Patrimoniais (NBBPM)';
 
 const ACTION_BUTTON_CLASS = `
@@ -65,7 +65,12 @@ function SortableHeader({ label, field, sort, onSort }: SortableHeaderProps) {
   );
 }
 
-function NbbpmTableRow({ nbbpm }: Readonly<{ nbbpm: NbbpmListItem }>) {
+type NbbpmTableRowProps = Readonly<{
+  nbbpm: NbbpmListItem;
+  onVisualizar: (id: number) => void;
+}>;
+
+function NbbpmTableRow({ nbbpm, onVisualizar }: NbbpmTableRowProps) {
   const ua = nbbpm.unidade_administrativa_origem;
 
   return (
@@ -81,6 +86,17 @@ function NbbpmTableRow({ nbbpm }: Readonly<{ nbbpm: NbbpmListItem }>) {
         />
       </td>
       <td className='p-3 text-sm text-gray-500'>{formatDataHoraBR(nbbpm.data_criacao)}</td>
+      <td className='p-3 text-center'>
+        <Button
+          type='button'
+          size='icon'
+          variant='ghost'
+          aria-label={`Visualizar NBBPM ${nbbpm.numero || nbbpm.id}`}
+          onClick={() => onVisualizar(nbbpm.id)}
+        >
+          <Eye className='size-[22px] text-[#00703C]' />
+        </Button>
+      </td>
     </tr>
   );
 }
@@ -89,9 +105,10 @@ type NbbpmTableBodyProps = Readonly<{
   loading: boolean;
   error: boolean;
   items: NbbpmListItem[];
+  onVisualizar: (id: number) => void;
 }>;
 
-function NbbpmTableBody({ loading, error, items }: NbbpmTableBodyProps) {
+function NbbpmTableBody({ loading, error, items, onVisualizar }: NbbpmTableBodyProps) {
   if (loading) {
     return (
       <tr>
@@ -125,7 +142,7 @@ function NbbpmTableBody({ loading, error, items }: NbbpmTableBodyProps) {
   return (
     <>
       {items.map((nbbpm) => (
-        <NbbpmTableRow key={nbbpm.id} nbbpm={nbbpm} />
+        <NbbpmTableRow key={nbbpm.id} nbbpm={nbbpm} onVisualizar={onVisualizar} />
       ))}
     </>
   );
@@ -233,11 +250,17 @@ function NbbpmListContent() {
                   sort={sort}
                   onSort={handleSort}
                 />
+                <th className='p-3 text-center'>Ações</th>
               </tr>
             </thead>
 
             <tbody>
-              <NbbpmTableBody loading={loading} error={error} items={items} />
+              <NbbpmTableBody
+                loading={loading}
+                error={error}
+                items={items}
+                onVisualizar={(id) => navigate(`/nbbpm/${id}`)}
+              />
             </tbody>
           </table>
         </div>

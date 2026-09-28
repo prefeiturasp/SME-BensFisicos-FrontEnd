@@ -62,7 +62,33 @@ describe('nbbpmService', () => {
   });
 
   it('é somente leitura: não expõe operações de escrita', () => {
-    expect(Object.keys(nbbpmService)).toEqual(['list']);
+    expect(Object.keys(nbbpmService)).toEqual(['list', 'retrieve']);
+  });
+
+  it('busca o detalhe de uma NBBPM', async () => {
+    const payload = {
+      id: 5,
+      numero: '001.0000005/2026',
+      numero_processo_baixa: '12345',
+      data_autorizacao: '2026-07-10',
+      responsavel: 'Fulano',
+      numero_processo_destinacao_final: '',
+      criado_por: { id: 1, username: 'gestor', nome_completo: 'Gestor', email: '' },
+      data_criacao: '2026-07-10T10:00:00-03:00',
+      baixas: [],
+    };
+    vi.mocked(api.get).mockResolvedValue({ data: payload });
+
+    const result = await nbbpmService.retrieve(5);
+
+    expect(api.get).toHaveBeenCalledWith('/nbbpm/5/');
+    expect(result).toEqual(payload);
+  });
+
+  it('retrieve usa a mensagem padrão quando o backend não detalha o erro', async () => {
+    vi.mocked(api.get).mockRejectedValue(makeAxiosError(500));
+
+    await expect(nbbpmService.retrieve(5)).rejects.toThrow('Erro ao buscar NBBPM');
   });
 
   it('usa a mensagem `detail` do backend quando existir', async () => {

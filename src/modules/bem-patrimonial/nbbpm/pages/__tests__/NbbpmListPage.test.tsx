@@ -136,11 +136,22 @@ describe('NbbpmListPage', () => {
         'Data da Autorização',
         'Gerada por',
         'Data de Criação',
+        'Ações',
       ]) {
         expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
       }
 
       await screen.findByText('001.0000001/2026');
+    });
+
+    it('acessa o detalhe da NBBPM pelo botão de visualizar', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('001.0000001/2026');
+
+      await user.click(screen.getByRole('button', { name: 'Visualizar NBBPM 001.0000001/2026' }));
+
+      expect(navigateMock).toHaveBeenCalledWith('/nbbpm/1');
     });
 
     it('não exibe a coluna de Baixas Físicas Vinculadas', async () => {

@@ -1,6 +1,6 @@
 import { api } from '@/api/http';
 import { handleApiError } from '@/lib/api-error';
-import type { NbbpmListParams, NbbpmPaginatedResponse } from '../types/nbbpm.types';
+import type { NbbpmDetail, NbbpmListParams, NbbpmPaginatedResponse } from '../types/nbbpm.types';
 
 function buildQuery(params: NbbpmListParams) {
   const query = new URLSearchParams();
@@ -16,9 +16,10 @@ function buildQuery(params: NbbpmListParams) {
 /**
  * Serviço de consulta das NBBPMs geradas.
  *
- * Intencionalmente expõe SOMENTE leitura (`list`): a listagem não cria,
+ * Intencionalmente expõe SOMENTE leitura (`list`, `retrieve`): não cria,
  * altera nem duplica registros. A geração continua em
- * `baixaFisicaService.gerarNbbpmLote`, fluxo da tela "Gerar NBBPM".
+ * `baixaFisicaService.gerarNbbpmLote`, fluxo da tela "Gerar NBBPM"; o
+ * download do documento continua em `baixaFisicaService.baixarNbbpmPdf`.
  *
  * Escopo (UO/UA) e perfil de acesso são aplicados pelo backend em
  * `NBBPMViewSet.get_queryset` / `permission_classes`.
@@ -31,6 +32,20 @@ export const nbbpmService = {
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao listar NBBPMs');
+    }
+  },
+
+  /**
+   * Detalhe de uma NBBPM — Baixas Físicas vinculadas, cada uma com sua
+   * própria Unidade Administrativa e os bens que a compunham no momento
+   * da geração da nota.
+   */
+  async retrieve(id: number): Promise<NbbpmDetail> {
+    try {
+      const { data } = await api.get<NbbpmDetail>(`/nbbpm/${id}/`);
+      return data;
+    } catch (error) {
+      handleApiError(error, 'Erro ao buscar NBBPM');
     }
   },
 };
