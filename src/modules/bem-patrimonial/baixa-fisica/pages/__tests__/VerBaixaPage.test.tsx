@@ -480,24 +480,10 @@ describe("VerBaixaPage", () => {
 
         fireEvent.click(screen.getByText("Salvar Edição"))
 
-        // Pendência consolidada no banner do topo, complementando a lista de itens.
         await waitFor(() =>
-            expect(
-                screen.getByText("Adicione ao menos um item.")
-            ).toBeInTheDocument()
+            expect(toast.error).toHaveBeenCalledWith("Adicione ao menos um item.")
         )
         expect(baixaFisicaService.update).not.toHaveBeenCalled()
-
-        // Corrigir a pendência (adicionar um item) remove o banner automaticamente.
-        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
-        fireEvent.click(screen.getByText("Cadeira Escritório"))
-
-        await waitFor(() =>
-            expect(
-                screen.queryByText("Adicione ao menos um item.")
-            ).not.toBeInTheDocument()
-        )
     })
 
     it("nao exibe toast informativo apenas por entrar em modo de edicao", async () => {

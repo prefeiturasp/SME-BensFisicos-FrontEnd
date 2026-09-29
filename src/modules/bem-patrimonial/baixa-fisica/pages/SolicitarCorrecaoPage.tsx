@@ -18,7 +18,6 @@ import {
 } from "../validators/baixa-form.schema"
 import { Button } from "@/components/ui/button"
 import { baixaFisicaService } from "../service/baixas.service"
-import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 import type { BaixaFisicaDetail } from "../types/baixas-fisicas.types"
 
 const ACTION_BUTTON_CLASS =
@@ -78,13 +77,6 @@ export default function SolicitarCorrecaoPage() {
         navigate(-1)
     }
 
-    /**
-     * Consolida, no banner do topo, a pendência que impede o envio da
-     * correção. Complementa — não substitui — a validação inline
-     * (`FormMessage`) e some sozinho assim que o motivo é preenchido.
-     */
-    const mensagensErro = [form.formState.errors.motivo?.message].filter(Boolean) as string[]
-
     if (loading) {
         return <div className="p-8 text-sm text-gray-500">Carregando...</div>
     }
@@ -134,8 +126,6 @@ export default function SolicitarCorrecaoPage() {
                     {form.formState.errors.root.serverError.message}
                 </div>
             )}
-
-            <BannerErrosValidacao mensagens={mensagensErro} />
 
             {showToast && (
                 <output className="block text-sm text-green-700 bg-green-50 border border-green-200 rounded px-4 py-2">

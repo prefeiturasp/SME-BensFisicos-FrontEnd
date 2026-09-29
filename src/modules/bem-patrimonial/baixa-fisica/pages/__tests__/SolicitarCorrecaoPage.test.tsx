@@ -180,38 +180,14 @@ describe("SolicitarCorrecaoPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Solicitar correção" }))
 
         await waitFor(() => {
-            // A mensagem aparece tanto inline (FormMessage) quanto consolidada no banner.
             expect(
-                screen.getAllByText("Descreva as orientações para a correção antes de enviar.").length
-            ).toBeGreaterThan(0)
+                screen.getByText("Descreva as orientações para a correção antes de enviar.")
+            ).toBeInTheDocument()
         })
 
         // O campo recebe o estado inválido (borda vermelha + label vermelha).
         expect(screen.getByLabelText("Observações")).toHaveAttribute("aria-invalid", "true")
         expect(baixaFisicaService.solicitarCorrecao).not.toHaveBeenCalled()
-    })
-
-    it("exibe o banner consolidado no topo e some ao preencher o motivo", async () => {
-        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeBaixaDetail())
-
-        renderPage()
-
-        await waitFor(() => {
-            expect(screen.getByLabelText("Observações")).toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole("button", { name: "Solicitar correção" }))
-
-        const banner = await screen.findByTestId("banner-erros-validacao")
-        expect(banner).toHaveTextContent("Descreva as orientações para a correção antes de enviar.")
-
-        fireEvent.change(screen.getByLabelText("Observações"), {
-            target: { value: "Corrigir item" },
-        })
-
-        await waitFor(() => {
-            expect(screen.queryByTestId("banner-erros-validacao")).not.toBeInTheDocument()
-        })
     })
 
     it("exibe erro retornado pelo serviço", async () => {
