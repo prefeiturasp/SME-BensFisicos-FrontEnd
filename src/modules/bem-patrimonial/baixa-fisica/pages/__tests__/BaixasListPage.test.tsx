@@ -734,7 +734,7 @@ describe("BaixasListPage", () => {
     })
 
     describe("consulta histórica com NBBPM vinculada", () => {
-        it("exibe número como link clicável para o detalhe (listagem 200)", async () => {
+        it("exibe número como link para o detalhe da NBBPM (listagem 200)", async () => {
             vi.mocked(baixaFisicaService.list).mockResolvedValue(
                 makePaginatedResponse([
                     makeBaixa({ id: 20, status: "aceita", status_display: "Aceita", nbbpm_id: 7, numero_nbbpm: "001.0000001/2026" }),
@@ -746,6 +746,19 @@ describe("BaixasListPage", () => {
             const link = await screen.findByRole("link", { name: /Ver NBBPM 001\.0000001\/2026/ })
             expect(link).toBeInTheDocument()
             expect(link).toHaveTextContent("001.0000001/2026")
+            expect(link.getAttribute("href")).toBe("/nbbpm/7")
+        })
+
+        it("mantém fallback para a baixa quando há número sem nbbpm_id", async () => {
+            vi.mocked(baixaFisicaService.list).mockResolvedValue(
+                makePaginatedResponse([
+                    makeBaixa({ id: 20, status: "aceita", status_display: "Aceita", nbbpm_id: null, numero_nbbpm: "001.0000001/2026" }),
+                ])
+            )
+
+            renderPage()
+
+            const link = await screen.findByRole("link", { name: /Ver NBBPM 001\.0000001\/2026/ })
             expect(link.getAttribute("href")).toBe("/baixas-fisicas/20")
         })
     })
