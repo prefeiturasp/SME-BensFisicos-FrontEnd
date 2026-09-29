@@ -104,13 +104,6 @@ function mapItensParaLinhas(itens: BaixaFisicaItem[], gerarRowId: () => number):
     return itens.map((i) => ({ rowId: gerarRowId(), item: i }))
 }
 
-function extrairNbbpmId(baixa: Pick<BaixaFisicaDetail, "nbbpm_id" | "url_gerar_nbbpm"> | null | undefined): number | null {
-    if (!baixa) return null
-    if (baixa.nbbpm_id != null) return baixa.nbbpm_id
-    const match = /\/nbbpm\/(\d+)/.exec(baixa.url_gerar_nbbpm ?? "")
-    return match ? Number(match[1]) : null
-}
-
 // ============================================================================
 // BEM SELECTOR (modo edição — status Em elaboração)
 // ============================================================================
@@ -708,27 +701,6 @@ export default function VerBaixaPage() {
         }
     }
 
-    const handleGerarNbbpm = async () => {
-        if (!baixa) return
-        const nbbpmId = extrairNbbpmId(baixa)
-        if (nbbpmId === null) {
-            toast.error("Não foi possível identificar a NBBPM para download.")
-            return
-        }
-        try {
-            const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpmId)
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `NBBPM-${baixa.numero_nbbpm ?? baixa.numero_processo_baixa ?? baixa.id}.pdf`
-            a.click()
-            URL.revokeObjectURL(url)
-        } catch (err) {
-            console.error(err)
-            toast.error("Erro ao gerar a NBBPM.")
-        }
-    }
-
     const handleGerarLaudo = async () => {
         if (!baixa) return
         try {
@@ -872,13 +844,6 @@ export default function VerBaixaPage() {
                         </Button>
                     )}
 
-                    {baixa.status === "aceita" && baixa.url_gerar_nbbpm && (
-                        <Button type="button" onClick={handleGerarNbbpm} className={ACTION_BUTTON_CLASS}>
-                            <FileDown size={14} />
-                            Baixar NBBPM
-                        </Button>
-                    )}
-
                     {podeCorrigirProcesso && (
                         <Button
                             type="button"
@@ -996,15 +961,7 @@ export default function VerBaixaPage() {
                                     Número NBBPM:
                                 </span>
                                 <span className="text-sm text-gray-700">
-                                    <button
-                                        type="button"
-                                        onClick={handleGerarNbbpm}
-                                        className="text-[#00703C] underline hover:text-[#005a30] cursor-pointer"
-                                        aria-label={`Baixar NBBPM ${baixa.numero_nbbpm}`}
-                                        title={`Baixar NBBPM ${baixa.numero_nbbpm}`}
-                                    >
-                                        {baixa.numero_nbbpm}
-                                    </button>
+                                    {baixa.numero_nbbpm}
                                 </span>
                             </div>
                         )}

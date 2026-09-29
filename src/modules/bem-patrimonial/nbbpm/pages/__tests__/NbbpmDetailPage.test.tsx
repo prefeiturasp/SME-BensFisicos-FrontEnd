@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -239,7 +239,10 @@ describe('NbbpmDetailPage', () => {
 
     await waitFor(() => {
       expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(7);
-      expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'nbbpm-0007.pdf');
+      expect(downloadBlob).toHaveBeenCalledWith(
+        expect.any(Blob),
+        'NBBPM-001.0000007/2026.pdf',
+      );
     });
   });
 
@@ -266,6 +269,126 @@ describe('NbbpmDetailPage', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao baixar NBBPM');
+    });
+  });
+
+  it('volta direto para a listagem sem chamar a API quando o id é inválido', async () => {
+    renderPage('abc');
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/nbbpm');
+    });
+    expect(nbbpmService.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('volta direto para a listagem sem chamar a API quando o id é vazio', async () => {
+    renderPage(' ');
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/nbbpm');
+    });
+    expect(nbbpmService.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('mostra traço quando a Baixa Física não tem bens ou UA', async () => {
+    vi.mocked(nbbpmService.retrieve).mockResolvedValue(
+      makeNbbpmDetail({
+        baixas: [
+          {
+            id: 12,
+            numero_processo_baixa: null,
+            // @ts-expect-error simula backend enviando null em vez de [] / objeto ausente
+            unidade_administrativa_origem: null,
+            // @ts-expect-error simula backend enviando null em vez de []
+            itens: null,
+          },
+        ],
+      }),
+    );
+
+    renderPage();
+
+    const baixa1 = await screen.findByTestId('nbbpm-baixa-12');
+    expect(within(baixa1).getByText('Nenhum bem encontrado.')).toBeInTheDocument();
+    expect(within(baixa1).getAllByText('-').length).toBeGreaterThan(0);
+  });
+
+  it('mostra traço quando um item vem sem bem vinculado', async () => {
+    vi.mocked(nbbpmService.retrieve).mockResolvedValue(
+      makeNbbpmDetail({
+        baixas: [
+          {
+            id: 12,
+            numero_processo_baixa: '6016.2026/0000123-4',
+            unidade_administrativa_origem: {
+              id: 5,
+              nome: 'Diretoria Regional',
+              sigla: 'DRE-BT',
+              codigo: '016510',
+              status: 'ativa',
+            },
+            // @ts-expect-error simula backend enviando bem nulo
+            itens: [{ id: 100, bem: null }],
+          },
+        ],
+      }),
+    );
+
+    renderPage();
+
+    const baixa1 = await screen.findByTestId('nbbpm-baixa-12');
+    expect(within(baixa1).getByText('-')).toBeInTheDocument();
+  });
+
+  it('mostra mensagem padrão quando a NBBPM não tem Baixas vinculadas (lista nula)', async () => {
+    vi.mocked(nbbpmService.retrieve).mockResolvedValue(
+      // @ts-expect-error simula backend enviando null em vez de []
+      makeNbbpmDetail({ baixas: null }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText('Nenhuma Baixa Física vinculada.')).toBeInTheDocument();
+  });
+
+  it('limpa a nota anterior e volta a carregar ao trocar de id pela URL', async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      return (
+        <div>
+          <Link to='/nbbpm/9'>Ir para a nota 9</Link>
+          <NbbpmDetailPage />
+        </div>
+      );
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/nbbpm/7']}>
+        <Routes>
+          <Route path='/nbbpm/:id' element={<Harness />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Número: 001.0000007/2026');
+
+    let resolveSegunda: (value: NbbpmDetail) => void = () => {};
+    vi.mocked(nbbpmService.retrieve).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSegunda = resolve;
+      }),
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Ir para a nota 9' }));
+
+    expect(screen.queryByText('Número: 001.0000007/2026')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+
+    resolveSegunda(makeNbbpmDetail({ id: 9, numero: '001.0000009/2026' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Número: 001.0000009/2026')).toBeInTheDocument();
     });
   });
 });

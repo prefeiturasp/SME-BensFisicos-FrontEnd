@@ -67,14 +67,18 @@ function BaixaVinculadaSection({ baixa }: Readonly<{ baixa: NbbpmBaixaDetail }>)
       <div className='space-y-2 pt-1'>
         <span className='text-sm font-semibold text-gray-700'>Bens desta Baixa Física</span>
 
-        {baixa.itens.length === 0 ? (
+        {(baixa.itens ?? []).length === 0 ? (
           <div className='text-sm text-gray-400'>Nenhum bem encontrado.</div>
         ) : (
           <div className='space-y-2'>
-            {baixa.itens.map((item) => (
+            {(baixa.itens ?? []).map((item) => (
               <BemItemRow
                 key={item.id}
-                label={`${item.bem.numero_patrimonial || '-'} ${item.bem.nome}`}
+                label={
+                  item.bem
+                    ? `${item.bem.numero_patrimonial || '-'} ${item.bem.nome}`
+                    : '-'
+                }
               />
             ))}
           </div>
@@ -111,6 +115,16 @@ function NbbpmDetailContent() {
   useEffect(() => {
     let active = true;
 
+    setNbbpm(null);
+    setLoading(true);
+
+    if (!id || !/^\d+$/.test(id)) {
+      navigate('/nbbpm');
+      return () => {
+        active = false;
+      };
+    }
+
     const load = async () => {
       try {
         const data = await nbbpmService.retrieve(Number(id));
@@ -146,7 +160,7 @@ function NbbpmDetailContent() {
     setBaixando(true);
     try {
       const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpm.id);
-      downloadBlob(blob, `nbbpm-${String(nbbpm.id).padStart(4, '0')}.pdf`);
+      downloadBlob(blob, `NBBPM-${nbbpm.numero || nbbpm.id}.pdf`);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Erro ao baixar documento da NBBPM'));
     } finally {
@@ -230,12 +244,14 @@ function NbbpmDetailContent() {
             </p>
           </div>
 
-          {nbbpm.baixas.length === 0 ? (
+          {(nbbpm.baixas ?? []).length === 0 ? (
             <div className='px-6 py-4 text-sm text-gray-400'>
               Nenhuma Baixa Física vinculada.
             </div>
           ) : (
-            nbbpm.baixas.map((baixa) => <BaixaVinculadaSection key={baixa.id} baixa={baixa} />)
+            (nbbpm.baixas ?? []).map((baixa) => (
+              <BaixaVinculadaSection key={baixa.id} baixa={baixa} />
+            ))
           )}
         </div>
       </Card>
