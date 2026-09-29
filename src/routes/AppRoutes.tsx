@@ -50,6 +50,7 @@ import BemImportPage from '@/modules/bem-patrimonial/bem/pages/BemImportPage';
 import SolicitarCorrecaoPage from '@/modules/bem-patrimonial/baixa-fisica/pages/SolicitarCorrecaoPage';
 import GerarNBBPMPage from '@/modules/bem-patrimonial/baixa-fisica/pages/GerarNBBPMPage';
 import NbbpmListPage from '@/modules/bem-patrimonial/nbbpm/pages/NbbpmListPage';
+import NbbpmDetailPage from '@/modules/bem-patrimonial/nbbpm/pages/NbbpmDetailPage';
 
 export default function AppRoutes() {
   return (
@@ -96,6 +97,7 @@ export default function AppRoutes() {
 
           {/* Submódulo: Notas de Baixa (NBBPM) — consulta somente leitura */}
           <Route path='/nbbpm' element={<NbbpmListPage />} />
+          <Route path='/nbbpm/:id' element={<NbbpmDetailPage />} />
 
           {/* Módulo: Inventário */}
           <Route path='/conciliacoes' element={<GerenciamentoConciliacoesListPage />} />
