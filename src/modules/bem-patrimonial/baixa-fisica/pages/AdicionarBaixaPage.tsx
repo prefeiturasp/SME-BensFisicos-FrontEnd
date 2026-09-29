@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
+import { AxiosError } from "axios"
 
 import { format } from "date-fns"
 
@@ -231,6 +232,7 @@ export default function AdicionarBaixaPage() {
 
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
+    const [bloqueioExistente, setBloqueioExistente] = useState<{ mensagem: string; ids: number[] } | null>(null)
 
     const form = useForm<AdicionarBaixaFormData>({
         resolver: zodResolver(adicionarBaixaSchema),
@@ -266,6 +268,7 @@ export default function AdicionarBaixaPage() {
         form.setValue("unidade", value, {
             shouldValidate: form.formState.isSubmitted,
         })
+        setBloqueioExistente(null)
         atualizarRows(() => [{ rowId: nextRowId++, bem: null }])
     }
 
@@ -305,6 +308,7 @@ export default function AdicionarBaixaPage() {
 
     const handleSolicitar = form.handleSubmit(async (values) => {
         setSubmitting(true)
+        setBloqueioExistente(null)
         try {
             await baixaFisicaService.create({
                 unidade_administrativa_origem: Number(values.unidade),
@@ -316,6 +320,19 @@ export default function AdicionarBaixaPage() {
             toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
+            if (err instanceof AxiosError && err.response?.status === 400) {
+                const rawIds = err.response.data?.baixas_existentes
+                if (Array.isArray(rawIds) && rawIds.length > 0) {
+                    const ids = [...new Set(rawIds.map((n) => Number(n)).filter((n): n is number => Number.isInteger(n) && n > 0))]
+                    if (ids.length > 0) {
+                        const campo = err.response.data?.unidade_administrativa_origem
+                        const mensagem = Array.isArray(campo) && typeof campo[0] === "string" && campo[0] ? campo[0] : "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
+                        setBloqueioExistente({ mensagem, ids })
+                        toast.error(mensagem)
+                        return
+                    }
+                }
+            }
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
             toast.error(message)
         } finally {
@@ -370,6 +387,27 @@ export default function AdicionarBaixaPage() {
             </div>
 
             <BannerErrosValidacao mensagens={mensagensErro} />
+
+            {bloqueioExistente && (
+                <div
+                    role="alert"
+                    data-testid="bloqueio-baixa-existente"
+                    className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-2 space-y-1"
+                >
+                    <p>{bloqueioExistente.mensagem}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {bloqueioExistente.ids.map((id) => (
+                            <Link
+                                key={id}
+                                to={`/baixas-fisicas/${id}`}
+                                className="text-sm text-[#00703C] underline hover:text-[#005a30]"
+                            >
+                                Abrir Baixa #{id}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <Card className="p-6 space-y-6">
 
