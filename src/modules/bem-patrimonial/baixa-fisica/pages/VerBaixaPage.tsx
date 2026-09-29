@@ -504,7 +504,7 @@ export default function VerBaixaPage() {
     // em "Salvar Edição".
     const errosEdicao =
         podeEditar && tentouSalvarSemItens && allSelectedEditIds.length === 0
-            ? ["Adicione ao menos um item de Baixa Física antes de salvar."]
+            ? ["Adicione ao menos um item."]
             : []
 
     const filtroLower = filtroValidacao.trim().toLowerCase()

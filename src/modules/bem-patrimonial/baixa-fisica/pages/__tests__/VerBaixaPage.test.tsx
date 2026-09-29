@@ -483,7 +483,7 @@ describe("VerBaixaPage", () => {
         // Pendência consolidada no banner do topo, complementando a lista de itens.
         await waitFor(() =>
             expect(
-                screen.getByText("Adicione ao menos um item de Baixa Física antes de salvar.")
+                screen.getByText("Adicione ao menos um item.")
             ).toBeInTheDocument()
         )
         expect(baixaFisicaService.update).not.toHaveBeenCalled()
@@ -495,7 +495,7 @@ describe("VerBaixaPage", () => {
 
         await waitFor(() =>
             expect(
-                screen.queryByText("Adicione ao menos um item de Baixa Física antes de salvar.")
+                screen.queryByText("Adicione ao menos um item.")
             ).not.toBeInTheDocument()
         )
     })

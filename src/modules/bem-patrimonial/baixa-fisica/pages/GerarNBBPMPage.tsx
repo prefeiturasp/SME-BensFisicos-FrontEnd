@@ -99,13 +99,16 @@ export default function GerarNBBPMPage() {
     })
 
     /**
-     * Consolida, num único lugar, as pendências de campo que impedem a
-     * geração da NBBPM. Complementa — não substitui — a validação inline
-     * (borda, label e `FormMessage` continuam em cada campo) e some
-     * automaticamente conforme cada campo é corrigido.
+     * Consolida, num único lugar, tanto as pendências de campo quanto o erro
+     * de servidor (ex.: falha de conexão ao gerar a NBBPM) — evitando dois
+     * avisos vermelhos distintos para a mesma ação. Complementa — não
+     * substitui — a validação inline (borda, label e `FormMessage`
+     * continuam em cada campo) e some automaticamente conforme cada
+     * pendência é corrigida ou uma nova tentativa é feita.
      */
     const erros = form.formState.errors
     const mensagensErro = [
+        erros.root?.serverError?.message,
         erros.numero_processo?.message,
         erros.data_autorizacao?.message,
         erros.responsavel?.message,
@@ -178,12 +181,6 @@ export default function GerarNBBPMPage() {
                     </Button>
                 </div>
             </div>
-
-            {form.formState.errors.root?.serverError?.message && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {form.formState.errors.root.serverError.message}
-                </div>
-            )}
 
             <BannerErrosValidacao mensagens={mensagensErro} />
 
