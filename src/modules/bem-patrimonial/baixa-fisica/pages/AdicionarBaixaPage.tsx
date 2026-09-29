@@ -16,6 +16,7 @@ import { bemService, type Bem } from "../../bem/services/bem.service"
 import { isDataFutura } from "../utils/datas"
 import { baixaFisicaService } from "../service/baixas.service"
 import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 import type { ItemRow } from '../types/baixas-fisicas.types'
 import {
     Form,
@@ -302,8 +303,7 @@ export default function AdicionarBaixaPage() {
         atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSolicitar = form.handleSubmit(
-        async (values) => {
+    const handleSolicitar = form.handleSubmit(async (values) => {
         setSubmitting(true)
         try {
             await baixaFisicaService.create({
@@ -321,19 +321,21 @@ export default function AdicionarBaixaPage() {
         } finally {
             setSubmitting(false)
         }
-        },
-        (errors) => {
-            // Compatibilidade: validação inline (zod/FormMessage) + toasts do padrão de test.
-            // Sem isso, os testes de test que esperam toast.error para validação quebrariam,
-            // e sem o inline o critério de exibir todos os pendentes de uma vez se perderia.
-            const mensagens = [
-                errors.unidade?.message,
-                errors.itens?.message,
-                errors.data_baixa?.message,
-            ].filter(Boolean) as string[]
-            mensagens.forEach((msg) => toast.error(msg))
-        }
-    )
+    })
+
+    /**
+     * Consolida, num único lugar, as pendências que impedem a continuidade
+     * do processo. O zod valida unidade, itens e data num mesmo passe (ver
+     * `adicionarBaixaSchema`), então as três mensagens já chegam juntas aqui
+     * assim que o usuário tenta solicitar — e somem conforme cada campo é
+     * corrigido, sem precisar de uma nova tentativa de envio.
+     */
+    const erros = form.formState.errors
+    const mensagensErro = [
+        erros.unidade?.message,
+        erros.itens?.message,
+        erros.data_baixa?.message,
+    ].filter(Boolean) as string[]
 
     return (
         <Form {...form}>
@@ -366,6 +368,8 @@ export default function AdicionarBaixaPage() {
                     </Button>
                 </div>
             </div>
+
+            <BannerErrosValidacao mensagens={mensagensErro} />
 
             <Card className="p-6 space-y-6">
 

@@ -26,6 +26,7 @@ import {
     type GerarNbbpmFormData,
 } from "../validators/baixa-form.schema"
 import { baixaFisicaService, downloadBlob } from "../service/baixas.service"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 
 const ACTION_BUTTON_CLASS = `
   h-10 px-6 bg-white border border-[#2F7D57]
@@ -97,6 +98,23 @@ export default function GerarNBBPMPage() {
         setDadosConfirmacao(values)
     })
 
+    /**
+     * Consolida, num único lugar, tanto as pendências de campo quanto o erro
+     * de servidor (ex.: falha de conexão ao gerar a NBBPM) — evitando dois
+     * avisos vermelhos distintos para a mesma ação. Complementa — não
+     * substitui — a validação inline (borda, label e `FormMessage`
+     * continuam em cada campo) e some automaticamente conforme cada
+     * pendência é corrigida ou uma nova tentativa é feita.
+     */
+    const erros = form.formState.errors
+    const mensagensErro = [
+        erros.root?.serverError?.message,
+        erros.numero_processo?.message,
+        erros.data_autorizacao?.message,
+        erros.responsavel?.message,
+        erros.numero_processo_destinacao_final?.message,
+    ].filter(Boolean) as string[]
+
     const handleGerarBaixa = async () => {
         if (!dadosConfirmacao || submitting) return
 
@@ -164,11 +182,7 @@ export default function GerarNBBPMPage() {
                 </div>
             </div>
 
-            {form.formState.errors.root?.serverError?.message && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {form.formState.errors.root.serverError.message}
-                </div>
-            )}
+            <BannerErrosValidacao mensagens={mensagensErro} />
 
             {baixaIds.length === 0 && !form.formState.errors.root?.serverError && (
                 <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-4 py-2" role="alert">

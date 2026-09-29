@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { toast } from "sonner"
@@ -192,7 +192,10 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Selecione a unidade administrativa.")
+            // A mensagem aparece tanto inline (FormMessage) quanto consolidada no banner.
+            expect(
+                screen.getAllByText("Selecione a unidade administrativa.").length
+            ).toBeGreaterThan(0)
         })
     })
 
@@ -201,25 +204,38 @@ describe("AdicionarBaixaPage", () => {
         await selectUA()
         fireEvent.click(screen.getByText("Solicitar"))
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Adicione ao menos um item.")
+            expect(
+                screen.getAllByText("Adicione ao menos um item.").length
+            ).toBeGreaterThan(0)
         })
     })
 
-    it("exibe todos os campos pendentes numa unica submissao", async () => {
+    it("exibe todos os campos pendentes numa unica submissao, consolidados no banner", async () => {
         renderPage()
 
         // Nenhum campo preenchido: unidade e itens estao ambos pendentes.
         fireEvent.click(screen.getByText("Solicitar"))
 
-        await waitFor(() => {
-            expect(
-                screen.getByText("Selecione a unidade administrativa.")
-            ).toBeInTheDocument()
-        })
+        const banner = await screen.findByTestId("banner-erros-validacao")
 
-        // O segundo erro aparece junto, e nao apenas apos corrigir o primeiro.
-        expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument()
+        // O banner consolida as duas pendencias simultaneamente, e nao apenas
+        // apos corrigir a primeira.
+        expect(within(banner).getByText("Selecione a unidade administrativa.")).toBeInTheDocument()
+        expect(within(banner).getByText("Adicione ao menos um item.")).toBeInTheDocument()
         expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
+    it("remove o banner de pendencias assim que os campos sao corrigidos", async () => {
+        renderPage()
+
+        fireEvent.click(screen.getByText("Solicitar"))
+        await screen.findByTestId("banner-erros-validacao")
+
+        await selectBem()
+
+        await waitFor(() => {
+            expect(screen.queryByTestId("banner-erros-validacao")).not.toBeInTheDocument()
+        })
     })
 
     // --- Dropdown de bem ---
@@ -371,7 +387,9 @@ describe("AdicionarBaixaPage", () => {
         fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Data da Baixa não pode ser futura.")
+            expect(
+                screen.getAllByText("Data da Baixa não pode ser futura.").length
+            ).toBeGreaterThan(0)
         })
         expect(baixaFisicaService.create).not.toHaveBeenCalled()
     })
