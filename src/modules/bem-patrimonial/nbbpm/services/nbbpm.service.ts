@@ -16,10 +16,12 @@ function buildQuery(params: NbbpmListParams) {
 /**
  * Serviço de consulta das NBBPMs geradas.
  *
- * Intencionalmente expõe SOMENTE leitura (`list`, `retrieve`): não cria,
- * altera nem duplica registros. A geração continua em
- * `baixaFisicaService.gerarNbbpmLote`, fluxo da tela "Gerar NBBPM"; o
- * download do documento continua em `baixaFisicaService.baixarNbbpmPdf`.
+ * Expõe leitura (`list`, `retrieve`) e a reemissão do documento (`reemitir`),
+ * que NÃO cria nem duplica registros: o backend devolve o PDF da NBBPM
+ * existente, com o mesmo número, sem consumir sequencial nem criar nova Nota
+ * de Baixa. A geração continua em `baixaFisicaService.gerarNbbpmLote`, fluxo
+ * da tela "Gerar NBBPM"; o download do documento existente continua em
+ * `baixaFisicaService.baixarNbbpmPdf`.
  *
  * Escopo (UO/UA) e perfil de acesso são aplicados pelo backend em
  * `NBBPMViewSet.get_queryset` / `permission_classes`.
@@ -46,6 +48,21 @@ export const nbbpmService = {
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao buscar NBBPM');
+    }
+  },
+
+  /**
+   * Reemite o documento de uma NBBPM já gerada
+   * (POST /nbbpm/{id}/reemitir/, sem corpo). Retorna o PDF.
+   */
+  async reemitir(id: number): Promise<Blob> {
+    try {
+      const { data } = await api.post<Blob>(`/nbbpm/${id}/reemitir/`, null, {
+        responseType: 'blob',
+      });
+      return data;
+    } catch (error) {
+      handleApiError(error, 'Erro ao reemitir NBBPM');
     }
   },
 };

@@ -10,3 +10,15 @@ type NbbpmPermissionFields = Partial<Pick<User, 'is_superuser' | 'is_gestor_patr
 export function canAccessNbbpm(user: NbbpmPermissionFields | null | undefined) {
   return Boolean(user?.is_superuser || user?.is_gestor_patrimonio);
 }
+
+/**
+ * Reemissão do documento: mesmo perfil da consulta (Gestor de Patrimônio ou
+ * superusuário). Se o backend informar `pode_reemitir: false` para a NBBPM
+ * (regra de processo), a ação não é oferecida.
+ */
+export function canReemitirNbbpm(
+  user: NbbpmPermissionFields | null | undefined,
+  nbbpm?: { pode_reemitir?: boolean } | null,
+) {
+  return canAccessNbbpm(user) && nbbpm?.pode_reemitir !== false;
+}

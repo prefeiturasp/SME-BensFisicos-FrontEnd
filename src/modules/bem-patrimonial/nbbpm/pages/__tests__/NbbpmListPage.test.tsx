@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/useAuth';
 import type { User } from '@/auth/auth.service';
 import NbbpmListPage from '../NbbpmListPage';
 import { nbbpmService } from '../../services/nbbpm.service';
+import { baixaFisicaService, downloadBlob } from '../../../baixa-fisica/service/baixas.service';
 import type { NbbpmListItem, NbbpmPaginatedResponse } from '../../types/nbbpm.types';
 
 vi.mock('@/auth/useAuth');
@@ -22,7 +23,15 @@ vi.mock('sonner', () => ({
 vi.mock('../../services/nbbpm.service', () => ({
   nbbpmService: {
     list: vi.fn(),
+    reemitir: vi.fn(),
   },
+}));
+
+vi.mock('../../../baixa-fisica/service/baixas.service', () => ({
+  baixaFisicaService: {
+    baixarNbbpmPdf: vi.fn(),
+  },
+  downloadBlob: vi.fn(),
 }));
 
 const navigateMock = vi.fn();
@@ -117,6 +126,12 @@ describe('NbbpmListPage', () => {
     vi.useRealTimers();
     mockAuth(makeUser());
     vi.mocked(nbbpmService.list).mockResolvedValue(makeResponse([makeNbbpm()]));
+    vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockResolvedValue(
+      new Blob(['pdf'], { type: 'application/pdf' }),
+    );
+    vi.mocked(nbbpmService.reemitir).mockResolvedValue(
+      new Blob(['pdf'], { type: 'application/pdf' }),
+    );
   });
 
   describe('estrutura da tela', () => {
@@ -183,7 +198,6 @@ describe('NbbpmListPage', () => {
       expect(
         screen.queryByRole('button', { name: /adicionar|gerar|novo|editar|excluir|remover/i }),
       ).not.toBeInTheDocument();
-      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
   });
 
@@ -270,6 +284,180 @@ describe('NbbpmListPage', () => {
     });
   });
 
+  describe('documento e reemissão', () => {
+    async function selecionar(user: ReturnType<typeof userEvent.setup>, numero: string) {
+      await user.click(await screen.findByRole('checkbox', { name: `Selecionar NBBPM ${numero}` }));
+    }
+
+    it('só exibe baixar e reemitir no cabeçalho depois de selecionar uma NBBPM', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('001.0000001/2026');
+
+      expect(screen.queryByRole('button', { name: 'Baixar NBBPM' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reemitir NBBPM' })).not.toBeInTheDocument();
+
+      await selecionar(user, '001.0000001/2026');
+
+      expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Baixar NBBPM' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reemitir NBBPM' })).toBeInTheDocument();
+
+      await selecionar(user, '001.0000001/2026');
+
+      expect(screen.queryByRole('button', { name: 'Baixar NBBPM' })).not.toBeInTheDocument();
+    });
+
+    it('mantém a coluna Ações apenas com o visualizar', async () => {
+      renderPage();
+      await screen.findByText('001.0000001/2026');
+
+      expect(
+        screen.queryByRole('button', { name: /Baixar documento|Reemitir NBBPM 001/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Visualizar NBBPM 001.0000001/2026' }),
+      ).toBeInTheDocument();
+    });
+
+    it('permite uma seleção por vez', async () => {
+      const user = userEvent.setup();
+      vi.mocked(nbbpmService.list).mockResolvedValue(
+        makeResponse([
+          makeNbbpm({ id: 1, numero: '001.0000001/2026' }),
+          makeNbbpm({ id: 2, numero: '001.0000002/2026' }),
+        ]),
+      );
+      renderPage();
+      await screen.findByText('001.0000002/2026');
+
+      await selecionar(user, '001.0000001/2026');
+      await selecionar(user, '001.0000002/2026');
+
+      expect(screen.getAllByRole('checkbox', { checked: true })).toHaveLength(1);
+      expect(
+        screen.getByRole('checkbox', { name: 'Selecionar NBBPM 001.0000002/2026' }),
+      ).toBeChecked();
+    });
+
+    it('baixa o documento da NBBPM selecionada', async () => {
+      const user = userEvent.setup();
+      vi.mocked(nbbpmService.list).mockResolvedValue(
+        makeResponse([
+          makeNbbpm({ id: 1, numero: '001.0000001/2026' }),
+          makeNbbpm({ id: 2, numero: '001.0000002/2026' }),
+        ]),
+      );
+      renderPage();
+      await screen.findByText('001.0000002/2026');
+
+      await selecionar(user, '001.0000002/2026');
+      await user.click(screen.getByRole('button', { name: 'Baixar NBBPM' }));
+
+      await waitFor(() => {
+        expect(baixaFisicaService.baixarNbbpmPdf).toHaveBeenCalledWith(2);
+        expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'NBBPM-001.0000002/2026.pdf');
+      });
+      expect(nbbpmService.reemitir).not.toHaveBeenCalled();
+    });
+
+    it('informa a falha ao baixar o documento', async () => {
+      const user = userEvent.setup();
+      vi.mocked(baixaFisicaService.baixarNbbpmPdf).mockRejectedValueOnce(
+        new Error('Erro ao baixar NBBPM'),
+      );
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+      await user.click(screen.getByRole('button', { name: 'Baixar NBBPM' }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Erro ao baixar NBBPM'));
+    });
+
+    it('pede confirmação antes de reemitir e não chama a API ao cancelar', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+      await user.click(screen.getByRole('button', { name: 'Reemitir NBBPM' }));
+
+      expect(screen.getByTestId('reemitir-nbbpm-dialog')).toHaveTextContent(
+        /mesmo número, sem criar uma nova nota nem consumir um novo sequencial/i,
+      );
+
+      await user.click(screen.getByTestId('reemitir-nbbpm-dialog-cancel'));
+
+      expect(screen.queryByTestId('reemitir-nbbpm-dialog')).not.toBeInTheDocument();
+      expect(nbbpmService.reemitir).not.toHaveBeenCalled();
+    });
+
+    it('reemite a NBBPM existente sem recarregar nem duplicar a listagem', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+      await user.click(screen.getByRole('button', { name: 'Reemitir NBBPM' }));
+      await user.click(screen.getByTestId('reemitir-nbbpm-dialog-confirm'));
+
+      await waitFor(() => {
+        expect(nbbpmService.reemitir).toHaveBeenCalledWith(1);
+        expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'NBBPM-001.0000001/2026.pdf');
+        expect(toast.success).toHaveBeenCalledWith(
+          'NBBPM 001.0000001/2026 reemitida com o mesmo número.',
+        );
+      });
+      expect(screen.queryByTestId('reemitir-nbbpm-dialog')).not.toBeInTheDocument();
+      expect(nbbpmService.list).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByText('001.0000001/2026')).toHaveLength(1);
+    });
+
+    it('informa a falha da reemissão e fecha a confirmação', async () => {
+      const user = userEvent.setup();
+      vi.mocked(nbbpmService.reemitir).mockRejectedValueOnce(
+        new Error('Reemissão não permitida para esta NBBPM.'),
+      );
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+      await user.click(screen.getByRole('button', { name: 'Reemitir NBBPM' }));
+      await user.click(screen.getByTestId('reemitir-nbbpm-dialog-confirm'));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Reemissão não permitida para esta NBBPM.');
+      });
+      expect(downloadBlob).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('reemitir-nbbpm-dialog')).not.toBeInTheDocument();
+    });
+
+    it('não oferece reemissão quando o processo não permite, mantendo o download', async () => {
+      const user = userEvent.setup();
+      vi.mocked(nbbpmService.list).mockResolvedValue(
+        makeResponse([makeNbbpm({ id: 1, pode_reemitir: false })]),
+      );
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+
+      expect(screen.getByRole('button', { name: 'Baixar NBBPM' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reemitir NBBPM' })).not.toBeInTheDocument();
+    });
+
+    it('limpa a seleção quando a listagem é recarregada', async () => {
+      const user = userEvent.setup();
+      // Resposta nova a cada chamada, como a API real.
+      vi.mocked(nbbpmService.list).mockImplementation(async () => makeResponse([makeNbbpm()], 25));
+      renderPage();
+
+      await selecionar(user, '001.0000001/2026');
+      await user.click(screen.getByRole('button', { name: 'Próxima página' }));
+
+      await waitFor(() => expect(nbbpmService.list).toHaveBeenCalledTimes(2));
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Baixar NBBPM' })).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe('consulta e ordenação', () => {
     it('carrega a primeira página com a ordenação inicial por data de criação e número', async () => {
       renderPage();
@@ -338,7 +526,8 @@ describe('NbbpmListPage', () => {
   describe('paginação', () => {
     it('navega entre páginas e desabilita "Página anterior" na primeira', async () => {
       const user = userEvent.setup();
-      vi.mocked(nbbpmService.list).mockResolvedValue(makeResponse([makeNbbpm()], 25));
+      // Resposta nova a cada chamada, como a API real.
+      vi.mocked(nbbpmService.list).mockImplementation(async () => makeResponse([makeNbbpm()], 25));
 
       renderPage();
       await screen.findByText('001.0000001/2026');

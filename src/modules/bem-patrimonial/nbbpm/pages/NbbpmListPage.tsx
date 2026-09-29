@@ -1,4 +1,5 @@
-import { ArrowLeft, ArrowUpDown, Eye, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowUpDown, Download, Eye, RefreshCw, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
@@ -6,17 +7,20 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb';
 import { CriadoPorValue } from '@/components/CriadoPorValue';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useUnidadesPagination } from '@/hooks/useUnidadesPagination';
 import { formatUsuarioObjetoLabel } from '@/lib/usuario-label';
+import { ReemitirNbbpmDialog } from '../components/ReemitirNbbpmDialog';
+import { useNbbpmDocumento } from '../hooks/useNbbpmDocumento';
 import { useNbbpmList } from '../hooks/useNbbpmList';
 import type { NbbpmListItem } from '../types/nbbpm.types';
 import { formatDataBR, formatDataHoraBR } from '../utils/formatters';
 import type { NbbpmSort, NbbpmSortField } from '../utils/ordering';
-import { canAccessNbbpm } from '../utils/permissions';
+import { canAccessNbbpm, canReemitirNbbpm } from '../utils/permissions';
 
 const PAGE_SIZE = 10;
-const TABLE_COLUMNS_COUNT = 7;
+const TABLE_COLUMNS_COUNT = 8;
 const PAGE_TITLE = 'Notas de Baixa de Bens Patrimoniais (NBBPM)';
 
 const ACTION_BUTTON_CLASS = `
@@ -67,14 +71,24 @@ function SortableHeader({ label, field, sort, onSort }: SortableHeaderProps) {
 
 type NbbpmTableRowProps = Readonly<{
   nbbpm: NbbpmListItem;
+  selecionada: boolean;
+  onSelecionar: (id: number) => void;
   onVisualizar: (id: number) => void;
 }>;
 
-function NbbpmTableRow({ nbbpm, onVisualizar }: NbbpmTableRowProps) {
+function NbbpmTableRow({ nbbpm, selecionada, onSelecionar, onVisualizar }: NbbpmTableRowProps) {
   const ua = nbbpm.unidade_administrativa_origem;
 
   return (
-    <tr className='border-b hover:bg-gray-50'>
+    <tr className={`border-b hover:bg-gray-50 ${selecionada ? 'bg-green-50' : ''}`}>
+      <td className='p-3'>
+        <Checkbox
+          checked={selecionada}
+          onCheckedChange={() => onSelecionar(nbbpm.id)}
+          aria-label={`Selecionar NBBPM ${nbbpm.numero || nbbpm.id}`}
+          className='data-[state=checked]:border-[#00703C] data-[state=checked]:bg-[#00703C]'
+        />
+      </td>
       <td className='p-3 font-mono text-sm text-gray-700'>{nbbpm.numero || '-'}</td>
       <td className='p-3 text-sm text-gray-700'>{nbbpm.numero_processo_baixa || '-'}</td>
       <td className='p-3 text-sm text-gray-700'>{ua?.sigla || ua?.nome || '-'}</td>
@@ -105,10 +119,19 @@ type NbbpmTableBodyProps = Readonly<{
   loading: boolean;
   error: boolean;
   items: NbbpmListItem[];
+  selecionadaId: number | null;
+  onSelecionar: (id: number) => void;
   onVisualizar: (id: number) => void;
 }>;
 
-function NbbpmTableBody({ loading, error, items, onVisualizar }: NbbpmTableBodyProps) {
+function NbbpmTableBody({
+  loading,
+  error,
+  items,
+  selecionadaId,
+  onSelecionar,
+  onVisualizar,
+}: NbbpmTableBodyProps) {
   if (loading) {
     return (
       <tr>
@@ -142,7 +165,13 @@ function NbbpmTableBody({ loading, error, items, onVisualizar }: NbbpmTableBodyP
   return (
     <>
       {items.map((nbbpm) => (
-        <NbbpmTableRow key={nbbpm.id} nbbpm={nbbpm} onVisualizar={onVisualizar} />
+        <NbbpmTableRow
+          key={nbbpm.id}
+          nbbpm={nbbpm}
+          selecionada={nbbpm.id === selecionadaId}
+          onSelecionar={onSelecionar}
+          onVisualizar={onVisualizar}
+        />
       ))}
     </>
   );
@@ -167,6 +196,10 @@ export default function NbbpmListPage() {
 
 function NbbpmListContent() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { reemitindoId, ocupado, baixar, reemitir } = useNbbpmDocumento();
+  const [selecionadaId, setSelecionadaId] = useState<number | null>(null);
+  const [nbbpmParaReemitir, setNbbpmParaReemitir] = useState<NbbpmListItem | null>(null);
   const {
     items,
     count,
@@ -186,6 +219,25 @@ function NbbpmListContent() {
     pageSize: PAGE_SIZE,
   });
 
+  // Seleção única: baixar/reemitir atuam sobre uma NBBPM por vez. Vale só para
+  // a página exibida: ao recarregar a listagem (página, busca, ordenação), limpa.
+  useEffect(() => {
+    setSelecionadaId(null);
+  }, [items]);
+
+  const selecionada = items.find((item) => item.id === selecionadaId) ?? null;
+
+  function handleSelecionar(id: number) {
+    setSelecionadaId((atual) => (atual === id ? null : id));
+  }
+
+  async function handleConfirmarReemissao() {
+    if (!nbbpmParaReemitir) return;
+
+    await reemitir(nbbpmParaReemitir);
+    setNbbpmParaReemitir(null);
+  }
+
   return (
     <div className='space-y-4 p-8'>
       <AppBreadcrumb items={BREADCRUMB_ITEMS} />
@@ -203,6 +255,32 @@ function NbbpmListContent() {
           >
             <ArrowLeft size={18} />
           </Button>
+
+          {selecionada && (
+            <>
+              <Button
+                type='button'
+                className={ACTION_BUTTON_CLASS}
+                disabled={ocupado}
+                onClick={() => void baixar(selecionada)}
+              >
+                <Download size={16} />
+                Baixar NBBPM
+              </Button>
+
+              {canReemitirNbbpm(user, selecionada) && (
+                <Button
+                  type='button'
+                  className={ACTION_BUTTON_CLASS}
+                  disabled={ocupado}
+                  onClick={() => setNbbpmParaReemitir(selecionada)}
+                >
+                  <RefreshCw size={16} />
+                  Reemitir NBBPM
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -234,6 +312,9 @@ function NbbpmListContent() {
           <table className='w-full text-sm'>
             <thead className='border-b bg-[#F5F5F5]'>
               <tr className='text-left font-semibold text-gray-600'>
+                <th className='w-10 p-3'>
+                  <span className='sr-only'>Seleção</span>
+                </th>
                 <th className='p-3'>Número da NBBPM</th>
                 <th className='p-3'>Nº do Processo de Baixa</th>
                 <th className='p-3'>Unidade Administrativa</th>
@@ -259,6 +340,8 @@ function NbbpmListContent() {
                 loading={loading}
                 error={error}
                 items={items}
+                selecionadaId={selecionada?.id ?? null}
+                onSelecionar={handleSelecionar}
                 onVisualizar={(id) => navigate(`/nbbpm/${id}`)}
               />
             </tbody>
@@ -311,6 +394,13 @@ function NbbpmListContent() {
           </div>
         </div>
       </Card>
+
+      <ReemitirNbbpmDialog
+        nbbpm={nbbpmParaReemitir}
+        loading={reemitindoId !== null}
+        onConfirm={() => void handleConfirmarReemissao()}
+        onClose={() => setNbbpmParaReemitir(null)}
+      />
     </div>
   );
 }

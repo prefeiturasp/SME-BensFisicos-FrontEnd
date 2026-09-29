@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -11,11 +11,12 @@ import { Card } from '@/components/ui/card';
 import { getErrorMessage } from '@/lib/unidades-list-page';
 import { formatUsuarioObjetoLabel } from '@/lib/usuario-label';
 import { BemDetailField, BemItemRow } from '@/modules/bem-patrimonial/components/BemDetailParts';
-import { baixaFisicaService, downloadBlob } from '../../baixa-fisica/service/baixas.service';
+import { ReemitirNbbpmDialog } from '../components/ReemitirNbbpmDialog';
+import { useNbbpmDocumento } from '../hooks/useNbbpmDocumento';
 import { nbbpmService } from '../services/nbbpm.service';
 import type { NbbpmBaixaDetail, NbbpmDetail } from '../types/nbbpm.types';
 import { formatDataBR, formatDataHoraBR } from '../utils/formatters';
-import { canAccessNbbpm } from '../utils/permissions';
+import { canAccessNbbpm, canReemitirNbbpm } from '../utils/permissions';
 
 const ACTION_BUTTON_CLASS = `
   h-10 px-6 bg-white border border-[#2F7D57]
@@ -108,9 +109,11 @@ export default function NbbpmDetailPage() {
 function NbbpmDetailContent() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { baixandoId, reemitindoId, ocupado, baixar, reemitir } = useNbbpmDocumento();
+  const [confirmandoReemissao, setConfirmandoReemissao] = useState(false);
   const [nbbpm, setNbbpm] = useState<NbbpmDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [baixando, setBaixando] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -154,18 +157,14 @@ function NbbpmDetailContent() {
 
   if (!nbbpm) return null;
 
-  async function handleBaixarDocumento() {
-    if (!nbbpm || baixando) return;
+  const baixando = baixandoId === nbbpm.id;
+  const podeReemitir = canReemitirNbbpm(user, nbbpm);
 
-    setBaixando(true);
-    try {
-      const blob = await baixaFisicaService.baixarNbbpmPdf(nbbpm.id);
-      downloadBlob(blob, `NBBPM-${nbbpm.numero || nbbpm.id}.pdf`);
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Erro ao baixar documento da NBBPM'));
-    } finally {
-      setBaixando(false);
-    }
+  async function handleConfirmarReemissao() {
+    if (!nbbpm) return;
+
+    await reemitir(nbbpm);
+    setConfirmandoReemissao(false);
   }
 
   return (
@@ -188,12 +187,24 @@ function NbbpmDetailContent() {
           <Button
             type='button'
             className={ACTION_BUTTON_CLASS}
-            disabled={baixando}
-            onClick={() => void handleBaixarDocumento()}
+            disabled={ocupado}
+            onClick={() => void baixar(nbbpm)}
           >
             <Download size={16} />
             {baixando ? 'Baixando...' : 'Baixar NBBPM'}
           </Button>
+
+          {podeReemitir && (
+            <Button
+              type='button'
+              className={ACTION_BUTTON_CLASS}
+              disabled={ocupado}
+              onClick={() => setConfirmandoReemissao(true)}
+            >
+              <RefreshCw size={16} />
+              Reemitir NBBPM
+            </Button>
+          )}
         </div>
       </div>
 
@@ -255,6 +266,13 @@ function NbbpmDetailContent() {
           )}
         </div>
       </Card>
+
+      <ReemitirNbbpmDialog
+        nbbpm={confirmandoReemissao ? nbbpm : null}
+        loading={reemitindoId !== null}
+        onConfirm={() => void handleConfirmarReemissao()}
+        onClose={() => setConfirmandoReemissao(false)}
+      />
     </div>
   );
 }

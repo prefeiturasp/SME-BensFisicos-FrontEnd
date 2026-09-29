@@ -28,7 +28,15 @@ export interface NbbpmListItem {
   criado_por: UsuarioSimple;
   /** Data/hora de geração (ISO 8601). */
   data_criacao: string;
+  /**
+   * Regra de processo para reemissão, calculada pelo backend. Quando ausente,
+   * o front assume que a reemissão é permitida (o backend valida de qualquer forma).
+   */
+  pode_reemitir?: boolean;
 }
+
+/** Dados mínimos de uma NBBPM para obter/reemitir o documento. */
+export type NbbpmDocumentoRef = Pick<NbbpmListItem, 'id' | 'numero'>;
 
 export type NbbpmPaginatedResponse = PaginatedResponse<NbbpmListItem>;
 
@@ -73,5 +81,7 @@ export interface NbbpmDetail {
   numero_processo_destinacao_final: string;
   criado_por: UsuarioSimple;
   data_criacao: string;
+  /** Ver `NbbpmListItem.pode_reemitir`. */
+  pode_reemitir?: boolean;
   baixas: NbbpmBaixaDetail[];
 }

@@ -61,8 +61,35 @@ describe('nbbpmService', () => {
     expect(vi.mocked(api.get).mock.calls[0][0]).toBe('/nbbpm/?');
   });
 
-  it('é somente leitura: não expõe operações de escrita', () => {
-    expect(Object.keys(nbbpmService)).toEqual(['list', 'retrieve']);
+  it('não expõe criação, edição nem exclusão: só consulta e reemissão do documento', () => {
+    expect(Object.keys(nbbpmService)).toEqual(['list', 'retrieve', 'reemitir']);
+  });
+
+  it('reemite a NBBPM existente pelo id, sem corpo, e retorna o PDF', async () => {
+    const pdf = new Blob(['pdf'], { type: 'application/pdf' });
+    vi.mocked(api.post).mockResolvedValue({ data: pdf });
+
+    const result = await nbbpmService.reemitir(9);
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith('/nbbpm/9/reemitir/', null, { responseType: 'blob' });
+    expect(result).toBe(pdf);
+  });
+
+  it('reemitir usa a mensagem `detail` do backend quando a regra de processo não permite', async () => {
+    vi.mocked(api.post).mockRejectedValue(
+      makeAxiosError(400, { detail: 'Reemissão não permitida para esta NBBPM.' }),
+    );
+
+    await expect(nbbpmService.reemitir(9)).rejects.toThrow(
+      'Reemissão não permitida para esta NBBPM.',
+    );
+  });
+
+  it('reemitir usa a mensagem padrão quando o backend não detalha o erro', async () => {
+    vi.mocked(api.post).mockRejectedValue(makeAxiosError(500));
+
+    await expect(nbbpmService.reemitir(9)).rejects.toThrow('Erro ao reemitir NBBPM');
   });
 
   it('busca o detalhe de uma NBBPM', async () => {
