@@ -172,9 +172,12 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(
-                await screen.findByText(/Informe o número do processo de Baixa/i)
-            ).toBeInTheDocument()
+            await waitFor(() => {
+                // A mensagem aparece tanto inline (FormMessage) quanto consolidada no banner.
+                expect(
+                    screen.getAllByText(/Informe o número do processo de Baixa/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
@@ -190,7 +193,11 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(await screen.findByText(/Informe a data da autorização/i)).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe a data da autorização/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
@@ -206,8 +213,29 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(await screen.findByText(/Informe o responsável/i)).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe o responsável/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
+        })
+
+        it("consolida as pendências no banner e some conforme os campos são corrigidos", async () => {
+            renderPage()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            const banner = await screen.findByTestId("banner-erros-validacao")
+            expect(banner).toHaveTextContent(/Informe o número do processo de Baixa/i)
+            expect(banner).toHaveTextContent(/Informe a data da autorização/i)
+            expect(banner).toHaveTextContent(/Informe o responsável/i)
+
+            preencherFormularioValido()
+
+            await waitFor(() => {
+                expect(screen.queryByTestId("banner-erros-validacao")).not.toBeInTheDocument()
+            })
         })
 
         it("não permite submeter apenas com espaços em branco nos campos obrigatórios", async () => {
@@ -225,9 +253,11 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(
-                await screen.findByText(/Informe o número do processo de Baixa/i)
-            ).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe o número do processo de Baixa/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
