@@ -306,7 +306,7 @@ export default function BaixasListPage() {
                     <td className="p-3 text-sm text-gray-600">
                         {b.numero_nbbpm ? (
                             <Link
-                                to={`/baixas-fisicas/${b.id}`}
+                                to={b.nbbpm_id ? `/nbbpm/${b.nbbpm_id}` : `/baixas-fisicas/${b.id}`}
                                 className="text-[#00703C] underline hover:text-[#005a30] cursor-pointer"
                                 aria-label={`Ver NBBPM ${b.numero_nbbpm} da Baixa ${b.id}`}
                             >

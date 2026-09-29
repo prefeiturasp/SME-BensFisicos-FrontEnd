@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom"
 import { toast } from "sonner"
 import {
     ArrowLeft,
@@ -981,7 +981,17 @@ export default function VerBaixaPage() {
                                     Número NBBPM:
                                 </span>
                                 <span className="text-sm text-gray-700">
-                                    {baixa.numero_nbbpm}
+                                    {baixa.nbbpm_id ? (
+                                        <Link
+                                            to={`/nbbpm/${baixa.nbbpm_id}`}
+                                            className="text-[#00703C] underline hover:text-[#005a30]"
+                                            aria-label={`Ver NBBPM ${baixa.numero_nbbpm}`}
+                                        >
+                                            {baixa.numero_nbbpm}
+                                        </Link>
+                                    ) : (
+                                        baixa.numero_nbbpm
+                                    )}
                                 </span>
                             </div>
                         )}
