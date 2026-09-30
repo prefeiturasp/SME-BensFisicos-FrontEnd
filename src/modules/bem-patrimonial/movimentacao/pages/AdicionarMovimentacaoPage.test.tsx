@@ -1,967 +1,271 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
-import AdicionarMovimentacaoPage from './AdicionarMovimentacaoPage'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
+import AdicionarMovimentacaoPage from './AdicionarMovimentacaoPage'
 
-const mockNavigate = vi.fn()
+const navigate = vi.fn()
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
+  return { ...actual, useNavigate: () => navigate }
 })
-
 vi.mock('@/auth/useAuth')
-
-vi.mock('@/components/AppBreadcrumb', () => ({
-  AppBreadcrumb: () => <nav data-testid='breadcrumb' />,
-}))
-
+vi.mock('@/components/AppBreadcrumb', () => ({ AppBreadcrumb: () => <nav data-testid='breadcrumb' /> }))
 vi.mock('@/components/ui/select', () => ({
-  Select: ({
-    value,
-    onValueChange,
-    disabled,
-    children,
-  }: {
+  Select: ({ value, onValueChange, disabled, children }: {
     value?: string
     onValueChange?: (value: string) => void
     disabled?: boolean
     children?: ReactNode
-  }) => (
-    <select
-      data-testid='select'
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(event) => onValueChange?.(event.target.value)}
-    >
-      {children}
-    </select>
-  ),
+  }) => <select value={value ?? ''} disabled={disabled} onChange={(event) => onValueChange?.(event.target.value)}>{children}</select>,
   SelectTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  SelectValue: ({ placeholder }: { placeholder?: string }) => (
-    <option value=''>{placeholder}</option>
-  ),
+  SelectValue: ({ placeholder }: { placeholder?: string }) => <option value=''>{placeholder}</option>,
   SelectContent: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  SelectItem: ({
-    value,
-    children,
-    disabled,
-  }: {
-    value: string
-    children?: ReactNode
-    disabled?: boolean
-  }) => (
-    <option value={value} disabled={disabled}>
-      {children}
-    </option>
+  SelectItem: ({ value, children, disabled }: { value: string; children?: ReactNode; disabled?: boolean }) => (
+    <option value={value} disabled={disabled}>{children}</option>
   ),
 }))
-
-vi.mock(
-  '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service',
-  () => ({
-    unidadesAdministrativasService: {
-      list: vi.fn(),
-    },
-  }),
-)
-
+vi.mock('@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service', () => ({
+  unidadesAdministrativasService: { list: vi.fn() },
+}))
 vi.mock('../services/movimentacao.service', () => ({
-  movimentacaoService: {
-    listOpcoesCadastro: vi.fn(),
-    resolverItensLote: vi.fn(),
-    listBensMovimentaveis: vi.fn(),
-    buscarBens: vi.fn(),
-    create: vi.fn(),
-  },
+  movimentacaoService: { listOpcoesCadastro: vi.fn(), resolverItensLote: vi.fn(), buscarBens: vi.fn(), create: vi.fn() },
 }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}))
-
-function makeBem(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 1,
-    status: 'aprovado',
-    status_display: 'Aprovado',
-    numero_formato_antigo: false,
-    sem_numeracao: false,
-    nome: 'Notebook',
-    descricao: 'Notebook de teste',
-    numero_patrimonial: '123',
-    marca: 'Dell',
-    modelo: 'Latitude',
-    localizacao: 'Sala 1',
-    unidade_administrativa_codigo: '001',
-    unidade_administrativa_nome: 'UA Origem',
-    unidade_orcamentaria_nome: 'UO Origem',
-    ...overrides,
-  }
+const bem = {
+  id: 52,
+  numero_patrimonial: null,
+  nome: 'Cadeira azul',
+  descricao: 'Cadeira com estofado azul',
+  localizacao: 'Sala 2',
+  apto: true,
+  motivo: null,
 }
+const bemFaixa = { ...bem, id: 53, numero_patrimonial: '001.000000030-0', nome: 'Mesa branca' }
+const bemTodos = { ...bem, id: 54, nome: 'Armário' }
 
-function makeUa(id: number, codigo: string, unidadeOrcamentaria = 1000) {
+function usuario(nivelUo = false) {
   return {
-    id,
-    codigo,
-    sigla: `UA ${codigo}`,
-    nome: `UA ${codigo}`,
-    status: 'ativa',
-    status_display: 'Ativa',
-    unidade_orcamentaria: unidadeOrcamentaria,
-    unidade_orcamentaria_codigo: '01.01',
-    unidade_orcamentaria_nome: 'UO Ativa',
-    unidade_orcamentaria_sigla: '01.01',
-    created_at: '2026-06-01T12:00:00Z',
-    updated_at: '2026-06-01T12:00:00Z',
-  }
-}
-
-function makeUser() {
-  return {
-    id: 1,
-    username: 'gestor',
-    nome: 'Gestor',
-    email: 'gestor@example.com',
-    rf: '123456',
-    is_superuser: false,
-    is_gestor_patrimonio: true,
-    is_operador_inventario: true,
-    must_change_password: false,
-    uo_ativa: {
-      id: 1000,
-      codigo: '01.01',
-      nome: 'UO Ativa',
-      label: '01.01 - UO Ativa',
-    },
-    ua_ativa: {
-      id: 10,
-      codigo: '001',
-      nome: 'UA Origem',
-      label: '001 - UA Origem',
-    },
-    opcoes_escopo: {
-      grupos: [
-        {
-          uo: {
-            id: 1000,
-            codigo: '01.01',
-            nome: 'UO Ativa',
-            label: '01.01 - UO Ativa',
-            selecionavel: true,
-            unidade_administrativa_id: null,
-            unidade_orcamentaria_id: 1000,
-          },
-          uas: [
-            {
-              id: 10,
-              codigo: '001',
-              nome: 'UA Origem',
-              label: '001 - UA Origem',
-              unidade_administrativa_id: 10,
-              unidade_orcamentaria_id: 1000,
-            },
-            {
-              id: 11,
-              codigo: '002',
-              nome: 'UA Ativa 2',
-              label: '002 - UA Ativa 2',
-              unidade_administrativa_id: 11,
-              unidade_orcamentaria_id: 1000,
-            },
-          ],
-        },
+    id: 1, username: 'gestor', nome: 'Gestor', email: 'gestor@test.com', rf: '123456',
+    is_gestor_patrimonio: true, is_operador_inventario: true, must_change_password: false,
+    uo_ativa: { id: 1000, codigo: '01.01', nome: 'UO Ativa', label: '01.01 - UO Ativa' },
+    ua_ativa: nivelUo ? null : { id: 10, codigo: '001', nome: 'UA Origem', label: '001 - UA Origem' },
+    opcoes_escopo: { grupos: [{
+      uo: { id: 1000, codigo: '01.01', nome: 'UO Ativa', label: '01.01 - UO Ativa', selecionavel: true, unidade_administrativa_id: null, unidade_orcamentaria_id: 1000 },
+      uas: [
+        { id: 10, codigo: '001', nome: 'UA Origem', label: '001 - UA Origem', unidade_administrativa_id: 10, unidade_orcamentaria_id: 1000 },
+        { id: 11, codigo: '002', nome: 'UA Alternativa', label: '002 - UA Alternativa', unidade_administrativa_id: 11, unidade_orcamentaria_id: 1000 },
       ],
-    },
+    }] },
   }
 }
 
-function makeMovimentacaoDetail() {
-  return {
-    id: 10,
-    status: 'enviada',
-    status_display: 'Enviada',
-    numero_cimbpm: 'CIMBPM-001',
-    observacao: 'Movimentação interna',
-    criado_em: '2026-06-11T12:00:00Z',
-    atualizado_em: '2026-06-11T12:00:00Z',
-    total_itens: 1,
-    unidade_administrativa_origem: {
-      id: 10,
-      codigo: '001',
-      sigla: '001',
-      nome: 'UA Origem',
-    },
-    unidade_orcamentaria_origem: {
-      id: 1000,
-      codigo: '01.01',
-      sigla: '01.01',
-      nome: 'UO Origem',
-    },
-    unidade_administrativa_destino: {
-      id: 20,
-      codigo: '001',
-      sigla: '001',
-      nome: 'UA Destino Central',
-    },
-    unidade_orcamentaria_destino: {
-      id: 200,
-      codigo: '01.02',
-      sigla: '01.02',
-      nome: 'UO Destino',
-    },
-    solicitado_por: {
-      id: 1,
-      username: 'gestor',
-      nome_completo: 'Gestor',
-      email: 'gestor@example.com',
-    },
-    aprovado_por: null,
-    rejeitado_por: null,
-    cancelado_por: null,
-    itens: [
-      {
-        id: 1,
-        bem: makeBem(),
-      },
-    ],
-    url_aprovar: null,
-    url_rejeitar: null,
-    url_cancelar: null,
-    url_historico: null,
-    url_documento_cimbpm: null,
-  }
+function configurarUsuario(nivelUo = false) {
+  vi.mocked(useAuth).mockReturnValue({
+    user: usuario(nivelUo), isLoading: false, isAuthenticated: true, mustChangePassword: false,
+    login: vi.fn(), logout: vi.fn(), isLoggingIn: false, loginError: null, loginAsync: vi.fn(),
+  })
 }
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <AdicionarMovimentacaoPage />
-    </MemoryRouter>,
-  )
+  return render(<MemoryRouter><AdicionarMovimentacaoPage /></MemoryRouter>)
 }
 
-async function waitForUoOptions() {
-  await waitFor(() => {
-    expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '01.03 - UO Reserva' })).toBeInTheDocument()
-  })
+function buscarGeral(termo: string) {
+  fireEvent.change(screen.getByLabelText('Buscar por nome, descrição, ID ou número patrimonial'), { target: { value: termo } })
+  fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+}
+
+async function selecionarDestino() {
+  await waitFor(() => expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument())
+  fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
 }
 
 describe('AdicionarMovimentacaoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    vi.mocked(useAuth).mockReturnValue({
-      user: makeUser(),
-      isLoading: false,
-      isAuthenticated: true,
-      mustChangePassword: false,
-      login: vi.fn(),
-      logout: vi.fn(),
-      isLoggingIn: false,
-      loginError: null,
-      loginAsync: vi.fn(),
-    })
-
-    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({
-      itens: [makeBem()],
-    })
-    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([makeBem()])
-    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
-      count: 0, pagina: 1, proxima_pagina: null, itens: [],
-    })
-
+    configurarUsuario()
+    vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
+      { id: 1000, codigo: '01.01', nome: 'UO Ativa', label: '01.01 - UO Ativa', tem_ponto_central: false },
+      { id: 200, codigo: '01.02', nome: 'UO Destino', label: '01.02 - UO Destino', tem_ponto_central: true },
+    ])
     vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
-      count: 4,
-      next: null,
-      previous: null,
-      results: [
-        {
-          id: 10,
-          codigo: '001',
-          sigla: 'UA Origem',
-          nome: 'UA Origem',
-          status: 'ativa',
-          status_display: 'Ativa',
-          unidade_orcamentaria: 1000,
-          unidade_orcamentaria_codigo: '01.01',
-          unidade_orcamentaria_nome: 'UO Ativa',
-          unidade_orcamentaria_sigla: '01.01',
-          created_at: '2026-06-01T12:00:00Z',
-          updated_at: '2026-06-01T12:00:00Z',
-        },
-        {
-          id: 11,
-          codigo: '002',
-          sigla: 'UA Ativa 2',
-          nome: 'UA Ativa 2',
-          status: 'ativa',
-          status_display: 'Ativa',
-          unidade_orcamentaria: 1000,
-          unidade_orcamentaria_codigo: '01.01',
-          unidade_orcamentaria_nome: 'UO Ativa',
-          unidade_orcamentaria_sigla: '01.01',
-          created_at: '2026-06-01T12:00:00Z',
-          updated_at: '2026-06-01T12:00:00Z',
-        },
-        {
-          id: 12,
-          codigo: '003',
-          sigla: 'UA Oculta',
-          nome: 'UA Oculta',
-          status: 'ativa',
-          status_display: 'Ativa',
-          unidade_orcamentaria: 1000,
-          unidade_orcamentaria_codigo: '01.01',
-          unidade_orcamentaria_nome: 'UO Ativa',
-          unidade_orcamentaria_sigla: '01.01',
-          created_at: '2026-06-01T12:00:00Z',
-          updated_at: '2026-06-01T12:00:00Z',
-        },
-        {
-          id: 20,
-          codigo: '001',
-          sigla: 'UA Outra UO',
-          nome: 'UA Outra UO',
-          status: 'ativa',
-          status_display: 'Ativa',
-          unidade_orcamentaria: 200,
-          unidade_orcamentaria_codigo: '01.02',
-          unidade_orcamentaria_nome: 'UO Destino',
-          unidade_orcamentaria_sigla: '01.02',
-          created_at: '2026-06-01T12:00:00Z',
-          updated_at: '2026-06-01T12:00:00Z',
-        },
+      count: 2, next: null, previous: null, results: [
+        { id: 10, codigo: '001', sigla: 'Origem', nome: 'UA Origem', status: 'ativa', status_display: 'Ativa', unidade_orcamentaria: 1000, unidade_orcamentaria_codigo: '01.01', unidade_orcamentaria_nome: 'UO Ativa', unidade_orcamentaria_sigla: '01.01', created_at: '', updated_at: '' },
+        { id: 11, codigo: '002', sigla: 'Alternativa', nome: 'UA Alternativa', status: 'ativa', status_display: 'Ativa', unidade_orcamentaria: 1000, unidade_orcamentaria_codigo: '01.01', unidade_orcamentaria_nome: 'UO Ativa', unidade_orcamentaria_sigla: '01.01', created_at: '', updated_at: '' },
       ],
     })
-
-    vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
-      {
-        id: 1000,
-        codigo: '01.01',
-        nome: 'UO Ativa',
-        label: '01.01 - UO Ativa',
-        tem_ponto_central: false,
-      },
-      {
-        id: 200,
-        codigo: '01.02',
-        nome: 'UO Destino',
-        label: '01.02 - UO Destino',
-        tem_ponto_central: true,
-      },
-      {
-        id: 201,
-        codigo: '01.03',
-        nome: 'UO Reserva',
-        label: '01.03 - UO Reserva',
-        tem_ponto_central: false,
-      },
-    ])
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 0, pagina: 1, proxima_pagina: null, itens: [] })
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bem, status: 'aprovado' }] })
+    vi.mocked(movimentacaoService.create).mockResolvedValue({} as Awaited<ReturnType<typeof movimentacaoService.create>>)
   })
 
-  it('deve renderizar título, breadcrumb e a UA de origem fixa', async () => {
+  it('mostra os três modos e uma única tabela de bens', async () => {
     renderPage()
-    await waitForUoOptions()
-
-    expect(
-      screen.getByRole('heading', { name: /adicionar movimentação de bem patrimonial/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('001 - UA Origem')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument())
+    expect(screen.getByRole('radio', { name: 'Buscar Geral' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Buscar Faixa' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Todos os bens da UA' })).toBeInTheDocument()
+    expect(screen.getAllByRole('table')).toHaveLength(1)
   })
 
-  it('deve manter a UA de destino desabilitada até selecionar a UO', async () => {
+  it('busca nome, seleciona bem sem número e envia apenas o ID marcado', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bem] })
     renderPage()
-    await waitForUoOptions()
-
-    const selects = screen.getAllByRole('combobox')
-    expect(selects).toHaveLength(3)
-    expect(selects[1]).toBeDisabled()
-    expect(screen.getByRole('option', { name: 'Selecione a UO primeiro' })).toBeInTheDocument()
-  })
-
-  it('deve selecionar automaticamente a única UO disponível', async () => {
-    vi.mocked(movimentacaoService.listOpcoesCadastro).mockResolvedValue([
-      {
-        id: 200,
-        codigo: '01.02',
-        nome: 'UO Destino',
-        label: '01.02 - UO Destino',
-        tem_ponto_central: true,
-      },
-    ])
-
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[0]).toHaveValue('200')
-    })
-    expect(
-      screen.getByRole('option', { name: 'UA definida pelo ponto central' }),
-    ).toBeInTheDocument()
-  })
-
-  it('deve selecionar automaticamente a única UA disponível da mesma UO', async () => {
-    vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
-      count: 2,
-      next: null,
-      previous: null,
-      results: [makeUa(10, '001'), makeUa(11, '002')],
-    })
-    renderPage()
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toHaveValue('11')
-    })
-  })
-
-  it('deve navegar para a listagem ao clicar em Cancelar', async () => {
-    renderPage()
-    await waitForUoOptions()
-
-    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
-
-    expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
-  })
-
-  it('deve permitir seleção manual quando a UO de destino é a mesma da referência', async () => {
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
-    })
-
-    expect(unidadesAdministrativasService.list).toHaveBeenCalledWith({ pageSize: 1000 })
-
-    expect(screen.queryByRole('option', { name: '001 - UA Origem' })).not.toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '002 - UA Ativa 2' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '003 - UA Oculta' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: '001 - UA Outra UO' })).not.toBeInTheDocument()
-  })
-
-  it('deve desabilitar a UA e permitir movimentação para outra UO com ponto central', async () => {
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
-    })
-  })
-
-  it('deve mostrar mensagem quando a UO selecionada não tiver ponto central', async () => {
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '201' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
-    })
-
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Não há ponto central cadastrado na Unidade Orçamentária de destino. Por favor, entrar em contato com o gestor.',
-    )
-  })
-
-  it('deve adicionar uma faixa, mostrar o nome do bem e permitir sua exclusão', async () => {
-    renderPage()
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
-      target: { value: '001.000000002-2' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    await waitFor(() => {
-      expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
-        unidade_administrativa_origem: 10,
-        faixas: [
-          {
-            numero_patrimonial_de: '001.000000001-1',
-            numero_patrimonial_ate: '001.000000002-2',
-          },
-        ],
-      })
-    })
-    expect(screen.getByText('001.000000001-1 até 001.000000002-2')).toBeInTheDocument()
-    expect(screen.getByText('Notebook')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /excluir faixa/i }))
-    expect(screen.queryByText('001.000000001-1 até 001.000000002-2')).not.toBeInTheDocument()
-  })
-
-  it('deve aplicar a máscara de Número Patrimonial nos campos da faixa', async () => {
-    renderPage()
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '0010000000011abc' },
-    })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
-      target: { value: '0010000000022' },
-    })
-
-    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveValue('001.000000001-1')
-    expect(screen.getByLabelText('Número Patrimonial - Até')).toHaveValue('001.000000002-2')
-  })
-
-  it('deve rejeitar faixa invertida antes de chamar a API', async () => {
-    renderPage()
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000012-0' },
-    })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
-      target: { value: '001.000000010-0' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(movimentacaoService.resolverItensLote).not.toHaveBeenCalled()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
-    )
-    expect(toast.error).toHaveBeenCalledWith(
-      'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
-    )
-  })
-
-  it('deve rejeitar faixa duplicada antes de chamar novamente a API', async () => {
-    renderPage()
-    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
-
-    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await screen.findByText('Notebook')
-
-    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Os bens informados já foram adicionados à movimentação.',
-    )
-  })
-
-  it('deve rejeitar bens sobrepostos identificados pela API', async () => {
-    renderPage()
-    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
-
-    fireEvent.change(numeroDe, { target: { value: '001.000000001-1' } })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await screen.findByText('Notebook')
-
-    fireEvent.change(numeroDe, { target: { value: '001.000000003-3' } })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Os bens informados já foram adicionados à movimentação.',
-    )
-    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(2)
-  })
-
-  it('deve apresentar todos os campos pendentes numa unica submissao', async () => {
-    renderPage()
-
-    await waitForUoOptions()
-
-    const saveButton = screen.getByRole('button', { name: /^salvar$/i })
-
-    // O botao permanece habilitado: a pendencia e comunicada pela validacao
-    // inline, e nao pelo estado do botao.
-    expect(saveButton).toBeEnabled()
-
-    fireEvent.click(saveButton)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Selecione a Unidade Orçamentária de destino.'),
-      ).toBeInTheDocument()
-    })
-
-    expect(screen.getByText('Adicione ao menos um item de movimentação.')).toBeInTheDocument()
-    expect(movimentacaoService.create).not.toHaveBeenCalled()
-  })
-
-  it('deve exigir a UA de destino somente quando o destino e a mesma UO', async () => {
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Selecione a Unidade Administrativa de destino.'),
-      ).toBeInTheDocument()
-    })
-
-    expect(movimentacaoService.create).not.toHaveBeenCalled()
-  })
-
-  it('deve informar o erro retornado ao incluir uma faixa inválida', async () => {
-    vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(
-      new Error('O(s) Bem(ns) com Número Patrimonial 001.000000002 não pode ser movimentado.'),
-    )
-    renderPage()
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('não pode ser movimentado')
-    expect(toast.error).toHaveBeenCalledWith(
-      'O(s) Bem(ns) com Número Patrimonial 001.000000002 não pode ser movimentado.',
-    )
-  })
-
-  it('deve exibir erro quando o salvamento falhar', async () => {
-    vi.mocked(movimentacaoService.create).mockRejectedValue(new Error('Falha ao salvar'))
-
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '1000' } })
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).not.toBeDisabled()
-    })
-    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '11' } })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await waitFor(() => {
-      expect(screen.getByText('Notebook')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Falha ao salvar')
-    expect(toast.error).toHaveBeenCalledWith('Falha ao salvar')
-  })
-
-  it('deve criar a movimentação e redirecionar para a listagem', async () => {
-    vi.mocked(movimentacaoService.create).mockResolvedValue(makeMovimentacaoDetail())
-
-    renderPage()
-
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
-
-    await waitFor(() => {
-      expect(screen.getAllByRole('combobox')[1]).toBeDisabled()
-    })
-
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await waitFor(() => {
-      expect(screen.getByText('Notebook')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
-
-    await waitFor(() => {
-      expect(movimentacaoService.create).toHaveBeenCalledWith({
-        unidade_administrativa_origem: 10,
-        unidade_orcamentaria_destino: 200,
-        observacao: '',
-        faixas: [
-          {
-            numero_patrimonial_de: '001.000000001-1',
-          },
-        ],
-      })
-    })
-
-    expect(toast.success).toHaveBeenCalledWith(
-      'Cadastro realizado com sucesso - A movimentação do bem foi cadastrada e enviada para aprovação.',
-    )
-    expect(mockNavigate).toHaveBeenCalledWith('/movimentacoes')
-  })
-
-  it('deve usar a seleção de todos os bens aprovados no salvamento', async () => {
-    vi.mocked(movimentacaoService.create).mockResolvedValue(makeMovimentacaoDetail())
-    renderPage()
-    await waitForUoOptions()
-
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
-
-    await waitFor(() => {
-      expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
-        unidade_administrativa_origem: 10,
-        selecionar_todos: true,
-      })
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
-
-    await waitFor(() => {
-      expect(movimentacaoService.create).toHaveBeenCalledWith({
-        unidade_administrativa_origem: 10,
-        unidade_orcamentaria_destino: 200,
-        observacao: '',
-        selecionar_todos: true,
-      })
-    })
-  })
-
-  it('deve manter o botão salvar desabilitado enquanto adiciona uma nova faixa', async () => {
-    renderPage()
-    await waitForUoOptions()
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await screen.findByText('Notebook')
-    expect(screen.getByRole('button', { name: /^salvar$/i })).not.toBeDisabled()
-
-    vi.mocked(movimentacaoService.resolverItensLote).mockReturnValue(new Promise(() => undefined))
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000002-2' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeDisabled()
-  })
-
-  it('deve limpar o erro apenas do campo alterado', async () => {
-    renderPage()
-    await waitForUoOptions()
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000012-0' },
-    })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
-      target: { value: '001.000000010-0' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-
-    // Alterar outro campo não apaga a pendência do Número Patrimonial - De.
-    fireEvent.change(screen.getByLabelText('Observação'), { target: { value: 'Teste' } })
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-
-    // Corrigir o próprio campo limpa a mensagem dele.
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    })
-  })
-
-  it('deve marcar o campo Número Patrimonial - De como inválido', async () => {
-    renderPage()
-    await waitForUoOptions()
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000012-0' },
-    })
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
-      target: { value: '001.000000010-0' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-
-    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    )
-  })
-
-  it('deve confirmar antes de substituir faixas pela seleção de todos', async () => {
-    renderPage()
-    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), {
-      target: { value: '001.000000001-1' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /^adicionar$/i }))
-    await screen.findByText('Notebook')
-
-    const selecionarTodosCheckbox = screen.getByRole('checkbox', {
-      name: /selecionar todos os bens aprovados/i,
-    })
-    fireEvent.click(selecionarTodosCheckbox)
-
-    screen.getByRole('dialog', { name: 'Selecionar todos os Bens' })
-    expect(screen.getByText('001.000000001-1')).toBeInTheDocument()
-    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Fechar modal ao clicar fora' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    fireEvent.click(selecionarTodosCheckbox)
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    fireEvent.click(selecionarTodosCheckbox)
-    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
-
-    await waitFor(() => {
-      expect(movimentacaoService.resolverItensLote).toHaveBeenLastCalledWith({
-        unidade_administrativa_origem: 10,
-        selecionar_todos: true,
-      })
-    })
-    expect(screen.queryByText('001.000000001-1')).not.toBeInTheDocument()
-    expect(screen.getByText('Todos os Bens aprovados da UA de origem')).toBeInTheDocument()
-  })
-
-  it('deve impedir seleção de todos sem bens e informar o erro em toast', async () => {
-    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [] })
-    renderPage()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
-    )
-    expect(toast.error).toHaveBeenCalledWith(
-      'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
-    )
-  })
-
-  it('deve exibir o erro da API ao selecionar todos', async () => {
-    vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(
-      new Error('Não foi possível selecionar os bens.'),
-    )
-    renderPage()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível selecionar os bens.')
-    expect(toast.error).toHaveBeenCalledWith('Não foi possível selecionar os bens.')
-  })
-
-  it('lista os bens aprovados da UA de origem ao pesquisar um número patrimonial', async () => {
-    renderPage()
-
-    const numeroDe = screen.getByLabelText('Número Patrimonial - De')
-    fireEvent.focus(numeroDe)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '123 - Notebook' })).toBeInTheDocument()
-    })
-    expect(screen.getByRole('list')).toHaveClass('top-full')
-
-    fireEvent.click(screen.getByRole('button', { name: '123 - Notebook' }))
-
-    expect(numeroDe).toHaveValue('123')
-    expect(movimentacaoService.listBensMovimentaveis).toHaveBeenCalledWith(10, '')
-  })
-
-  it('deve informar quando a pesquisa não encontrar bens aprovados', async () => {
-    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([])
-    renderPage()
-
-    fireEvent.focus(screen.getByLabelText('Número Patrimonial - De'))
-
-    expect(await screen.findByText('Nenhum bem aprovado encontrado.')).toBeInTheDocument()
-  })
-
-  it('deve exibir e remover o resumo da seleção de todos os bens', async () => {
-    renderPage()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar todos os bens aprovados/i }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Todos os Bens aprovados da UA de origem')).toBeInTheDocument()
-    })
-    expect(screen.getByText('1 bem(ns) selecionado(s)')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /excluir seleção de todos os bens/i }))
-
-    expect(screen.queryByText('1 bem(ns) selecionado(s)')).not.toBeInTheDocument()
-  })
-
-  it('busca por ID um bem sem NP e salva apenas o selecionado', async () => {
-    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
-      count: 2, pagina: 1, proxima_pagina: null,
-      itens: [
-        { id: 52, numero_patrimonial: null, nome: 'Cadeira', descricao: 'Cadeira azul', localizacao: 'Sala 2', apto: true, motivo: null },
-        { id: 53, numero_patrimonial: '001.000000053-0', nome: 'Mesa', descricao: 'Mesa', localizacao: 'Sala 3', apto: true, motivo: null },
-      ],
-    })
-    vi.mocked(movimentacaoService.create).mockResolvedValue(makeMovimentacaoDetail())
-    renderPage()
-    await waitForUoOptions()
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
-    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'id' } })
-    fireEvent.change(screen.getByLabelText('ID do Bem'), { target: { value: '52' } })
-    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
-
+    await selecionarDestino()
+    buscarGeral('cadeira')
     await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
-      unidade_administrativa_origem: 10, id: 52, pagina: 1,
+      unidade_administrativa_origem: 10, q: 'cadeira', pagina: 1,
     }))
+    expect(screen.getAllByRole('table')).toHaveLength(1)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
-    expect(screen.getByText(/Bens selecionados \(1\)/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
     await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
-      unidade_administrativa_origem: 10,
-      unidade_orcamentaria_destino: 200,
-      observacao: '',
-      itens: [{ bem: 52 }],
+      unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
+      observacao: '', itens: [{ bem: 52 }],
+    }))
+    expect(navigate).toHaveBeenCalledWith('/movimentacoes')
+  })
+
+  it('preserva seleções por modo sem misturar linhas ou itens enviados', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockImplementation(async (params) => ({
+      count: 1, pagina: 1, proxima_pagina: null,
+      itens: [params.q ? bem : bemFaixa],
+    }))
+    renderPage()
+    await selecionarDestino()
+    buscarGeral('cadeira')
+    await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar bem ID 52' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    await screen.findByRole('checkbox', { name: 'Selecionar bem ID 53' })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 53' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar bem ID 53' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
+      observacao: '', itens: [{ bem: 52 }],
     }))
   })
 
-  it('mostra motivo de impedimento e impede selecionar bem bloqueado', async () => {
-    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
-      count: 1, pagina: 1, proxima_pagina: null,
-      itens: [{ id: 54, numero_patrimonial: '001.000000054-0', nome: 'Mesa', descricao: 'Mesa de reunião', localizacao: 'Sala 4', apto: false, motivo: 'Bloqueado por inventário' }],
-    })
+  it('busca uma faixa e impede De maior que Até', async () => {
     renderPage()
-    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'descricao' } })
-    fireEvent.change(screen.getByLabelText('Descrição do Bem'), { target: { value: 'Mesa' } })
-    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
-    expect(await screen.findByText('Bloqueado por inventário')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 54' })).toBeDisabled()
-  })
-
-  it('rejeita intervalo invertido e informa busca sem resultados', async () => {
-    renderPage()
-    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'intervalo' } })
-    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - De')[0], { target: { value: '020' } })
-    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - Até')[0], { target: { value: '010' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000200' } })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000100' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
     expect(movimentacaoService.buscarBens).not.toHaveBeenCalled()
-
-    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - Até')[0], { target: { value: '030' } })
+    expect(toast.error).toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000300' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, pagina: 1,
+      numero_patrimonial_de: '001.000000020-0', numero_patrimonial_ate: '001.000000030-0',
+    }))
+  })
+
+  it('identifica bem impedido antes de selecionar', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 1, pagina: 1, proxima_pagina: null,
+      itens: [{ ...bem, apto: false, motivo: 'Bloqueado por inventário' }],
+    })
+    renderPage()
+    buscarGeral('cadeira')
+    expect(await screen.findByText('Bloqueado por inventário')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeDisabled()
+  })
+
+  it('informa ausência de resultados', async () => {
+    renderPage()
+    buscarGeral('inexistente')
     expect(await screen.findByText('Nenhum bem encontrado para a busca informada.')).toBeInTheDocument()
+  })
+
+  it('alterna para todos sem confirmação e mantém seleção anterior isolada', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bem] })
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bemTodos, status: 'aprovado' }] })
+    renderPage()
+    await selecionarDestino()
+    buscarGeral('cadeira')
+    await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, selecionar_todos: true,
+    }))
+    expect(await screen.findByRole('checkbox', { name: 'Selecionar bem ID 54' })).toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar bem ID 52' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 54' })).toBeChecked()
+    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
+      observacao: '', selecionar_todos: true,
+    }))
+  })
+
+  it('não salva seleção de outro modo quando o modo atual está vazio', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bem] })
+    renderPage()
+    await selecionarDestino()
+    buscarGeral('cadeira')
+    await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    expect(movimentacaoService.create).not.toHaveBeenCalled()
+    expect(await screen.findByText('Adicione ao menos um item de movimentação.')).toBeInTheDocument()
+  })
+
+  it('ao desmarcar um bem em todos envia somente os IDs que permaneceram marcados', async () => {
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({
+      itens: [{ ...bem, status: 'aprovado' }, { ...bemTodos, status: 'aprovado' }],
+    })
+    renderPage()
+    await selecionarDestino()
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    await screen.findByRole('checkbox', { name: 'Selecionar bem ID 54' })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 54' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 54' })).not.toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
+      observacao: '', itens: [{ bem: 52 }],
+    }))
+    expect(movimentacaoService.resolverItensLote).toHaveBeenCalledTimes(1)
+  })
+
+  it('no nível UO permite escolher UA de origem e habilita UA de destino da mesma UO', async () => {
+    configurarUsuario(true)
+    renderPage()
+    await waitFor(() => expect(screen.getByRole('option', { name: '002 - UA Alternativa' })).toBeInTheDocument())
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('')
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '11' } })
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: '1000' } })
+    expect(screen.getAllByRole('combobox')[2]).not.toBeDisabled()
+    buscarGeral('cadeira')
+    await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 11, q: 'cadeira', pagina: 1,
+    }))
   })
 })

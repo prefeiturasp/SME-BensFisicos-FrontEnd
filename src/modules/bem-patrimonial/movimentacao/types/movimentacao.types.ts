@@ -59,7 +59,8 @@ export interface MovimentacaoBemBusca {
 }
 
 export interface MovimentacaoBuscaBensParams {
-  unidade_administrativa_origem: number
+    unidade_administrativa_origem: number
+    q?: string
   id?: number
   numero_patrimonial?: string
   numero_patrimonial_de?: string
