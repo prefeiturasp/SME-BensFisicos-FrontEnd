@@ -122,7 +122,7 @@ describe('AdicionarMovimentacaoPage', () => {
     await selecionarDestino()
     buscarGeral('cadeira')
     await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
-      unidade_administrativa_origem: 10, q: 'cadeira', pagina: 1,
+      unidade_administrativa_origem: 10, termo_busca: 'cadeira', pagina: 1,
     }))
     expect(screen.getAllByRole('table')).toHaveLength(1)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
@@ -137,7 +137,7 @@ describe('AdicionarMovimentacaoPage', () => {
   it('preserva seleções por modo sem misturar linhas ou itens enviados', async () => {
     vi.mocked(movimentacaoService.buscarBens).mockImplementation(async (params) => ({
       count: 1, pagina: 1, proxima_pagina: null,
-      itens: [params.q ? bem : bemFaixa],
+      itens: [params.termo_busca ? bem : bemFaixa],
     }))
     renderPage()
     await selecionarDestino()
@@ -265,7 +265,7 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(screen.getAllByRole('combobox')[2]).not.toBeDisabled()
     buscarGeral('cadeira')
     await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
-      unidade_administrativa_origem: 11, q: 'cadeira', pagina: 1,
+      unidade_administrativa_origem: 11, termo_busca: 'cadeira', pagina: 1,
     }))
   })
 })

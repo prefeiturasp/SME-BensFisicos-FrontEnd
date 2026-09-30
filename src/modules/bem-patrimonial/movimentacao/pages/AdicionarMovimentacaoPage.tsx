@@ -46,7 +46,10 @@ import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-adm
 type UaOption = { id: number; label: string }
 type UoOption = { id: number; label: string; tem_ponto_central: boolean }
 type ModoBusca = 'geral' | 'faixa' | 'todos'
-type CriteriosBusca = Pick<MovimentacaoBuscaBensParams, 'q' | 'numero_patrimonial_de' | 'numero_patrimonial_ate'>
+type CriteriosBusca = Pick<
+  MovimentacaoBuscaBensParams,
+  'termo_busca' | 'numero_patrimonial_de' | 'numero_patrimonial_ate'
+>
 type EstadoBusca = {
   selecionados: MovimentacaoBemBusca[]
   resultados: MovimentacaoBemBusca[]
@@ -100,7 +103,7 @@ function obterCriteriosBusca(tipo: ModoBusca, termo: string, de: string, ate: st
     return { numero_patrimonial_de: inicio, ...(fim ? { numero_patrimonial_ate: fim } : {}) }
   }
   if (!termoNormalizado) throw new Error('Informe o critério de busca.')
-  return { q: termoNormalizado }
+  return { termo_busca: termoNormalizado }
 }
 
 function getUaDestinoPlaceholder(
