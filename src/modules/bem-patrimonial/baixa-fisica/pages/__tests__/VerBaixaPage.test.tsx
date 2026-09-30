@@ -367,6 +367,24 @@ describe("VerBaixaPage", () => {
         await waitFor(() => expect(screen.getByText("NBBPM-999")).toBeInTheDocument())
     })
 
+    it("numero_nbbpm com nbbpm_id vira link para o detalhe da NBBPM", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", nbbpm_id: 7, numero_nbbpm: "NBBPM-999" })
+        )
+        renderPage()
+        const link = await screen.findByRole("link", { name: "Ver NBBPM NBBPM-999" })
+        expect(link.getAttribute("href")).toBe("/nbbpm/7")
+    })
+
+    it("numero_nbbpm sem nbbpm_id segue texto puro (fallback)", async () => {
+        vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+            makeBaixaDetail({ status: "aceita", status_display: "Aceita", nbbpm_id: null, numero_nbbpm: "NBBPM-999" })
+        )
+        renderPage()
+        await waitFor(() => expect(screen.getByText("NBBPM-999")).toBeInTheDocument())
+        expect(screen.queryByRole("link", { name: /Ver NBBPM/ })).not.toBeInTheDocument()
+    })
+
     it("exibe mensagem 'Nenhum item vinculado' no modo leitura quando itens vazio", async () => {
         vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
             makeBaixaDetail({ status: "aceita", status_display: "Aceita", itens: [] })
