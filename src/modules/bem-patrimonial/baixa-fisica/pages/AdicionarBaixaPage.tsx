@@ -227,6 +227,19 @@ function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onR
 
 let nextRowId = 1
 
+/** Extrai o bloqueio de baixa em aberto do 400, ou null para outros erros. */
+function extrairBloqueioBaixaExistente(err: unknown): { mensagem: string; ids: number[] } | null {
+    if (!(err instanceof AxiosError) || err.response?.status !== 400) return null
+    const rawIds = err.response.data?.baixas_existentes
+    if (!Array.isArray(rawIds) || rawIds.length === 0) return null
+    const ids = [...new Set(rawIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+    if (ids.length === 0) return null
+    const campo = err.response.data?.unidade_administrativa_origem
+    const mensagemBackend = Array.isArray(campo) && typeof campo[0] === "string" && campo[0] ? campo[0] : ""
+    const mensagem = mensagemBackend || "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
+    return { mensagem, ids }
+}
+
 export default function AdicionarBaixaPage() {
     const navigate = useNavigate()
 
@@ -320,18 +333,11 @@ export default function AdicionarBaixaPage() {
             toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
-            if (err instanceof AxiosError && err.response?.status === 400) {
-                const rawIds = err.response.data?.baixas_existentes
-                if (Array.isArray(rawIds) && rawIds.length > 0) {
-                    const ids = [...new Set(rawIds.map((n) => Number(n)).filter((n): n is number => Number.isInteger(n) && n > 0))]
-                    if (ids.length > 0) {
-                        const campo = err.response.data?.unidade_administrativa_origem
-                        const mensagem = Array.isArray(campo) && typeof campo[0] === "string" && campo[0] ? campo[0] : "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
-                        setBloqueioExistente({ mensagem, ids })
-                        toast.error(mensagem)
-                        return
-                    }
-                }
+            const bloqueio = extrairBloqueioBaixaExistente(err)
+            if (bloqueio) {
+                setBloqueioExistente(bloqueio)
+                toast.error(bloqueio.mensagem)
+                return
             }
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
             toast.error(message)
