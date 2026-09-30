@@ -80,6 +80,7 @@ vi.mock('../services/movimentacao.service', () => ({
     listOpcoesCadastro: vi.fn(),
     resolverItensLote: vi.fn(),
     listBensMovimentaveis: vi.fn(),
+    buscarBens: vi.fn(),
     create: vi.fn(),
   },
 }))
@@ -279,6 +280,9 @@ describe('AdicionarMovimentacaoPage', () => {
       itens: [makeBem()],
     })
     vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([makeBem()])
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 0, pagina: 1, proxima_pagina: null, itens: [],
+    })
 
     vi.mocked(unidadesAdministrativasService.list).mockResolvedValue({
       count: 4,
@@ -385,7 +389,7 @@ describe('AdicionarMovimentacaoPage', () => {
     await waitForUoOptions()
 
     const selects = screen.getAllByRole('combobox')
-    expect(selects).toHaveLength(2)
+    expect(selects).toHaveLength(3)
     expect(selects[1]).toBeDisabled()
     expect(screen.getByRole('option', { name: 'Selecione a UO primeiro' })).toBeInTheDocument()
   })
@@ -903,5 +907,61 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /excluir seleção de todos os bens/i }))
 
     expect(screen.queryByText('1 bem(ns) selecionado(s)')).not.toBeInTheDocument()
+  })
+
+  it('busca por ID um bem sem NP e salva apenas o selecionado', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 2, pagina: 1, proxima_pagina: null,
+      itens: [
+        { id: 52, numero_patrimonial: null, nome: 'Cadeira', descricao: 'Cadeira azul', localizacao: 'Sala 2', apto: true, motivo: null },
+        { id: 53, numero_patrimonial: '001.000000053-0', nome: 'Mesa', descricao: 'Mesa', localizacao: 'Sala 3', apto: true, motivo: null },
+      ],
+    })
+    vi.mocked(movimentacaoService.create).mockResolvedValue(makeMovimentacaoDetail())
+    renderPage()
+    await waitForUoOptions()
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: '200' } })
+    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'id' } })
+    fireEvent.change(screen.getByLabelText('ID do Bem'), { target: { value: '52' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+
+    await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, id: 52, pagina: 1,
+    }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
+    expect(screen.getByText(/Bens selecionados \(1\)/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10,
+      unidade_orcamentaria_destino: 200,
+      observacao: '',
+      itens: [{ bem: 52 }],
+    }))
+  })
+
+  it('mostra motivo de impedimento e impede selecionar bem bloqueado', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 1, pagina: 1, proxima_pagina: null,
+      itens: [{ id: 54, numero_patrimonial: '001.000000054-0', nome: 'Mesa', descricao: 'Mesa de reunião', localizacao: 'Sala 4', apto: false, motivo: 'Bloqueado por inventário' }],
+    })
+    renderPage()
+    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'descricao' } })
+    fireEvent.change(screen.getByLabelText('Descrição do Bem'), { target: { value: 'Mesa' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    expect(await screen.findByText('Bloqueado por inventário')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 54' })).toBeDisabled()
+  })
+
+  it('rejeita intervalo invertido e informa busca sem resultados', async () => {
+    renderPage()
+    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: 'intervalo' } })
+    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - De')[0], { target: { value: '020' } })
+    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - Até')[0], { target: { value: '010' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    expect(movimentacaoService.buscarBens).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getAllByLabelText('Número Patrimonial - Até')[0], { target: { value: '030' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    expect(await screen.findByText('Nenhum bem encontrado para a busca informada.')).toBeInTheDocument()
   })
 })

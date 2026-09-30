@@ -48,6 +48,33 @@ export interface MovimentacaoBem {
   status: string
 }
 
+export interface MovimentacaoBemBusca {
+  id: number
+  numero_patrimonial: string | null
+  nome: string
+  descricao: string
+  localizacao: string | null
+  apto: boolean
+  motivo: string | null
+}
+
+export interface MovimentacaoBuscaBensParams {
+  unidade_administrativa_origem: number
+  id?: number
+  numero_patrimonial?: string
+  numero_patrimonial_de?: string
+  numero_patrimonial_ate?: string
+  descricao?: string
+  pagina?: number
+}
+
+export interface MovimentacaoBuscaBensResponse {
+  count: number
+  pagina: number
+  proxima_pagina: number | null
+  itens: MovimentacaoBemBusca[]
+}
+
 export interface MovimentacaoBemItem {
   id?: number
   bem: MovimentacaoBem
