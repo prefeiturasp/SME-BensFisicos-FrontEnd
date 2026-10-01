@@ -184,6 +184,7 @@ export function MovimentacaoBensSelection({
                       type='button'
                       variant='ghost'
                       size='icon'
+                      disabled={selecao.tipo === 'todos'}
                       aria-label={`Remover seleção ${identificacaoSelecao(selecao)}`}
                       onClick={() => onRemoverSelecao(selecao.id)}
                     >

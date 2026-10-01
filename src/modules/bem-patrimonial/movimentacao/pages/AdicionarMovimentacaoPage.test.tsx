@@ -49,6 +49,9 @@ const bem = {
   motivo: null,
 }
 const bemFaixa = { ...bem, id: 53, numero_patrimonial: '001.000000030-0', nome: 'Mesa branca' }
+const bemFaixaSeguinte = {
+  ...bemFaixa, id: 55, numero_patrimonial: '001.000000030-1', nome: 'Mesa lateral',
+}
 const bemTodos = { ...bem, id: 54, nome: 'Armário' }
 
 function usuario(nivelUo = false) {
@@ -133,6 +136,23 @@ describe('AdicionarMovimentacaoPage', () => {
       observacao: '', itens: [{ bem: 52 }],
     }))
     expect(navigate).toHaveBeenCalledWith('/movimentacoes')
+  })
+
+  it('busca automaticamente após o debounce da busca geral', async () => {
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 1, pagina: 1, proxima_pagina: null, itens: [bem],
+    })
+    renderPage()
+
+    fireEvent.change(
+      screen.getByLabelText('Buscar por nome, descrição, ID ou número patrimonial'),
+      { target: { value: 'cadeira' } },
+    )
+
+    expect(movimentacaoService.buscarBens).not.toHaveBeenCalled()
+    await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10, termo_busca: 'cadeira', pagina: 1,
+    }))
   })
 
   it('acumula seleção geral e faixa na lista única', async () => {
@@ -330,6 +350,9 @@ describe('AdicionarMovimentacaoPage', () => {
     await waitFor(() => expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
       unidade_administrativa_origem: 10, selecionar_todos: true,
     }))
+    expect(
+      screen.getByRole('button', { name: 'Remover seleção Todos os bens aptos da UA de origem' }),
+    ).toBeDisabled()
   })
 
   it.each(['Buscar Geral', 'Buscar Faixa'])(
@@ -351,20 +374,36 @@ describe('AdicionarMovimentacaoPage', () => {
   )
 
   it('resume a faixa com quantidade e bloqueia seus bens em nova busca', async () => {
-    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bemFaixa] })
-    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bemFaixa, status: 'aprovado' }] })
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 2, pagina: 1, proxima_pagina: null, itens: [bemFaixa, bemFaixaSeguinte],
+    })
+    vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({
+      itens: [
+        { ...bemFaixa, status: 'aprovado' },
+        { ...bemFaixaSeguinte, status: 'aprovado' },
+      ],
+    })
     renderPage()
+    await selecionarDestino()
     fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000301' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
     await screen.findByRole('button', { name: 'Importar Faixa' })
     fireEvent.click(screen.getByRole('button', { name: 'Importar Faixa' }))
-    expect(await screen.findByText('Selecionados (1)')).toBeInTheDocument()
-    expect(screen.getByText('Mesa branca')).toBeInTheDocument()
+    expect(await screen.findByText('Selecionados (2)')).toBeInTheDocument()
+    expect(screen.getByText('Mesa branca, Mesa lateral')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
     buscarGeral('mesa')
     expect(await screen.findByRole('checkbox', { name: 'Selecionar bem ID 53' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 53' })).toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
+    await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
+      unidade_administrativa_origem: 10,
+      unidade_orcamentaria_destino: 200,
+      observacao: '',
+      itens: [{ bem: 53 }, { bem: 55 }],
+    }))
   })
 
   it('não importa uma faixa duplicada', async () => {
