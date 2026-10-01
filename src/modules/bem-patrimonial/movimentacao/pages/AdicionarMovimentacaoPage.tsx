@@ -123,6 +123,32 @@ type NumeroPatrimonialAutocompleteProps = Readonly<{
   onChange: (value: string) => void
 }>
 
+type AutocompleteContentProps = Readonly<{
+  carregando: boolean
+  resultados: MovimentacaoBem[]
+  onSelect: (bem: MovimentacaoBem) => void
+}>
+
+function AutocompleteContent({ carregando, resultados, onSelect }: AutocompleteContentProps) {
+  if (carregando) {
+    return <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>
+  }
+  if (resultados.length === 0) {
+    return <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
+  }
+  return resultados.map((bem) => (
+    <li key={bem.id} className='border-b border-gray-100 last:border-0'>
+      <button
+        type='button'
+        className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
+        onClick={() => onSelect(bem)}
+      >
+        {bem.numero_patrimonial} - {bem.nome}
+      </button>
+    </li>
+  ))
+}
+
 function NumeroPatrimonialAutocomplete({
   id,
   label,
@@ -196,24 +222,14 @@ function NumeroPatrimonialAutocomplete({
       />
       {aberto && unidadeAdministrativaId ? (
         <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
-          {carregando ? <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li> : null}
-          {!carregando && resultados.length === 0 ? (
-            <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
-          ) : null}
-          {!carregando ? resultados.map((bem) => (
-            <li key={bem.id} className='border-b border-gray-100 last:border-0'>
-              <button
-                type='button'
-                className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
-                onClick={() => {
-                  onChange(bem.numero_patrimonial ?? '')
-                  setAberto(false)
-                }}
-              >
-                {bem.numero_patrimonial} - {bem.nome}
-              </button>
-            </li>
-          )) : null}
+          <AutocompleteContent
+            carregando={carregando}
+            resultados={resultados}
+            onSelect={(bem) => {
+              onChange(bem.numero_patrimonial ?? '')
+              setAberto(false)
+            }}
+          />
         </ul>
       ) : null}
     </div>
