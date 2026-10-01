@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Network, Plus, Trash2 } from 'lucide-react'
+import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -23,7 +22,6 @@ import {
   definirCampoValidado,
   limparErroServidor,
 } from '@/lib/inline-validation'
-import { cn } from '@/lib/utils'
 import {
   Form,
   FormControl,
@@ -40,19 +38,23 @@ import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades
 import { movimentacaoService } from '../services/movimentacao.service'
 import type {
   MovimentacaoBem,
-  MovimentacaoFaixaNumeroPatrimonial,
+  MovimentacaoBemBusca,
+  MovimentacaoBuscaBensParams,
   MovimentacaoUoCadastroOption,
 } from '../types/movimentacao.types'
 import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
+import {
+  MovimentacaoBensSelection,
+  type SelecaoMovimentacao,
+} from '../components/MovimentacaoBensSelection'
 
 type UaOption = { id: number; label: string }
 type UoOption = { id: number; label: string; tem_ponto_central: boolean }
-type FaixaMovimentacao = {
-  id: string
-  numeroDe: string
-  numeroAte: string
-  bens: MovimentacaoBem[]
-}
+type ModoBusca = 'geral' | 'faixa' | 'todos'
+type CriteriosBusca = Pick<
+  MovimentacaoBuscaBensParams,
+  'termo_busca' | 'numero_patrimonial_de' | 'numero_patrimonial_ate'
+>
 
 const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white'
@@ -70,19 +72,26 @@ function buildUaOptions(
     .map((ua) => ({ id: ua.id, label: `${ua.codigo} - ${ua.sigla || ua.nome}` }))
 }
 
-function formatarFaixa(numeroDe: string, numeroAte: string) {
-  return numeroDe === numeroAte ? numeroDe : `${numeroDe} até ${numeroAte}`
-}
-
-function resumirNomes(bens: MovimentacaoBem[]) {
-  return bens.map((bem) => bem.nome).join(', ')
-}
-
 function formatarNP(value: string) {
   const digits = value.replaceAll(/\D/g, '').slice(0, 13)
   if (digits.length <= 3) return digits
   if (digits.length <= 12) return `${digits.slice(0, 3)}.${digits.slice(3)}`
   return `${digits.slice(0, 3)}.${digits.slice(3, 12)}-${digits.slice(12)}`
+}
+
+function obterCriteriosBusca(tipo: ModoBusca, termo: string, de: string, ate: string): CriteriosBusca {
+  const termoNormalizado = termo.trim()
+  if (tipo === 'faixa') {
+    const inicio = de.trim()
+    const fim = ate.trim()
+    if (!inicio) throw new Error('Informe o Número Patrimonial - De.')
+    if (fim && inicio > fim) {
+      throw new Error('O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.')
+    }
+    return { numero_patrimonial_de: inicio, ...(fim ? { numero_patrimonial_ate: fim } : {}) }
+  }
+  if (!termoNormalizado) throw new Error('Informe o critério de busca.')
+  return { termo_busca: termoNormalizado }
 }
 
 function getUaDestinoPlaceholder(
@@ -98,15 +107,47 @@ function getUaDestinoPlaceholder(
   return 'Selecione a UA'
 }
 
+function obterIdsBens(selecoes: SelecaoMovimentacao[]) {
+  const ids = new Set<number>()
+  for (const selecao of selecoes) {
+    for (const bem of selecao.bens) ids.add(bem.id)
+  }
+  return ids
+}
+
 type NumeroPatrimonialAutocompleteProps = Readonly<{
   id: string
   label: string
   value: string
   unidadeAdministrativaId: number | null
   onChange: (value: string) => void
-  /** Rótulo vermelho + borda vermelha, mesmo padrão de UO/UA. */
-  invalid?: boolean
 }>
+
+type AutocompleteContentProps = Readonly<{
+  carregando: boolean
+  resultados: MovimentacaoBem[]
+  onSelect: (bem: MovimentacaoBem) => void
+}>
+
+function AutocompleteContent({ carregando, resultados, onSelect }: AutocompleteContentProps) {
+  if (carregando) {
+    return <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>
+  }
+  if (resultados.length === 0) {
+    return <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
+  }
+  return resultados.map((bem) => (
+    <li key={bem.id} className='border-b border-gray-100 last:border-0'>
+      <button
+        type='button'
+        className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
+        onClick={() => onSelect(bem)}
+      >
+        {bem.numero_patrimonial} - {bem.nome}
+      </button>
+    </li>
+  ))
+}
 
 function NumeroPatrimonialAutocomplete({
   id,
@@ -114,7 +155,6 @@ function NumeroPatrimonialAutocomplete({
   value,
   unidadeAdministrativaId,
   onChange,
-  invalid = false,
 }: NumeroPatrimonialAutocompleteProps) {
   const [aberto, setAberto] = useState(false)
   const [carregando, setCarregando] = useState(false)
@@ -126,9 +166,11 @@ function NumeroPatrimonialAutocomplete({
     const handleClickOutside = (event: MouseEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setAberto(false)
     }
-
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      if (buscaRef.current) clearTimeout(buscaRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -136,89 +178,60 @@ function NumeroPatrimonialAutocomplete({
     setResultados([])
   }, [unidadeAdministrativaId])
 
-  const buscarBens = useCallback(
-    async (termo: string) => {
-      if (!unidadeAdministrativaId) return
-
-      setCarregando(true)
-      try {
-        const resposta = await movimentacaoService.listBensMovimentaveis(
-          unidadeAdministrativaId,
-          termo,
-        )
-        setResultados(resposta.filter((bem) => Boolean(bem.numero_patrimonial)))
-      } catch {
-        setResultados([])
-      } finally {
-        setCarregando(false)
-      }
-    },
-    [unidadeAdministrativaId],
-  )
+  const buscarOpcoes = useCallback(async (termo: string) => {
+    if (!unidadeAdministrativaId) return
+    setCarregando(true)
+    try {
+      const resposta = await movimentacaoService.listBensMovimentaveis(
+        unidadeAdministrativaId,
+        termo,
+      )
+      setResultados(resposta.filter((bem) => Boolean(bem.numero_patrimonial)))
+    } catch {
+      setResultados([])
+    } finally {
+      setCarregando(false)
+    }
+  }, [unidadeAdministrativaId])
 
   const handleChange = (novoValor: string) => {
     const valorFormatado = formatarNP(novoValor)
     onChange(valorFormatado)
     setAberto(true)
     if (buscaRef.current) clearTimeout(buscaRef.current)
-    buscaRef.current = setTimeout(() => void buscarBens(valorFormatado), 300)
+    buscaRef.current = setTimeout(() => void buscarOpcoes(valorFormatado), 300)
   }
 
   return (
-    <div className='relative flex flex-col gap-2' ref={containerRef}>
-      {/* data-error espelha o FormLabel: rótulo vermelho quando inválido. */}
-      <label
-        htmlFor={id}
-        data-error={invalid}
-        className={cn(
-          'text-sm font-semibold text-gray-700 data-[error=true]:text-destructive',
-          invalid && 'text-destructive',
-        )}
-      >
-        {label}
-      </label>
-      <div className='relative'>
-        <Input
-          id={id}
-          value={value}
-          onChange={(event) => handleChange(event.target.value)}
-          onFocus={() => {
-            setAberto(true)
-            void buscarBens(value)
-          }}
-          placeholder='000.000000000-0'
-          inputMode='numeric'
-          maxLength={15}
-          className={INPUT_CLASS}
-          aria-invalid={invalid}
-          aria-autocomplete='list'
-          aria-expanded={aberto}
-        />
-        {aberto && unidadeAdministrativaId && (
-          <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
-            {carregando && <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li>}
-            {!carregando && resultados.length === 0 && (
-              <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
-            )}
-            {!carregando &&
-              resultados.length > 0 &&
-              resultados.map((bem) => (
-                <li key={bem.id} className='border-b border-gray-100 last:border-0'>
-                  <button
-                    type='button'
-                    className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
-                    onClick={() => {
-                      onChange(bem.numero_patrimonial ?? '')
-                      setAberto(false)
-                    }}
-                  >
-                    {bem.numero_patrimonial} - {bem.nome}
-                  </button>
-                </li>
-              ))}
-          </ul>
-        )}
-      </div>
+    <div className='relative space-y-2' ref={containerRef}>
+      <label htmlFor={id} className='text-sm font-semibold text-gray-700'>{label}</label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(event) => handleChange(event.target.value)}
+        onFocus={() => {
+          setAberto(true)
+          void buscarOpcoes(value)
+        }}
+        placeholder='000.000000000-0'
+        inputMode='numeric'
+        maxLength={15}
+        className={INPUT_CLASS}
+        aria-autocomplete='list'
+        aria-expanded={aberto}
+      />
+      {aberto && unidadeAdministrativaId ? (
+        <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
+          <AutocompleteContent
+            carregando={carregando}
+            resultados={resultados}
+            onSelect={(bem) => {
+              onChange(bem.numero_patrimonial ?? '')
+              setAberto(false)
+            }}
+          />
+        </ul>
+      ) : null}
     </div>
   )
 }
@@ -226,9 +239,22 @@ function NumeroPatrimonialAutocomplete({
 export default function AdicionarMovimentacaoPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const originUaId = user?.ua_ativa?.id ?? null
   const referenceUoId = user?.uo_ativa?.id ?? null
+  const [originUaSelecionada, setOriginUaSelecionada] = useState<number | null>(null)
+  const originUaOptions = useMemo(() => (
+    user?.opcoes_escopo?.grupos
+      .filter((grupo) => grupo.uo.id === referenceUoId)
+      .flatMap((grupo) => grupo.uas)
+      .map((ua) => ({ id: ua.unidade_administrativa_id, label: ua.label })) ?? []
+  ), [referenceUoId, user?.opcoes_escopo?.grupos])
+  const originUaId = user?.ua_ativa?.id ?? originUaSelecionada
   const originUaLabel = user?.ua_ativa?.label ?? user?.ua_ativa?.codigo ?? '-'
+
+  useEffect(() => {
+    if (!user?.ua_ativa && !originUaSelecionada && originUaOptions.length === 1) {
+      setOriginUaSelecionada(originUaOptions[0].id)
+    }
+  }, [originUaOptions, originUaSelecionada, user?.ua_ativa])
 
   const form = useForm<MovimentacaoFormData>({
     resolver: zodResolver(movimentacaoSchema),
@@ -239,41 +265,28 @@ export default function AdicionarMovimentacaoPage() {
       observacao: '',
       itens: [],
       destino_mesma_uo: false,
-      numero_de: '',
-      numero_ate: '',
     },
   })
 
   const selectedUoId = form.watch('unidade_orcamentaria_destino')
   const selectedUaId = form.watch('unidade_administrativa_destino') ?? ''
-  const numeroDe = form.watch('numero_de') ?? ''
-  const numeroAte = form.watch('numero_ate') ?? ''
   const setSelectedUaId = useCallback(
     (value: string) => definirCampoValidado(form, 'unidade_administrativa_destino', value),
     [form],
   )
-  /**
-   * A mensagem da faixa (De/Até) é sempre exibida em `numero_de`, então editar
-   * qualquer um dos dois campos limpa essa pendência — e somente ela.
-   */
-  const setNumeroDe = useCallback(
-    (value: string) => {
-      definirCampoValidado(form, 'numero_de', value)
-      form.clearErrors('numero_de')
-    },
-    [form],
-  )
-  const setNumeroAte = useCallback(
-    (value: string) => {
-      definirCampoValidado(form, 'numero_ate', value)
-      form.clearErrors('numero_de')
-    },
-    [form],
-  )
-  const [faixas, setFaixas] = useState<FaixaMovimentacao[]>([])
-  const [selecionarTodos, setSelecionarTodos] = useState(false)
+  const [tipoBusca, setTipoBusca] = useState<ModoBusca>('geral')
+  const [termoBusca, setTermoBusca] = useState('')
+  const [buscaDe, setBuscaDe] = useState('')
+  const [buscaAte, setBuscaAte] = useState('')
+  const [resultadosBusca, setResultadosBusca] = useState<MovimentacaoBemBusca[]>([])
+  const [proximaPagina, setProximaPagina] = useState<number | null>(null)
+  const [totalResultados, setTotalResultados] = useState(0)
+  const [buscaRealizada, setBuscaRealizada] = useState(false)
+  const [selecoes, setSelecoes] = useState<SelecaoMovimentacao[]>([])
   const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
-  const [bensSelecionarTodos, setBensSelecionarTodos] = useState<MovimentacaoBem[]>([])
+  const versaoBusca = useRef(0)
+  const modoBuscaAnterior = useRef<ModoBusca>('geral')
+  const [buscando, setBuscando] = useState(false)
   const [adicionandoItens, setAdicionandoItens] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
@@ -345,15 +358,19 @@ export default function AdicionarMovimentacaoPage() {
     }
   }, [destinoMesmaUo, selectedUaId, uaOptions, setSelectedUaId])
 
-  const itensSelecionados = useMemo(() => {
-    if (selecionarTodos) return bensSelecionarTodos
-    return faixas.flatMap((faixa) => faixa.bens)
-  }, [bensSelecionarTodos, faixas, selecionarTodos])
+  const bensSelecionados = useMemo(() => {
+    const bensPorId = new Map<number, MovimentacaoBemBusca>()
+    selecoes.forEach((selecao) => {
+      selecao.bens.forEach((bem) => bensPorId.set(bem.id, bem))
+    })
+    return [...bensPorId.values()]
+  }, [selecoes])
+
   useEffect(() => {
-    form.setValue('itens', itensSelecionados.map((bem) => bem.id), {
+    form.setValue('itens', bensSelecionados.map((bem) => bem.id), {
       shouldValidate: form.formState.isSubmitted,
     })
-  }, [itensSelecionados, form])
+  }, [bensSelecionados, form])
 
   useEffect(() => {
     form.setValue('destino_mesma_uo', destinoMesmaUo)
@@ -367,7 +384,7 @@ export default function AdicionarMovimentacaoPage() {
   )
   // O botão só é bloqueado por estados que impedem qualquer submissão.
   // Pendências de campo são comunicadas pela validação inline.
-  const canSave = !adicionandoItens && !submitting
+  const canSave = !adicionandoItens && !buscando && !submitting
 
   useEffect(() => {
     if (!destinoMesmaUo || !selectedUoId) {
@@ -377,109 +394,191 @@ export default function AdicionarMovimentacaoPage() {
     if (selectedUaId && !uaOptions.some((ua) => String(ua.id) === selectedUaId)) {
       setSelectedUaId('')
     }
-  }, [destinoMesmaUo, selectedUaId, selectedUoId, uaOptions])
+  }, [destinoMesmaUo, selectedUaId, selectedUoId, uaOptions, setSelectedUaId])
 
-  /**
-   * Erros da sub-ação de itens (adicionar faixa / selecionar todos) são
-   * exibidos inline no campo correspondente, além do toast.
-   */
   const exibirErro = useCallback(
-    (message: string, campo: 'numero_de' | 'itens' = 'itens') => {
-      form.setError(campo, { message })
+    (message: string) => {
+      form.setError('itens', { message })
       toast.error(message)
     },
     [form],
   )
 
-  /**
-   * Usado pelas sub-ações de itens (adicionar faixa / selecionar todos), que
-   * são as donas desses dois erros. A digitação de cada campo limpa apenas o
-   * próprio campo, via `definirCampoValidado`.
-   */
   const limparErrosDeItens = useCallback(() => {
-    form.clearErrors(['itens', 'numero_de'])
+    form.clearErrors('itens')
     limparErroServidor(form)
   }, [form])
 
   const limparErroDeServidor = useCallback(() => limparErroServidor(form), [form])
 
-  const addFaixa = useCallback(async () => {
-    if (!originUaId || !numeroDe.trim()) {
-      exibirErro('Informe o Número Patrimonial - De.', 'numero_de')
-      return
-    }
+  const limparResultadosBusca = () => {
+    versaoBusca.current += 1
+    setResultadosBusca([])
+    setProximaPagina(null)
+    setTotalResultados(0)
+    setBuscaRealizada(false)
+  }
 
-    const numeroDeNormalizado = numeroDe.trim()
-    const numeroAteNormalizado = numeroAte.trim() || numeroDeNormalizado
-    if (numeroAteNormalizado < numeroDeNormalizado) {
-      exibirErro(
-        'O Número Patrimonial Até deve ser maior ou igual ao Número Patrimonial De.',
-        'numero_de',
-      )
+  const buscarBens = async (pagina = 1) => {
+    if (!originUaId) {
+      exibirErro('Informe a Unidade Administrativa de origem.')
       return
     }
+    let criterios: MovimentacaoBuscaBensParams
+    try {
+      criterios = {
+        unidade_administrativa_origem: originUaId,
+        pagina,
+        ...obterCriteriosBusca(tipoBusca, termoBusca, buscaDe, buscaAte),
+      }
+    } catch (error) {
+      exibirErro(error instanceof Error ? error.message : 'Informe o critério de busca.')
+      return
+    }
+    const versao = ++versaoBusca.current
+    setBuscando(true)
+    limparErrosDeItens()
+    try {
+      const resposta = await movimentacaoService.buscarBens(criterios)
+      if (versao !== versaoBusca.current) return
+      setResultadosBusca((atuais) => pagina === 1 ? resposta.itens : [...atuais, ...resposta.itens])
+      setProximaPagina(resposta.proxima_pagina)
+      setTotalResultados(resposta.count)
+      setBuscaRealizada(true)
+    } catch (error) {
+      if (versao === versaoBusca.current) {
+        exibirErro(error instanceof Error ? error.message : 'Não foi possível buscar bens.')
+      }
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  const alternarBemBusca = (bem: MovimentacaoBemBusca) => {
+    if (!bem.apto) return
+    setSelecoes((atuais) => {
+      const individual = atuais.find(
+        (selecao) => selecao.tipo === 'individual' && selecao.bens[0]?.id === bem.id,
+      )
+      if (individual) return atuais.filter((selecao) => selecao.id !== individual.id)
+      const jaSelecionado = obterIdsBens(atuais).has(bem.id)
+      if (jaSelecionado) return atuais
+      return [...atuais, { id: `bem-${bem.id}`, tipo: 'individual', bens: [bem] }]
+    })
+    limparErrosDeItens()
+  }
+
+  const alternarResultadosBusca = () => {
+    const idsBloqueados = new Set(
+      selecoes
+        .filter((selecao) => selecao.tipo !== 'individual')
+        .flatMap((selecao) => selecao.bens.map((bem) => bem.id)),
+    )
+    const selecionaveis = resultadosBusca.filter((bem) => bem.apto && !idsBloqueados.has(bem.id))
+    const idsIndividuais = new Set(
+      selecoes
+        .filter((selecao) => selecao.tipo === 'individual')
+        .flatMap((selecao) => selecao.bens.map((bem) => bem.id)),
+    )
+    const removerTodos = selecionaveis.length > 0 && selecionaveis.every((bem) => idsIndividuais.has(bem.id))
+
+    setSelecoes((atuais) => {
+      const idsResultados = new Set(selecionaveis.map((bem) => bem.id))
+      const mantidas = removerTodos
+        ? atuais.filter(
+            (selecao) => selecao.tipo !== 'individual' || !idsResultados.has(selecao.bens[0].id),
+          )
+        : atuais
+      if (removerTodos) return mantidas
+      const idsAtuais = obterIdsBens(mantidas)
+      const novas = selecionaveis
+        .filter((bem) => !idsAtuais.has(bem.id))
+        .map<SelecaoMovimentacao>((bem) => ({ id: `bem-${bem.id}`, tipo: 'individual', bens: [bem] }))
+      return [...mantidas, ...novas]
+    })
+    limparErrosDeItens()
+  }
+
+  const importarFaixa = async () => {
+    if (!originUaId) {
+      exibirErro('Informe a Unidade Administrativa de origem.')
+      return
+    }
+    let faixa: CriteriosBusca
+    try {
+      faixa = obterCriteriosBusca('faixa', '', buscaDe, buscaAte)
+    } catch (error) {
+      exibirErro(error instanceof Error ? error.message : 'Informe a faixa de busca.')
+      return
+    }
+    const numeroDe = faixa.numero_patrimonial_de ?? ''
+    const numeroAteInformado = faixa.numero_patrimonial_ate
+    const numeroAte = numeroAteInformado ?? numeroDe
     if (
-      faixas.some(
-        (faixa) =>
-          numeroDeNormalizado <= faixa.numeroAte && numeroAteNormalizado >= faixa.numeroDe,
+      selecoes.some(
+        (selecao) =>
+          selecao.tipo === 'faixa' &&
+          selecao.numeroDe === numeroDe &&
+          selecao.numeroAte === numeroAte,
       )
     ) {
-      exibirErro('Os bens informados já foram adicionados à movimentação.')
+      exibirErro('A faixa informada já foi adicionada à movimentação.')
       return
     }
 
-    const faixa: MovimentacaoFaixaNumeroPatrimonial = {
-      numero_patrimonial_de: numeroDeNormalizado,
-      ...(numeroAteNormalizado === numeroDeNormalizado
-        ? {}
-        : { numero_patrimonial_ate: numeroAteNormalizado }),
-    }
     setAdicionandoItens(true)
     limparErrosDeItens()
     try {
       const { itens } = await movimentacaoService.resolverItensLote({
         unidade_administrativa_origem: originUaId,
-        faixas: [faixa],
+        faixas: [{
+          numero_patrimonial_de: numeroDe,
+          ...(numeroAteInformado ? { numero_patrimonial_ate: numeroAteInformado } : {}),
+        }],
       })
-      const idsExistentes = new Set(faixas.flatMap((item) => item.bens.map((bem) => bem.id)))
-      if (itens.some((bem) => idsExistentes.has(bem.id))) {
-        exibirErro('Os bens informados já foram adicionados à movimentação.')
+      if (itens.length === 0) {
+        exibirErro('Nenhum bem apto foi encontrado na faixa informada.')
         return
       }
-      setFaixas((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          numeroDe: faixa.numero_patrimonial_de,
-          numeroAte: numeroAteNormalizado,
-          bens: itens,
-        },
+      const idsAtuais = new Set(bensSelecionados.map((bem) => bem.id))
+      if (itens.some((bem) => idsAtuais.has(bem.id))) {
+        exibirErro('Um ou mais bens da faixa já foram adicionados à movimentação.')
+        return
+      }
+      const bens = itens.map<MovimentacaoBemBusca>((bem) => ({
+        id: bem.id,
+        numero_patrimonial: bem.numero_patrimonial,
+        nome: bem.nome,
+        descricao: bem.descricao ?? '',
+        localizacao: bem.localizacao ?? null,
+        apto: true,
+        motivo: null,
+      }))
+      setSelecoes((atuais) => [
+        ...atuais,
+        { id: `faixa-${numeroDe}-${numeroAte}`, tipo: 'faixa', numeroDe, numeroAte, bens },
       ])
-      setNumeroDe('')
-      setNumeroAte('')
+      setBuscaDe('')
+      setBuscaAte('')
+      limparResultadosBusca()
     } catch (requestError: unknown) {
       exibirErro(
         requestError instanceof Error
           ? requestError.message
-          : 'Erro ao adicionar itens de movimentação.',
+          : 'Erro ao importar a faixa de bens.',
       )
     } finally {
       setAdicionandoItens(false)
     }
-  }, [exibirErro, limparErrosDeItens, faixas, numeroAte, numeroDe, originUaId, setNumeroDe, setNumeroAte])
+  }
 
-  const handleSelecionarTodos = useCallback(
-    async (checked: boolean) => {
-      if (!checked) {
-        setSelecionarTodos(false)
-        setBensSelecionarTodos([])
-        return
-      }
+  const handleSelecionarTodos = useCallback(async () => {
       if (!originUaId) {
         exibirErro('Informe a Unidade Administrativa de origem.')
         return
       }
 
+      const versao = ++versaoBusca.current
       setAdicionandoItens(true)
       limparErrosDeItens()
       try {
@@ -487,28 +586,53 @@ export default function AdicionarMovimentacaoPage() {
           unidade_administrativa_origem: originUaId,
           selecionar_todos: true,
         })
+        if (versao !== versaoBusca.current) return
         if (itens.length === 0) {
           exibirErro('Nenhum bem aprovado foi encontrado na unidade administrativa de origem.')
           return
         }
-        setFaixas([])
-        setBensSelecionarTodos(itens)
-        setSelecionarTodos(true)
+        const selecionados = itens.map<MovimentacaoBemBusca>((bem) => ({
+          id: bem.id,
+          numero_patrimonial: bem.numero_patrimonial,
+          nome: bem.nome,
+          descricao: bem.descricao ?? '',
+          localizacao: bem.localizacao ?? null,
+          apto: true,
+          motivo: null,
+        }))
+        setSelecoes([{ id: 'todos', tipo: 'todos', bens: selecionados }])
+        setResultadosBusca(selecionados)
+        setTotalResultados(selecionados.length)
+        setProximaPagina(null)
+        setBuscaRealizada(true)
       } catch (requestError: unknown) {
-        exibirErro(
-          requestError instanceof Error
-            ? requestError.message
-            : 'Erro ao adicionar itens de movimentação.',
-        )
+        if (versao === versaoBusca.current) {
+          exibirErro(
+            requestError instanceof Error
+              ? requestError.message
+              : 'Erro ao adicionar itens de movimentação.',
+          )
+        }
       } finally {
         setAdicionandoItens(false)
       }
-    },
-    [exibirErro, limparErrosDeItens, originUaId],
-  )
+    }, [exibirErro, limparErrosDeItens, originUaId])
 
-  const removerFaixa = (faixaId: string) => {
-    setFaixas((current) => current.filter((item) => item.id !== faixaId))
+  const mudarModoBusca = (novoModo: ModoBusca) => {
+    const sairDaSelecaoDeTodos = tipoBusca === 'todos' && novoModo !== 'todos'
+    modoBuscaAnterior.current = tipoBusca
+    setTipoBusca(novoModo)
+    limparErrosDeItens()
+    limparResultadosBusca()
+    if (sairDaSelecaoDeTodos) {
+      setSelecoes([])
+    }
+    if (novoModo !== 'todos') return
+    if (selecoes.length > 0) {
+      setConfirmarSelecionarTodos(true)
+      return
+    }
+    void handleSelecionarTodos()
   }
 
   const handleSave = form.handleSubmit(async (values) => {
@@ -525,20 +649,17 @@ export default function AdicionarMovimentacaoPage() {
 
     const selectedUoNumericId = Number(values.unidade_orcamentaria_destino)
 
+    const selecaoPayload = selecoes.length === 1 && selecoes[0].tipo === 'todos'
+      ? { selecionar_todos: true }
+      : { itens: bensSelecionados.map((bem) => ({ bem: bem.id })) }
+
     setSubmitting(true)
     try {
       await movimentacaoService.create({
         unidade_administrativa_origem: originUaId,
         unidade_orcamentaria_destino: selectedUoNumericId,
         observacao: values.observacao ?? '',
-        ...(selecionarTodos
-          ? { selecionar_todos: true }
-          : {
-              faixas: faixas.map(({ numeroDe: de, numeroAte: ate }) => ({
-                numero_patrimonial_de: de,
-                ...(de === ate ? {} : { numero_patrimonial_ate: ate }),
-              })),
-            }),
+        ...selecaoPayload,
         ...(destinoMesmaUo
           ? { unidade_administrativa_destino: Number(values.unidade_administrativa_destino) }
           : {}),
@@ -556,6 +677,10 @@ export default function AdicionarMovimentacaoPage() {
       setSubmitting(false)
     }
   })
+
+  const buscaGridClass = tipoBusca === 'geral'
+    ? 'grid gap-3 md:grid-cols-[minmax(0,36rem)_auto] md:items-end md:justify-start'
+    : 'grid gap-3 md:grid-cols-[1fr_auto] md:items-end'
 
   return (
     <BemCadastroPageShell
@@ -576,12 +701,23 @@ export default function AdicionarMovimentacaoPage() {
         <label htmlFor='ua-origem' className='text-sm font-semibold text-gray-700'>
           Unidade Administrativa de Origem
         </label>
-        <Input
-          id='ua-origem'
-          value={originUaLabel}
-          disabled
-          className={`${INPUT_CLASS} bg-gray-50 text-gray-500 cursor-not-allowed`}
-        />
+        {user?.ua_ativa ? (
+          <Input id='ua-origem' value={originUaLabel} disabled className={`${INPUT_CLASS} bg-gray-50 text-gray-500 cursor-not-allowed`} />
+        ) : (
+          <Select value={originUaId ? String(originUaId) : ''} onValueChange={(value) => {
+            versaoBusca.current += 1
+            setOriginUaSelecionada(Number(value))
+            setSelecoes([])
+            limparResultadosBusca()
+            setTipoBusca('geral')
+            form.clearErrors('itens')
+          }}>
+            <SelectTrigger id='ua-origem' className={INPUT_CLASS}><SelectValue placeholder='Selecione a UA de origem' /></SelectTrigger>
+            <SelectContent>
+              {originUaOptions.map((ua) => <SelectItem key={ua.id} value={String(ua.id)}>{ua.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
@@ -716,135 +852,110 @@ export default function AdicionarMovimentacaoPage() {
             </FormItem>
           )}
         />
-        <div className='flex items-center gap-2'>
-          <Checkbox
-            id='selecionar-todos-bens'
-            checked={selecionarTodos}
-            disabled={!originUaId || adicionandoItens}
-            onCheckedChange={(checked) => {
-              if (checked === true && faixas.length > 0) {
-                setConfirmarSelecionarTodos(true)
-                return
-              }
-              void handleSelecionarTodos(checked === true)
+        <div className='space-y-5'>
+          <fieldset className='flex flex-wrap gap-5' aria-label='Modo de busca de bens'>
+            {([['geral', 'Buscar Geral'], ['faixa', 'Buscar Faixa'], ['todos', 'Todos os bens da UA']] as const).map(([valor, label]) => (
+              <label key={valor} className='flex items-center gap-2 text-sm font-medium text-gray-700'>
+                <input
+                  type='radio'
+                  name='modo-busca-bens'
+                  value={valor}
+                  checked={tipoBusca === valor}
+                  disabled={buscando || adicionandoItens}
+                  onChange={() => mudarModoBusca(valor)}
+                  className='accent-[#2F7D57]'
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+
+          {tipoBusca === 'todos' ? null : (
+            <div className={buscaGridClass}>
+              {tipoBusca === 'faixa' ? (
+                  <div className='grid gap-3 sm:grid-cols-2'>
+                    <NumeroPatrimonialAutocomplete
+                      id='busca-np-de'
+                      label='Número Patrimonial - De'
+                      value={buscaDe}
+                      unidadeAdministrativaId={originUaId}
+                      onChange={(value) => {
+                        setBuscaDe(value)
+                        limparResultadosBusca()
+                      }}
+                    />
+                    <NumeroPatrimonialAutocomplete
+                      id='busca-np-ate'
+                      label='Número Patrimonial - Até'
+                      value={buscaAte}
+                      unidadeAdministrativaId={originUaId}
+                      onChange={(value) => {
+                        setBuscaAte(value)
+                        limparResultadosBusca()
+                      }}
+                    />
+                </div>
+              ) : (
+                <div className='space-y-2'>
+                  <label htmlFor='termo-busca-bem' className='text-sm font-semibold text-gray-700'>Buscar por nome, descrição, ID ou número patrimonial</label>
+                  <Input
+                    id='termo-busca-bem'
+                    value={termoBusca}
+                    onChange={(event) => {
+                      setTermoBusca(event.target.value)
+                      limparResultadosBusca()
+                    }}
+                    className={INPUT_CLASS}
+                  />
+                </div>
+              )}
+              <Button
+                type='button'
+                onClick={() => void buscarBens()}
+                disabled={buscando || adicionandoItens}
+                className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
+              >
+                {buscando ? 'Buscando...' : 'Buscar'}
+              </Button>
+            </div>
+          )}
+
+          <MovimentacaoBensSelection
+            resultados={resultadosBusca}
+            selecoes={selecoes}
+            buscaRealizada={buscaRealizada}
+            totalResultados={totalResultados}
+            buscando={buscando || adicionandoItens}
+            proximaPagina={proximaPagina}
+            permiteImportarFaixa={tipoBusca === 'faixa'}
+            permiteSelecionarResultados={tipoBusca === 'geral'}
+            onAlternarBem={alternarBemBusca}
+            onAlternarResultados={alternarResultadosBusca}
+            onImportarFaixa={() => void importarFaixa()}
+            onCarregarMais={(pagina) => void buscarBens(pagina)}
+            onRemoverSelecao={(id) => {
+              setSelecoes((atuais) => atuais.filter((selecao) => selecao.id !== id))
+              limparErrosDeItens()
             }}
           />
-          <label htmlFor='selecionar-todos-bens' className='text-sm font-medium text-gray-700'>
-            Selecionar todos os Bens aprovados da UA de origem
-          </label>
         </div>
-        {selecionarTodos ? (
-          <div className='overflow-x-auto rounded border border-gray-200'>
-            <table className='w-full text-sm'>
-              <thead className='bg-gray-50 text-left text-gray-700'>
-                <tr>
-                  <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Bens selecionados</th>
-                  <th className='p-3 text-center'>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className='border-t border-gray-200'>
-                  <td className='p-3'>Todos os Bens aprovados da UA de origem</td>
-                  <td className='p-3'>{bensSelecionarTodos.length} bem(ns) selecionado(s)</td>
-                  <td className='p-3 text-center'>
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      size='icon'
-                      aria-label='Excluir seleção de todos os Bens'
-                      onClick={() => void handleSelecionarTodos(false)}
-                    >
-                      <Trash2 className='size-5 text-[#00703C]' />
-                    </Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end'>
-            <FormField
-              control={form.control}
-              name='numero_de'
-              render={({ fieldState }) => (
-                <FormItem>
-                  <NumeroPatrimonialAutocomplete
-                    id='numero-patrimonial-de'
-                    label='Número Patrimonial - De'
-                    value={numeroDe}
-                    unidadeAdministrativaId={originUaId}
-                    onChange={setNumeroDe}
-                    invalid={fieldState.invalid}
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <NumeroPatrimonialAutocomplete
-              id='numero-patrimonial-ate'
-              label='Número Patrimonial - Até'
-              value={numeroAte}
-              unidadeAdministrativaId={originUaId}
-              onChange={setNumeroAte}
-            />
-            <Button
-              type='button'
-              variant='outline'
-              className='h-11 border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white'
-              onClick={() => void addFaixa()}
-              disabled={adicionandoItens}
-            >
-              <Plus className='size-5' aria-hidden='true' />
-              {adicionandoItens ? 'Adicionando...' : 'Adicionar'}
-            </Button>
-          </div>
-        )}
-        {faixas.length > 0 ? (
-          <div className='overflow-x-auto rounded border border-gray-200'>
-            <table className='w-full text-sm'>
-              <thead className='bg-gray-50 text-left text-gray-700'>
-                <tr>
-                  <th className='p-3'>Número Patrimonial</th>
-                  <th className='p-3'>Nome do Bem</th>
-                  <th className='p-3 text-center'>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {faixas.map((faixa) => (
-                  <tr key={faixa.id} className='border-t border-gray-200'>
-                    <td className='p-3'>{formatarFaixa(faixa.numeroDe, faixa.numeroAte)}</td>
-                    <td className='p-3'>{resumirNomes(faixa.bens)}</td>
-                    <td className='p-3 text-center'>
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        aria-label={`Excluir faixa ${formatarFaixa(faixa.numeroDe, faixa.numeroAte)}`}
-                        onClick={() => removerFaixa(faixa.id)}
-                      >
-                        <Trash2 className='size-5 text-[#00703C]' />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
       </section>
+      </Form>
       <ConfirmDialog
         open={confirmarSelecionarTodos}
-        title='Selecionar todos os Bens'
-        message='As faixas já adicionadas serão removidas. Deseja continuar?'
+        title='Selecionar todos os bens da UA'
+        message='A lista de bens selecionados será substituída por todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?'
         confirmLabel='Continuar'
-        onClose={() => setConfirmarSelecionarTodos(false)}
+        loading={adicionandoItens}
         onConfirm={() => {
           setConfirmarSelecionarTodos(false)
-          void handleSelecionarTodos(true)
+          void handleSelecionarTodos()
+        }}
+        onClose={() => {
+          setConfirmarSelecionarTodos(false)
+          setTipoBusca(modoBuscaAnterior.current)
         }}
       />
-      </Form>
     </BemCadastroPageShell>
   )
 }
