@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
-import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +37,7 @@ import {
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type {
+  MovimentacaoBem,
   MovimentacaoBemBusca,
   MovimentacaoBuscaBensParams,
   MovimentacaoUoCadastroOption,
@@ -115,6 +115,111 @@ function obterIdsBens(selecoes: SelecaoMovimentacao[]) {
   return ids
 }
 
+type NumeroPatrimonialAutocompleteProps = Readonly<{
+  id: string
+  label: string
+  value: string
+  unidadeAdministrativaId: number | null
+  onChange: (value: string) => void
+}>
+
+function NumeroPatrimonialAutocomplete({
+  id,
+  label,
+  value,
+  unidadeAdministrativaId,
+  onChange,
+}: NumeroPatrimonialAutocompleteProps) {
+  const [aberto, setAberto] = useState(false)
+  const [carregando, setCarregando] = useState(false)
+  const [resultados, setResultados] = useState<MovimentacaoBem[]>([])
+  const containerRef = useRef<HTMLDivElement>(null)
+  const buscaRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setAberto(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      if (buscaRef.current) clearTimeout(buscaRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    setAberto(false)
+    setResultados([])
+  }, [unidadeAdministrativaId])
+
+  const buscarOpcoes = useCallback(async (termo: string) => {
+    if (!unidadeAdministrativaId) return
+    setCarregando(true)
+    try {
+      const resposta = await movimentacaoService.listBensMovimentaveis(
+        unidadeAdministrativaId,
+        termo,
+      )
+      setResultados(resposta.filter((bem) => Boolean(bem.numero_patrimonial)))
+    } catch {
+      setResultados([])
+    } finally {
+      setCarregando(false)
+    }
+  }, [unidadeAdministrativaId])
+
+  const handleChange = (novoValor: string) => {
+    const valorFormatado = formatarNP(novoValor)
+    onChange(valorFormatado)
+    setAberto(true)
+    if (buscaRef.current) clearTimeout(buscaRef.current)
+    buscaRef.current = setTimeout(() => void buscarOpcoes(valorFormatado), 300)
+  }
+
+  return (
+    <div className='relative space-y-2' ref={containerRef}>
+      <label htmlFor={id} className='text-sm font-semibold text-gray-700'>{label}</label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(event) => handleChange(event.target.value)}
+        onFocus={() => {
+          setAberto(true)
+          void buscarOpcoes(value)
+        }}
+        placeholder='000.000000000-0'
+        inputMode='numeric'
+        maxLength={15}
+        className={INPUT_CLASS}
+        aria-autocomplete='list'
+        aria-expanded={aberto}
+      />
+      {aberto && unidadeAdministrativaId ? (
+        <ul className='absolute top-full z-20 mt-1 max-h-56 w-full overflow-y-auto rounded border border-gray-300 bg-white shadow-lg'>
+          {carregando ? <li className='px-3 py-2 text-sm text-gray-500'>Buscando...</li> : null}
+          {!carregando && resultados.length === 0 ? (
+            <li className='px-3 py-2 text-sm text-gray-500'>Nenhum bem aprovado encontrado.</li>
+          ) : null}
+          {!carregando ? resultados.map((bem) => (
+            <li key={bem.id} className='border-b border-gray-100 last:border-0'>
+              <button
+                type='button'
+                className='w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[#00703C] hover:text-white'
+                onClick={() => {
+                  onChange(bem.numero_patrimonial ?? '')
+                  setAberto(false)
+                }}
+              >
+                {bem.numero_patrimonial} - {bem.nome}
+              </button>
+            </li>
+          )) : null}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 export default function AdicionarMovimentacaoPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -155,7 +260,6 @@ export default function AdicionarMovimentacaoPage() {
   )
   const [tipoBusca, setTipoBusca] = useState<ModoBusca>('geral')
   const [termoBusca, setTermoBusca] = useState('')
-  const termoBuscaDebounced = useDebouncedValue(termoBusca, 400)
   const [buscaDe, setBuscaDe] = useState('')
   const [buscaAte, setBuscaAte] = useState('')
   const [resultadosBusca, setResultadosBusca] = useState<MovimentacaoBemBusca[]>([])
@@ -165,7 +269,6 @@ export default function AdicionarMovimentacaoPage() {
   const [selecoes, setSelecoes] = useState<SelecaoMovimentacao[]>([])
   const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
   const versaoBusca = useRef(0)
-  const ultimaBuscaGeral = useRef('')
   const modoBuscaAnterior = useRef<ModoBusca>('geral')
   const [buscando, setBuscando] = useState(false)
   const [adicionandoItens, setAdicionandoItens] = useState(false)
@@ -300,7 +403,7 @@ export default function AdicionarMovimentacaoPage() {
     setBuscaRealizada(false)
   }
 
-  const buscarBens = async (pagina = 1, termoGeral = termoBusca) => {
+  const buscarBens = async (pagina = 1) => {
     if (!originUaId) {
       exibirErro('Informe a Unidade Administrativa de origem.')
       return
@@ -310,16 +413,13 @@ export default function AdicionarMovimentacaoPage() {
       criterios = {
         unidade_administrativa_origem: originUaId,
         pagina,
-        ...obterCriteriosBusca(tipoBusca, termoGeral, buscaDe, buscaAte),
+        ...obterCriteriosBusca(tipoBusca, termoBusca, buscaDe, buscaAte),
       }
     } catch (error) {
       exibirErro(error instanceof Error ? error.message : 'Informe o critério de busca.')
       return
     }
     const versao = ++versaoBusca.current
-    if (tipoBusca === 'geral' && pagina === 1) {
-      ultimaBuscaGeral.current = `${originUaId}:${termoGeral.trim()}`
-    }
     setBuscando(true)
     limparErrosDeItens()
     try {
@@ -337,22 +437,6 @@ export default function AdicionarMovimentacaoPage() {
       setBuscando(false)
     }
   }
-
-  const buscarGeralAutomaticamente = useEffectEvent(() => {
-    const termo = termoBuscaDebounced.trim()
-    const chaveBusca = `${originUaId}:${termo}`
-    if (
-      tipoBusca !== 'geral' ||
-      !originUaId ||
-      !termo ||
-      ultimaBuscaGeral.current === chaveBusca
-    ) return
-    void buscarBens(1, termo)
-  })
-
-  useEffect(() => {
-    buscarGeralAutomaticamente()
-  }, [originUaId, termoBuscaDebounced, tipoBusca])
 
   const alternarBemBusca = (bem: MovimentacaoBemBusca) => {
     if (!bem.apto) return
@@ -522,7 +606,6 @@ export default function AdicionarMovimentacaoPage() {
     const sairDaSelecaoDeTodos = tipoBusca === 'todos' && novoModo !== 'todos'
     modoBuscaAnterior.current = tipoBusca
     setTipoBusca(novoModo)
-    ultimaBuscaGeral.current = ''
     limparErrosDeItens()
     limparResultadosBusca()
     if (sairDaSelecaoDeTodos) {
@@ -774,27 +857,27 @@ export default function AdicionarMovimentacaoPage() {
           {tipoBusca === 'todos' ? null : (
             <div className={buscaGridClass}>
               {tipoBusca === 'faixa' ? (
-                <div className='grid gap-3 sm:grid-cols-2'>
-                  <div className='space-y-2'>
-                    <label htmlFor='busca-np-de' className='text-sm font-semibold text-gray-700'>Número Patrimonial - De</label>
-                    <Input
+                  <div className='grid gap-3 sm:grid-cols-2'>
+                    <NumeroPatrimonialAutocomplete
                       id='busca-np-de'
+                      label='Número Patrimonial - De'
                       value={buscaDe}
-                      onChange={(event) => { setBuscaDe(formatarNP(event.target.value)); limparResultadosBusca() }}
-                      placeholder='000.000000000-0'
-                      className={INPUT_CLASS}
+                      unidadeAdministrativaId={originUaId}
+                      onChange={(value) => {
+                        setBuscaDe(value)
+                        limparResultadosBusca()
+                      }}
                     />
-                  </div>
-                  <div className='space-y-2'>
-                    <label htmlFor='busca-np-ate' className='text-sm font-semibold text-gray-700'>Número Patrimonial - Até</label>
-                    <Input
+                    <NumeroPatrimonialAutocomplete
                       id='busca-np-ate'
+                      label='Número Patrimonial - Até'
                       value={buscaAte}
-                      onChange={(event) => { setBuscaAte(formatarNP(event.target.value)); limparResultadosBusca() }}
-                      placeholder='000.000000000-0'
-                      className={INPUT_CLASS}
+                      unidadeAdministrativaId={originUaId}
+                      onChange={(value) => {
+                        setBuscaAte(value)
+                        limparResultadosBusca()
+                      }}
                     />
-                  </div>
                 </div>
               ) : (
                 <div className='space-y-2'>
@@ -803,7 +886,6 @@ export default function AdicionarMovimentacaoPage() {
                     id='termo-busca-bem'
                     value={termoBusca}
                     onChange={(event) => {
-                      ultimaBuscaGeral.current = ''
                       setTermoBusca(event.target.value)
                       limparResultadosBusca()
                     }}

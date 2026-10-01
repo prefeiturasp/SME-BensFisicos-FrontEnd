@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,7 +35,13 @@ vi.mock('@/modules/configuracoes/unidades-administrativas/services/unidades-admi
   unidadesAdministrativasService: { list: vi.fn() },
 }))
 vi.mock('../services/movimentacao.service', () => ({
-  movimentacaoService: { listOpcoesCadastro: vi.fn(), resolverItensLote: vi.fn(), buscarBens: vi.fn(), create: vi.fn() },
+  movimentacaoService: {
+    listOpcoesCadastro: vi.fn(),
+    listBensMovimentaveis: vi.fn(),
+    resolverItensLote: vi.fn(),
+    buscarBens: vi.fn(),
+    create: vi.fn(),
+  },
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -106,6 +112,7 @@ describe('AdicionarMovimentacaoPage', () => {
       ],
     })
     vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 0, pagina: 1, proxima_pagina: null, itens: [] })
+    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([])
     vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bem, status: 'aprovado' }] })
     vi.mocked(movimentacaoService.create).mockResolvedValue({} as Awaited<ReturnType<typeof movimentacaoService.create>>)
   })
@@ -138,21 +145,42 @@ describe('AdicionarMovimentacaoPage', () => {
     expect(navigate).toHaveBeenCalledWith('/movimentacoes')
   })
 
-  it('busca automaticamente após o debounce da busca geral', async () => {
-    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
-      count: 1, pagina: 1, proxima_pagina: null, itens: [bem],
+  it('exibe autocomplete patrimonial após o debounce da faixa', async () => {
+    vi.mocked(movimentacaoService.listBensMovimentaveis).mockResolvedValue([
+      { ...bemFaixa, descricao: 'Mesa', status: 'aprovado' },
+    ])
+    renderPage()
+    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+
+    fireEvent.change(
+      screen.getByLabelText('Número Patrimonial - De'),
+      { target: { value: '0010000000300' } },
+    )
+
+    expect(movimentacaoService.listBensMovimentaveis).not.toHaveBeenCalled()
+    const opcao = await screen.findByRole('button', {
+      name: '001.000000030-0 - Mesa branca',
     })
+    expect(movimentacaoService.listBensMovimentaveis).toHaveBeenCalledWith(
+      10,
+      '001.000000030-0',
+    )
+    fireEvent.click(opcao)
+    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveValue('001.000000030-0')
+  })
+
+  it('não dispara automaticamente a busca geral durante a digitação', async () => {
     renderPage()
 
     fireEvent.change(
       screen.getByLabelText('Buscar por nome, descrição, ID ou número patrimonial'),
       { target: { value: 'cadeira' } },
     )
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350))
+    })
 
     expect(movimentacaoService.buscarBens).not.toHaveBeenCalled()
-    await waitFor(() => expect(movimentacaoService.buscarBens).toHaveBeenCalledWith({
-      unidade_administrativa_origem: 10, termo_busca: 'cadeira', pagina: 1,
-    }))
   })
 
   it('acumula seleção geral e faixa na lista única', async () => {
