@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { AxiosError } from "axios"
 
@@ -68,6 +68,19 @@ function preencherSomenteCamposEditaveis() {
     })
     fireEvent.change(screen.getByLabelText(/Responsável/i), {
         target: { value: "Responsavel Teste" },
+    })
+}
+
+async function confirmarGeracao() {
+    fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+    expect(await screen.findByRole("dialog", { name: "Confirmar geração da NBBPM" })).toBeInTheDocument()
+    expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
+    const confirmar = screen.getByRole("button", { name: "Gerar NBBPM" })
+    expect(confirmar).toBeDisabled()
+    fireEvent.click(screen.getByRole("checkbox", { name: /Estou ciente de que as Baixas Físicas selecionadas não poderão ser editadas/i }))
+    expect(confirmar).toBeEnabled()
+    await act(async () => {
+        fireEvent.click(confirmar)
     })
 }
 
@@ -159,9 +172,12 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(
-                await screen.findByText(/Informe o número do processo de Baixa/i)
-            ).toBeInTheDocument()
+            await waitFor(() => {
+                // A mensagem aparece tanto inline (FormMessage) quanto consolidada no banner.
+                expect(
+                    screen.getAllByText(/Informe o número do processo de Baixa/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
@@ -177,7 +193,11 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(await screen.findByText(/Informe a data da autorização/i)).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe a data da autorização/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
@@ -193,8 +213,29 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(await screen.findByText(/Informe o responsável/i)).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe o responsável/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
+        })
+
+        it("consolida as pendências no banner e some conforme os campos são corrigidos", async () => {
+            renderPage()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            const banner = await screen.findByTestId("banner-erros-validacao")
+            expect(banner).toHaveTextContent(/Informe o número do processo de Baixa/i)
+            expect(banner).toHaveTextContent(/Informe a data da autorização/i)
+            expect(banner).toHaveTextContent(/Informe o responsável/i)
+
+            preencherFormularioValido()
+
+            await waitFor(() => {
+                expect(screen.queryByTestId("banner-erros-validacao")).not.toBeInTheDocument()
+            })
         })
 
         it("não permite submeter apenas com espaços em branco nos campos obrigatórios", async () => {
@@ -212,9 +253,11 @@ describe("GerarNBBPMPage", () => {
 
             fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
 
-            expect(
-                await screen.findByText(/Informe o número do processo de Baixa/i)
-            ).toBeInTheDocument()
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText(/Informe o número do processo de Baixa/i).length
+                ).toBeGreaterThan(0)
+            })
             expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
         })
 
@@ -232,6 +275,22 @@ describe("GerarNBBPMPage", () => {
     })
 
     describe("submissão com sucesso", () => {
+        it("pede confirmação e cancelar não gera NBBPM", async () => {
+            renderPage()
+            preencherFormularioValido()
+
+            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+
+            expect(await screen.findByRole("dialog", { name: "Confirmar geração da NBBPM" })).toHaveTextContent(
+                "Após a geração da NBBPM, as Baixas Físicas selecionadas não poderão mais ser editadas"
+            )
+            fireEvent.click(screen.getByTestId("confirm-dialog-cancel"))
+
+            expect(screen.queryByRole("dialog", { name: "Confirmar geração da NBBPM" })).not.toBeInTheDocument()
+            expect(baixaFisicaService.gerarNbbpmLote).not.toHaveBeenCalled()
+            expect(mockNavigate).not.toHaveBeenCalled()
+        })
+
         it("chama o serviço com o payload correto, baixa o PDF, exibe toast de sucesso e volta", async () => {
             vi.mocked(baixaFisicaService.gerarNbbpmLote).mockResolvedValueOnce(makeNbbpm())
             const fakePdf = new Blob(["pdf"], { type: "application/pdf" })
@@ -240,7 +299,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith({
@@ -272,7 +331,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(toast.error).toHaveBeenCalledWith("Erro ao baixar NBBPM.")
@@ -292,7 +351,7 @@ describe("GerarNBBPMPage", () => {
                 target: { value: "  6016.2025/9999999-9  " },
             })
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith(
@@ -317,7 +376,7 @@ describe("GerarNBBPMPage", () => {
                 target: { value: "  Responsavel Teste  " },
             })
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith(
@@ -340,9 +399,10 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
-            expect(await screen.findByRole("button", { name: /Gerando\.\.\./i })).toBeDisabled()
+            expect(await screen.findByTestId("confirm-dialog-confirm")).toBeDisabled()
+            expect(screen.getAllByRole("button", { name: "Gerando..." })).toHaveLength(2)
 
             resolveGerar(makeNbbpm())
 
@@ -361,7 +421,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             expect(
                 await screen.findByText(/não pertencem ao seu escopo de acesso/i)
@@ -378,7 +438,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             expect(await screen.findByText(/Erro ao gerar NBBPM\./i)).toBeInTheDocument()
         })
@@ -389,7 +449,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherFormularioValido()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(screen.getByRole("button", { name: /Gerar Baixa/i })).not.toBeDisabled()
@@ -444,7 +504,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherSomenteCamposEditaveis()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             await waitFor(() => {
                 expect(baixaFisicaService.gerarNbbpmLote).toHaveBeenCalledWith({
@@ -470,7 +530,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherSomenteCamposEditaveis()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             expect(await screen.findByText(mensagemDivergencia)).toBeInTheDocument()
             expect(toast.error).toHaveBeenCalledWith(mensagemDivergencia)
@@ -490,7 +550,7 @@ describe("GerarNBBPMPage", () => {
             renderPage()
             preencherSomenteCamposEditaveis()
 
-            fireEvent.click(screen.getByRole("button", { name: /Gerar Baixa/i }))
+            await confirmarGeracao()
 
             expect(await screen.findByText(mensagem)).toBeInTheDocument()
             expect(toast.error).toHaveBeenCalledWith(mensagem)

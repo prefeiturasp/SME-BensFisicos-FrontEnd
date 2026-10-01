@@ -19,6 +19,8 @@ import { authService, type EscopoUa } from '../../../../auth/auth.service'
 import { usuarioService } from '../service/usuario.service'
 import { usePagination } from '../hooks/usePagination'
 import { useUsuariosList } from '../hooks/useUsuariosList'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { getUsuarioStatusTone } from '../utils/status'
 
 const PAGE_SIZE = 10
 
@@ -336,7 +338,13 @@ export default function UsuariosListPage() {
                     <td className='p-3'>{usuario.nome}</td>
                     <td className='p-3'>{resolveUnidadeOrcamentariaDisplay(usuario, uoLabelsById)}</td>
                     <td className='p-3'>{usuario.grupo_nome}</td>
-                    <td className='p-3'>{usuario.status_display}</td>
+                    <td className='p-3'>
+                      <StatusBadge
+                        tone={getUsuarioStatusTone(usuario.status)}
+                        label={usuario.status_display}
+                        testId={`usuario-status-${usuario.status}`}
+                      />
+                    </td>
                     <td className='p-3 text-center'>
                       <Button size='icon' variant='ghost' onClick={() => handleDetalhar(usuario.id)}>
                         <Eye className='size-[22px] text-[#00703C]' />

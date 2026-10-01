@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, History, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
 import { ExcluirParametroModal } from '../components/ExcluirParametroModal';
 import { ParametroConciliacaoForm } from '../components/ParametroConciliacaoForm';
 import { ParametrosConciliacaoBreadcrumb } from '../components/ParametrosConciliacaoBreadcrumb';
@@ -42,6 +43,7 @@ interface FormActionsProps {
   deleting: boolean;
   isSaveDisabled: boolean;
   onEdit: () => void;
+  onHistorico: () => void;
   onDelete: () => void;
   onSave: () => void;
   onCancel: () => void;
@@ -89,6 +91,7 @@ function FormActions({
   deleting,
   isSaveDisabled,
   onEdit,
+  onHistorico,
   onDelete,
   onSave,
   onCancel,
@@ -106,6 +109,13 @@ function FormActions({
       >
         {isView ? <ArrowLeft size={18} /> : 'Cancelar'}
       </Button>
+
+      {isView && (
+        <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={onHistorico}>
+          <History size={16} />
+          Histórico
+        </Button>
+      )}
 
       {isView && (
         <Button type='button' className={OUTLINE_BUTTON_CLASS} onClick={onEdit}>
@@ -228,6 +238,7 @@ export default function ParametroConciliacaoAnualFormPage() {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const parametroId = id ? Number(id) : null;
   const pageMode = getPageMode(id, location.pathname);
@@ -402,6 +413,7 @@ export default function ParametroConciliacaoAnualFormPage() {
           deleting={deleteMutation.isPending}
           isSaveDisabled={isSaveDisabled}
           onEdit={handleEdit}
+          onHistorico={() => setShowHistorico(true)}
           onDelete={() => setShowDeleteModal(true)}
           onSave={form.handleSubmit(handleSubmit)}
           onCancel={handleCancel}
@@ -424,6 +436,12 @@ export default function ParametroConciliacaoAnualFormPage() {
           deleting={deleteMutation.isPending}
           onClose={() => setShowDeleteModal(false)}
           onConfirm={handleDelete}
+        />
+      )}
+      {showHistorico && parametro && (
+        <HistoricoConsultaModal
+          endpoint={`/inventario/parametros-conciliacao-anual/${parametro.id}/historico/`}
+          onClose={() => setShowHistorico(false)}
         />
       )}
     </div>

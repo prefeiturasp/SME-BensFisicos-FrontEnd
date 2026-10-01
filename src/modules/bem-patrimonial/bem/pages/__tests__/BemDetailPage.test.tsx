@@ -184,9 +184,8 @@ describe('BemDetailPage', () => {
       screen.getByDisplayValue('Sala 1')
     ).toBeInTheDocument()
 
-    expect(
-      screen.getByText('Status: Ativo')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Status:')).toBeInTheDocument()
+    expect(screen.getByTestId('bem-status-ativo')).toHaveTextContent('Ativo')
   })
 
   it('deve exibir botão Editar quando gestor e não baixa física', async () => {
@@ -591,9 +590,13 @@ describe('BemDetailPage', () => {
       await screen.findByDisplayValue('Notebook Dell')
 
       expect(screen.getByText('Valor Unitário')).toBeInTheDocument()
+      expect(screen.getAllByText('Número do Processo')).toHaveLength(1)
       expect(
-        screen.getByText('Número do Processo de Incorporação')
-      ).toBeInTheDocument()
+        screen.queryByText('Número do Processo de Incorporação')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Número do Processo de Baixa')
+      ).not.toBeInTheDocument()
     })
 
     it('deve exibir o tooltip informativo no campo Formato ao passar o mouse', async () => {

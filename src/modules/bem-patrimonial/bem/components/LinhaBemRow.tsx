@@ -178,16 +178,16 @@ export function LinhaBemRow({
         />
       </ValidatedField>
 
-      {/* NÚMERO DO PROCESSO DE INCORPORAÇÃO */}
+      {/* NÚMERO DO PROCESSO */}
       <ValidatedField
-        label="Número do Processo de Incorporação"
+        label="Número do Processo"
         htmlFor={`numero_processo_${index}`}
         error={errors?.numero_processo}
       >
         <Input
           id={`numero_processo_${index}`}
           className={INPUT_CLASS}
-          placeholder="Insira o nº do processo de incorporação"
+          placeholder="Informe o número do processo"
           value={linha.numero_processo}
           aria-invalid={!!errors?.numero_processo}
           onChange={(e) => atualizarCampo('numero_processo', e.target.value)}

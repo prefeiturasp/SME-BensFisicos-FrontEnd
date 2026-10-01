@@ -4,6 +4,8 @@ import type {
   MovimentacaoBensLotePreviewPayload,
   MovimentacaoBensLotePreviewResponse,
   MovimentacaoBem,
+  MovimentacaoBuscaBensParams,
+  MovimentacaoBuscaBensResponse,
   MovimentacaoBemPatrimonialCreatePayload,
   MovimentacaoBemPatrimonialDetail,
   MovimentacaoBemPatrimonialListItem,
@@ -85,6 +87,19 @@ export const movimentacaoService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao buscar bens aptos para movimentação')
+    }
+  },
+
+  async buscarBens(params: MovimentacaoBuscaBensParams): Promise<MovimentacaoBuscaBensResponse> {
+    try {
+      const query = new URLSearchParams()
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') query.set(key, String(value))
+      })
+      const { data } = await api.get(`/movimentacoes/buscar-bens/?${query.toString()}`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao buscar bens para movimentação')
     }
   },
 

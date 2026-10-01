@@ -40,6 +40,7 @@ export interface BaixaFisica {
     id: number
     numero_processo_baixa: string | null
     numero_nbbpm: string | null
+    nbbpm_id?: number | null
     unidade_administrativa_origem: UnidadeAdministrativaSimple
     status: string
     status_display: string
@@ -114,6 +115,14 @@ export interface BaixaFisicaSolicitarCorrecaoPayload {
 }
 
 export interface BaixaFisicaAprovarPayload {
+    numero_processo_baixa: string
+}
+
+/**
+ * Payload do endpoint POST /baixa-fisica/{id}/corrigir-processo/.
+ * Correção pontual do número em baixa Aceita, sem Nota gerada.
+ */
+export interface BaixaFisicaCorrigirProcessoPayload {
     numero_processo_baixa: string
 }
 

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
+import { AxiosError } from "axios"
 
 import { format } from "date-fns"
 
@@ -16,6 +17,7 @@ import { bemService, type Bem } from "../../bem/services/bem.service"
 import { isDataFutura } from "../utils/datas"
 import { baixaFisicaService } from "../service/baixas.service"
 import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 import type { ItemRow } from '../types/baixas-fisicas.types'
 import {
     Form,
@@ -225,11 +227,25 @@ function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onR
 
 let nextRowId = 1
 
+/** Extrai o bloqueio de baixa em aberto do 400, ou null para outros erros. */
+function extrairBloqueioBaixaExistente(err: unknown): { mensagem: string; ids: number[] } | null {
+    if (!(err instanceof AxiosError) || err.response?.status !== 400) return null
+    const rawIds = err.response.data?.baixas_existentes
+    if (!Array.isArray(rawIds) || rawIds.length === 0) return null
+    const ids = [...new Set(rawIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+    if (ids.length === 0) return null
+    const campo = err.response.data?.unidade_administrativa_origem
+    const mensagemBackend = Array.isArray(campo) && typeof campo[0] === "string" && campo[0] ? campo[0] : ""
+    const mensagem = mensagemBackend || "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
+    return { mensagem, ids }
+}
+
 export default function AdicionarBaixaPage() {
     const navigate = useNavigate()
 
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
+    const [bloqueioExistente, setBloqueioExistente] = useState<{ mensagem: string; ids: number[] } | null>(null)
 
     const form = useForm<AdicionarBaixaFormData>({
         resolver: zodResolver(adicionarBaixaSchema),
@@ -265,6 +281,7 @@ export default function AdicionarBaixaPage() {
         form.setValue("unidade", value, {
             shouldValidate: form.formState.isSubmitted,
         })
+        setBloqueioExistente(null)
         atualizarRows(() => [{ rowId: nextRowId++, bem: null }])
     }
 
@@ -302,9 +319,9 @@ export default function AdicionarBaixaPage() {
         atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSolicitar = form.handleSubmit(
-        async (values) => {
+    const handleSolicitar = form.handleSubmit(async (values) => {
         setSubmitting(true)
+        setBloqueioExistente(null)
         try {
             await baixaFisicaService.create({
                 unidade_administrativa_origem: Number(values.unidade),
@@ -316,24 +333,32 @@ export default function AdicionarBaixaPage() {
             toast.success("Baixa Física cadastrada com sucesso.")
             navigate(-1)
         } catch (err: unknown) {
+            const bloqueio = extrairBloqueioBaixaExistente(err)
+            if (bloqueio) {
+                setBloqueioExistente(bloqueio)
+                toast.error(bloqueio.mensagem)
+                return
+            }
             const message = err instanceof Error ? err.message : "Erro ao solicitar."
             toast.error(message)
         } finally {
             setSubmitting(false)
         }
-        },
-        (errors) => {
-            // Compatibilidade: validação inline (zod/FormMessage) + toasts do padrão de test.
-            // Sem isso, os testes de test que esperam toast.error para validação quebrariam,
-            // e sem o inline o critério de exibir todos os pendentes de uma vez se perderia.
-            const mensagens = [
-                errors.unidade?.message,
-                errors.itens?.message,
-                errors.data_baixa?.message,
-            ].filter(Boolean) as string[]
-            mensagens.forEach((msg) => toast.error(msg))
-        }
-    )
+    })
+
+    /**
+     * Consolida, num único lugar, as pendências que impedem a continuidade
+     * do processo. O zod valida unidade, itens e data num mesmo passe (ver
+     * `adicionarBaixaSchema`), então as três mensagens já chegam juntas aqui
+     * assim que o usuário tenta solicitar — e somem conforme cada campo é
+     * corrigido, sem precisar de uma nova tentativa de envio.
+     */
+    const erros = form.formState.errors
+    const mensagensErro = [
+        erros.unidade?.message,
+        erros.itens?.message,
+        erros.data_baixa?.message,
+    ].filter(Boolean) as string[]
 
     return (
         <Form {...form}>
@@ -366,6 +391,29 @@ export default function AdicionarBaixaPage() {
                     </Button>
                 </div>
             </div>
+
+            <BannerErrosValidacao mensagens={mensagensErro} />
+
+            {bloqueioExistente && (
+                <div
+                    role="alert"
+                    data-testid="bloqueio-baixa-existente"
+                    className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-2 space-y-1"
+                >
+                    <p>{bloqueioExistente.mensagem}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {bloqueioExistente.ids.map((id) => (
+                            <Link
+                                key={id}
+                                to={`/baixas-fisicas/${id}`}
+                                className="text-sm text-[#00703C] underline hover:text-[#005a30]"
+                            >
+                                Abrir Baixa #{id}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <Card className="p-6 space-y-6">
 

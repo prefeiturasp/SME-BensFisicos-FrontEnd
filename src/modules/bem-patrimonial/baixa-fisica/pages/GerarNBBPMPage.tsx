@@ -6,6 +6,7 @@ import { AxiosError } from "axios"
 import { toast } from "sonner"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import {
     type GerarNbbpmFormData,
 } from "../validators/baixa-form.schema"
 import { baixaFisicaService, downloadBlob } from "../service/baixas.service"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
 
 const ACTION_BUTTON_CLASS = `
   h-10 px-6 bg-white border border-[#2F7D57]
@@ -66,6 +68,7 @@ export default function GerarNBBPMPage() {
     const processoState = (location.state as LocationState | null)?.processo ?? ""
 
     const [submitting, setSubmitting] = useState(false)
+    const [dadosConfirmacao, setDadosConfirmacao] = useState<GerarNbbpmFormData | null>(null)
 
     const form = useForm<GerarNbbpmFormData>({
         resolver: zodResolver(gerarNbbpmSchema),
@@ -84,7 +87,7 @@ export default function GerarNBBPMPage() {
         navigate(-1)
     }
 
-    const handleGerarBaixa = form.handleSubmit(async (values) => {
+    const handleSolicitarGeracao = form.handleSubmit((values) => {
         if (baixaIds.length === 0) {
             form.setError("root.serverError", {
                 message: "Nenhuma Baixa Física aprovada foi selecionada.",
@@ -92,20 +95,43 @@ export default function GerarNBBPMPage() {
             return
         }
 
+        setDadosConfirmacao(values)
+    })
+
+    /**
+     * Consolida, num único lugar, tanto as pendências de campo quanto o erro
+     * de servidor (ex.: falha de conexão ao gerar a NBBPM) — evitando dois
+     * avisos vermelhos distintos para a mesma ação. Complementa — não
+     * substitui — a validação inline (borda, label e `FormMessage`
+     * continuam em cada campo) e some automaticamente conforme cada
+     * pendência é corrigida ou uma nova tentativa é feita.
+     */
+    const erros = form.formState.errors
+    const mensagensErro = [
+        erros.root?.serverError?.message,
+        erros.numero_processo?.message,
+        erros.data_autorizacao?.message,
+        erros.responsavel?.message,
+        erros.numero_processo_destinacao_final?.message,
+    ].filter(Boolean) as string[]
+
+    const handleGerarBaixa = async () => {
+        if (!dadosConfirmacao || submitting) return
+
         setSubmitting(true)
         try {
             const nbbpm = await baixaFisicaService.gerarNbbpmLote({
                 baixas: baixaIds,
-                numero_processo_baixa: values.numero_processo,
-                data_autorizacao: values.data_autorizacao,
-                responsavel: values.responsavel,
+                numero_processo_baixa: dadosConfirmacao.numero_processo,
+                data_autorizacao: dadosConfirmacao.data_autorizacao,
+                responsavel: dadosConfirmacao.responsavel,
                 numero_processo_destinacao_final:
-                    values.numero_processo_destinacao_final?.trim() || "",
+                    dadosConfirmacao.numero_processo_destinacao_final?.trim() || "",
             })
 
             try {
                 const pdf = await baixaFisicaService.baixarNbbpmPdf(nbbpm.id)
-                downloadBlob(pdf, `NBBPM_${nbbpm.numero ?? values.numero_processo}.pdf`)
+                downloadBlob(pdf, `NBBPM_${nbbpm.numero ?? dadosConfirmacao.numero_processo}.pdf`)
             } catch (pdfErr) {
                 toast.error(getMensagemErroNbbpm(pdfErr, "Erro ao baixar NBBPM."))
             }
@@ -120,8 +146,9 @@ export default function GerarNBBPMPage() {
             toast.error(message)
         } finally {
             setSubmitting(false)
+            setDadosConfirmacao(null)
         }
-    })
+    }
 
     return (
         <Form {...form}>
@@ -146,7 +173,7 @@ export default function GerarNBBPMPage() {
                         Cancelar
                     </Button>
                     <Button
-                        onClick={handleGerarBaixa}
+                        onClick={handleSolicitarGeracao}
                         disabled={submitting || baixaIds.length === 0}
                         className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -155,11 +182,7 @@ export default function GerarNBBPMPage() {
                 </div>
             </div>
 
-            {form.formState.errors.root?.serverError?.message && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-4 py-2" role="alert">
-                    {form.formState.errors.root.serverError.message}
-                </div>
-            )}
+            <BannerErrosValidacao mensagens={mensagensErro} />
 
             {baixaIds.length === 0 && !form.formState.errors.root?.serverError && (
                 <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-4 py-2" role="alert">
@@ -281,6 +304,17 @@ export default function GerarNBBPMPage() {
 
             </Card>
         </div>
+        <ConfirmDialog
+            open={dadosConfirmacao !== null}
+            title="Confirmar geração da NBBPM"
+            message="Após a geração da NBBPM, as Baixas Físicas selecionadas não poderão mais ser editadas, incluindo o número do processo e os bens vinculados. Deseja continuar?"
+            confirmLabel="Gerar NBBPM"
+            confirmationCheckboxLabel="Estou ciente de que as Baixas Físicas selecionadas não poderão ser editadas após a geração da NBBPM."
+            loadingLabel="Gerando..."
+            loading={submitting}
+            onConfirm={() => { void handleGerarBaixa() }}
+            onClose={() => setDadosConfirmacao(null)}
+        />
         </Form>
     )
 }

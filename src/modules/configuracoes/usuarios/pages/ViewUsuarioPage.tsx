@@ -1,14 +1,17 @@
-import { ArrowLeft, Pencil } from "lucide-react"
+import { ArrowLeft, History, Pencil } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { HistoricoConsultaModal } from "@/components/HistoricoConsultaModal"
 import { Label } from "@/components/ui/label"
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { usuarioService, type Usuario } from "../service/usuario.service"
 import { authService } from "../../../../auth/auth.service"
 import { GESTOR_BADGE_TEXT } from "./usuarioFormShared"
+import { StatusBadge, type StatusTone } from "@/components/status/StatusBadge"
+import { getUsuarioStatusTone } from "../utils/status"
 
 const INPUT_TEXT_CLASS = "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-gray-50 cursor-not-allowed"
 const ACTION_BUTTON_CLASS = "h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
@@ -18,10 +21,12 @@ type CampoProps = {
   readonly value: string | null | undefined
   readonly required?: boolean
   readonly badge?: string
+  /** Quando informado, o valor é exibido como StatusBadge em vez de input desabilitado. */
+  readonly statusTone?: StatusTone
 }
 type EscopoMaps = { uaLabelsById: Record<number, string>; uoLabelsById: Record<number, string>; uasByUoId: Record<number, string[]> }
 
-function Campo({ label, value, required, badge }: Readonly<CampoProps>) {
+function Campo({ label, value, required, badge, statusTone }: Readonly<CampoProps>) {
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-sm font-semibold text-gray-700 inline-flex items-center gap-2 w-fit">
@@ -35,7 +40,13 @@ function Campo({ label, value, required, badge }: Readonly<CampoProps>) {
           </span>
         )}
       </Label>
-      <input type="text" disabled value={value ?? "—"} className={INPUT_TEXT_CLASS} />
+      {statusTone ? (
+        <div className={`${INPUT_TEXT_CLASS} flex items-center`}>
+          <StatusBadge tone={statusTone} label={value ?? "—"} />
+        </div>
+      ) : (
+        <input type="text" disabled value={value ?? "—"} className={INPUT_TEXT_CLASS} />
+      )}
     </div>
   )
 }
@@ -87,6 +98,7 @@ export default function ViewUsuarioPage() {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [showHistorico, setShowHistorico] = useState(false)
   const [maps, setMaps] = useState<EscopoMaps>({ uaLabelsById: {}, uoLabelsById: {}, uasByUoId: {} })
 
   useEffect(() => {
@@ -142,6 +154,12 @@ export default function ViewUsuarioPage() {
           <Button type="button" onClick={() => navigate("/usuarios")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
             <ArrowLeft size={18} />
           </Button>
+          {usuario && (
+            <Button type="button" onClick={() => setShowHistorico(true)} className={ACTION_BUTTON_CLASS}>
+              <History size={16} />
+              Histórico
+            </Button>
+          )}
           <Button onClick={() => navigate(`/usuarios/${id}/editar`)} className={ACTION_BUTTON_CLASS}>
             <Pencil size={16} />
             Editar
@@ -162,7 +180,12 @@ export default function ViewUsuarioPage() {
               required
               badge={isGestor ? GESTOR_BADGE_TEXT : undefined}
             />
-            <Campo label="Status" value={usuario.status_display} required />
+            <Campo
+              label="Status"
+              value={usuario.status_display}
+              required
+              statusTone={getUsuarioStatusTone(usuario.status)}
+            />
             <Campo label="Unidade Orçamentária" value={viewData.uoLabel} required />
             <ListaUas
               label={isGestor ? "Notificações das UAs" : "Unidades Administrativas"}
@@ -172,6 +195,9 @@ export default function ViewUsuarioPage() {
             />
           </div>
         </Card>
+      )}
+      {usuario && showHistorico && (
+        <HistoricoConsultaModal endpoint={`/user/${usuario.id}/historico/`} onClose={() => setShowHistorico(false)} />
       )}
     </div>
   )

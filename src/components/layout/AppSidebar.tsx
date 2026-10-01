@@ -28,6 +28,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions'
+import { canAccessNbbpm } from '@/modules/bem-patrimonial/nbbpm/utils/permissions'
 
 const menuItems = [
   {
@@ -51,6 +52,10 @@ const menuItems = [
       {
         title: 'Baixas Físicas de Bens Patrimoniais',
         url: '/baixas-fisicas',
+      },
+      {
+        title: 'Notas de Baixa de Bens Patrimoniais',
+        url: '/nbbpm',
       },
     ],
   },
@@ -96,6 +101,12 @@ export function AppSidebar() {
   const { state, toggleSidebar, isMobile, setOpenMobile, setOpen } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const canAccessParametros = canAccessParametrosConciliacao(user)
+  const canAccessNbbpmList = canAccessNbbpm(user)
+  const isSubItemVisible = (url: string) => {
+    if (url === '/parametros-conciliacao-anual') return canAccessParametros
+    if (url === '/nbbpm') return canAccessNbbpmList
+    return true
+  }
   const visibleMenuItems = menuItems
     .filter((item) => item.type !== 'link' || !item.requiresSuperuser || Boolean(user?.is_superuser))
     .map((item) => {
@@ -103,16 +114,10 @@ export function AppSidebar() {
         return item
       }
 
-      if (item.items.some((subItem) => subItem.url === '/conciliacoes')) {
-        return {
-          ...item,
-          items: item.items.filter(
-            (subItem) => subItem.url !== '/parametros-conciliacao-anual' || canAccessParametros,
-          ),
-        }
+      return {
+        ...item,
+        items: item.items.filter((subItem) => isSubItemVisible(subItem.url)),
       }
-
-      return item
     })
 
   const handleSubItemClick = () => {

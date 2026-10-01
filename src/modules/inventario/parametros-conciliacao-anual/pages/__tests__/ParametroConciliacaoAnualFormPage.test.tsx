@@ -113,6 +113,10 @@ vi.mock('../../services/parametros-conciliacao-anual.service', () => ({
   },
 }));
 
+vi.mock('@/components/HistoricoConsultaModal', () => ({
+  HistoricoConsultaModal: ({ endpoint }: { endpoint: string }) => <div data-testid='historico-endpoint'>{endpoint}</div>,
+}));
+
 function renderPage(initialPath = '/parametros-conciliacao-anual/novo') {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -166,6 +170,15 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     createMock.mockResolvedValue({ id: 1 });
     updateMutateAsyncMock.mockResolvedValue({ id: 1 });
     deleteMutateAsyncMock.mockResolvedValue(undefined);
+  });
+
+  it('abre o histórico do parâmetro consultado', async () => {
+    queryState.data = parametroEdit;
+
+    renderPage('/parametros-conciliacao-anual/2');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Histórico' }));
+    expect(screen.getByTestId('historico-endpoint')).toHaveTextContent('/inventario/parametros-conciliacao-anual/2/historico/');
   });
 
   it('mantem o salvar habilitado e exibe a validacao inline no cadastro', async () => {

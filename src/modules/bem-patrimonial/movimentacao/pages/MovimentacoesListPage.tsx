@@ -26,6 +26,8 @@ import { usePagination } from '../../bem/hooks/usePagination'
 import { FilterSelect } from '@/modules/bem-patrimonial/components/FilterSelect'
 import { movimentacaoService } from '../services/movimentacao.service'
 import type { MovimentacaoBemPatrimonialListItem } from '../types/movimentacao.types'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { getMovimentacaoStatusTone } from '../utils/status'
 
 type UaOption = {
   id: number
@@ -64,13 +66,6 @@ const STATUS_OPTIONS: StatusOption[] = [
   { value: 'rejeitada', label: 'Rejeitada' },
   { value: 'cancelada', label: 'Cancelada' },
 ]
-
-const STATUS_BADGE_CLASS: Record<string, string> = {
-  enviada: 'text-[#00703C]',
-  aceita: 'text-blue-700',
-  rejeitada: 'text-red-600',
-  cancelada: 'text-gray-500',
-}
 
 export function isMovimentacaoAtrasada(movimentacao: Pick<MovimentacaoBemPatrimonialListItem, 'status' | 'criado_em'>): boolean {
   if (movimentacao.status !== 'enviada') return false
@@ -184,16 +179,6 @@ function buildUaOptions(
   return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label))
 }
 
-function StatusBadge(props: Readonly<{ status: string; statusDisplay: string }>) {
-  const { status, statusDisplay } = props
-
-  return (
-    <span className={`text-sm font-semibold ${STATUS_BADGE_CLASS[status] ?? 'text-gray-600'}`}>
-      {statusDisplay}
-    </span>
-  )
-}
-
 function AlertaAtrasada() {
   return (
     <Tooltip>
@@ -246,8 +231,9 @@ function MovimentacaoTableRow(props: MovimentacaoTableRowProps) {
       <td className='p-3'>{formatDateTimeBR(movimentacao.atualizado_em)}</td>
       <td className='p-3'>
         <StatusBadge
-          status={movimentacao.status}
-          statusDisplay={movimentacao.status_display}
+          tone={getMovimentacaoStatusTone(movimentacao.status)}
+          label={movimentacao.status_display}
+          testId={`movimentacao-status-${movimentacao.status}`}
         />
       </td>
       <td className='p-3 text-center'>

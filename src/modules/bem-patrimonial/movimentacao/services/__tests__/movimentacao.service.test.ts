@@ -158,6 +158,19 @@ describe('movimentacaoService', () => {
     expect(result).toHaveLength(1)
   })
 
+  it('deve buscar candidatos por ID na UA de origem', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { count: 1, pagina: 1, proxima_pagina: null, itens: [{ id: 7 }] },
+    })
+    const response = await movimentacaoService.buscarBens({
+      unidade_administrativa_origem: 10, id: 7, pagina: 1,
+    })
+    expect(api.get).toHaveBeenCalledWith(
+      '/movimentacoes/buscar-bens/?unidade_administrativa_origem=10&id=7&pagina=1',
+    )
+    expect(response.itens[0].id).toBe(7)
+  })
+
   it('deve listar opções de cadastro de movimentação', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: [

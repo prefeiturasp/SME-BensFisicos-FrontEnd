@@ -52,6 +52,9 @@ vi.mock('@/modules/bem-patrimonial/movimentacao/pages/MovimentacaoDetailPage', (
 vi.mock('@/modules/bem-patrimonial/baixa-fisica/pages/BaixasListPage', () => ({
   default: () => <div data-testid='baixas-list'>Baixas List</div>,
 }));
+vi.mock('@/modules/bem-patrimonial/nbbpm/pages/NbbpmListPage', () => ({
+  default: () => <div data-testid='nbbpm-list'>NBBPM List</div>,
+}));
 vi.mock('@/modules/inventario/conciliacoes/pages/AdicionarConciliacaoPage', () => ({
   default: () => <div data-testid='adicionar-conciliacao'>Adicionar Conciliação</div>,
 }));
@@ -349,6 +352,15 @@ describe('AppRoutes', () => {
         </MemoryRouter>,
       );
       expect(screen.getByTestId('baixas-list')).toBeInTheDocument();
+    });
+
+    it('deve navegar para a listagem de NBBPMs', () => {
+      render(
+        <MemoryRouter initialEntries={['/nbbpm']}>
+          <AppRoutes />
+        </MemoryRouter>,
+      );
+      expect(screen.getByTestId('nbbpm-list')).toBeInTheDocument();
     });
 
     it('deve navegar para a tela de gerenciamento de conciliações', () => {
