@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -42,6 +42,10 @@ import type {
   MovimentacaoUoCadastroOption,
 } from '../types/movimentacao.types'
 import type { UnidadeAdministrativa } from '@/modules/configuracoes/unidades-administrativas/types/unidades-administrativas.types'
+import {
+  MovimentacaoBensSelection,
+  type SelecaoMovimentacao,
+} from '../components/MovimentacaoBensSelection'
 
 type UaOption = { id: number; label: string }
 type UoOption = { id: number; label: string; tem_ponto_central: boolean }
@@ -50,23 +54,6 @@ type CriteriosBusca = Pick<
   MovimentacaoBuscaBensParams,
   'termo_busca' | 'numero_patrimonial_de' | 'numero_patrimonial_ate'
 >
-type EstadoBusca = {
-  selecionados: MovimentacaoBemBusca[]
-  resultados: MovimentacaoBemBusca[]
-  proximaPagina: number | null
-  total: number
-  realizada: boolean
-  carregado: boolean
-  selecionarTodos: boolean
-}
-
-function novoEstadoBusca(): EstadoBusca {
-  return { selecionados: [], resultados: [], proximaPagina: null, total: 0, realizada: false, carregado: false, selecionarTodos: false }
-}
-
-function novosEstadosBusca(): Record<ModoBusca, EstadoBusca> {
-  return { geral: novoEstadoBusca(), faixa: novoEstadoBusca(), todos: novoEstadoBusca() }
-}
 
 const INPUT_CLASS =
   'h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white'
@@ -119,85 +106,6 @@ function getUaDestinoPlaceholder(
   return 'Selecione a UA'
 }
 
-type BuscaBensPanelProps = Readonly<{
-  tipo: ModoBusca
-  onTipoChange: (tipo: ModoBusca) => void
-  termo: string
-  onTermoChange: (value: string) => void
-  de: string
-  onDeChange: (value: string) => void
-  ate: string
-  onAteChange: (value: string) => void
-  buscando: boolean
-  onBuscar: (pagina?: number) => void
-  buscaRealizada: boolean
-  total: number
-  resultados: MovimentacaoBemBusca[]
-  selecionados: MovimentacaoBemBusca[]
-  proximaPagina: number | null
-  onAlternarBem: (bem: MovimentacaoBemBusca) => void
-}>
-
-function BuscaBensPanel({
-  tipo, onTipoChange, termo, onTermoChange, de, onDeChange, ate, onAteChange,
-  buscando, onBuscar, buscaRealizada, total, resultados, selecionados,
-  proximaPagina, onAlternarBem,
-}: BuscaBensPanelProps) {
-  const idsSelecionados = new Set(selecionados.map((bem) => bem.id))
-  const itensTabela = [...selecionados, ...resultados.filter((bem) => !idsSelecionados.has(bem.id))]
-  return (
-    <div className='space-y-3'>
-      <fieldset className='flex flex-wrap gap-4' aria-label='Modo de seleção de bens'>
-        {([['geral', 'Buscar Geral'], ['faixa', 'Buscar Faixa'], ['todos', 'Todos os bens da UA']] as const).map(([valor, label]) => (
-          <label key={valor} className='flex items-center gap-2 text-sm font-medium text-gray-700'>
-            <input type='radio' name='modo-busca-bens' value={valor} checked={tipo === valor} disabled={buscando} onChange={() => onTipoChange(valor)} className='accent-[#2F7D57]' />
-            {label}
-          </label>
-        ))}
-      </fieldset>
-      {tipo === 'todos' ? null : (
-        <div className='grid gap-3 md:grid-cols-[1fr_auto] md:items-end'>
-          {tipo === 'faixa' ? (
-            <div className='grid gap-3 sm:grid-cols-2'>
-              <div className='space-y-2'>
-                <label htmlFor='busca-np-de' className='text-sm font-semibold text-gray-700'>Número Patrimonial - De</label>
-                <Input id='busca-np-de' value={de} onChange={(event) => onDeChange(formatarNP(event.target.value))} placeholder='000.000000000-0' className={INPUT_CLASS} />
-              </div>
-              <div className='space-y-2'>
-                <label htmlFor='busca-np-ate' className='text-sm font-semibold text-gray-700'>Número Patrimonial - Até</label>
-                <Input id='busca-np-ate' value={ate} onChange={(event) => onAteChange(formatarNP(event.target.value))} placeholder='000.000000000-0' className={INPUT_CLASS} />
-              </div>
-            </div>
-          ) : (
-            <div className='space-y-2'>
-              <label htmlFor='termo-busca-bem' className='text-sm font-semibold text-gray-700'>Buscar por nome, descrição, ID ou número patrimonial</label>
-              <Input id='termo-busca-bem' value={termo} onChange={(event) => onTermoChange(event.target.value)} className={INPUT_CLASS} />
-            </div>
-          )}
-          <Button type='button' variant='outline' onClick={() => onBuscar()} disabled={buscando}>
-            {buscando ? 'Buscando...' : 'Buscar'}
-          </Button>
-        </div>
-      )}
-      {buscaRealizada && total === 0 ? <p className='text-sm text-gray-500'>Nenhum bem encontrado para a busca informada.</p> : null}
-      <div className='overflow-x-auto rounded-md border border-gray-200'>
-        <table className='w-full min-w-190 text-sm'>
-          <thead className='border-b bg-[#F5F5F5] text-left text-gray-700'><tr><th className='p-3'>Selecionar</th><th className='p-3'>ID</th><th className='p-3'>Número Patrimonial</th><th className='p-3'>Nome</th><th className='p-3'>Descrição</th><th className='p-3'>Localização</th><th className='p-3'>Situação</th></tr></thead>
-          <tbody>{itensTabela.map((bem) => (
-            <tr key={bem.id} className='border-b hover:bg-gray-50'>
-              <td className='p-3'><Checkbox aria-label={`Selecionar bem ID ${bem.id}`} checked={idsSelecionados.has(bem.id)} disabled={!bem.apto && !idsSelecionados.has(bem.id)} onCheckedChange={() => onAlternarBem(bem)} /></td>
-              <td className='p-3'>{bem.id}</td><td className='p-3'>{bem.numero_patrimonial ?? 'Sem número patrimonial'}</td>
-              <td className='p-3'>{bem.nome}</td><td className='p-3'>{bem.descricao}</td><td className='p-3'>{bem.localizacao || '-'}</td>
-              <td className='p-3'>{bem.motivo ?? 'Apto para movimentação'}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-      {proximaPagina ? <Button type='button' variant='outline' onClick={() => onBuscar(proximaPagina)} disabled={buscando}>Carregar mais</Button> : null}
-    </div>
-  )
-}
-
 export default function AdicionarMovimentacaoPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -240,9 +148,14 @@ export default function AdicionarMovimentacaoPage() {
   const [termoBusca, setTermoBusca] = useState('')
   const [buscaDe, setBuscaDe] = useState('')
   const [buscaAte, setBuscaAte] = useState('')
-  const [buscas, setBuscas] = useState(novosEstadosBusca)
+  const [resultadosBusca, setResultadosBusca] = useState<MovimentacaoBemBusca[]>([])
+  const [proximaPagina, setProximaPagina] = useState<number | null>(null)
+  const [totalResultados, setTotalResultados] = useState(0)
+  const [buscaRealizada, setBuscaRealizada] = useState(false)
+  const [selecoes, setSelecoes] = useState<SelecaoMovimentacao[]>([])
+  const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
   const versaoBusca = useRef(0)
-  const buscaAtiva = buscas[tipoBusca]
+  const modoBuscaAnterior = useRef<ModoBusca>('geral')
   const [buscando, setBuscando] = useState(false)
   const [adicionandoItens, setAdicionandoItens] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -315,11 +228,19 @@ export default function AdicionarMovimentacaoPage() {
     }
   }, [destinoMesmaUo, selectedUaId, uaOptions, setSelectedUaId])
 
+  const bensSelecionados = useMemo(() => {
+    const bensPorId = new Map<number, MovimentacaoBemBusca>()
+    selecoes.forEach((selecao) => {
+      selecao.bens.forEach((bem) => bensPorId.set(bem.id, bem))
+    })
+    return [...bensPorId.values()]
+  }, [selecoes])
+
   useEffect(() => {
-    form.setValue('itens', buscaAtiva.selecionados.map((bem) => bem.id), {
+    form.setValue('itens', bensSelecionados.map((bem) => bem.id), {
       shouldValidate: form.formState.isSubmitted,
     })
-  }, [buscaAtiva.selecionados, form])
+  }, [bensSelecionados, form])
 
   useEffect(() => {
     form.setValue('destino_mesma_uo', destinoMesmaUo)
@@ -360,20 +281,19 @@ export default function AdicionarMovimentacaoPage() {
 
   const limparErroDeServidor = useCallback(() => limparErroServidor(form), [form])
 
-  const atualizarBusca = (modo: ModoBusca, alterar: (atual: EstadoBusca) => EstadoBusca) => {
-    setBuscas((atuais) => ({ ...atuais, [modo]: alterar(atuais[modo]) }))
-  }
-
-  const limparResultadosBusca = (modo: ModoBusca) => {
+  const limparResultadosBusca = () => {
     versaoBusca.current += 1
-    atualizarBusca(modo, (atual) => ({
-      ...atual, resultados: [], proximaPagina: null, total: 0, realizada: false,
-    }))
+    setResultadosBusca([])
+    setProximaPagina(null)
+    setTotalResultados(0)
+    setBuscaRealizada(false)
   }
 
   const buscarBens = async (pagina = 1) => {
-    if (!originUaId) return
-    const modo = tipoBusca
+    if (!originUaId) {
+      exibirErro('Informe a Unidade Administrativa de origem.')
+      return
+    }
     let criterios: MovimentacaoBuscaBensParams
     try {
       criterios = {
@@ -391,13 +311,10 @@ export default function AdicionarMovimentacaoPage() {
     try {
       const resposta = await movimentacaoService.buscarBens(criterios)
       if (versao !== versaoBusca.current) return
-      atualizarBusca(modo, (atual) => ({
-        ...atual,
-        resultados: pagina === 1 ? resposta.itens : [...atual.resultados, ...resposta.itens],
-        proximaPagina: resposta.proxima_pagina,
-        total: resposta.count,
-        realizada: true,
-      }))
+      setResultadosBusca((atuais) => pagina === 1 ? resposta.itens : [...atuais, ...resposta.itens])
+      setProximaPagina(resposta.proxima_pagina)
+      setTotalResultados(resposta.count)
+      setBuscaRealizada(true)
     } catch (error) {
       if (versao === versaoBusca.current) {
         exibirErro(error instanceof Error ? error.message : 'Não foi possível buscar bens.')
@@ -408,15 +325,121 @@ export default function AdicionarMovimentacaoPage() {
   }
 
   const alternarBemBusca = (bem: MovimentacaoBemBusca) => {
-    if (!bem.apto && !buscaAtiva.selecionados.some((item) => item.id === bem.id)) return
-    atualizarBusca(tipoBusca, (atual) => ({
-      ...atual,
-      selecionados: atual.selecionados.some((item) => item.id === bem.id)
-        ? atual.selecionados.filter((item) => item.id !== bem.id)
-        : [...atual.selecionados, bem],
-      selecionarTodos: false,
-    }))
+    if (!bem.apto) return
+    setSelecoes((atuais) => {
+      const individual = atuais.find(
+        (selecao) => selecao.tipo === 'individual' && selecao.bens[0]?.id === bem.id,
+      )
+      if (individual) return atuais.filter((selecao) => selecao.id !== individual.id)
+      const jaSelecionado = atuais.some((selecao) => selecao.bens.some((item) => item.id === bem.id))
+      if (jaSelecionado) return atuais
+      return [...atuais, { id: `bem-${bem.id}`, tipo: 'individual', bens: [bem] }]
+    })
     limparErrosDeItens()
+  }
+
+  const alternarResultadosBusca = () => {
+    const idsBloqueados = new Set(
+      selecoes
+        .filter((selecao) => selecao.tipo !== 'individual')
+        .flatMap((selecao) => selecao.bens.map((bem) => bem.id)),
+    )
+    const selecionaveis = resultadosBusca.filter((bem) => bem.apto && !idsBloqueados.has(bem.id))
+    const idsIndividuais = new Set(
+      selecoes
+        .filter((selecao) => selecao.tipo === 'individual')
+        .flatMap((selecao) => selecao.bens.map((bem) => bem.id)),
+    )
+    const removerTodos = selecionaveis.length > 0 && selecionaveis.every((bem) => idsIndividuais.has(bem.id))
+
+    setSelecoes((atuais) => {
+      const idsResultados = new Set(selecionaveis.map((bem) => bem.id))
+      const mantidas = removerTodos
+        ? atuais.filter(
+            (selecao) => selecao.tipo !== 'individual' || !idsResultados.has(selecao.bens[0].id),
+          )
+        : atuais
+      if (removerTodos) return mantidas
+      const idsAtuais = new Set(mantidas.flatMap((selecao) => selecao.bens.map((bem) => bem.id)))
+      const novas = selecionaveis
+        .filter((bem) => !idsAtuais.has(bem.id))
+        .map<SelecaoMovimentacao>((bem) => ({ id: `bem-${bem.id}`, tipo: 'individual', bens: [bem] }))
+      return [...mantidas, ...novas]
+    })
+    limparErrosDeItens()
+  }
+
+  const importarFaixa = async () => {
+    if (!originUaId) {
+      exibirErro('Informe a Unidade Administrativa de origem.')
+      return
+    }
+    let faixa: CriteriosBusca
+    try {
+      faixa = obterCriteriosBusca('faixa', '', buscaDe, buscaAte)
+    } catch (error) {
+      exibirErro(error instanceof Error ? error.message : 'Informe a faixa de busca.')
+      return
+    }
+    const numeroDe = faixa.numero_patrimonial_de ?? ''
+    const numeroAteInformado = faixa.numero_patrimonial_ate
+    const numeroAte = numeroAteInformado ?? numeroDe
+    if (
+      selecoes.some(
+        (selecao) =>
+          selecao.tipo === 'faixa' &&
+          selecao.numeroDe === numeroDe &&
+          selecao.numeroAte === numeroAte,
+      )
+    ) {
+      exibirErro('A faixa informada já foi adicionada à movimentação.')
+      return
+    }
+
+    setAdicionandoItens(true)
+    limparErrosDeItens()
+    try {
+      const { itens } = await movimentacaoService.resolverItensLote({
+        unidade_administrativa_origem: originUaId,
+        faixas: [{
+          numero_patrimonial_de: numeroDe,
+          ...(numeroAteInformado ? { numero_patrimonial_ate: numeroAteInformado } : {}),
+        }],
+      })
+      if (itens.length === 0) {
+        exibirErro('Nenhum bem apto foi encontrado na faixa informada.')
+        return
+      }
+      const idsAtuais = new Set(bensSelecionados.map((bem) => bem.id))
+      if (itens.some((bem) => idsAtuais.has(bem.id))) {
+        exibirErro('Um ou mais bens da faixa já foram adicionados à movimentação.')
+        return
+      }
+      const bens = itens.map<MovimentacaoBemBusca>((bem) => ({
+        id: bem.id,
+        numero_patrimonial: bem.numero_patrimonial,
+        nome: bem.nome,
+        descricao: bem.descricao ?? '',
+        localizacao: bem.localizacao ?? null,
+        apto: true,
+        motivo: null,
+      }))
+      setSelecoes((atuais) => [
+        ...atuais,
+        { id: `faixa-${numeroDe}-${numeroAte}`, tipo: 'faixa', numeroDe, numeroAte, bens },
+      ])
+      setBuscaDe('')
+      setBuscaAte('')
+      limparResultadosBusca()
+    } catch (requestError: unknown) {
+      exibirErro(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Erro ao importar a faixa de bens.',
+      )
+    } finally {
+      setAdicionandoItens(false)
+    }
   }
 
   const handleSelecionarTodos = useCallback(async () => {
@@ -438,7 +461,7 @@ export default function AdicionarMovimentacaoPage() {
           exibirErro('Nenhum bem aprovado foi encontrado na unidade administrativa de origem.')
           return
         }
-        const selecionados = itens.map((bem) => ({
+        const selecionados = itens.map<MovimentacaoBemBusca>((bem) => ({
           id: bem.id,
           numero_patrimonial: bem.numero_patrimonial,
           nome: bem.nome,
@@ -447,10 +470,11 @@ export default function AdicionarMovimentacaoPage() {
           apto: true,
           motivo: null,
         }))
-        setBuscas((atuais) => ({
-          ...atuais,
-          todos: { ...atuais.todos, selecionados, resultados: selecionados, selecionarTodos: true, carregado: true },
-        }))
+        setSelecoes([{ id: 'todos', tipo: 'todos', bens: selecionados }])
+        setResultadosBusca(selecionados)
+        setTotalResultados(selecionados.length)
+        setProximaPagina(null)
+        setBuscaRealizada(true)
       } catch (requestError: unknown) {
         if (versao === versaoBusca.current) {
           exibirErro(
@@ -465,11 +489,20 @@ export default function AdicionarMovimentacaoPage() {
     }, [exibirErro, limparErrosDeItens, originUaId])
 
   const mudarModoBusca = (novoModo: ModoBusca) => {
+    const sairDaSelecaoDeTodos = tipoBusca === 'todos' && novoModo !== 'todos'
+    modoBuscaAnterior.current = tipoBusca
     setTipoBusca(novoModo)
     limparErrosDeItens()
-    if (novoModo === 'todos' && !buscas.todos.carregado) {
-      void handleSelecionarTodos()
+    limparResultadosBusca()
+    if (sairDaSelecaoDeTodos) {
+      setSelecoes([])
     }
+    if (novoModo !== 'todos') return
+    if (selecoes.length > 0) {
+      setConfirmarSelecionarTodos(true)
+      return
+    }
+    void handleSelecionarTodos()
   }
 
   const handleSave = form.handleSubmit(async (values) => {
@@ -486,9 +519,9 @@ export default function AdicionarMovimentacaoPage() {
 
     const selectedUoNumericId = Number(values.unidade_orcamentaria_destino)
 
-    const selecaoPayload = buscaAtiva.selecionarTodos
+    const selecaoPayload = selecoes.length === 1 && selecoes[0].tipo === 'todos'
       ? { selecionar_todos: true }
-      : { itens: buscaAtiva.selecionados.map((bem) => ({ bem: bem.id })) }
+      : { itens: bensSelecionados.map((bem) => ({ bem: bem.id })) }
 
     setSubmitting(true)
     try {
@@ -540,7 +573,8 @@ export default function AdicionarMovimentacaoPage() {
           <Select value={originUaId ? String(originUaId) : ''} onValueChange={(value) => {
             versaoBusca.current += 1
             setOriginUaSelecionada(Number(value))
-            setBuscas(novosEstadosBusca())
+            setSelecoes([])
+            limparResultadosBusca()
             setTipoBusca('geral')
             form.clearErrors('itens')
           }}>
@@ -684,26 +718,107 @@ export default function AdicionarMovimentacaoPage() {
             </FormItem>
           )}
         />
-        <BuscaBensPanel
-          tipo={tipoBusca}
-          onTipoChange={mudarModoBusca}
-          termo={termoBusca}
-          onTermoChange={(value) => { setTermoBusca(value); limparResultadosBusca('geral') }}
-          de={buscaDe}
-          onDeChange={(value) => { setBuscaDe(value); limparResultadosBusca('faixa') }}
-          ate={buscaAte}
-          onAteChange={(value) => { setBuscaAte(value); limparResultadosBusca('faixa') }}
-          buscando={buscando || adicionandoItens}
-          onBuscar={(pagina) => void buscarBens(pagina)}
-          buscaRealizada={buscaAtiva.realizada}
-          total={buscaAtiva.total}
-          resultados={buscaAtiva.resultados}
-          selecionados={buscaAtiva.selecionados}
-          proximaPagina={buscaAtiva.proximaPagina}
-          onAlternarBem={alternarBemBusca}
-        />
+        <div className='space-y-5'>
+          <fieldset className='flex flex-wrap gap-5' aria-label='Modo de busca de bens'>
+            {([['geral', 'Buscar Geral'], ['faixa', 'Buscar Faixa'], ['todos', 'Todos os bens da UA']] as const).map(([valor, label]) => (
+              <label key={valor} className='flex items-center gap-2 text-sm font-medium text-gray-700'>
+                <input
+                  type='radio'
+                  name='modo-busca-bens'
+                  value={valor}
+                  checked={tipoBusca === valor}
+                  disabled={buscando || adicionandoItens}
+                  onChange={() => mudarModoBusca(valor)}
+                  className='accent-[#2F7D57]'
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+
+          {tipoBusca !== 'todos' ? (
+            <div className='grid gap-3 md:grid-cols-[1fr_auto] md:items-end'>
+              {tipoBusca === 'faixa' ? (
+                <div className='grid gap-3 sm:grid-cols-2'>
+                  <div className='space-y-2'>
+                    <label htmlFor='busca-np-de' className='text-sm font-semibold text-gray-700'>Número Patrimonial - De</label>
+                    <Input
+                      id='busca-np-de'
+                      value={buscaDe}
+                      onChange={(event) => { setBuscaDe(formatarNP(event.target.value)); limparResultadosBusca() }}
+                      placeholder='000.000000000-0'
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <label htmlFor='busca-np-ate' className='text-sm font-semibold text-gray-700'>Número Patrimonial - Até</label>
+                    <Input
+                      id='busca-np-ate'
+                      value={buscaAte}
+                      onChange={(event) => { setBuscaAte(formatarNP(event.target.value)); limparResultadosBusca() }}
+                      placeholder='000.000000000-0'
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className='space-y-2'>
+                  <label htmlFor='termo-busca-bem' className='text-sm font-semibold text-gray-700'>Buscar por nome, descrição, ID ou número patrimonial</label>
+                  <Input
+                    id='termo-busca-bem'
+                    value={termoBusca}
+                    onChange={(event) => { setTermoBusca(event.target.value); limparResultadosBusca() }}
+                    className={INPUT_CLASS}
+                  />
+                </div>
+              )}
+              <Button
+                type='button'
+                onClick={() => void buscarBens()}
+                disabled={buscando || adicionandoItens}
+                className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
+              >
+                {buscando ? 'Buscando...' : 'Buscar'}
+              </Button>
+            </div>
+          ) : null}
+
+          <MovimentacaoBensSelection
+            resultados={resultadosBusca}
+            selecoes={selecoes}
+            buscaRealizada={buscaRealizada}
+            totalResultados={totalResultados}
+            buscando={buscando || adicionandoItens}
+            proximaPagina={proximaPagina}
+            permiteImportarFaixa={tipoBusca === 'faixa'}
+            permiteSelecionarResultados={tipoBusca === 'geral'}
+            onAlternarBem={alternarBemBusca}
+            onAlternarResultados={alternarResultadosBusca}
+            onImportarFaixa={() => void importarFaixa()}
+            onCarregarMais={(pagina) => void buscarBens(pagina)}
+            onRemoverSelecao={(id) => {
+              setSelecoes((atuais) => atuais.filter((selecao) => selecao.id !== id))
+              limparErrosDeItens()
+            }}
+          />
+        </div>
       </section>
       </Form>
+      <ConfirmDialog
+        open={confirmarSelecionarTodos}
+        title='Selecionar todos os bens da UA'
+        message='A lista de bens selecionados será substituída por todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?'
+        confirmLabel='Continuar'
+        loading={adicionandoItens}
+        onConfirm={() => {
+          setConfirmarSelecionarTodos(false)
+          void handleSelecionarTodos()
+        }}
+        onClose={() => {
+          setConfirmarSelecionarTodos(false)
+          setTipoBusca(modoBuscaAnterior.current)
+        }}
+      />
     </BemCadastroPageShell>
   )
 }
