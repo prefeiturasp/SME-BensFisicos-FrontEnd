@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ValidatedField } from '@/components/form-fields/ValidatedField'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Boxes, Info } from 'lucide-react'
+import { Boxes, Info, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService } from '../services/bem.service'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
-import { LinhaBemRow, type LinhaBem } from '../components/LinhaBemRow'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { LinhaBemRow, isLinhaBemVazia, type LinhaBem } from '../components/LinhaBemRow'
 import { useAuth } from '@/auth/useAuth'
 
 type LinhaBemComId = LinhaBem & { id: string }
@@ -163,6 +164,10 @@ export default function BemCreatePage() {
   const [linhasErrors, setLinhasErrors] = useState<
     Record<number, Record<string, string>>
   >({})
+  const [linhaPendente, setLinhaPendente] = useState<{
+    linha: LinhaBemComId
+    index: number
+  } | null>(null)
 
   const todasUAs = (user?.opcoes_escopo?.grupos ?? []).flatMap(
     (g: any) => g.uas ?? []
@@ -202,9 +207,29 @@ export default function BemCreatePage() {
 
   const addLinha = () => resetLinhas(prev => [...prev, novaLinha()])
 
-  const removeLinha = (index: number) => {
+  const executarRemocaoPorId = (id: string) => {
+    resetLinhas(prev => prev.filter(linha => linha.id !== id))
+  }
+
+  const solicitarRemocao = (index: number) => {
     if (linhas.length === 1) return
-    resetLinhas(prev => prev.filter((_, i) => i !== index))
+    const alvo = linhas[index]
+    if (!alvo) return
+    if (isLinhaBemVazia(alvo)) {
+      executarRemocaoPorId(alvo.id)
+      return
+    }
+    setLinhaPendente({ linha: alvo, index })
+  }
+
+  const confirmarRemocaoPendente = () => {
+    if (!linhaPendente) return
+    executarRemocaoPorId(linhaPendente.linha.id)
+    setLinhaPendente(null)
+  }
+
+  const cancelarRemocaoPendente = () => {
+    setLinhaPendente(null)
   }
 
   const limparErroLinha = (index: number, campo: string) => {
@@ -456,9 +481,9 @@ export default function BemCreatePage() {
                 <Info size={14} className="text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6} className="max-w-80">
-                Para adicionar mais bens, clique no botão + ao final da linha.
-                Caso não seja necessário o novo item do bem, ele pode ser
-                removido no botão de lixeira.
+                Para adicionar mais bens, clique em Adicionar bem abaixo. Para
+                remover uma linha, use o botão de lixeira da linha. Linhas
+                preenchidas pedem confirmação antes de excluir.
               </TooltipContent>
             </Tooltip>
           </div>
@@ -470,16 +495,39 @@ export default function BemCreatePage() {
               index={index}
               linhas={linhas}
               setLinhas={setLinhas as any}
-              removeLinha={removeLinha}
-              addLinha={addLinha}
-              isLast={index === linhas.length - 1}
+              removeLinha={solicitarRemocao}
               podeRemover={linhas.length > 1}
               errors={linhasErrors[index]}
               onLimparErro={limparErroLinha}
             />
           ))}
+
+          <div className="flex justify-start pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addLinha}
+              aria-label="Adicionar bem"
+              className="h-10 border-[#2F7D57] bg-white px-4 font-semibold text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white"
+            >
+              <Plus size={18} />
+              Adicionar bem
+            </Button>
+          </div>
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={linhaPendente !== null}
+        title="Excluir linha"
+        message="Deseja excluir esta linha? Os dados preenchidos serão perdidos. Essa ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Manter"
+        variant="destructive"
+        testId="excluir-linha-dialog"
+        onConfirm={confirmarRemocaoPendente}
+        onClose={cancelarRemocaoPendente}
+      />
     </div>
   )
 }
