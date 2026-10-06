@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Trash2, Plus, Info } from 'lucide-react'
+import { Trash2, Info } from 'lucide-react'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { valorSelectFormato } from '../utils/formato-bem'
 
@@ -21,6 +21,16 @@ export type LinhaBem = {
   numero_processo: string
 }
 
+export function isLinhaBemVazia(linha: LinhaBem): boolean {
+  return (
+    !linha.numero_patrimonial?.trim() &&
+    !linha.localizacao?.trim() &&
+    !linha.numero_processo?.trim() &&
+    !linha.numero_formato_antigo &&
+    !linha.sem_numeracao
+  )
+}
+
 export type CampoLinhaBem = keyof LinhaBem
 
 export type LinhaBemRowProps = Readonly<{
@@ -29,8 +39,8 @@ export type LinhaBemRowProps = Readonly<{
   linhas: LinhaBem[]
   setLinhas: React.Dispatch<React.SetStateAction<LinhaBem[]>>
   removeLinha: (index: number) => void
-  addLinha: () => void
-  isLast: boolean
+  addLinha?: () => void
+  isLast?: boolean
   podeRemover?: boolean
   errors?: Record<string, string>
   /**
@@ -50,8 +60,6 @@ export function LinhaBemRow({
   linhas,
   setLinhas,
   removeLinha,
-  addLinha,
-  isLast,
   podeRemover = true,
   errors,
   onLimparErro,
@@ -194,29 +202,26 @@ export function LinhaBemRow({
         />
       </ValidatedField>
 
-      {/* AÇÕES */}
+      {/* AÇÕES — remoção individual por linha. A adição é fixa fora da linha. */}
       <div className="flex gap-2 pt-6">
         {podeRemover && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => removeLinha(index)}
-            aria-label="Remover bem"
-          >
-            <Trash2 size={18} />
-          </Button>
-        )}
-
-        {isLast && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addLinha}
-            aria-label="Adicionar bem"
-            className="border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white h-10 w-10 p-0"
-          >
-            <Plus size={18} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeLinha(index)}
+                aria-label={`Remover bem ${index + 1}`}
+                title="Remover este bem da lista"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded border-[#2F7D57] bg-white text-[#2F7D57] transition-colors hover:bg-[#2F7D57] hover:text-white"
+              >
+                <Trash2 size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="max-w-70">
+              Remover este bem da lista
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

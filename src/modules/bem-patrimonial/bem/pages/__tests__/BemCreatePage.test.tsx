@@ -36,7 +36,6 @@ vi.mock('@/components/AppBreadcrumb', () => ({
 
 vi.mock('../../components/LinhaBemRow', () => ({
   LinhaBemRow: ({
-    addLinha,
     removeLinha,
     index,
     errors,
@@ -74,10 +73,25 @@ vi.mock('../../components/LinhaBemRow', () => ({
           onLimparErro?.(index, 'numero_processo')
         }}
       />
-      <button onClick={() => removeLinha(index)}>Remover Linha</button>
-      <button onClick={addLinha}>Adicionar Linha</button>
+      {linhas.length > 1 && (
+        <button
+          aria-label={`Remover bem ${index + 1}`}
+          onClick={() => removeLinha(index)}
+        >
+          Remover bem {index + 1}
+        </button>
+      )}
     </div>
   ),
+  isLinhaBemVazia: (linha: any) => {
+    return (
+      !linha?.numero_patrimonial?.trim() &&
+      !linha?.localizacao?.trim() &&
+      !linha?.numero_processo?.trim() &&
+      !linha?.numero_formato_antigo &&
+      !linha?.sem_numeracao
+    )
+  },
 }))
 
 function renderPage() {
@@ -571,7 +585,7 @@ describe('BemCreatePage', () => {
     renderPage()
     preencherCamposBase()
 
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
 
     const camposProcesso = screen.getAllByPlaceholderText(
       'Número do Processo'
@@ -602,7 +616,7 @@ describe('BemCreatePage', () => {
     await user.hover(tooltipTrigger!)
 
     const tooltipMatches = await screen.findAllByText(
-      /Para adicionar mais bens, clique no botão \+ ao final da linha/
+      /Para adicionar mais bens, clique em Adicionar bem abaixo/
     )
     expect(tooltipMatches.length).toBeGreaterThan(0)
   })
@@ -656,27 +670,35 @@ describe('BemCreatePage', () => {
   // Linhas de bens
   // ------------------------------------------------------------------
 
-  it('deve adicionar nova linha ao clicar no botão', () => {
+  it('deve adicionar nova linha ao clicar no botão fixo', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    expect(screen.getByRole('button', { name: 'Adicionar bem' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
     expect(screen.getByTestId('linha-1')).toBeInTheDocument()
   })
 
-  it('deve remover linha quando há mais de uma', () => {
+  it('deve manter botão de adicionar sempre visível mesmo com várias linhas', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Adicionar Linha'))
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
-
-    fireEvent.click(screen.getAllByText('Remover Linha')[0])
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(3)
+    expect(screen.getByRole('button', { name: 'Adicionar bem' })).toBeInTheDocument()
   })
 
-  it('não deve remover a última linha', () => {
+  it('deve remover linha vazia diretamente sem confirmação', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.queryByText('Deseja excluir esta linha?')).not.toBeInTheDocument()
+  })
+
+  it('não deve exibir botão de remover quando há apenas uma linha', () => {
     renderPage()
     expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
-
-    fireEvent.click(screen.getByText('Remover Linha'))
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.queryByRole('button', { name: /Remover bem/i })).not.toBeInTheDocument()
   })
 
   it('deve limpar erros das linhas ao editar qualquer linha', async () => {
@@ -698,7 +720,7 @@ describe('BemCreatePage', () => {
       expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
 
     await waitFor(() => {
       expect(screen.queryByTestId('erro-linha-0')).not.toBeInTheDocument()
@@ -904,5 +926,81 @@ describe('BemCreatePage', () => {
     expect(
       screen.getByPlaceholderText('Buscar Unidade Administrativa...'),
     ).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  // ------------------------------------------------------------------
+  // Cadastro múltiplo — adição contínua e remoção segura por linha
+  // ------------------------------------------------------------------
+
+  it('deve criar linhas com identificador único em cliques seguidos sem perda de dados', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(3)
+    expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
+  })
+
+  it('deve pedir confirmação ao remover linha preenchida', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+
+    expect(screen.getByText('Excluir linha')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Deseja excluir esta linha\? Os dados preenchidos serão perdidos/i)
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manter' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Excluir' })).toBeInTheDocument()
+    // Linha ainda presente até confirmar
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+  })
+
+  it('deve manter dados ao cancelar a confirmação de exclusão', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    expect(screen.getByText('Excluir linha')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manter' }))
+
+    expect(screen.queryByText('Excluir linha')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+    expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
+  })
+
+  it('deve remover apenas a linha escolhida e preservar valores das demais', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    const campos = screen.getAllByPlaceholderText('Localização')
+    fireEvent.change(campos[1], { target: { value: 'Sala 2' } })
+
+    // Remove a primeira (preenchida) com confirmação
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.getByDisplayValue('Sala 2')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Sala 1')).not.toBeInTheDocument()
   })
 })
