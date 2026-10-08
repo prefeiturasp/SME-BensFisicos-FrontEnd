@@ -7,6 +7,7 @@ import { Loader2, ArrowLeft, Network, Pencil, Trash2, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService, type Bem } from '../services/bem.service'
 import { valorSelectFormato } from '../utils/formato-bem'
+import { formatarValorBRL } from '../utils/valor-monetario'
 import { useAuth } from '@/auth/useAuth'
 import HistoricoModal from '../modals/HistoricoModal'
 import ExcluirBemModal from '../components/ExcluirBemModal'
@@ -328,7 +329,7 @@ export default function BemDetailPage() {
             </label>
             <input
               id="valor_unitario"
-              value={bem.valor_unitario ?? ''}
+              value={formatarValorBRL(bem.valor_unitario)}
               disabled
               className={FIELD_CLASS}
             />

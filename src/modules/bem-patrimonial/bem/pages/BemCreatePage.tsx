@@ -9,6 +9,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Boxes, Info, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { bemService } from '../services/bem.service'
+import { BEM_LIMITS, erroLimiteMaximo } from '../utils/bem-limits'
+import {
+  DICA_VALOR_UNITARIO,
+  VALOR_UNITARIO_TAMANHO_MAX,
+  formatarValorInput,
+  maskValorUnitario,
+  validarValorUnitario,
+} from '../utils/valor-monetario'
 import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LinhaBemRow, isLinhaBemVazia, type LinhaBem } from '../components/LinhaBemRow'
@@ -254,6 +262,24 @@ export default function BemCreatePage() {
         errors[campo] = `${LABEL_CAMPO[campo]} é obrigatório.`
       }
     })
+
+    const limitesBase: Array<{ campo: keyof FormBase; limite: number }> = [
+      { campo: 'nome', limite: BEM_LIMITS.nome },
+      { campo: 'descricao', limite: BEM_LIMITS.descricao },
+      { campo: 'marca', limite: BEM_LIMITS.marca },
+      { campo: 'modelo', limite: BEM_LIMITS.modelo },
+      { campo: 'observacao', limite: BEM_LIMITS.observacao },
+    ]
+    for (const { campo, limite } of limitesBase) {
+      const erro = erroLimiteMaximo(formBase[campo], limite)
+      if (erro) errors[campo] = erro
+    }
+
+    if (!errors.valor_unitario) {
+      const erroValor = validarValorUnitario(formBase.valor_unitario)
+      if (erroValor) errors.valor_unitario = erroValor
+    }
+
     return errors
   }
 
@@ -263,7 +289,27 @@ export default function BemCreatePage() {
       const errosLinha: Record<string, string> = {}
       if (!linha.localizacao?.trim()) {
         errosLinha.localizacao = 'Localização é obrigatória.'
+      } else {
+        const erro = erroLimiteMaximo(
+          linha.localizacao,
+          BEM_LIMITS.localizacao
+        )
+        if (erro) errosLinha.localizacao = erro
       }
+      if (!linha.sem_numeracao && !linha.numero_patrimonial?.trim()) {
+        errosLinha.numero_patrimonial = 'Número patrimonial é obrigatório.'
+      } else {
+        const erroPatrimonial = erroLimiteMaximo(
+          linha.numero_patrimonial,
+          BEM_LIMITS.numero_patrimonial
+        )
+        if (erroPatrimonial) errosLinha.numero_patrimonial = erroPatrimonial
+      }
+      const erroProcesso = erroLimiteMaximo(
+        linha.numero_processo,
+        BEM_LIMITS.numero_processo
+      )
+      if (erroProcesso) errosLinha.numero_processo = erroProcesso
       if (Object.keys(errosLinha).length) {
         errors[index] = errosLinha
       }
@@ -314,7 +360,9 @@ export default function BemCreatePage() {
   }
 
   const setField = (campo: keyof FormBase, valor: string) => {
-    setFormBase(prev => ({ ...prev, [campo]: valor }))
+    const valorFinal =
+      campo === 'valor_unitario' ? maskValorUnitario(valor) : valor
+    setFormBase(prev => ({ ...prev, [campo]: valorFinal }))
     if (formErrors[campo]) {
       setFormErrors(prev => {
         const next = { ...prev }
@@ -391,8 +439,12 @@ export default function BemCreatePage() {
               placeholder="Nome do Bem"
               aria-invalid={!!formErrors.nome}
               value={formBase.nome}
+              maxLength={BEM_LIMITS.nome}
               onChange={e => setField('nome', e.target.value)}
             />
+            <p className="text-xs text-gray-500">
+              {formBase.nome.length}/{BEM_LIMITS.nome}
+            </p>
           </ValidatedField>
 
           <ValidatedField
@@ -406,8 +458,12 @@ export default function BemCreatePage() {
               placeholder="Marca"
               aria-invalid={!!formErrors.marca}
               value={formBase.marca}
+              maxLength={BEM_LIMITS.marca}
               onChange={e => setField('marca', e.target.value)}
             />
+            <p className="text-xs text-gray-500">
+              {formBase.marca.length}/{BEM_LIMITS.marca}
+            </p>
           </ValidatedField>
         </div>
 
@@ -423,8 +479,12 @@ export default function BemCreatePage() {
               placeholder="Modelo"
               aria-invalid={!!formErrors.modelo}
               value={formBase.modelo}
+              maxLength={BEM_LIMITS.modelo}
               onChange={e => setField('modelo', e.target.value)}
             />
+            <p className="text-xs text-gray-500">
+              {formBase.modelo.length}/{BEM_LIMITS.modelo}
+            </p>
           </ValidatedField>
 
           <ValidatedField
@@ -438,8 +498,17 @@ export default function BemCreatePage() {
               placeholder="0,00"
               aria-invalid={!!formErrors.valor_unitario}
               value={formBase.valor_unitario}
+              maxLength={VALOR_UNITARIO_TAMANHO_MAX}
+              inputMode="decimal"
               onChange={e => setField('valor_unitario', e.target.value)}
+              onBlur={e => {
+                const formatado = formatarValorInput(e.target.value)
+                if (formatado && formatado !== e.target.value) {
+                  setField('valor_unitario', formatado)
+                }
+              }}
             />
+            <p className="text-xs text-gray-500">{DICA_VALOR_UNITARIO}</p>
           </ValidatedField>
         </div>
 
@@ -455,8 +524,12 @@ export default function BemCreatePage() {
             placeholder="Descreva o bem"
             aria-invalid={!!formErrors.descricao}
             value={formBase.descricao}
+            maxLength={BEM_LIMITS.descricao}
             onChange={e => setField('descricao', e.target.value)}
           />
+          <p className="text-xs text-gray-500">
+            {formBase.descricao.length}/{BEM_LIMITS.descricao}
+          </p>
         </ValidatedField>
 
         {/* OBSERVAÇÕES */}
@@ -466,8 +539,12 @@ export default function BemCreatePage() {
             className="min-h-25"
             placeholder="Observações"
             value={formBase.observacao}
+            maxLength={BEM_LIMITS.observacao}
             onChange={e => setField('observacao', e.target.value)}
           />
+          <p className="text-xs text-gray-500">
+            {formBase.observacao.length}/{BEM_LIMITS.observacao}
+          </p>
         </ValidatedField>
 
         {/* LINHAS DOS BENS */}
