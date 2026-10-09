@@ -11,6 +11,8 @@ const APENAS_DIGITOS = /\D/g
 
 export const VALOR_UNITARIO_TAMANHO_MAX = 20
 
+export type ValorMonetarioInput = string | number | null | undefined
+
 function formatarCom2Casas(valor: number): string {
   return valor.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -25,37 +27,35 @@ function formatarInteiroMilhar(digitos: string): string {
 
 export function maskValorUnitario(valor: string): string {
   if (!valor) return ''
-  const limpo = valor.replace(/[^0-9.,]/g, '')
+  const limpo = valor.replaceAll(/[^0-9.,]/g, '')
   if (!limpo) return ''
   const temVirgula = limpo.includes(',')
   const partes = limpo.split(',')
   const inteiroBruto = (partes[0] || '')
-    .replace(APENAS_DIGITOS, '')
+    .replaceAll(APENAS_DIGITOS, '')
     .slice(0, MAX_DIGITOS_INTEIROS)
   const decimalBruto = partes
     .slice(1)
     .join('')
-    .replace(APENAS_DIGITOS, '')
+    .replaceAll(APENAS_DIGITOS, '')
     .slice(0, MAX_DIGITOS_DECIMAIS)
   const inteiroFmt = formatarInteiroMilhar(inteiroBruto)
   if (!temVirgula) return inteiroFmt
   return `${inteiroFmt},${decimalBruto}`
 }
 
-export function formatarValorInput(
-  valor: string | number | null | undefined
-): string {
+export function formatarValorInput(valor: ValorMonetarioInput): string {
   if (valor === null || valor === undefined || String(valor).trim() === '') {
     return ''
   }
   const texto = String(valor).trim()
   if (texto.includes(',')) {
-    const num = Number(texto.replace(/\./g, '').replace(',', '.'))
+    const num = Number(texto.replaceAll('.', '').replaceAll(',', '.'))
     if (Number.isNaN(num)) return texto
     return formatarCom2Casas(num)
   }
   if (MILHAR_BR.test(texto)) {
-    const num = Number(texto.replace(/\./g, ''))
+    const num = Number(texto.replaceAll('.', ''))
     if (Number.isNaN(num)) return texto
     return formatarCom2Casas(num)
   }
@@ -64,22 +64,20 @@ export function formatarValorInput(
   return formatarCom2Casas(num)
 }
 
-export function parseValorUnitario(
-  valor: string | number | null | undefined,
-): number {
-  if (valor === null || valor === undefined) return NaN
+export function parseValorUnitario(valor: ValorMonetarioInput): number {
+  if (valor === null || valor === undefined) return Number.NaN
   if (typeof valor === 'number') return valor
   const texto = String(valor).trim()
-  if (!texto) return NaN
+  if (!texto) return Number.NaN
   const normalizado = texto.includes(',')
-    ? texto.replace(/\./g, '').replace(',', '.')
+    ? texto.replaceAll('.', '').replaceAll(',', '.')
     : texto
-  if (!NUMERO_DECIMAL.test(normalizado)) return NaN
+  if (!NUMERO_DECIMAL.test(normalizado)) return Number.NaN
   return Number(normalizado)
 }
 
 export function validarValorUnitario(
-  valor: string | number | null | undefined,
+  valor: ValorMonetarioInput
 ): string | undefined {
   if (valor === undefined || valor === null || String(valor).trim() === '') {
     return MENSAGEM_VALOR_OBRIGATORIO
@@ -95,9 +93,7 @@ export function validarValorUnitario(
   return undefined
 }
 
-export function formatarValorBRL(
-  valor: string | number | null | undefined,
-): string {
+export function formatarValorBRL(valor: ValorMonetarioInput): string {
   if (valor === null || valor === undefined || String(valor).trim() === '') {
     return ''
   }
