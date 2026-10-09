@@ -78,7 +78,6 @@ export function UnsavedChangesProvider({ children }: UnsavedChangesProviderProps
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (navigationAllowed.current) return;
       event.preventDefault();
-      event.returnValue = '';
     };
 
     globalThis.addEventListener('beforeunload', handleBeforeUnload);
