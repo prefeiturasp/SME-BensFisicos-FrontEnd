@@ -11,8 +11,8 @@ import {
 import type { EscopoGrupo, EscopoUa } from "../../../../auth/auth.service"
 
 describe("usuarioFormShared helpers", () => {
-  it("returns the first API error message from arrays and strings", () => {
-    expect(getApiErrorMessage(["erro 1", "erro 2"]).toString()).toBe("erro 1")
+  it("returns all API error messages from arrays and strings", () => {
+    expect(getApiErrorMessage(["erro 1", "erro 2"]).toString()).toBe("erro 1 erro 2")
     expect(getApiErrorMessage([123]).toString()).toBe("123")
     expect(getApiErrorMessage("mensagem")).toBe("mensagem")
     expect(getApiErrorMessage({})).toBe("Erro de validação.")

@@ -101,21 +101,9 @@ interface ErrorResponseData {
 }
 
 function handlePasswordChangeError(responseData: ErrorResponseData) {
-  if (responseData?.old_password) {
-    throw new Error(
-      Array.isArray(responseData.old_password)
-        ? responseData.old_password[0]
-        : responseData.old_password,
-    );
-  }
+  const messages = [responseData?.old_password, responseData?.new_password, responseData?.detail]
+    .flatMap(message => Array.isArray(message) ? message : [message])
+    .filter((message): message is string => Boolean(message));
 
-  if (responseData?.new_password) {
-    throw new Error(
-      Array.isArray(responseData.new_password)
-        ? responseData.new_password[0]
-        : responseData.new_password,
-    );
-  }
-
-  throw new Error(responseData?.detail ?? 'Erro ao trocar senha');
+  throw new Error([...new Set(messages)].join(' ') || 'Erro ao trocar senha');
 }

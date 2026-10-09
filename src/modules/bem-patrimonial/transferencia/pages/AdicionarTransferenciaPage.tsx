@@ -219,19 +219,23 @@ export default function AdicionarTransferenciaPage() {
   )
 
   const handleSave = form.handleSubmit(async (values) => {
+    let hasValidationError = false
+
     if (!originUoId) {
       form.setError('root.serverError', {
         message: 'Não foi possível identificar a UO de origem.',
       })
-      return
+      hasValidationError = true
     }
 
     if (destinoSemPontoCentral) {
       form.setError('unidade_orcamentaria_destino', {
         message: MENSAGEM_SEM_PONTO_CENTRAL,
       })
-      return
+      hasValidationError = true
     }
+
+    if (hasValidationError) return
 
     setSubmitting(true)
     try {

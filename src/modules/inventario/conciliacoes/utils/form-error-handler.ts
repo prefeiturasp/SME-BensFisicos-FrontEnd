@@ -48,23 +48,15 @@ export function handleConciliacaoBadRequestError(
   }
 
   const obj = data as Record<string, unknown>;
-  let firstFieldMessage: string | null = null;
-  let hasFieldError = false;
+  const messages: string[] = [];
 
   for (const [backendField, formField] of Object.entries(FIELD_MAP)) {
     if (!formField) continue;
     const message = extractErrorMessage(obj[backendField]);
     if (message) {
       form.setError(formField, { type: 'server', message: FIELD_ERROR_MESSAGE });
-      if (!firstFieldMessage) {
-        firstFieldMessage = message;
-      }
-      hasFieldError = true;
+      messages.push(message);
     }
-  }
-
-  if (hasFieldError && firstFieldMessage) {
-    return { handled: true, toastDescription: firstFieldMessage };
   }
 
   const nonFieldMessage =
@@ -73,10 +65,14 @@ export function handleConciliacaoBadRequestError(
   if (nonFieldMessage) {
     const displayMessage = normalizeNonFieldMessage(nonFieldMessage);
     form.setError('root.serverError', { type: 'server', message: displayMessage });
-    return { handled: true, toastDescription: displayMessage };
+    messages.push(displayMessage);
   }
 
-  return { handled: false, toastDescription: '' };
+  const uniqueMessages = [...new Set(messages)];
+  return {
+    handled: uniqueMessages.length > 0,
+    toastDescription: uniqueMessages.join(' '),
+  };
 }
 
 export const CONCILIACAO_ERROR_TOAST_TITLE = ERROR_TOAST_TITLE;
@@ -102,18 +98,23 @@ export function handleOcorrenciaBadRequestError(
   }
 
   const obj = data as Record<string, unknown>;
+  const messages: string[] = [];
 
   const divergenciaMsg = extractErrorMessage(obj.divergencia);
   if (divergenciaMsg) {
     form.setError('divergencia', { type: 'server', message: divergenciaMsg });
-    return { handled: true, toastDescription: divergenciaMsg };
+    messages.push(divergenciaMsg);
   }
 
   const detailMsg = extractErrorMessage(obj.detail);
   if (detailMsg) {
     form.setError('root.serverError', { type: 'server', message: detailMsg });
-    return { handled: true, toastDescription: detailMsg };
+    messages.push(detailMsg);
   }
 
-  return { handled: false, toastDescription: '' };
+  const uniqueMessages = [...new Set(messages)];
+  return {
+    handled: uniqueMessages.length > 0,
+    toastDescription: uniqueMessages.join(' '),
+  };
 }
