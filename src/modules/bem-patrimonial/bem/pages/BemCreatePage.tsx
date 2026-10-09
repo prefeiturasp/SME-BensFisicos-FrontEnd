@@ -13,6 +13,7 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LinhaBemRow, isLinhaBemVazia, type LinhaBem } from '../components/LinhaBemRow'
 import { useAuth } from '@/auth/useAuth'
+import { extractErrorMessage } from '@/lib/backend-form-errors'
 
 type LinhaBemComId = LinhaBem & { id: string }
 
@@ -47,13 +48,7 @@ const LINHA_FIELD_ORDER = [
 ]
 
 function normalizarMensagemErro(error: unknown): string {
-  if (Array.isArray(error)) {
-    return error.map(normalizarMensagemErro).filter(Boolean).join(' ')
-  }
-  if (error && typeof error === 'object') {
-    return Object.values(error).map(normalizarMensagemErro).filter(Boolean).join(' ')
-  }
-  return typeof error === 'string' ? error : String(error ?? '')
+  return extractErrorMessage(error) ?? ''
 }
 
 function extrairErrosDaResposta(data: unknown): {

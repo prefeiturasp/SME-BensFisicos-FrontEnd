@@ -14,11 +14,12 @@ export function extractApiErrorMessage(data: unknown): string | null {
   const primitive = primitiveMessage(data)
   if (primitive) return primitive
 
-  const values = Array.isArray(data)
-    ? data
-    : isRecord(data)
-      ? Object.values(data)
-      : []
+  let values: unknown[] = []
+  if (Array.isArray(data)) {
+    values = data
+  } else if (isRecord(data)) {
+    values = Object.values(data)
+  }
   const messages = values
     .map(extractApiErrorMessage)
     .filter((message): message is string => Boolean(message))
