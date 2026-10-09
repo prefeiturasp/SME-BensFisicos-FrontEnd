@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 
 import { usuarioService } from "../service/usuario.service"
@@ -117,10 +118,11 @@ export default function EditarUsuarioPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false)
 
-  const { register, handleSubmit, setValue, setError, watch, formState: { errors } } = useForm<EditarUsuarioFormData>({
+  const { register, handleSubmit, setValue, setError, watch, formState: { errors, isDirty } } = useForm<EditarUsuarioFormData>({
     resolver: zodResolver(editarUsuarioSchema) as Resolver<EditarUsuarioFormData>,
     defaultValues: { nome: "", rf: "", email: "", unidade: [], grupo: "", status: "ativo", senha: "", confirmarSenha: "" },
   })
+  const { navigateAfterSave } = useUnsavedChanges(isDirty, "edit")
 
   const grupoSelecionado = watch("grupo")
   const statusSelecionado = watch("status")
@@ -218,7 +220,7 @@ export default function EditarUsuarioPage() {
       setErrorMessage(null)
       const payload = mountPayload(data, valoresOriginais, unidadesAdministrativas, unidadesSelecionadas, todasUnidades, uoSelecionadaId)
       await usuarioService.partialUpdate(Number(id), payload)
-      navigate(`/usuarios/${id}`)
+      navigateAfterSave(() => navigate(`/usuarios/${id}`))
     } catch (error: any) {
       const apiErrors = error?.response?.data
       if (apiErrors && typeof apiErrors === "object") {
@@ -273,17 +275,17 @@ export default function EditarUsuarioPage() {
           filtroUa={filtroUa}
           unidadeError={errors.unidade?.message}
           disableUaSelector={false}
-          onNomeChange={(event) => setValue("nome", event.target.value, { shouldValidate: true })}
-          onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true })}
+          onNomeChange={(event) => setValue("nome", event.target.value, { shouldValidate: true, shouldDirty: true })}
+          onRfChange={(event) => setValue("rf", event.target.value, { shouldValidate: true, shouldDirty: true })}
           onUsernameChange={() => undefined}
-          onEmailChange={(event) => setValue("email", event.target.value, { shouldValidate: true })}
+          onEmailChange={(event) => setValue("email", event.target.value, { shouldValidate: true, shouldDirty: true })}
           onGrupoChange={buildGrupoChangeHandler(
             setValue,
             setUnidadesSelecionadas,
             syncFormUnidades,
             setTodasUnidades
           )}
-          onStatusChange={(v) => setValue("status", v as "ativo" | "inativo", { shouldValidate: true })}
+          onStatusChange={(v) => setValue("status", v as "ativo" | "inativo", { shouldValidate: true, shouldDirty: true })}
           onUoChange={setUoSelecionadaId}
           onFiltroUaChange={setFiltroUa}
           onToggleTodasUnidades={buildToggleTodasHandler(

@@ -13,6 +13,7 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LinhaBemRow, isLinhaBemVazia, type LinhaBem } from '../components/LinhaBemRow'
 import { useAuth } from '@/auth/useAuth'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 
 type LinhaBemComId = LinhaBem & { id: string }
 
@@ -176,6 +177,15 @@ export default function BemCreatePage() {
   const uaAtivaId = user?.ua_ativa?.id ?? null
   const exigeSelecaoManualDeUA = !uaAtivaId
 
+  const hasUnsavedChanges =
+    Object.entries(formBase).some(([field, value]) => {
+      if (field === 'unidade_administrativa') {
+        return exigeSelecaoManualDeUA && todasUAs.length !== 1 && Boolean(value)
+      }
+      return Boolean(value.trim())
+    }) || linhas.some((linha) => !isLinhaBemVazia(linha))
+  const { navigateAfterSave } = useUnsavedChanges(hasUnsavedChanges, 'create')
+
   useEffect(() => {
     if (uaAtivaId && formBase.unidade_administrativa !== String(uaAtivaId)) {
       setFormBase(prev => ({
@@ -292,7 +302,7 @@ export default function BemCreatePage() {
         multi_payload: linhas.map(({ id: _id, ...rest }) => rest),
       })
       toast.success('Bens criados com sucesso')
-      navigate('/bens-patrimoniais')
+      navigateAfterSave(() => navigate('/bens-patrimoniais'))
     } catch (error: any) {
       const data = error?.response?.data
       if (data?.linhas) {

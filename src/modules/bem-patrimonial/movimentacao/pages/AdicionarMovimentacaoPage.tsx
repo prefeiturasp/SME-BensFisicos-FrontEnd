@@ -7,6 +7,7 @@ import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -292,6 +293,10 @@ export default function AdicionarMovimentacaoPage() {
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>(
     [],
+  )
+  const { navigateAfterSave } = useUnsavedChanges(
+    form.formState.isDirty || selecoes.length > 0,
+    'create',
   )
 
   useEffect(() => {
@@ -667,7 +672,7 @@ export default function AdicionarMovimentacaoPage() {
       toast.success(
         'Cadastro realizado com sucesso - A movimentação do bem foi cadastrada e enviada para aprovação.',
       )
-      navigate('/movimentacoes')
+      navigateAfterSave(() => navigate('/movimentacoes'))
     } catch (requestError: unknown) {
       const message =
         requestError instanceof Error ? requestError.message : 'Erro ao salvar movimentação.'

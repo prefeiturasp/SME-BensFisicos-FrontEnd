@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import {
@@ -38,6 +39,7 @@ export default function SolicitarCorrecaoPage() {
         mode: "onSubmit",
         defaultValues: { motivo: "" },
     })
+    const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, "create")
 
     useEffect(() => {
         const fetchBaixa = async () => {
@@ -62,7 +64,7 @@ export default function SolicitarCorrecaoPage() {
             await baixaFisicaService.solicitarCorrecao(baixa.id, { motivo: values.motivo })
             setShowToast(true)
             setTimeout(() => {
-                navigate(-1)
+                navigateAfterSave(() => navigate(-1))
             }, 1500)
         } catch (err) {
             console.error(err)

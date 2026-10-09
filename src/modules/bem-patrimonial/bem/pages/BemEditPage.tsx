@@ -11,6 +11,7 @@ import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
 import { getBemStatusTone } from '../utils/status'
 import { StatusBadge } from '@/components/status/StatusBadge'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,6 +68,7 @@ export default function BemEditPage() {
   const form = useForm<Bem>({
     defaultValues: { justificativa: '' } as Bem,
   })
+  const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, 'edit')
 
   const status = form.watch('status')
   const numeroPatrimonial = form.watch('numero_patrimonial')
@@ -175,7 +177,7 @@ export default function BemEditPage() {
       } as any)
 
       toast.success('Bem atualizado com sucesso')
-      navigate(`/bens-patrimoniais/${values.id}`)
+      navigateAfterSave(() => navigate(`/bens-patrimoniais/${values.id}`))
     } catch (error: any) {
       if (error.response?.data) {
         Object.entries(error.response.data).forEach(([field, message]) => {

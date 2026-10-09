@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/auth/useAuth'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -126,6 +127,10 @@ export default function AdicionarTransferenciaPage() {
     handleRemoveBem,
     handleAddBem,
   } = useBemSelectionRows(clearError)
+  const { navigateAfterSave } = useUnsavedChanges(
+    form.formState.isDirty || rows.some((row) => Boolean(row.bem)),
+    'create',
+  )
 
   /**
    * As linhas de item têm UI própria; os ids selecionados são espelhados no
@@ -247,7 +252,7 @@ export default function AdicionarTransferenciaPage() {
       toast.success(
         'Transferência cadastrada com sucesso. O bem foi transferido para a UA 001 da UO de destino.',
       )
-      navigate('/transferencias')
+      navigateAfterSave(() => navigate('/transferencias'))
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro ao salvar transferência.'
       form.setError('root.serverError', { message })

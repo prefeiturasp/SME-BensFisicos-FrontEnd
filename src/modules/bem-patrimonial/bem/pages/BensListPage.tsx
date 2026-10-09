@@ -23,6 +23,7 @@ import { BuscaEspecialFilter } from '../components/BuscaEspecialFilter'
 import { useBensList } from '../hooks/useBensList'
 import { usePagination } from '../hooks/usePagination'
 import { getBemStatusTone } from '../utils/status'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 
 const PAGE_SIZE = 10
 
@@ -89,6 +90,7 @@ export default function BensListPage() {
 
   const isGestor = user?.is_gestor_patrimonio ?? false
   const possuiSelecionados = isGestor && selectedIds.length > 0
+  useUnsavedChanges(possuiSelecionados, 'selection')
 
   const handleSort = (field: string) => {
     const backendField = ORDERING_MAP[field] ?? field

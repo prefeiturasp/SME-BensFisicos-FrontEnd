@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+} from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import BemCreatePage from '../BemCreatePage'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -103,6 +111,27 @@ function renderPage() {
       </Routes>
     </MemoryRouter>
   )
+}
+
+function renderGuardedPage() {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        ),
+        children: [
+          { path: '/bens-patrimoniais/novo', element: <BemCreatePage /> },
+          { path: '/bens-patrimoniais', element: <div>Lista</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/bens-patrimoniais/novo'] },
+  )
+
+  return render(<RouterProvider router={router} />)
 }
 
 function preencherCamposBase() {
@@ -772,6 +801,32 @@ describe('BemCreatePage', () => {
   it('deve redirecionar ao clicar em Cancelar', async () => {
     renderPage()
     fireEvent.click(screen.getByText('Cancelar'))
+    expect(await screen.findByText('Lista')).toBeInTheDocument()
+  })
+
+  it('não pede confirmação quando somente a UA foi preenchida automaticamente', async () => {
+    renderGuardedPage()
+
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(await screen.findByText('Lista')).toBeInTheDocument()
+    expect(screen.queryByText('Sair sem salvar?')).not.toBeInTheDocument()
+  })
+
+  it('protege os dados preenchidos ao cancelar e permite descartá-los', async () => {
+    renderGuardedPage()
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'Cadeira giratória' },
+    })
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    expect(screen.getByText('Sair sem salvar?')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar preenchendo' }))
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveValue('Cadeira giratória')
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar e sair' }))
     expect(await screen.findByText('Lista')).toBeInTheDocument()
   })
 
