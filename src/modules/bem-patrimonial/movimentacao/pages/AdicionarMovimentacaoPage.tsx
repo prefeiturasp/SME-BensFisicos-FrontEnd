@@ -636,16 +636,20 @@ export default function AdicionarMovimentacaoPage() {
   }
 
   const handleSave = form.handleSubmit(async (values) => {
+    let hasValidationError = false
+
     if (!originUaId) {
       form.setError('root.serverError', {
         message: 'Unidade Administrativa de origem não informada.',
       })
-      return
+      hasValidationError = true
     }
     if (destinoSemPontoCentral) {
       form.setError('unidade_orcamentaria_destino', { message: MENSAGEM_SEM_PONTO_CENTRAL })
-      return
+      hasValidationError = true
     }
+
+    if (hasValidationError) return
 
     const selectedUoNumericId = Number(values.unidade_orcamentaria_destino)
 

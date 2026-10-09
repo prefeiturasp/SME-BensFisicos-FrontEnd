@@ -12,6 +12,8 @@ type ValidatedFieldProps = Readonly<{
   error?: string | null
   /** Marca o campo como obrigatório com o asterisco. */
   required?: boolean
+  /** Mantém a altura da mensagem para evitar deslocamentos durante a correção. */
+  reserveErrorSpace?: boolean
   className?: string
   labelClassName?: string
   children: ReactNode
@@ -38,6 +40,7 @@ export function ValidatedField(props: ValidatedFieldProps) {
     htmlFor,
     error,
     required = false,
+    reserveErrorSpace = false,
     className,
     labelClassName,
     children,
@@ -63,8 +66,13 @@ export function ValidatedField(props: ValidatedFieldProps) {
 
       {children}
 
-      {temErro && (
-        <p {...({ 'data-slot': 'form-message' } as const)} role='alert' className='text-destructive text-sm'>
+      {(temErro || reserveErrorSpace) && (
+        <p
+          {...({ 'data-slot': 'form-message' } as const)}
+          role={temErro ? 'alert' : undefined}
+          aria-hidden={temErro ? undefined : true}
+          className='min-h-5 text-destructive text-sm'
+        >
           {error}
         </p>
       )}

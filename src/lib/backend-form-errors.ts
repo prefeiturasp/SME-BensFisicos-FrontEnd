@@ -16,7 +16,11 @@ export function extractErrorMessage(value: unknown): string | null {
   }
 
   if (Array.isArray(value) && value.length > 0) {
-    return String(value[0]);
+    const messages = value
+      .map(item => extractErrorMessage(item))
+      .filter((message): message is string => Boolean(message));
+
+    return messages.length > 0 ? messages.join(' ') : null;
   }
 
   return null;

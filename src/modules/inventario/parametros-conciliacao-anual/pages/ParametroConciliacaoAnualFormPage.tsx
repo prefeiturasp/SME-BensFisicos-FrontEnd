@@ -162,6 +162,7 @@ function mapBadRequestToForm(
   ].map(String);
 
   const text = messages.join(' ');
+  let hasMappedError = false;
 
   if (/sobrep/i.test(text)) {
     form.setError('periodoInicial', {
@@ -170,35 +171,31 @@ function mapBadRequestToForm(
     form.setError('periodoFinal', {
       message: 'Data final em que conciliações anuais podem ser criadas/fechadas.',
     });
-    toast.error('Não foi possível cadastrar o parâmetro.', {
-      description:
-        'Já existe um período cadastrado que se sobrepõe ao intervalo informado. Revise as datas e tente novamente.',
-    });
-    return true;
+    hasMappedError = true;
   }
 
   if (/ativo/i.test(text)) {
     form.setError('ativo', {
       message: 'Apenas um parâmetro ativo por ano.',
     });
-    toast.error('Não foi possível cadastrar o parâmetro.', {
-      description:
-        'Já existe um parâmetro ativo para o ano selecionado. Desative o parâmetro vigente antes de cadastrar um novo.',
-    });
-    return true;
+    hasMappedError = true;
   }
 
   if (/ano/i.test(text)) {
     form.setError('anoReferencia', {
       message: 'Ano da conciliação anual ao qual este parâmetro se refere.',
     });
+    hasMappedError = true;
+  }
+
+  if (hasMappedError) {
     toast.error('Não foi possível cadastrar o parâmetro.', {
-      description: 'Já existe um parâmetro para o ano selecionado. Revise o ano e tente novamente.',
+      description: messages.join(' '),
     });
     return true;
   }
 
-  const fallback = messages[0] || 'Revise os dados e tente novamente.';
+  const fallback = messages.join(' ') || 'Revise os dados e tente novamente.';
   form.setError('root.serverError', { type: 'server', message: fallback });
   toast.error('Não foi possível cadastrar o parâmetro.', { description: fallback });
   return true;

@@ -306,6 +306,36 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     });
   });
 
+  it('exibe simultaneamente todas as mensagens retornadas pelo backend', async () => {
+    createMock.mockRejectedValueOnce(
+      new AxiosError('Bad request', '400', undefined, undefined, {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config: {} as never,
+        data: {
+          non_field_errors: ['O período se sobrepõe a outro cadastro.'],
+          ativo: ['Já existe um parâmetro ativo.'],
+          ano_referencia: ['O ano informado já está cadastrado.'],
+        },
+      }),
+    );
+
+    renderPage();
+    fillCreateForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        'Não foi possível cadastrar o parâmetro.',
+        {
+          description:
+            'O período se sobrepõe a outro cadastro. O ano informado já está cadastrado. Já existe um parâmetro ativo.',
+        },
+      );
+    });
+  });
+
   it('exclui o parametro pela modal de confirmacao', async () => {
     queryState.data = parametroEdit;
 

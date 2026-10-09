@@ -146,9 +146,10 @@ export function filterUnidadesListadas(unidadesAdministrativas: UaOption[], filt
 
 export function getApiErrorMessage(value: unknown): string {
   if (Array.isArray(value) && value.length > 0) {
-    const first = value[0]
-    if (typeof first === "string") return first
-    if (typeof first === "number") return String(first)
+    const messages = value
+      .filter(item => typeof item === "string" || typeof item === "number")
+      .map(String)
+    if (messages.length > 0) return messages.join(" ")
   }
   if (typeof value === "string") return value
   return "Erro de validação."

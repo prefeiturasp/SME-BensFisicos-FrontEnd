@@ -52,6 +52,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
         <p data-testid={`erro-localizacao-${index}`}>{errors.localizacao}</p>
       )}
       <input
+        id={`localizacao_${index}`}
         data-testid={`localizacao-${index}`}
         placeholder="Localização"
         value={linha.localizacao}
@@ -63,6 +64,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
         }}
       />
       <input
+        id={`numero_processo_${index}`}
         data-testid={`numero-processo-${index}`}
         placeholder="Número do Processo"
         value={linha.numero_processo}
@@ -329,7 +331,62 @@ describe('BemCreatePage', () => {
 
     expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
     expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Descrição é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Valor Unitário é obrigatório.')).toBeInTheDocument()
     expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
+  })
+
+  it('deve manter os demais erros ao corrigir somente um campo', async () => {
+    renderPage()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nome do Bem é obrigatório.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'Notebook' },
+    })
+
+    expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
+    expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Descrição é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Valor Unitário é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+  })
+
+  it('deve exibir simultaneamente erros de campos base e linhas retornados pela API', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        nome: ['Nome inválido.'],
+        marca: ['Marca inválida.'],
+        linhas: {
+          '0': {
+            localizacao: ['Localização inválida.'],
+            numero_patrimonial: ['Número patrimonial inválido.'],
+          },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nome inválido.')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Marca inválida.')).toBeInTheDocument()
+    expect(screen.getByTestId('erro-localizacao-0')).toHaveTextContent('Localização inválida.')
+    expect(screen.getByTestId('erro-linha-0')).toHaveTextContent('Número patrimonial inválido.')
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
   })
 
   it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
