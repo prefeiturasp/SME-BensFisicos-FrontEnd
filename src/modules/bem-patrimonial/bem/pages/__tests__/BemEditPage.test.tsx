@@ -1047,6 +1047,30 @@ describe('BemEditPage', () => {
       expect(valorInput.value).toBe('1.234')
     })
 
+    it('deve enviar valor com ponto para a API aceitar', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('5.000,00')
+      fireEvent.change(await screen.findByDisplayValue('Sala 1'), {
+        target: { value: 'Sala 2' },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledWith(
+          bemMock.id,
+          expect.objectContaining({ valor_unitario: '5000.00' })
+        )
+      })
+    })
+
     it('deve exibir a mesma mensagem de limite do cadastro e bloquear envio', async () => {
       vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
         bemMock as any

@@ -12,6 +12,7 @@ import {
   VALOR_UNITARIO_TAMANHO_MAX,
   formatarValorInput,
   maskValorUnitario,
+  serializarValorUnitario,
   validarValorUnitario,
 } from '../utils/valor-monetario'
 import { useAuth } from '@/auth/useAuth'
@@ -220,6 +221,7 @@ export default function BemEditPage() {
     try {
       await bemService.update(values.id, {
         ...values,
+        valor_unitario: serializarValorUnitario(values.valor_unitario),
         justificativa: justificativaHabilitada ? justificativa : '',
       } as any)
 

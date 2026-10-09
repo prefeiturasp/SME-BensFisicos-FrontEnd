@@ -3,6 +3,7 @@ import {
   formatarValorBRL,
   formatarValorInput,
   maskValorUnitario,
+  serializarValorUnitario,
   validarValorUnitario,
 } from '../valor-monetario'
 
@@ -38,6 +39,11 @@ describe('valor-monetario', () => {
     expect(formatarValorInput('1.500,5')).toBe('1.500,50')
   })
 
+  it('envio: serializa para formato com ponto aceito pela API', () => {
+    expect(serializarValorUnitario('5.000,00')).toBe('5000.00')
+    expect(serializarValorUnitario('1.234,56')).toBe('1234.56')
+    expect(serializarValorUnitario('')).toBe('')
+  })
   it('exibição: formata no padrão R$ 1.234,56', () => {
     const formatado = formatarValorBRL(1234.56)
     expect(formatado).toContain('R$')

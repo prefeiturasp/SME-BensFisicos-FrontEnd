@@ -104,3 +104,14 @@ export function formatarValorBRL(valor: ValorMonetarioInput): string {
     currency: 'BRL',
   }).format(numero)
 }
+
+export function serializarValorUnitario(
+  valor: ValorMonetarioInput
+): string | number | null | undefined {
+  if (valor === null || valor === undefined || String(valor).trim() === '') {
+    return valor
+  }
+  const numero = parseValorUnitario(valor)
+  if (Number.isNaN(numero)) return valor
+  return numero.toFixed(2)
+}
