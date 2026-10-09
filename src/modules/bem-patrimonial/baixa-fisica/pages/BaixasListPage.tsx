@@ -230,7 +230,7 @@ export default function BaixasListPage() {
     const handleIrParaValidacao = () => {
         const [primeiraSelecionada] = selectedSolicitadas
         if (!primeiraSelecionada) return
-        navigate(`/baixas-fisicas/${primeiraSelecionada}`)
+        navigateAfterCommit(() => navigate(`/baixas-fisicas/${primeiraSelecionada}`))
     }
 
     // NOVO — leva para a tela de cadastro das informações básicas da

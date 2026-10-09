@@ -284,6 +284,7 @@ export default function AdicionarBaixaPage() {
 
     const handleUnidadeChange = (value: string) => {
         form.setValue("unidade", value, {
+            shouldDirty: true,
             shouldValidate: form.formState.isSubmitted,
         })
         setBloqueioExistente(null)

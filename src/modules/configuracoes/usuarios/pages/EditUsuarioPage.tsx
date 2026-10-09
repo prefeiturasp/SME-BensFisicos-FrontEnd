@@ -122,7 +122,9 @@ export default function EditarUsuarioPage() {
     resolver: zodResolver(editarUsuarioSchema) as Resolver<EditarUsuarioFormData>,
     defaultValues: { nome: "", rf: "", email: "", unidade: [], grupo: "", status: "ativo", senha: "", confirmarSenha: "" },
   })
-  const { navigateAfterSave } = useUnsavedChanges(isDirty, "edit")
+  const uoFoiAlterada = valoresOriginais !== null
+    && uoSelecionadaId !== valoresOriginais.unidadeOrcamentariaId
+  const { navigateAfterSave } = useUnsavedChanges(isDirty || uoFoiAlterada, "edit")
 
   const grupoSelecionado = watch("grupo")
   const statusSelecionado = watch("status")
