@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { AxiosError } from "axios"
+import { extractErrorMessage } from "@/lib/backend-form-errors"
 
 import { format } from "date-fns"
 
@@ -235,7 +236,7 @@ function extrairBloqueioBaixaExistente(err: unknown): { mensagem: string; ids: n
     const ids = [...new Set(rawIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
     if (ids.length === 0) return null
     const campo = err.response.data?.unidade_administrativa_origem
-    const mensagemBackend = Array.isArray(campo) && typeof campo[0] === "string" && campo[0] ? campo[0] : ""
+    const mensagemBackend = extractErrorMessage(campo) ?? ""
     const mensagem = mensagemBackend || "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
     return { mensagem, ids }
 }

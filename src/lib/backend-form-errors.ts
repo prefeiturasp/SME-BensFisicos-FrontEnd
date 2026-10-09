@@ -23,6 +23,14 @@ export function extractErrorMessage(value: unknown): string | null {
     return messages.length > 0 ? messages.join(' ') : null;
   }
 
+  if (typeof value === 'object' && value !== null) {
+    const messages = Object.values(value)
+      .map(item => extractErrorMessage(item))
+      .filter((message): message is string => Boolean(message));
+
+    return messages.length > 0 ? [...new Set(messages)].join(' ') : null;
+  }
+
   return null;
 }
 
@@ -67,32 +75,19 @@ export function handleMappedBadRequestError<TFieldValues extends FieldValues>(
   const data = rawData as Record<string, unknown>;
   const hasFieldErrors = setMappedFieldErrors(data, form, fieldMap);
 
-  for (const fieldName of rootErrorFields) {
-    const message = extractErrorMessage(data[fieldName]);
+  const rootMessages = rootErrorFields
+    .map(fieldName => extractErrorMessage(data[fieldName]))
+    .filter((message): message is string => Boolean(message));
+  const detailError = extractErrorMessage(data.detail);
+  if (detailError) rootMessages.push(detailError);
 
-    if (!message) {
-      continue;
-    }
-
+  if (rootMessages.length > 0) {
+    const message = [...new Set(rootMessages)].join(' ');
     form.setError('root.serverError' as Path<TFieldValues>, {
       type: 'server',
       message,
     });
     toast.error(message);
-    return true;
-  }
-
-  const detailError = extractErrorMessage(data.detail);
-  if (detailError) {
-    toast.error(detailError);
-
-    if (!hasFieldErrors) {
-      form.setError('root.serverError' as Path<TFieldValues>, {
-        type: 'server',
-        message: detailError,
-      });
-    }
-
     return true;
   }
 

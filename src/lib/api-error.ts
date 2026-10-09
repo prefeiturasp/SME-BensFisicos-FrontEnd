@@ -10,23 +10,20 @@ function primitiveMessage(value: unknown): string | null {
   return null
 }
 
-function arrayMessage(value: unknown): string | null {
-  if (!Array.isArray(value) || value.length === 0) return null
-  return primitiveMessage(value[0])
-}
+export function extractApiErrorMessage(data: unknown): string | null {
+  const primitive = primitiveMessage(data)
+  if (primitive) return primitive
 
-function firstErrorMessage(data: unknown): string | null {
-  if (!isRecord(data)) return null
+  const values = Array.isArray(data)
+    ? data
+    : isRecord(data)
+      ? Object.values(data)
+      : []
+  const messages = values
+    .map(extractApiErrorMessage)
+    .filter((message): message is string => Boolean(message))
 
-  const detail = primitiveMessage(data.detail)
-  if (detail) return detail
-
-  for (const value of Object.values(data)) {
-    const message = arrayMessage(value) ?? primitiveMessage(value)
-    if (message) return message
-  }
-
-  return null
+  return messages.length ? [...new Set(messages)].join(' ') : null
 }
 
 export function handleApiError(error: unknown, defaultMessage: string): never {
@@ -35,7 +32,7 @@ export function handleApiError(error: unknown, defaultMessage: string): never {
       throw new Error('Erro de conexão com o servidor.')
     }
 
-    const message = firstErrorMessage(error.response.data)
+    const message = extractApiErrorMessage(error.response.data)
     if (message) {
       throw new Error(message)
     }

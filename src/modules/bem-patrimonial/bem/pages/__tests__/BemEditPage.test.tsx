@@ -395,7 +395,7 @@ describe('BemEditPage', () => {
     vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue({
       response: {
         data: {
-          nome: ['Campo obrigatório'],
+          nome: ['Campo obrigatório', 'Nome inválido'],
         },
       },
     })
@@ -407,7 +407,9 @@ describe('BemEditPage', () => {
 
     fireEvent.click(await screen.findByText('Salvar'))
 
-    expect(await screen.findByText('Campo obrigatório')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Campo obrigatório Nome inválido')
+    ).toBeInTheDocument()
   })
 
   it('deve exibir erro de duplicidade do número patrimonial na atualização', async () => {
@@ -444,13 +446,52 @@ describe('BemEditPage', () => {
     ).toBeInTheDocument()
 
     expect(
-      screen.queryByText(
+      screen.getByText(
         'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
       )
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
   })
 
   // ─── Justificativa ────────────────────────────────────────────────────────────
+
+  it('deve exibir todos os campos obrigatórios e a justificativa no mesmo envio', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi.spyOn(bemServiceModule.bemService, 'update')
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+    renderPage()
+
+    for (const valor of [
+      'Notebook Dell',
+      'Notebook corporativo',
+      '5000',
+      'Dell',
+      'Latitude',
+      'Sala 1',
+    ]) {
+      fireEvent.change(await screen.findByDisplayValue(valor), {
+        target: { value: '' },
+      })
+    }
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    for (const mensagem of [
+      'Nome do Bem é obrigatório.',
+      'Descrição é obrigatória.',
+      'Valor Unitário é obrigatório.',
+      'Marca é obrigatória.',
+      'Modelo é obrigatório.',
+      'Localização é obrigatória.',
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    ]) {
+      expect(await screen.findByText(mensagem)).toBeInTheDocument()
+    }
+
+    expect(updateSpy).not.toHaveBeenCalled()
+  })
 
   it('deve exigir justificativa ao alterar somente nome', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
@@ -513,6 +554,12 @@ describe('BemEditPage', () => {
         )
       ).toBeInTheDocument()
     })
+
+    expect(
+      screen.getByText(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+    ).toBeInTheDocument()
 
     expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
   })
@@ -661,10 +708,10 @@ describe('BemEditPage', () => {
     expect(updateSpy).not.toHaveBeenCalled()
 
     expect(
-      screen.queryByText(
+      screen.getByText(
         'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
       )
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
   })
 
   it('deve aceitar número patrimonial no formato correto sem erro', async () => {

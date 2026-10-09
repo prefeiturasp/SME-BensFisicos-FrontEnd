@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Info, Network } from 'lucide-react'
 import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/backend-form-errors'
 import { useForm } from 'react-hook-form'
 
 import { bemService, type Bem } from '../services/bem.service'
@@ -41,6 +42,18 @@ const FIELD_LABELS: Record<string, string> = {
   localizacao: 'Localização',
   numero_processo: 'Número do Processo',
 }
+
+const CAMPOS_OBRIGATORIOS_EDICAO: Array<{
+  campo: keyof Bem
+  mensagem: string
+}> = [
+  { campo: 'nome', mensagem: 'Nome do Bem é obrigatório.' },
+  { campo: 'descricao', mensagem: 'Descrição é obrigatória.' },
+  { campo: 'valor_unitario', mensagem: 'Valor Unitário é obrigatório.' },
+  { campo: 'marca', mensagem: 'Marca é obrigatória.' },
+  { campo: 'modelo', mensagem: 'Modelo é obrigatório.' },
+  { campo: 'localizacao', mensagem: 'Localização é obrigatória.' },
+]
 
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
 
@@ -137,6 +150,14 @@ export default function BemEditPage() {
     // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
     let temPendencia = false
 
+    CAMPOS_OBRIGATORIOS_EDICAO.forEach(({ campo, mensagem }) => {
+      const valor = values[campo]
+      if (valor === null || valor === undefined || String(valor).trim() === '') {
+        form.setError(campo as any, { message: mensagem })
+        temPendencia = true
+      }
+    })
+
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
       form.setError('numero_patrimonial' as any, {
         message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
@@ -154,16 +175,18 @@ export default function BemEditPage() {
       erros críticos do número patrimonial, como duplicidade, sejam retornados
       pelo backend em vez de serem mascarados pela justificativa.
     */
-    const deveBloquearPorJustificativaNoFrontend =
-      justificativaObrigatoria && !houveAlteracaoNumero && !justificativa.trim()
+    const justificativaPendente =
+      justificativaObrigatoria && !justificativa.trim()
 
-    if (deveBloquearPorJustificativaNoFrontend) {
+    if (justificativaPendente) {
       form.setError('justificativa' as any, {
         message:
           'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
       })
 
-      temPendencia = true
+      // Um número alterado ainda precisa chegar ao backend para que erros como
+      // duplicidade sejam apresentados junto com a justificativa pendente.
+      if (!houveAlteracaoNumero) temPendencia = true
     }
 
     if (temPendencia) return
@@ -179,9 +202,10 @@ export default function BemEditPage() {
     } catch (error: any) {
       if (error.response?.data) {
         Object.entries(error.response.data).forEach(([field, message]) => {
-          form.setError(field as any, {
-            message: String(message),
-          })
+          const fieldMessage = extractErrorMessage(message)
+          if (fieldMessage) {
+            form.setError(field as any, { message: fieldMessage })
+          }
         })
       } else {
         toast.error('Erro ao salvar')

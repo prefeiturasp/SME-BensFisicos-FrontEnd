@@ -110,6 +110,32 @@ describe('form-error-handler', () => {
     expect(toast.error).toHaveBeenCalledWith('Unidade orçamentária fora do escopo.');
   });
 
+  it('preserva simultaneamente erro de raiz, detalhe e campos', () => {
+    const form = createFormMock();
+    const error = buildAxiosError(400, {
+      codigo: ['Código inválido.', 'Código duplicado.'],
+      unidade_orcamentaria: ['Unidade fora do escopo.'],
+      detail: ['Revise os dados informados.'],
+    });
+
+    const handled = handleUnidadeAdministrativaBadRequestError(error, form, {
+      includeUnidadeOrcamentariaError: true,
+    });
+
+    expect(handled).toBe(true);
+    expect(form.setError).toHaveBeenCalledWith('codigoFinal', {
+      type: 'server',
+      message: 'Código inválido. Código duplicado.',
+    });
+    expect(form.setError).toHaveBeenCalledWith('root.serverError', {
+      type: 'server',
+      message: 'Unidade fora do escopo. Revise os dados informados.',
+    });
+    expect(toast.error).toHaveBeenCalledWith(
+      'Unidade fora do escopo. Revise os dados informados.',
+    );
+  });
+
   it('retorna false quando payload 400 não tem estrutura tratável', () => {
     const form = createFormMock();
     const error = buildAxiosError(400, null);

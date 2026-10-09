@@ -118,9 +118,10 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
     })
 
     it("400 final com 1 id string: mensagem + toast + 1 link com Number()", async () => {
+        const mensagemCompleta = `${MENSAGEM_BLOQUEIO} Consulte a baixa existente.`
         vi.mocked(baixaFisicaService.create).mockRejectedValue(
             axios400({
-                unidade_administrativa_origem: [MENSAGEM_BLOQUEIO],
+                unidade_administrativa_origem: [MENSAGEM_BLOQUEIO, "Consulte a baixa existente."],
                 baixas_existentes: ["63"],
             })
         )
@@ -129,8 +130,8 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
         fireEvent.click(screen.getByText("Solicitar"))
 
         await waitFor(() => expect(screen.getByTestId("bloqueio-baixa-existente")).toBeInTheDocument())
-        expect(screen.getByText(MENSAGEM_BLOQUEIO)).toBeInTheDocument()
-        expect(toast.error).toHaveBeenCalledWith(MENSAGEM_BLOQUEIO)
+        expect(screen.getByText(mensagemCompleta)).toBeInTheDocument()
+        expect(toast.error).toHaveBeenCalledWith(mensagemCompleta)
         const link = screen.getByRole("link", { name: "Abrir Baixa #63" })
         expect(link.getAttribute("href")).toBe("/baixas-fisicas/63")
         expect(screen.queryByRole("link", { name: "Abrir Baixa #22" })).not.toBeInTheDocument()
