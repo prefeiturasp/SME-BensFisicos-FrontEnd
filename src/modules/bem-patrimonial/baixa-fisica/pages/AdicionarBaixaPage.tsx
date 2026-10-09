@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, X, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
@@ -256,6 +257,10 @@ export default function AdicionarBaixaPage() {
     const unidade = form.watch("unidade")
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
     const unidadeId = unidade ? Number(unidade) : null
+    const { navigateAfterSave } = useUnsavedChanges(
+        form.formState.isDirty || allSelectedIds.length > 0,
+        "create",
+    )
 
     /**
      * As linhas de item vivem em estado local (a UI de busca é própria), mas os
@@ -279,6 +284,7 @@ export default function AdicionarBaixaPage() {
 
     const handleUnidadeChange = (value: string) => {
         form.setValue("unidade", value, {
+            shouldDirty: true,
             shouldValidate: form.formState.isSubmitted,
         })
         setBloqueioExistente(null)
@@ -331,7 +337,7 @@ export default function AdicionarBaixaPage() {
                 itens: values.itens.map(bemId => ({ bem: bemId })),
             })
             toast.success("Baixa Física cadastrada com sucesso.")
-            navigate(-1)
+            navigateAfterSave(() => navigate(-1))
         } catch (err: unknown) {
             const bloqueio = extrairBloqueioBaixaExistente(err)
             if (bloqueio) {

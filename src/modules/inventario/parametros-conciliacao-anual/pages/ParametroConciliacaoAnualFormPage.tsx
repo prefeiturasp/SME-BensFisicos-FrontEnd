@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { ExcluirParametroModal } from '../components/ExcluirParametroModal';
 import { ParametroConciliacaoForm } from '../components/ParametroConciliacaoForm';
 import { ParametrosConciliacaoBreadcrumb } from '../components/ParametrosConciliacaoBreadcrumb';
@@ -266,6 +267,10 @@ export default function ParametroConciliacaoAnualFormPage() {
       ativo: true,
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(
+    !isView && form.formState.isDirty,
+    isEdit ? 'edit' : 'create',
+  );
 
   const uoAtiva = user?.uo_ativa;
   const parametro = parametroQuery.data;
@@ -319,7 +324,7 @@ export default function ParametroConciliacaoAnualFormPage() {
         description:
           'O Parâmetro de Conciliação Anual foi salvo e já está disponível na listagem.',
       });
-      navigate('/parametros-conciliacao-anual');
+      navigateAfterSave(() => navigate('/parametros-conciliacao-anual'));
     } catch (error) {
       if (mapBadRequestToForm(error, form)) {
         return;

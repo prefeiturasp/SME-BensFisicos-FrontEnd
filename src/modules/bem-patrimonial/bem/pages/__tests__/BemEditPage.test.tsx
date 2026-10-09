@@ -2,11 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+} from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemEditPage from '../BemEditPage'
 import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
@@ -147,6 +155,27 @@ function renderPage() {
   )
 }
 
+function renderGuardedPage() {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        ),
+        children: [
+          { path: '/bens-patrimoniais/:id/editar', element: <BemEditPage /> },
+          { path: '/bens-patrimoniais/:id', element: <div>Detail Page</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/bens-patrimoniais/1/editar'] },
+  )
+
+  return render(<RouterProvider router={router} />)
+}
+
 describe('BemEditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -282,6 +311,26 @@ describe('BemEditPage', () => {
     expect(await screen.findByText('Detail Page')).toBeInTheDocument()
   })
 
+  it('protege uma edição não salva e preserva o campo ao continuar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    const nome = await screen.findByLabelText('Nome do Bem')
+    fireEvent.change(nome, { target: { value: 'Notebook atualizado' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar editando' }))
+    expect(nome).toHaveValue('Notebook atualizado')
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar alterações' }))
+    expect(await screen.findByText('Detail Page')).toBeInTheDocument()
+  })
+
   // ─── Submissão bem-sucedida ───────────────────────────────────────────────────
 
   it('deve salvar com sucesso ao alterar nome com justificativa', async () => {
@@ -386,6 +435,29 @@ describe('BemEditPage', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
     })
+  })
+
+  it('mantém a proteção quando o salvamento falha', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue(
+      new Error('Erro customizado')
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    fireEvent.change(await screen.findByPlaceholderText('Observação'), {
+      target: { value: 'Alteração ainda não salva' },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
+    })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
   })
 
   it('deve setar erro de validação no campo via response.data', async () => {

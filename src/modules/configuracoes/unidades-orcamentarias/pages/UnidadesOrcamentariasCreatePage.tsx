@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { UnidadeOrcamentariaForm } from '../components/UnidadeOrcamentariaForm';
 import { UnidadesOrcamentariasCreateBreadcrumb } from '../components/UnidadesOrcamentariasCreateBreadcrumb';
 import { UnidadesOrcamentariasGuard } from '../components/UnidadesOrcamentariasGuard';
@@ -33,6 +34,7 @@ export default function UnidadesOrcamentariasCreatePage() {
       status: 'ativa',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, 'create');
 
   const handleSubmit = async (values: UnidadeOrcamentariaFormData) => {
     form.clearErrors('root.serverError');
@@ -52,7 +54,7 @@ export default function UnidadesOrcamentariasCreatePage() {
         description: 'A Unidade Orçamentária foi cadastrada.',
       });
 
-      navigate('/unidades-orcamentarias');
+      navigateAfterSave(() => navigate('/unidades-orcamentarias'));
     } catch (error) {
       if (handleUnidadeOrcamentariaBadRequestError(error, form)) {
         return;

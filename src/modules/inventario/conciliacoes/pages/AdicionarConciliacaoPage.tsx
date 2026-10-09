@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import { isAfter, startOfDay, subDays } from 'date-fns';
 import { useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
@@ -59,6 +60,7 @@ export default function AdicionarConciliacaoPage() {
       periodoFinal: '',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, 'create');
 
   const uaAtiva = user?.ua_ativa;
   const unidadeAdministrativaId = uaAtiva?.id ?? null;
@@ -103,7 +105,7 @@ export default function AdicionarConciliacaoPage() {
         description: 'A Conciliação foi adicionada com sucesso e já está disponível na listagem.',
       });
 
-      navigate('/conciliacoes');
+      navigateAfterSave(() => navigate('/conciliacoes'));
     } catch (error) {
       const result = handleConciliacaoBadRequestError(error, form);
       if (result.handled) {
