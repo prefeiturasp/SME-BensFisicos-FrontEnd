@@ -52,6 +52,17 @@ vi.mock('../../components/LinhaBemRow', () => ({
         <p data-testid={`erro-localizacao-${index}`}>{errors.localizacao}</p>
       )}
       <input
+        data-testid={`numero-patrimonial-${index}`}
+        placeholder="Número Patrimonial"
+        value={linha.numero_patrimonial}
+        onChange={(e) => {
+          const newLinhas = [...linhas]
+          newLinhas[index] = { ...newLinhas[index], numero_patrimonial: e.target.value }
+          setLinhas(newLinhas)
+          onLimparErro?.(index, 'numero_patrimonial')
+        }}
+      />
+      <input
         data-testid={`localizacao-${index}`}
         placeholder="Localização"
         value={linha.localizacao}
@@ -123,6 +134,9 @@ function preencherCamposBase() {
   })
   fireEvent.change(screen.getByPlaceholderText('Localização'), {
     target: { value: 'Sala 1' },
+  })
+  fireEvent.change(screen.getByPlaceholderText('Número Patrimonial'), {
+    target: { value: '123.456789012-3' },
   })
   // UA é auto-selecionada pois o mock retorna apenas 1 UA
 }
@@ -596,6 +610,9 @@ describe('BemCreatePage', () => {
     const camposLocalizacao = screen.getAllByPlaceholderText('Localização')
     fireEvent.change(camposLocalizacao[1], { target: { value: 'Sala 2' } })
 
+    const camposNumero = screen.getAllByPlaceholderText('Número Patrimonial')
+    fireEvent.change(camposNumero[1], { target: { value: '321.654987321-9' } })
+
     fireEvent.click(screen.getByText('Salvar'))
 
     await waitFor(() => {
@@ -1002,5 +1019,78 @@ describe('BemCreatePage', () => {
     expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
     expect(screen.getByDisplayValue('Sala 2')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('Sala 1')).not.toBeInTheDocument()
+  })
+
+  it('deve bloquear envio quando texto acima do limite com mensagem no campo', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'A'.repeat(256) },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Deve ter no máximo 255 caracteres.')
+      ).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
+    // permanece na tela sem erro técnico
+    expect(
+      screen.getByRole('heading', { name: /Adicionar Bem Patrimonial/i })
+    ).toBeInTheDocument()
+  })
+
+  it('deve aplicar máscara visível com ponto de milhar recusando letras', async () => {
+    renderPage()
+    fireEvent.change(screen.getByPlaceholderText('0,00'), {
+      target: { value: '12ab34' },
+    })
+    expect(screen.getByDisplayValue('1.234')).toBeInTheDocument()
+  })
+
+  it('deve formatar milhar ao digitar valor cheio', async () => {
+    renderPage()
+    fireEvent.change(screen.getByPlaceholderText('0,00'), {
+      target: { value: '1500,00' },
+    })
+    expect(screen.getByDisplayValue('1.500,00')).toBeInTheDocument()
+  })
+
+  it('deve completar centavos no blur', async () => {
+    renderPage()
+    const input = screen.getByPlaceholderText('0,00')
+    fireEvent.change(input, { target: { value: '1500' } })
+    expect(screen.getByDisplayValue('1.500')).toBeInTheDocument()
+    fireEvent.blur(input)
+    expect(screen.getByDisplayValue('1.500,00')).toBeInTheDocument()
+  })
+
+  it('deve sinalizar número patrimonial vazio com erro no campo', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.change(screen.getByPlaceholderText('Número Patrimonial'), {
+      target: { value: '' },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Número patrimonial é obrigatório.')
+      ).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('deve exibir contador de caracteres e dica de formato monetário', async () => {
+    renderPage()
+    expect(screen.getAllByText(/\d+\/255/).length).toBeGreaterThan(0)
+    expect(
+      screen.getByText('Formato 0,00 ou 0.000,00.')
+    ).toBeInTheDocument()
   })
 })

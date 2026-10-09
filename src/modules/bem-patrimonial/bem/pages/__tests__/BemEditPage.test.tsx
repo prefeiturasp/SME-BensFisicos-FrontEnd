@@ -1021,4 +1021,88 @@ describe('BemEditPage', () => {
       ).toBeInTheDocument()
     })
   })
+
+  describe('Padronização de limites e valor monetário', () => {
+    it('deve carregar valor inicial já formatado como no cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      expect(await screen.findByDisplayValue('5.000,00')).toBeInTheDocument()
+    })
+
+    it('deve usar a mesma máscara visível do cadastro recusando letras', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      const valorInput = (await screen.findByDisplayValue(
+        '5.000,00'
+      )) as HTMLInputElement
+      fireEvent.change(valorInput, { target: { value: '12ab34' } })
+      expect(valorInput.value).toBe('1.234')
+    })
+
+    it('deve enviar valor com ponto para a API aceitar', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('5.000,00')
+      fireEvent.change(await screen.findByDisplayValue('Sala 1'), {
+        target: { value: 'Sala 2' },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledWith(
+          bemMock.id,
+          expect.objectContaining({ valor_unitario: '5000.00' })
+        )
+      })
+    })
+
+    it('deve exibir a mesma mensagem de limite do cadastro e bloquear envio', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+        target: { value: 'A'.repeat(256) },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      expect(
+        await screen.findByText('Deve ter no máximo 255 caracteres.')
+      ).toBeInTheDocument()
+      expect(updateSpy).not.toHaveBeenCalled()
+    })
+
+    it('deve exibir dica de formato monetário igual ao cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+      expect(
+        screen.getByText('Formato 0,00 ou 0.000,00.')
+      ).toBeInTheDocument()
+    })
+  })
 })

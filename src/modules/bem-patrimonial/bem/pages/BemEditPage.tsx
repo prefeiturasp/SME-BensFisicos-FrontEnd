@@ -6,6 +6,15 @@ import { useForm } from 'react-hook-form'
 
 import { bemService, type Bem } from '../services/bem.service'
 import { valorSelectFormato } from '../utils/formato-bem'
+import { BEM_LIMITS, erroLimiteMaximo } from '../utils/bem-limits'
+import {
+  DICA_VALOR_UNITARIO,
+  VALOR_UNITARIO_TAMANHO_MAX,
+  formatarValorInput,
+  maskValorUnitario,
+  serializarValorUnitario,
+  validarValorUnitario,
+} from '../utils/valor-monetario'
 import { useAuth } from '@/auth/useAuth'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { userHasAccessToBemUa } from '../utils/bemAccess'
@@ -43,6 +52,29 @@ const FIELD_LABELS: Record<string, string> = {
 }
 
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
+
+type CampoTextoBem =
+  | 'nome'
+  | 'descricao'
+  | 'marca'
+  | 'modelo'
+  | 'localizacao'
+  | 'numero_processo'
+  | 'observacao'
+
+const CAMPOS_COM_LIMITE: Array<{ campo: CampoTextoBem; limite: number }> = [
+  { campo: 'nome', limite: BEM_LIMITS.nome },
+  { campo: 'descricao', limite: BEM_LIMITS.descricao },
+  { campo: 'marca', limite: BEM_LIMITS.marca },
+  { campo: 'modelo', limite: BEM_LIMITS.modelo },
+  { campo: 'localizacao', limite: BEM_LIMITS.localizacao },
+  { campo: 'numero_processo', limite: BEM_LIMITS.numero_processo },
+  { campo: 'observacao', limite: BEM_LIMITS.observacao },
+]
+
+function limiteDoCampo(fieldName: string): number | undefined {
+  return CAMPOS_COM_LIMITE.find(item => item.campo === fieldName)?.limite
+}
 
 function isNumeroPatrimonialValido(values: Bem): boolean {
   if (values.sem_numeracao) return true
@@ -94,7 +126,11 @@ export default function BemEditPage() {
         const data = await bemService.retrieve(Number(id))
 
         setBem(data)
-        form.reset({ ...data, justificativa: '' })
+        form.reset({
+          ...data,
+          valor_unitario: formatarValorInput(data.valor_unitario),
+          justificativa: '',
+        })
         setOriginalNome(data.nome ?? '')
         setOriginalNumeroPatrimonial(data.numero_patrimonial ?? '')
       } catch {
@@ -137,6 +173,20 @@ export default function BemEditPage() {
     // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
     let temPendencia = false
 
+    for (const { campo, limite } of CAMPOS_COM_LIMITE) {
+      const erro = erroLimiteMaximo(values[campo], limite)
+      if (erro) {
+        form.setError(campo, { message: erro })
+        temPendencia = true
+      }
+    }
+
+    const erroValor = validarValorUnitario(values.valor_unitario)
+    if (erroValor) {
+      form.setError('valor_unitario', { message: erroValor })
+      temPendencia = true
+    }
+
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
       form.setError('numero_patrimonial' as any, {
         message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
@@ -171,6 +221,7 @@ export default function BemEditPage() {
     try {
       await bemService.update(values.id, {
         ...values,
+        valor_unitario: serializarValorUnitario(values.valor_unitario),
         justificativa: justificativaHabilitada ? justificativa : '',
       } as any)
 
@@ -347,30 +398,77 @@ export default function BemEditPage() {
                   key={fieldName}
                   control={form.control}
                   name={fieldName as any}
-                  render={({ field }) => (
-                    <FormItem
-                      className={fieldName === 'descricao' ? 'col-span-3' : ''}
-                    >
-                      <FormLabel>{FIELD_LABELS[fieldName]}</FormLabel>
-                      <FormControl>
-                        {fieldName === 'descricao' ? (
-                          <textarea
-                            {...field}
-                            disabled={!podeEditar}
-                            className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
-                          />
+                  render={({ field }) => {
+                    const limite = limiteDoCampo(fieldName)
+                    const valorAtual = String(field.value ?? '')
+                    return (
+                      <FormItem
+                        className={fieldName === 'descricao' ? 'col-span-3' : ''}
+                      >
+                        <FormLabel>{FIELD_LABELS[fieldName]}</FormLabel>
+                        <FormControl>
+                          {fieldName === 'descricao' ? (
+                            <textarea
+                              {...field}
+                              value={field.value ?? ''}
+                              disabled={!podeEditar}
+                              maxLength={BEM_LIMITS.descricao}
+                              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
+                            />
+                          ) : (
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              disabled={!podeEditar}
+                              className={INPUT_CLASS}
+                              maxLength={
+                                fieldName === 'valor_unitario'
+                                  ? VALOR_UNITARIO_TAMANHO_MAX
+                                  : limite
+                              }
+                              inputMode={
+                                fieldName === 'valor_unitario'
+                                  ? 'decimal'
+                                  : undefined
+                              }
+                              onChange={(e) => {
+                                if (fieldName === 'valor_unitario') {
+                                  field.onChange(
+                                    maskValorUnitario(e.target.value)
+                                  )
+                                } else {
+                                  field.onChange(e.target.value)
+                                }
+                              }}
+                              onBlur={(e) => {
+                                field.onBlur()
+                                if (fieldName === 'valor_unitario') {
+                                  const formatado = formatarValorInput(
+                                    e.target.value
+                                  )
+                                  if (formatado && formatado !== e.target.value) {
+                                    field.onChange(formatado)
+                                  }
+                                }
+                              }}
+                            />
+                          )}
+                        </FormControl>
+                        {fieldName === 'valor_unitario' ? (
+                          <p className="text-xs text-gray-500">
+                            {DICA_VALOR_UNITARIO}
+                          </p>
                         ) : (
-                          <Input
-                            {...field}
-                            value={field.value ?? ''}
-                            disabled={!podeEditar}
-                            className={INPUT_CLASS}
-                          />
+                          limite && (
+                            <p className="text-xs text-gray-500">
+                              {valorAtual.length}/{limite}
+                            </p>
+                          )
                         )}
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
               ))}
             </div>
@@ -384,11 +482,16 @@ export default function BemEditPage() {
                   <FormControl>
                     <textarea
                       {...field}
+                      value={field.value ?? ''}
                       disabled={!podeEditar}
                       placeholder="Observação"
+                      maxLength={BEM_LIMITS.observacao}
                       className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </FormControl>
+                  <p className="text-xs text-gray-500">
+                    {String(field.value ?? '').length}/{BEM_LIMITS.observacao}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
