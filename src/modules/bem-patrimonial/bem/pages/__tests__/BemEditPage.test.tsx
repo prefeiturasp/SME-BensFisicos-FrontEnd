@@ -538,7 +538,7 @@ describe('BemEditPage', () => {
     for (const valor of [
       'Notebook Dell',
       'Notebook corporativo',
-      '5000',
+      '5.000,00',
       'Dell',
       'Latitude',
       'Sala 1',
