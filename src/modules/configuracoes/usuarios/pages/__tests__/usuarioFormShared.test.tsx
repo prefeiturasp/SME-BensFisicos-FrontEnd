@@ -74,7 +74,7 @@ describe("usuarioFormShared helpers", () => {
 
     expect(setTodasUnidades).toHaveBeenCalled()
     expect(setUnidadesSelecionadas).toHaveBeenCalledWith([])
-    expect(syncFormUnidades).toHaveBeenCalledWith([])
+    expect(syncFormUnidades).toHaveBeenCalledWith([], true)
     expect(setFiltroUa).toHaveBeenCalledWith("")
     expect(current).toBe(true)
   })

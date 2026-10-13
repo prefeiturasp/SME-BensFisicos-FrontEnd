@@ -11,6 +11,7 @@ import type { BaixaFisica } from "../../types/baixas-fisicas.types"
 // ===================== MOCKS =====================
 
 const navigateMock = vi.fn()
+const navigateAfterCommitMock = vi.hoisted(() => vi.fn((action: () => void) => action()))
 const createObjectURLMock = vi.fn(() => "blob:excel")
 const revokeObjectURLMock = vi.fn()
 
@@ -61,6 +62,10 @@ vi.mock("@/components/ui/DateRangePicker", () => ({
 
 vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
+}))
+
+vi.mock("@/components/unsaved-changes/useUnsavedChanges", () => ({
+    useUnsavedChanges: () => ({ navigateAfterCommit: navigateAfterCommitMock }),
 }))
 
 // ===================== FACTORIES =====================
@@ -370,6 +375,7 @@ describe("BaixasListPage", () => {
             fireEvent.click(screen.getAllByRole("checkbox")[1])
             fireEvent.click(screen.getByText("Aprovar"))
 
+            expect(navigateAfterCommitMock).toHaveBeenCalledOnce()
             expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/7")
         })
 
@@ -389,6 +395,7 @@ describe("BaixasListPage", () => {
             fireEvent.click(screen.getAllByRole("checkbox")[1])
             fireEvent.click(screen.getByText("Recusar"))
 
+            expect(navigateAfterCommitMock).toHaveBeenCalledOnce()
             expect(navigateMock).toHaveBeenCalledWith("/baixas-fisicas/8")
         })
 

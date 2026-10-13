@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 
 import { useAuth } from '@/auth/useAuth'
 import type { EscopoGrupo } from '@/auth/auth.service'
@@ -350,6 +351,7 @@ export default function MovimentacoesListPage() {
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [atrasadaFilter, setAtrasadaFilter] = useState<StatusFilterValue>('todos')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  useUnsavedChanges(selectedIds.length > 0, 'selection')
   const [actionLoading, setActionLoading] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
 

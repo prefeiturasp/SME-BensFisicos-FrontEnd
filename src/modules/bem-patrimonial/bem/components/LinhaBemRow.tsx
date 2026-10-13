@@ -12,6 +12,7 @@ import {
 import { Trash2, Info } from 'lucide-react'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { valorSelectFormato } from '../utils/formato-bem'
+import { BEM_LIMITS } from '../utils/bem-limits'
 
 export type LinhaBem = {
   numero_patrimonial: string
@@ -134,6 +135,7 @@ export function LinhaBemRow({
           placeholder="000.000000000-0"
           value={linha.numero_patrimonial}
           disabled={numeroHook.disabled}
+          maxLength={BEM_LIMITS.numero_patrimonial}
           aria-invalid={!!errors?.numero_patrimonial}
           onChange={(e) =>
             atualizarCampo('numero_patrimonial', numeroHook.applyMask(e.target.value))
@@ -186,9 +188,13 @@ export function LinhaBemRow({
           className={INPUT_CLASS}
           placeholder="Insira a localização do bem"
           value={linha.localizacao}
+          maxLength={BEM_LIMITS.localizacao}
           aria-invalid={!!errors?.localizacao}
           onChange={(e) => atualizarCampo('localizacao', e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          {linha.localizacao.length}/{BEM_LIMITS.localizacao}
+        </p>
       </ValidatedField>
 
       {/* NÚMERO DO PROCESSO */}
@@ -203,9 +209,13 @@ export function LinhaBemRow({
           className={INPUT_CLASS}
           placeholder="Informe o número do processo"
           value={linha.numero_processo}
+          maxLength={BEM_LIMITS.numero_processo}
           aria-invalid={!!errors?.numero_processo}
           onChange={(e) => atualizarCampo('numero_processo', e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          {linha.numero_processo.length}/{BEM_LIMITS.numero_processo}
+        </p>
       </ValidatedField>
 
       {/* AÇÕES — remoção individual por linha. A adição é fixa fora da linha. */}

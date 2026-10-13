@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AxiosError } from "axios"
 import { toast } from "sonner"
@@ -82,6 +83,7 @@ export default function GerarNBBPMPage() {
             numero_processo_destinacao_final: "",
         },
     })
+    const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, "create")
 
     const handleCancelar = () => {
         navigate(-1)
@@ -139,7 +141,7 @@ export default function GerarNBBPMPage() {
             toast.success(
                 nbbpm?.numero ? `NBBPM ${nbbpm.numero} gerada com sucesso!` : "NBBPM gerada com sucesso!"
             )
-            navigate(-1)
+            navigateAfterSave(() => navigate(-1))
         } catch (err: unknown) {
             const message = getMensagemErroNbbpm(err)
             form.setError("root.serverError", { message })

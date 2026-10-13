@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
@@ -144,6 +145,10 @@ function RegistarOcorrenciaContent() {
       observacao: '',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(
+    form.formState.isDirty,
+    ocorrenciaAtual ? 'edit' : 'create',
+  );
 
   useEffect(() => {
     if (!item) return;
@@ -212,7 +217,7 @@ function RegistarOcorrenciaContent() {
       toast.success('Ocorrência registrada com sucesso.', {
         description: 'A situação do bem foi atualizada e a conciliação refletirá a mudança.',
       });
-      navigate(`/conciliacoes/${conciliacaoId}`);
+      navigateAfterSave(() => navigate(`/conciliacoes/${conciliacaoId}`));
     } catch (error) {
       const badRequest = handleOcorrenciaBadRequestError(error, form);
       if (badRequest.handled) {
@@ -249,7 +254,7 @@ function RegistarOcorrenciaContent() {
       await removerMutation.mutateAsync({ conciliacaoId, itemId });
       toast.success('Ocorrência excluída com sucesso.');
       setShowExclusao(false);
-      navigate(`/conciliacoes/${conciliacaoId}`);
+      navigateAfterSave(() => navigate(`/conciliacoes/${conciliacaoId}`));
     } catch (error) {
       const message = getErrorMessage(error, FALLBACK_EXCLUSAO_MESSAGE);
       setRemoverError(message);

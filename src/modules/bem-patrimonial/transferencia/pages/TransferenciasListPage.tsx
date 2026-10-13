@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 import { FilterSelect } from '@/modules/bem-patrimonial/components/FilterSelect'
 import { usePagination } from '@/modules/bem-patrimonial/bem/hooks/usePagination'
 import { unidadesOrcamentariasService } from '@/modules/configuracoes/unidades-orcamentarias/services/unidades-orcamentarias.service'
@@ -181,6 +182,7 @@ export default function TransferenciasListPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  useUnsavedChanges(selectedIds.length > 0, 'selection')
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [numeroNtbpmInput, setNumeroNtbpmInput] = useState('')
   const [numeroNtbpm, setNumeroNtbpm] = useState('')

@@ -662,4 +662,37 @@ describe('BemDetailPage', () => {
     })
   })
 
+  describe('Valor unitário em R$', () => {
+    it('deve exibir valor unitário no padrão R$ 1.234,56', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        { ...bemMock, valor_unitario: 1234.56 } as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const valorInput = document.getElementById(
+        'valor_unitario'
+      ) as HTMLInputElement
+      expect(valorInput.value).toContain('R$')
+      expect(valorInput.value).toContain('1.234,56')
+    })
+
+    it('deve formatar string "5000" como moeda', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        { ...bemMock, valor_unitario: '5000' } as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorComAcesso })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const valorInput = document.getElementById(
+        'valor_unitario'
+      ) as HTMLInputElement
+      expect(valorInput.value).toContain('5.000,00')
+    })
+  })
+
 })

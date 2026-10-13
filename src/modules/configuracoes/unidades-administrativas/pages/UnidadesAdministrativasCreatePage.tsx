@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { UnidadeAdministrativaForm } from '../components/UnidadeAdministrativaForm';
 import { UnidadesAdministrativasCreateBreadcrumb } from '../components/UnidadesAdministrativasCreateBreadcrumb';
 import { unidadesAdministrativasService } from '../services/unidades-administrativas.service';
@@ -32,6 +33,7 @@ export default function UnidadesAdministrativasCreatePage() {
       status: 'ativa',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, 'create');
 
   const uoAtiva = user?.uo_ativa;
   const uoCodigo = uoAtiva?.codigo ?? '---';
@@ -64,7 +66,7 @@ export default function UnidadesAdministrativasCreatePage() {
         description: 'A Unidade Administrativa foi cadastrada.',
       });
 
-      navigate('/unidades-administrativas');
+      navigateAfterSave(() => navigate('/unidades-administrativas'));
     } catch (error) {
       if (
         handleUnidadeAdministrativaBadRequestError(error, form, {

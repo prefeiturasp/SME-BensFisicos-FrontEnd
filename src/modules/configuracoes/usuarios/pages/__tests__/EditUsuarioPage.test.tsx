@@ -7,6 +7,10 @@ import EditarUsuarioPage, { getIdsUsuario, mountPayload, resolveUoInicial } from
 import { usuarioService } from "../../service/usuario.service"
 import { authService } from "../../../../../auth/auth.service"
 
+const useUnsavedChangesMock = vi.hoisted(() => vi.fn(() => ({
+    navigateAfterSave: (action: () => void) => action(),
+})))
+
 vi.mock("../../service/usuario.service", () => ({
     usuarioService: {
         retrieve: vi.fn(),
@@ -22,6 +26,10 @@ vi.mock("../../../../../auth/auth.service", () => ({
 
 vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
+}))
+
+vi.mock("@/components/unsaved-changes/useUnsavedChanges", () => ({
+    useUnsavedChanges: useUnsavedChangesMock,
 }))
 
 const usuarioMock = {
@@ -432,6 +440,32 @@ describe("EditarUsuarioPage", () => {
 
         expect(screen.getByText("Página de Detalhes")).toBeInTheDocument()
         expect(screen.queryByRole("button", { name: "Voltar" })).not.toBeInTheDocument()
+    })
+
+    it("considera a edição alterada ao trocar somente a UO", async () => {
+        vi.mocked(authService.getCurrentUser).mockResolvedValue(meMockSemUoInicial)
+        renderPage()
+        await aguardarCarregamento()
+
+        expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(false, "edit")
+
+        const user = userEvent.setup()
+        const uoSelect = screen.getAllByRole("combobox")[2]
+        Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+            configurable: true,
+            value: () => undefined,
+        })
+        Object.defineProperties(uoSelect, {
+            hasPointerCapture: { value: () => false },
+            setPointerCapture: { value: () => undefined },
+            releasePointerCapture: { value: () => undefined },
+        })
+        await user.click(uoSelect)
+        await user.click(await screen.findByRole("option", { name: "30 - UO Alternativa" }))
+
+        await waitFor(() => {
+            expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(true, "edit")
+        })
     })
 
     it("exibe o username como campo desabilitado", async () => {
