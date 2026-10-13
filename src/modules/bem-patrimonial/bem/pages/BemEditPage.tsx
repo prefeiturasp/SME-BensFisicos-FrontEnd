@@ -143,6 +143,38 @@ function validarBaseEdicao(
   return pendente
 }
 
+function validarEdicaoAntesEnvio(
+  values: Bem,
+  originalNumeroPatrimonial: string,
+  justificativaObrigatoria: boolean,
+  justificativa: string,
+  registrarErro: (campo: keyof Bem, message: string) => void,
+): boolean {
+  const houveAlteracaoNumero =
+    (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+  let temPendencia = validarBaseEdicao(values, registrarErro)
+
+  if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
+    registrarErro(
+      'numero_patrimonial',
+      'Número patrimonial inválido. Use o formato 000.000000000-0.',
+    )
+    temPendencia = true
+  }
+
+  if (justificativaObrigatoria && !justificativa.trim()) {
+    registrarErro(
+      'justificativa' as keyof Bem,
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    )
+
+    // Permite que o backend apresente duplicidade junto da justificativa pendente.
+    if (!houveAlteracaoNumero) temPendencia = true
+  }
+
+  return temPendencia
+}
+
 export default function BemEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -230,44 +262,13 @@ export default function BemEditPage() {
       form.setError(campo, { message })
       primeiroCampoInvalido ??= campo
     }
-    const houveAlteracaoNumero =
-      (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
-
-    // As pendencias sao acumuladas e exibidas juntas, em vez de abortar na
-    // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
-    let temPendencia = validarBaseEdicao(values, registrarErro)
-
-    if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
-      registrarErro(
-        'numero_patrimonial',
-        'Número patrimonial inválido. Use o formato 000.000000000-0.',
-      )
-
-      temPendencia = true
-    }
-
-    /*
-      Importante:
-      Quando o número patrimonial foi alterado, não bloqueamos no frontend
-      por falta de justificativa antes da chamada à API.
-
-      Isso preserva a paridade com o fluxo do Django Admin e permite que
-      erros críticos do número patrimonial, como duplicidade, sejam retornados
-      pelo backend em vez de serem mascarados pela justificativa.
-    */
-    const justificativaPendente =
-      justificativaObrigatoria && !justificativa.trim()
-
-    if (justificativaPendente) {
-      registrarErro(
-        'justificativa' as keyof Bem,
-        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
-      )
-
-      // Um número alterado ainda precisa chegar ao backend para que erros como
-      // duplicidade sejam apresentados junto com a justificativa pendente.
-      if (!houveAlteracaoNumero) temPendencia = true
-    }
+    const temPendencia = validarEdicaoAntesEnvio(
+      values,
+      originalNumeroPatrimonial,
+      justificativaObrigatoria,
+      justificativa,
+      registrarErro,
+    )
 
     if (temPendencia) {
       if (primeiroCampoInvalido) form.setFocus(primeiroCampoInvalido)
