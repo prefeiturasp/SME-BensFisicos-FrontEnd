@@ -99,6 +99,40 @@ function isNumeroPatrimonialValido(values: Bem): boolean {
   return NUMERO_PATRIMONIAL_REGEX.test(numero)
 }
 
+function isCampoVazio(valor: unknown): boolean {
+  return valor === null || valor === undefined || String(valor).trim() === ''
+}
+
+function validarBaseEdicao(
+  values: Bem,
+  registrarErro: (campo: any, message: string) => void,
+): boolean {
+  let pendente = false
+
+  CAMPOS_OBRIGATORIOS_EDICAO.forEach(({ campo, mensagem }) => {
+    if (isCampoVazio(values[campo])) {
+      registrarErro(campo, mensagem)
+      pendente = true
+    }
+  })
+
+  for (const { campo, limite } of CAMPOS_COM_LIMITE) {
+    const erro = erroLimiteMaximo(values[campo], limite)
+    if (erro) {
+      registrarErro(campo, erro)
+      pendente = true
+    }
+  }
+
+  const erroValor = validarValorUnitario(values.valor_unitario)
+  if (erroValor) {
+    registrarErro('valor_unitario', erroValor)
+    pendente = true
+  }
+
+  return pendente
+}
+
 export default function BemEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -186,29 +220,9 @@ export default function BemEditPage() {
 
     // As pendencias sao acumuladas e exibidas juntas, em vez de abortar na
     // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
-    let temPendencia = false
-
-    CAMPOS_OBRIGATORIOS_EDICAO.forEach(({ campo, mensagem }) => {
-      const valor = values[campo]
-      if (valor === null || valor === undefined || String(valor).trim() === '') {
-        form.setError(campo as any, { message: mensagem })
-        temPendencia = true
-      }
-    })
-
-    for (const { campo, limite } of CAMPOS_COM_LIMITE) {
-      const erro = erroLimiteMaximo(values[campo], limite)
-      if (erro) {
-        form.setError(campo, { message: erro })
-        temPendencia = true
-      }
-    }
-
-    const erroValor = validarValorUnitario(values.valor_unitario)
-    if (erroValor) {
-      form.setError('valor_unitario', { message: erroValor })
-      temPendencia = true
-    }
+    let temPendencia = validarBaseEdicao(values, (campo, message) =>
+      form.setError(campo, { message }),
+    )
 
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
       form.setError('numero_patrimonial' as any, {
