@@ -44,6 +44,7 @@ export type LinhaBemRowProps = Readonly<{
   isLast?: boolean
   podeRemover?: boolean
   errors?: Record<string, string>
+  reserveErrorSpace?: boolean
   /**
    * Limpeza padronizada do erro inline: só o campo alterado é limpo, na
    * digitação — o mesmo comportamento de `shouldValidate` do react-hook-form
@@ -63,6 +64,7 @@ export function LinhaBemRow({
   removeLinha,
   podeRemover = true,
   errors,
+  reserveErrorSpace = false,
   onLimparErro,
 }: LinhaBemRowProps) {
 
@@ -124,6 +126,7 @@ export function LinhaBemRow({
         label="Número Patrimonial"
         htmlFor={`numero_patrimonial_${index}`}
         error={errors?.numero_patrimonial}
+        reserveErrorSpace={reserveErrorSpace}
         required
       >
         <Input
@@ -158,6 +161,7 @@ export function LinhaBemRow({
           </span>
         }
         htmlFor={`formato_${index}`}
+        reserveErrorSpace={reserveErrorSpace}
       >
         <Select value={valorFormatoSelect} onValueChange={handleFormatoChange}>
           <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
@@ -176,6 +180,7 @@ export function LinhaBemRow({
         label="Localização"
         htmlFor={`localizacao_${index}`}
         error={errors?.localizacao}
+        reserveErrorSpace={reserveErrorSpace}
         required
       >
         <Input
@@ -197,6 +202,7 @@ export function LinhaBemRow({
         label="Número do Processo"
         htmlFor={`numero_processo_${index}`}
         error={errors?.numero_processo}
+        reserveErrorSpace={reserveErrorSpace}
       >
         <Input
           id={`numero_processo_${index}`}

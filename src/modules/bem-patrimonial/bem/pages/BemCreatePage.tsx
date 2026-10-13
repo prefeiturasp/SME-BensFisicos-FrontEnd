@@ -21,6 +21,7 @@ import { AppBreadcrumb } from '@/components/AppBreadcrumb'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LinhaBemRow, isLinhaBemVazia, type LinhaBem } from '../components/LinhaBemRow'
 import { useAuth } from '@/auth/useAuth'
+import { extractErrorMessage } from '@/lib/backend-form-errors'
 import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 
 type LinhaBemComId = LinhaBem & { id: string }
@@ -36,6 +37,86 @@ type FormBase = {
 }
 
 type FormErrors = Partial<Record<keyof FormBase, string>>
+type LinhaErrors = Record<number, Record<string, string>>
+
+const FORM_FIELD_ORDER: (keyof FormBase)[] = [
+  'unidade_administrativa',
+  'nome',
+  'marca',
+  'modelo',
+  'valor_unitario',
+  'descricao',
+  'observacao',
+]
+
+const LINHA_FIELD_ORDER = [
+  'numero_patrimonial',
+  'formato',
+  'localizacao',
+  'numero_processo',
+]
+
+function normalizarMensagemErro(error: unknown): string {
+  return extractErrorMessage(error) ?? ''
+}
+
+function extrairErrosDaResposta(data: unknown): {
+  formErrors: FormErrors
+  linhaErrors: LinhaErrors
+} {
+  const formErrors: FormErrors = {}
+  const linhaErrors: LinhaErrors = {}
+  if (!data || typeof data !== 'object') return { formErrors, linhaErrors }
+
+  const responseErrors = data as Record<string, unknown>
+  FORM_FIELD_ORDER.forEach(field => {
+    if (field in responseErrors) {
+      formErrors[field] = normalizarMensagemErro(responseErrors[field])
+    }
+  })
+
+  const linhas = responseErrors.linhas
+  if (linhas && typeof linhas === 'object' && !Array.isArray(linhas)) {
+    Object.entries(linhas).forEach(([index, errors]) => {
+      if (!errors || typeof errors !== 'object' || Array.isArray(errors)) return
+      const fieldErrors: Record<string, string> = {}
+      Object.entries(errors).forEach(([field, error]) => {
+        fieldErrors[field] = normalizarMensagemErro(error)
+      })
+      linhaErrors[Number(index)] = fieldErrors
+    })
+  }
+  return { formErrors, linhaErrors }
+}
+
+function focarPrimeiroCampoInvalido(
+  formErrors: FormErrors,
+  linhaErrors: LinhaErrors
+) {
+  const fieldIds = FORM_FIELD_ORDER
+    .filter(field => formErrors[field])
+    .map(String)
+
+  Object.keys(linhaErrors)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach(index => {
+      LINHA_FIELD_ORDER.forEach(field => {
+        if (linhaErrors[index]?.[field]) fieldIds.push(`${field}_${index}`)
+      })
+    })
+
+  const field = fieldIds
+    .map(fieldId => document.getElementById(fieldId))
+    .find(element =>
+      element instanceof HTMLElement
+      && !element.hasAttribute('disabled')
+      && !element.closest('[hidden], .hidden')
+    )
+
+  field?.focus()
+  field?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+}
 
 const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
@@ -170,9 +251,7 @@ export default function BemCreatePage() {
   const [formErrors, setFormErrors] = useState<FormErrors>({})
 
   const [linhas, setLinhas] = useState<LinhaBemComId[]>([novaLinha()])
-  const [linhasErrors, setLinhasErrors] = useState<
-    Record<number, Record<string, string>>
-  >({})
+  const [linhasErrors, setLinhasErrors] = useState<LinhaErrors>({})
   const [linhaPendente, setLinhaPendente] = useState<{
     linha: LinhaBemComId
     index: number
@@ -293,8 +372,8 @@ export default function BemCreatePage() {
     return errors
   }
 
-  const validarLinhas = (): Record<number, Record<string, string>> => {
-    const errors: Record<number, Record<string, string>> = {}
+  const validarLinhas = (): LinhaErrors => {
+    const errors: LinhaErrors = {}
     linhas.forEach((linha, index) => {
       const errosLinha: Record<string, string> = {}
       if (!linha.localizacao?.trim()) {
@@ -337,6 +416,7 @@ export default function BemCreatePage() {
     setLinhasErrors(linhaErrors)
 
     if (Object.keys(baseErrors).length || Object.keys(linhaErrors).length) {
+      focarPrimeiroCampoInvalido(baseErrors, linhaErrors)
       toast.error('Preencha os campos obrigatórios.')
       return
     }
@@ -351,16 +431,24 @@ export default function BemCreatePage() {
       navigateAfterSave(() => navigate('/bens-patrimoniais'))
     } catch (error: any) {
       const data = error?.response?.data
-      if (data?.linhas) {
-        const erros: Record<number, Record<string, string>> = {}
-        Object.entries(data.linhas).forEach(([idx, errs]) => {
-          erros[Number(idx)] = errs as Record<string, string>
-        })
-        setLinhasErrors(erros)
-        toast.error('Corrija os erros nas linhas dos bens.')
-      } else if (data && typeof data === 'object') {
-        setFormErrors(data as FormErrors)
-        toast.error('Corrija os erros no formulário.')
+      const responseErrors = extrairErrosDaResposta(data)
+      const hasFormErrors = Object.keys(responseErrors.formErrors).length > 0
+      const hasLineErrors = Object.keys(responseErrors.linhaErrors).length > 0
+
+      if (hasFormErrors || hasLineErrors) {
+        setFormErrors(responseErrors.formErrors)
+        setLinhasErrors(responseErrors.linhaErrors)
+        focarPrimeiroCampoInvalido(
+          responseErrors.formErrors,
+          responseErrors.linhaErrors
+        )
+        if (hasFormErrors && hasLineErrors) {
+          toast.error('Corrija os campos destacados no formulário.')
+        } else if (hasLineErrors) {
+          toast.error('Corrija os erros nas linhas dos bens.')
+        } else {
+          toast.error('Corrija os erros no formulário.')
+        }
       } else {
         toast.error('Erro ao salvar. Tente novamente.')
       }
@@ -425,6 +513,7 @@ export default function BemCreatePage() {
               htmlFor="unidade_administrativa"
               error={formErrors.unidade_administrativa}
               required
+              reserveErrorSpace
             >
               <UASearchSelect
                 id="unidade_administrativa"
@@ -442,6 +531,7 @@ export default function BemCreatePage() {
             label="Nome do Bem"
             htmlFor="nome"
             error={formErrors.nome} required
+            reserveErrorSpace
           >
             <Input
               id="nome"
@@ -461,6 +551,7 @@ export default function BemCreatePage() {
             label="Marca"
             htmlFor="marca"
             error={formErrors.marca} required
+            reserveErrorSpace
           >
             <Input
               id="marca"
@@ -482,6 +573,7 @@ export default function BemCreatePage() {
             label="Modelo"
             htmlFor="modelo"
             error={formErrors.modelo} required
+            reserveErrorSpace
           >
             <Input
               id="modelo"
@@ -501,6 +593,7 @@ export default function BemCreatePage() {
             label="Valor Unitário"
             htmlFor="valor_unitario"
             error={formErrors.valor_unitario} required
+            reserveErrorSpace
           >
             <Input
               id="valor_unitario"
@@ -527,6 +620,7 @@ export default function BemCreatePage() {
           htmlFor="descricao"
           error={formErrors.descricao}
           required
+          reserveErrorSpace
         >
           <Textarea
             id="descricao"
@@ -543,7 +637,12 @@ export default function BemCreatePage() {
         </ValidatedField>
 
         {/* OBSERVAÇÕES */}
-        <ValidatedField label="Observações" htmlFor="observacao" error={formErrors.observacao}>
+        <ValidatedField
+          label="Observações"
+          htmlFor="observacao"
+          error={formErrors.observacao}
+          reserveErrorSpace
+        >
           <Textarea
             id="observacao"
             className="min-h-25"
@@ -585,6 +684,7 @@ export default function BemCreatePage() {
               removeLinha={solicitarRemocao}
               podeRemover={linhas.length > 1}
               errors={linhasErrors[index]}
+              reserveErrorSpace
               onLimparErro={limparErroLinha}
             />
           ))}

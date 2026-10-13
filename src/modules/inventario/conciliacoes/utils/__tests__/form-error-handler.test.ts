@@ -52,6 +52,25 @@ describe('handleConciliacaoBadRequestError', () => {
         'Já existe uma conciliação cadastrada para esta Unidade Administrativa, Tipo e Período Final.',
     });
   });
+
+  it('preserva simultaneamente erros de campo e erro global', () => {
+    const form = createConciliacaoFormMock();
+    const error = buildAxiosError(400, {
+      periodo_final: ['Período final inválido.'],
+      detail: 'Revise também os dados da conciliação.',
+    });
+
+    const result = handleConciliacaoBadRequestError(error, form);
+
+    expect(result.toastDescription).toBe(
+      'Período final inválido. Revise também os dados da conciliação.',
+    );
+    expect(form.setError).toHaveBeenCalledWith('periodoFinal', expect.any(Object));
+    expect(form.setError).toHaveBeenCalledWith('root.serverError', {
+      type: 'server',
+      message: 'Revise também os dados da conciliação.',
+    });
+  });
 });
 
 describe('handleOcorrenciaBadRequestError', () => {
@@ -87,7 +106,7 @@ describe('handleOcorrenciaBadRequestError', () => {
     });
   });
 
-  it('prioriza "divergencia" sobre "detail" quando ambos estao presentes', () => {
+  it('preserva "divergencia" e "detail" quando ambos estao presentes', () => {
     const form = createOcorrenciaFormMock();
     const error = buildAxiosError(400, {
       divergencia: ['Detalhe a divergência.'],
@@ -96,9 +115,12 @@ describe('handleOcorrenciaBadRequestError', () => {
 
     const result = handleOcorrenciaBadRequestError(error, form);
 
-    expect(result.toastDescription).toBe('Detalhe a divergência.');
+    expect(result.toastDescription).toBe('Detalhe a divergência. Outro erro qualquer.');
     expect(form.setError).toHaveBeenCalledWith('divergencia', expect.any(Object));
-    expect(form.setError).not.toHaveBeenCalledWith('root.serverError', expect.any(Object));
+    expect(form.setError).toHaveBeenCalledWith('root.serverError', {
+      type: 'server',
+      message: 'Outro erro qualquer.',
+    });
   });
 
   it('retorna handled=false para erros fora de 400', () => {

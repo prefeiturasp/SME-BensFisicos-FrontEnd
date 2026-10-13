@@ -134,6 +134,18 @@ describe('passwordService', () => {
       await expect(passwordService.changePassword(data)).rejects.toThrow('Senha antiga incorreta');
     });
 
+    it('deve preservar todas as mensagens de senha retornadas pela API', async () => {
+      mockApiPost.mockRejectedValueOnce(
+        createAxiosError({
+          old_password: ['Senha antiga incorreta', 'Confira o valor informado'],
+          new_password: ['Senha nova muito curta'],
+        }),
+      );
+      await expect(passwordService.changePassword(data)).rejects.toThrow(
+        'Senha antiga incorreta Confira o valor informado Senha nova muito curta',
+      );
+    });
+
     it('deve tratar erro de old_password (string)', async () => {
       mockApiPost.mockRejectedValueOnce(createAxiosError({ old_password: 'Senha incorreta' }));
       await expect(passwordService.changePassword(data)).rejects.toThrow('Senha incorreta');

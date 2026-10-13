@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Info, Network } from 'lucide-react'
 import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/backend-form-errors'
 import { useForm } from 'react-hook-form'
 
 import { bemService, type Bem } from '../services/bem.service'
@@ -42,6 +43,14 @@ const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
 
+function ReservedFormMessage() {
+  return (
+    <div className="min-h-5">
+      <FormMessage />
+    </div>
+  )
+}
+
 const FIELD_LABELS: Record<string, string> = {
   nome: 'Nome do Bem',
   descricao: 'Descrição do Bem',
@@ -51,6 +60,18 @@ const FIELD_LABELS: Record<string, string> = {
   localizacao: 'Localização',
   numero_processo: 'Número do Processo',
 }
+
+const CAMPOS_OBRIGATORIOS_EDICAO: Array<{
+  campo: keyof Bem
+  mensagem: string
+}> = [
+  { campo: 'nome', mensagem: 'Nome do Bem é obrigatório.' },
+  { campo: 'descricao', mensagem: 'Descrição é obrigatória.' },
+  { campo: 'valor_unitario', mensagem: 'Valor Unitário é obrigatório.' },
+  { campo: 'marca', mensagem: 'Marca é obrigatória.' },
+  { campo: 'modelo', mensagem: 'Modelo é obrigatório.' },
+  { campo: 'localizacao', mensagem: 'Localização é obrigatória.' },
+]
 
 const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
 
@@ -84,6 +105,74 @@ function isNumeroPatrimonialValido(values: Bem): boolean {
   const numero = values.numero_patrimonial ?? ''
 
   return NUMERO_PATRIMONIAL_REGEX.test(numero)
+}
+
+function isCampoVazio(valor: unknown): boolean {
+  if (valor === null || valor === undefined) return true
+  if (typeof valor === 'string') return valor.trim() === ''
+  return false
+}
+
+function validarBaseEdicao(
+  values: Bem,
+  registrarErro: (campo: any, message: string) => void,
+): boolean {
+  let pendente = false
+
+  CAMPOS_OBRIGATORIOS_EDICAO.forEach(({ campo, mensagem }) => {
+    if (isCampoVazio(values[campo])) {
+      registrarErro(campo, mensagem)
+      pendente = true
+    }
+  })
+
+  for (const { campo, limite } of CAMPOS_COM_LIMITE) {
+    const erro = erroLimiteMaximo(values[campo], limite)
+    if (erro) {
+      registrarErro(campo, erro)
+      pendente = true
+    }
+  }
+
+  const erroValor = validarValorUnitario(values.valor_unitario)
+  if (erroValor) {
+    registrarErro('valor_unitario', erroValor)
+    pendente = true
+  }
+
+  return pendente
+}
+
+function validarEdicaoAntesEnvio(
+  values: Bem,
+  originalNumeroPatrimonial: string,
+  justificativaObrigatoria: boolean,
+  justificativa: string,
+  registrarErro: (campo: keyof Bem, message: string) => void,
+): boolean {
+  const houveAlteracaoNumero =
+    (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+  let temPendencia = validarBaseEdicao(values, registrarErro)
+
+  if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
+    registrarErro(
+      'numero_patrimonial',
+      'Número patrimonial inválido. Use o formato 000.000000000-0.',
+    )
+    temPendencia = true
+  }
+
+  if (justificativaObrigatoria && !justificativa.trim()) {
+    registrarErro(
+      'justificativa' as keyof Bem,
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    )
+
+    // Permite que o backend apresente duplicidade junto da justificativa pendente.
+    if (!houveAlteracaoNumero) temPendencia = true
+  }
+
+  return temPendencia
 }
 
 export default function BemEditPage() {
@@ -168,57 +257,23 @@ export default function BemEditPage() {
   if (!bem) return null
 
   const onSubmit = async (values: Bem) => {
-    const houveAlteracaoNumero =
-      (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
-
-    // As pendencias sao acumuladas e exibidas juntas, em vez de abortar na
-    // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
-    let temPendencia = false
-
-    for (const { campo, limite } of CAMPOS_COM_LIMITE) {
-      const erro = erroLimiteMaximo(values[campo], limite)
-      if (erro) {
-        form.setError(campo, { message: erro })
-        temPendencia = true
-      }
+    let primeiroCampoInvalido: keyof Bem | null = null
+    const registrarErro = (campo: keyof Bem, message: string) => {
+      form.setError(campo, { message })
+      primeiroCampoInvalido ??= campo
     }
+    const temPendencia = validarEdicaoAntesEnvio(
+      values,
+      originalNumeroPatrimonial,
+      justificativaObrigatoria,
+      justificativa,
+      registrarErro,
+    )
 
-    const erroValor = validarValorUnitario(values.valor_unitario)
-    if (erroValor) {
-      form.setError('valor_unitario', { message: erroValor })
-      temPendencia = true
+    if (temPendencia) {
+      if (primeiroCampoInvalido) form.setFocus(primeiroCampoInvalido)
+      return
     }
-
-    if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
-      form.setError('numero_patrimonial' as any, {
-        message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
-      })
-
-      temPendencia = true
-    }
-
-    /*
-      Importante:
-      Quando o número patrimonial foi alterado, não bloqueamos no frontend
-      por falta de justificativa antes da chamada à API.
-
-      Isso preserva a paridade com o fluxo do Django Admin e permite que
-      erros críticos do número patrimonial, como duplicidade, sejam retornados
-      pelo backend em vez de serem mascarados pela justificativa.
-    */
-    const deveBloquearPorJustificativaNoFrontend =
-      justificativaObrigatoria && !houveAlteracaoNumero && !justificativa.trim()
-
-    if (deveBloquearPorJustificativaNoFrontend) {
-      form.setError('justificativa' as any, {
-        message:
-          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
-      })
-
-      temPendencia = true
-    }
-
-    if (temPendencia) return
 
     try {
       await bemService.update(values.id, {
@@ -231,11 +286,16 @@ export default function BemEditPage() {
       navigateAfterSave(() => navigate(`/bens-patrimoniais/${values.id}`))
     } catch (error: any) {
       if (error.response?.data) {
+        let primeiroErroBackend: keyof Bem | null = null
         Object.entries(error.response.data).forEach(([field, message]) => {
-          form.setError(field as any, {
-            message: String(message),
-          })
+          const fieldMessage = extractErrorMessage(message)
+          if (fieldMessage) {
+            const fieldName = field as keyof Bem
+            form.setError(fieldName, { message: fieldMessage })
+            primeiroErroBackend ??= fieldName
+          }
         })
+        if (primeiroErroBackend) form.setFocus(primeiroErroBackend)
       } else {
         toast.error('Erro ao salvar')
       }
@@ -334,7 +394,7 @@ export default function BemEditPage() {
                     <p className="text-xs text-gray-500">
                       Formato padrão: 000.000000000-0
                     </p>
-                    <FormMessage />
+                    <ReservedFormMessage />
                   </FormItem>
                 )}
               />
@@ -467,7 +527,7 @@ export default function BemEditPage() {
                             </p>
                           )
                         )}
-                        <FormMessage />
+                        <ReservedFormMessage />
                       </FormItem>
                     )
                   }}
@@ -494,7 +554,7 @@ export default function BemEditPage() {
                   <p className="text-xs text-gray-500">
                     {String(field.value ?? '').length}/{BEM_LIMITS.observacao}
                   </p>
-                  <FormMessage />
+                  <ReservedFormMessage />
                 </FormItem>
               )}
             />
@@ -527,7 +587,7 @@ export default function BemEditPage() {
                       }`}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <ReservedFormMessage />
                 </FormItem>
               )}
             />
