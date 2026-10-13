@@ -43,6 +43,14 @@ const INPUT_CLASS =
   'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
 const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
 
+function ReservedFormMessage() {
+  return (
+    <div className="min-h-5">
+      <FormMessage />
+    </div>
+  )
+}
+
 const FIELD_LABELS: Record<string, string> = {
   nome: 'Nome do Bem',
   descricao: 'Descrição do Bem',
@@ -217,19 +225,23 @@ export default function BemEditPage() {
   if (!bem) return null
 
   const onSubmit = async (values: Bem) => {
+    let primeiroCampoInvalido: keyof Bem | null = null
+    const registrarErro = (campo: keyof Bem, message: string) => {
+      form.setError(campo, { message })
+      primeiroCampoInvalido ??= campo
+    }
     const houveAlteracaoNumero =
       (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
 
     // As pendencias sao acumuladas e exibidas juntas, em vez de abortar na
     // primeira encontrada — o usuario ve todos os campos a corrigir de uma vez.
-    let temPendencia = validarBaseEdicao(values, (campo, message) =>
-      form.setError(campo, { message }),
-    )
+    let temPendencia = validarBaseEdicao(values, registrarErro)
 
     if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
-      form.setError('numero_patrimonial' as any, {
-        message: 'Número patrimonial inválido. Use o formato 000.000000000-0.',
-      })
+      registrarErro(
+        'numero_patrimonial',
+        'Número patrimonial inválido. Use o formato 000.000000000-0.',
+      )
 
       temPendencia = true
     }
@@ -247,17 +259,20 @@ export default function BemEditPage() {
       justificativaObrigatoria && !justificativa.trim()
 
     if (justificativaPendente) {
-      form.setError('justificativa' as any, {
-        message:
-          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
-      })
+      registrarErro(
+        'justificativa' as keyof Bem,
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+      )
 
       // Um número alterado ainda precisa chegar ao backend para que erros como
       // duplicidade sejam apresentados junto com a justificativa pendente.
       if (!houveAlteracaoNumero) temPendencia = true
     }
 
-    if (temPendencia) return
+    if (temPendencia) {
+      if (primeiroCampoInvalido) form.setFocus(primeiroCampoInvalido)
+      return
+    }
 
     try {
       await bemService.update(values.id, {
@@ -270,12 +285,16 @@ export default function BemEditPage() {
       navigateAfterSave(() => navigate(`/bens-patrimoniais/${values.id}`))
     } catch (error: any) {
       if (error.response?.data) {
+        let primeiroErroBackend: keyof Bem | null = null
         Object.entries(error.response.data).forEach(([field, message]) => {
           const fieldMessage = extractErrorMessage(message)
           if (fieldMessage) {
-            form.setError(field as any, { message: fieldMessage })
+            const fieldName = field as keyof Bem
+            form.setError(fieldName, { message: fieldMessage })
+            primeiroErroBackend ??= fieldName
           }
         })
+        if (primeiroErroBackend) form.setFocus(primeiroErroBackend)
       } else {
         toast.error('Erro ao salvar')
       }
@@ -374,7 +393,7 @@ export default function BemEditPage() {
                     <p className="text-xs text-gray-500">
                       Formato padrão: 000.000000000-0
                     </p>
-                    <FormMessage />
+                    <ReservedFormMessage />
                   </FormItem>
                 )}
               />
@@ -507,7 +526,7 @@ export default function BemEditPage() {
                             </p>
                           )
                         )}
-                        <FormMessage />
+                        <ReservedFormMessage />
                       </FormItem>
                     )
                   }}
@@ -534,7 +553,7 @@ export default function BemEditPage() {
                   <p className="text-xs text-gray-500">
                     {String(field.value ?? '').length}/{BEM_LIMITS.observacao}
                   </p>
-                  <FormMessage />
+                  <ReservedFormMessage />
                 </FormItem>
               )}
             />
@@ -567,7 +586,7 @@ export default function BemEditPage() {
                       }`}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <ReservedFormMessage />
                 </FormItem>
               )}
             />

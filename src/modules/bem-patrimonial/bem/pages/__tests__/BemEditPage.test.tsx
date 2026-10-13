@@ -482,6 +482,8 @@ describe('BemEditPage', () => {
     expect(
       await screen.findByText('Campo obrigatório Nome inválido')
     ).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
+    expect(screen.getByText('Campo obrigatório Nome inválido').parentElement).toHaveClass('min-h-5')
   })
 
   it('deve exibir erro de duplicidade do número patrimonial na atualização', async () => {
@@ -562,6 +564,7 @@ describe('BemEditPage', () => {
       expect(await screen.findByText(mensagem)).toBeInTheDocument()
     }
 
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
     expect(updateSpy).not.toHaveBeenCalled()
   })
 

@@ -93,21 +93,27 @@ function focarPrimeiroCampoInvalido(
   formErrors: FormErrors,
   linhaErrors: LinhaErrors
 ) {
-  const formField = FORM_FIELD_ORDER.find(field => formErrors[field])
-  let fieldId: string | undefined = formField
+  const fieldIds = FORM_FIELD_ORDER
+    .filter(field => formErrors[field])
+    .map(String)
 
-  if (!fieldId) {
-    const firstLineIndex = Object.keys(linhaErrors)
-      .map(Number)
-      .sort((a, b) => a - b)[0]
-    const firstLineField = LINHA_FIELD_ORDER.find(
-      field => linhaErrors[firstLineIndex]?.[field]
+  Object.keys(linhaErrors)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach(index => {
+      LINHA_FIELD_ORDER.forEach(field => {
+        if (linhaErrors[index]?.[field]) fieldIds.push(`${field}_${index}`)
+      })
+    })
+
+  const field = fieldIds
+    .map(fieldId => document.getElementById(fieldId))
+    .find(element =>
+      element instanceof HTMLElement
+      && !element.hasAttribute('disabled')
+      && !element.closest('[hidden], .hidden')
     )
-    fieldId = firstLineField ? `${firstLineField}_${firstLineIndex}` : undefined
-  }
 
-  if (!fieldId) return
-  const field = document.getElementById(fieldId)
   field?.focus()
   field?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
 }

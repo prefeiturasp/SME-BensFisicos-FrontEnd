@@ -163,7 +163,7 @@ function mapBadRequestToForm(
   ].map(String);
 
   const text = messages.join(' ');
-  let hasMappedError = false;
+  const displayMessages: string[] = [];
 
   if (/sobrep/i.test(text)) {
     form.setError('periodoInicial', {
@@ -172,26 +172,32 @@ function mapBadRequestToForm(
     form.setError('periodoFinal', {
       message: 'Data final em que conciliações anuais podem ser criadas/fechadas.',
     });
-    hasMappedError = true;
+    displayMessages.push(
+      'Já existe um período cadastrado que se sobrepõe ao intervalo informado. Revise as datas e tente novamente.',
+    );
   }
 
   if (/ativo/i.test(text)) {
     form.setError('ativo', {
       message: 'Apenas um parâmetro ativo por ano.',
     });
-    hasMappedError = true;
+    displayMessages.push(
+      'Já existe um parâmetro ativo para o ano selecionado. Desative o parâmetro vigente antes de cadastrar um novo.',
+    );
   }
 
   if (/ano/i.test(text)) {
     form.setError('anoReferencia', {
       message: 'Ano da conciliação anual ao qual este parâmetro se refere.',
     });
-    hasMappedError = true;
+    displayMessages.push(
+      'Já existe um parâmetro para o ano selecionado. Revise o ano e tente novamente.',
+    );
   }
 
-  if (hasMappedError) {
+  if (displayMessages.length > 0) {
     toast.error('Não foi possível cadastrar o parâmetro.', {
-      description: messages.join(' '),
+      description: [...new Set(displayMessages)].join(' '),
     });
     return true;
   }

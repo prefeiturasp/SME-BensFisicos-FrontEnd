@@ -432,6 +432,37 @@ describe('BemCreatePage', () => {
     expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
   })
 
+  it('deve ignorar erro de campo ausente e focar o próximo campo visível', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { id: 10 },
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        unidade_administrativa: ['Unidade inválida.'],
+        nome: ['Nome inválido.'],
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    expect(await screen.findByText('Nome inválido.')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Buscar Unidade Administrativa...')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
+  })
+
   it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
     const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
       data: { nome: 'Nome do Bem é obrigatório.' },

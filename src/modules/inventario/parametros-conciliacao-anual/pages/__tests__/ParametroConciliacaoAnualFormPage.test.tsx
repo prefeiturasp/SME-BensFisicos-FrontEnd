@@ -282,7 +282,11 @@ describe('ParametroConciliacaoAnualFormPage', () => {
         statusText: 'Bad Request',
         headers: {},
         config: {} as never,
-        data: { non_field_errors: ['periodo se sobrepoe ao intervalo informado'] },
+        data: {
+          non_field_errors: [
+            'O período se sobrepõe ao intervalo informado. duplicate key violates constraint parametros_periodo_exclusao.',
+          ],
+        },
       }),
     );
 
@@ -300,7 +304,10 @@ describe('ParametroConciliacaoAnualFormPage', () => {
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
         'Não foi possível cadastrar o parâmetro.',
-        expect.any(Object),
+        {
+          description:
+            'Já existe um período cadastrado que se sobrepõe ao intervalo informado. Revise as datas e tente novamente.',
+        },
       );
       expect(navigateMock).not.toHaveBeenCalledWith('/parametros-conciliacao-anual');
     });
@@ -330,7 +337,7 @@ describe('ParametroConciliacaoAnualFormPage', () => {
         'Não foi possível cadastrar o parâmetro.',
         {
           description:
-            'O período se sobrepõe a outro cadastro. O ano informado já está cadastrado. Já existe um parâmetro ativo.',
+            'Já existe um período cadastrado que se sobrepõe ao intervalo informado. Revise as datas e tente novamente. Já existe um parâmetro ativo para o ano selecionado. Desative o parâmetro vigente antes de cadastrar um novo. Já existe um parâmetro para o ano selecionado. Revise o ano e tente novamente.',
         },
       );
     });
