@@ -100,7 +100,9 @@ function isNumeroPatrimonialValido(values: Bem): boolean {
 }
 
 function isCampoVazio(valor: unknown): boolean {
-  return valor === null || valor === undefined || String(valor).trim() === ''
+  if (valor === null || valor === undefined) return true
+  if (typeof valor === 'string') return valor.trim() === ''
+  return false
 }
 
 function validarBaseEdicao(
