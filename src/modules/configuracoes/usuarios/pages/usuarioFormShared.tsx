@@ -72,8 +72,11 @@ export function useUsuarioFormState<T extends Record<string, any> = Record<strin
   )
 
   const syncFormUnidades = useCallback(
-    (selecionadas: EscopoUa[]) => {
-      setValue("unidade" as any, selecionadas.map((ua) => String(ua.unidade_administrativa_id)) as any, { shouldValidate: true })
+    (selecionadas: EscopoUa[], shouldDirty = false) => {
+      setValue("unidade" as any, selecionadas.map((ua) => String(ua.unidade_administrativa_id)) as any, {
+        shouldValidate: true,
+        shouldDirty,
+      })
     },
     [setValue]
   )
@@ -86,7 +89,7 @@ export function useUsuarioFormState<T extends Record<string, any> = Record<strin
           (item) => item.unidade_administrativa_id !== ua.unidade_administrativa_id
         )
         setUnidadesSelecionadas(next)
-        syncFormUnidades(next)
+        syncFormUnidades(next, true)
         return
       }
 
@@ -97,7 +100,7 @@ export function useUsuarioFormState<T extends Record<string, any> = Record<strin
       const selecionouTodasManualmente = unidadesAdministrativas.length > 0 && next.length === unidadesAdministrativas.length
       setTodasUnidades(selecionouTodasManualmente)
       setUnidadesSelecionadas(next)
-      syncFormUnidades(next)
+      syncFormUnidades(next, true)
     },
     [todasUnidades, unidadesAdministrativas, unidadesSelecionadas, idsSelecionados, setTodasUnidades, setUnidadesSelecionadas, syncFormUnidades]
   )
@@ -146,9 +149,10 @@ export function filterUnidadesListadas(unidadesAdministrativas: UaOption[], filt
 
 export function getApiErrorMessage(value: unknown): string {
   if (Array.isArray(value) && value.length > 0) {
-    const first = value[0]
-    if (typeof first === "string") return first
-    if (typeof first === "number") return String(first)
+    const messages = value
+      .filter(item => typeof item === "string" || typeof item === "number")
+      .map(String)
+    if (messages.length > 0) return messages.join(" ")
   }
   if (typeof value === "string") return value
   return "Erro de validação."
@@ -196,10 +200,10 @@ export function buildGrupoChangeHandler<T extends Record<string, any>>(
   setTodasUnidades: Dispatch<SetStateAction<boolean>>
 ) {
   return (value: string) => {
-    setValue("grupo" as any, value as any, { shouldValidate: true })
+    setValue("grupo" as any, value as any, { shouldValidate: true, shouldDirty: true })
     if (value === "GESTOR_PATRIMONIO") {
       setUnidadesSelecionadas([])
-      syncFormUnidades([])
+      syncFormUnidades([], true)
     }
     setTodasUnidades(false)
   }
@@ -566,15 +570,15 @@ export function buildToggleTodasHandler(
       if (next) {
         if (grupoSelecionado === "GESTOR_PATRIMONIO") {
           setUnidadesSelecionadas(unidadesDisponiveis)
-          syncFormUnidades(unidadesDisponiveis)
+          syncFormUnidades(unidadesDisponiveis, true)
         } else {
           setUnidadesSelecionadas([])
-          syncFormUnidades([])
+          syncFormUnidades([], true)
         }
         setFiltroUa("")
       } else {
         setUnidadesSelecionadas([])
-        syncFormUnidades([])
+        syncFormUnidades([], true)
         setFiltroUa("")
       }
       return next

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
 import { UnidadeAdministrativaForm } from '../components/UnidadeAdministrativaForm';
 import { UnidadeAdministrativaUsuariosSection } from '../components/UnidadeAdministrativaUsuariosSection';
@@ -108,6 +109,10 @@ export default function UnidadesAdministrativasViewPage() {
       status: 'ativa',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(
+    isEditing && form.formState.isDirty,
+    'edit',
+  );
 
   const unidade = unidadeQuery.data;
 
@@ -158,7 +163,7 @@ export default function UnidadesAdministrativasViewPage() {
       });
 
       toast.success('Unidade Administrativa atualizada com sucesso.');
-      navigate('/unidades-administrativas');
+      navigateAfterSave(() => navigate('/unidades-administrativas'));
     } catch (error) {
       if (handleUnidadeAdministrativaBadRequestError(error, form)) {
         return;

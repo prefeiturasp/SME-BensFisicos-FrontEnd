@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges';
 import { HistoricoConsultaModal } from '@/components/HistoricoConsultaModal';
 import { UnidadeOrcamentariaForm } from '../components/UnidadeOrcamentariaForm';
 import { UnidadesOrcamentariasViewBreadcrumb } from '../components/UnidadesOrcamentariasViewBreadcrumb';
@@ -134,6 +135,10 @@ export default function UnidadesOrcamentariasViewPage() {
       status: 'ativa',
     },
   });
+  const { navigateAfterSave } = useUnsavedChanges(
+    isEditing && form.formState.isDirty,
+    'edit',
+  );
 
   const unidade = unidadeQuery.data;
 
@@ -176,7 +181,7 @@ export default function UnidadesOrcamentariasViewPage() {
       });
 
       toast.success('Unidade Orçamentária atualizada com sucesso.');
-      navigate('/unidades-orcamentarias');
+      navigateAfterSave(() => navigate('/unidades-orcamentarias'));
     } catch (error) {
       if (handleUnidadeOrcamentariaBadRequestError(error, form)) {
         return;

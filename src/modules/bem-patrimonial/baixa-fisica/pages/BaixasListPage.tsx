@@ -15,6 +15,7 @@ import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker
 import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
 import { StatusBadge } from "@/components/status/StatusBadge"
 import { getBaixaStatusTone } from "../utils/status"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 
 // ===================== CONSTANTES =====================
 
@@ -68,6 +69,7 @@ export default function BaixasListPage() {
     const [count, setCount] = useState(0)
     const [page, setPage] = useState(1)
     const [selectedIds, setSelectedIds] = useState<number[]>([])
+    const { navigateAfterCommit } = useUnsavedChanges(selectedIds.length > 0, "selection")
     const [actionLoading, setActionLoading] = useState(false)
 
     const [searchInput, setSearchInput] = useState("")
@@ -228,7 +230,7 @@ export default function BaixasListPage() {
     const handleIrParaValidacao = () => {
         const [primeiraSelecionada] = selectedSolicitadas
         if (!primeiraSelecionada) return
-        navigate(`/baixas-fisicas/${primeiraSelecionada}`)
+        navigateAfterCommit(() => navigate(`/baixas-fisicas/${primeiraSelecionada}`))
     }
 
     // NOVO — leva para a tela de cadastro das informações básicas da
@@ -249,7 +251,9 @@ export default function BaixasListPage() {
             return
         }
         const processoUnico = [...processos][0] ?? ""
-        navigate("/baixas-fisicas/gerar-nbbpm", { state: { baixaIds: selectedAceitas, processo: processoUnico } })
+        navigateAfterCommit(() => navigate("/baixas-fisicas/gerar-nbbpm", {
+            state: { baixaIds: selectedAceitas, processo: processoUnico },
+        }))
     }
 
     const renderTableBody = () => {

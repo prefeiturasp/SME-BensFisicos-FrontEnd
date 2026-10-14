@@ -11,6 +11,9 @@ import type { Bem } from "../../../bem/services/bem.service"
 // ===================== MOCKS =====================
 
 const mockNavigate = vi.fn()
+const useUnsavedChangesMock = vi.hoisted(() => vi.fn(() => ({
+    navigateAfterSave: (action: () => void) => action(),
+})))
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual("react-router-dom")
@@ -52,6 +55,10 @@ vi.mock("../../components/UnidadeAdministrativaSelect", () => ({
 
 vi.mock("@/components/AppBreadcrumb", () => ({
     AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
+}))
+
+vi.mock("@/components/unsaved-changes/useUnsavedChanges", () => ({
+    useUnsavedChanges: useUnsavedChangesMock,
 }))
 
 vi.mock("@/components/ui/date-picker", () => ({
@@ -162,6 +169,18 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         await selectUA()
         expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+    })
+
+    it("considera o formulário alterado ao selecionar somente a unidade", async () => {
+        renderPage()
+
+        expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(false, "create")
+
+        await selectUA()
+
+        await waitFor(() => {
+            expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(true, "create")
+        })
     })
 
     it("renderiza botões Solicitar e Cancelar", () => {

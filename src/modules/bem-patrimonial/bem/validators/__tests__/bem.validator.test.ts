@@ -104,6 +104,54 @@ describe('validateBem', () => {
     )
   })
 
+  it('deve recusar letras no valor unitário', () => {
+    const result = validateBem({
+      nome: 'Mesa',
+      numero_patrimonial: '123',
+      localizacao: 'Sala',
+      valor_unitario: '12ab34',
+    })
+
+    expect(result.valor_unitario).toBe(
+      'Valor unitário deve ser um número positivo.'
+    )
+  })
+
+  it('deve recusar negativo no valor unitário (string)', () => {
+    const result = validateBem({
+      nome: 'Mesa',
+      numero_patrimonial: '123',
+      localizacao: 'Sala',
+      valor_unitario: '-10,00',
+    })
+
+    expect(result.valor_unitario).toBe(
+      'Valor unitário deve ser um número positivo.'
+    )
+  })
+
+  it('deve aceitar valor válido no formato 1.234,56', () => {
+    const result = validateBem({
+      nome: 'Mesa de Escritório',
+      numero_patrimonial: '12345',
+      localizacao: 'Sala 101',
+      valor_unitario: '1.234,56',
+      descricao: 'Mesa nova em perfeito estado',
+    })
+
+    expect(result.valor_unitario).toBeUndefined()
+  })
+
+  it('deve bloquear texto acima do limite máximo', () => {
+    const result = validateBem({
+      nome: 'A'.repeat(256),
+      numero_patrimonial: '123',
+      localizacao: 'Sala',
+    })
+
+    expect(result.nome).toBe('Deve ter no máximo 255 caracteres.')
+  })
+
   it('não deve retornar erros quando dados forem válidos', () => {
     const result = validateBem({
       nome: 'Mesa de Escritório',

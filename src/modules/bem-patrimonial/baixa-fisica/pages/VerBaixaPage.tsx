@@ -20,6 +20,7 @@ import { formatUsuarioObjetoLabel } from "@/lib/usuario-label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
 import { bemService, type Bem } from "../../bem/services/bem.service"
 import HistoricoModal from "../modals/HistoricoModal"
 import ConfirmarAceiteModal from "../modals/ConfirmarAceiteModal"
@@ -488,6 +489,10 @@ export default function VerBaixaPage() {
     const isAceita = baixa?.status === "aceita"
     const semNbbpm = !baixa?.numero_nbbpm || baixa.numero_nbbpm.trim() === ""
     const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
+    const { navigateAfterCommit } = useUnsavedChanges(
+        hasChanges || checkedIds.size > 0,
+        hasChanges ? "edit" : "selection",
+    )
 
     const allSelectedEditIds = editRows.filter((r) => r.item).map((r) => r.item!.bem.id)
 
@@ -658,7 +663,7 @@ export default function VerBaixaPage() {
             toast.success("Baixa física aceita com sucesso!")
             setBaixa(updated)
             setShowConfirmarAceite(false)
-            navigate(`/baixas-fisicas/${baixa.id}`, { replace: true })
+            navigateAfterCommit(() => navigate(`/baixas-fisicas/${baixa.id}`, { replace: true }))
         } catch (err) {
             console.error(err)
             toast.error(
@@ -679,7 +684,7 @@ export default function VerBaixaPage() {
             setMotivoRecusa("")
             toast.success("Baixa física recusada.")
             setTimeout(() => {
-                navigate(-1)
+                navigateAfterCommit(() => navigate(-1))
             }, 1500)
         } catch (err) {
             console.error(err)

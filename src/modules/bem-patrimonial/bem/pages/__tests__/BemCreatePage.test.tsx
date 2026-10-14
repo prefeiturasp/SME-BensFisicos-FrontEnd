@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+} from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import { useAuth } from '@/auth/useAuth'
 import BemCreatePage from '../BemCreatePage'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 
 vi.mock('sonner', () => ({
   toast: {
@@ -36,7 +44,6 @@ vi.mock('@/components/AppBreadcrumb', () => ({
 
 vi.mock('../../components/LinhaBemRow', () => ({
   LinhaBemRow: ({
-    addLinha,
     removeLinha,
     index,
     errors,
@@ -53,6 +60,18 @@ vi.mock('../../components/LinhaBemRow', () => ({
         <p data-testid={`erro-localizacao-${index}`}>{errors.localizacao}</p>
       )}
       <input
+        id={`localizacao_${index}`}
+        data-testid={`numero-patrimonial-${index}`}
+        placeholder="Número Patrimonial"
+        value={linha.numero_patrimonial}
+        onChange={(e) => {
+          const newLinhas = [...linhas]
+          newLinhas[index] = { ...newLinhas[index], numero_patrimonial: e.target.value }
+          setLinhas(newLinhas)
+          onLimparErro?.(index, 'numero_patrimonial')
+        }}
+      />
+      <input
         data-testid={`localizacao-${index}`}
         placeholder="Localização"
         value={linha.localizacao}
@@ -64,6 +83,7 @@ vi.mock('../../components/LinhaBemRow', () => ({
         }}
       />
       <input
+        id={`numero_processo_${index}`}
         data-testid={`numero-processo-${index}`}
         placeholder="Número do Processo"
         value={linha.numero_processo}
@@ -74,10 +94,25 @@ vi.mock('../../components/LinhaBemRow', () => ({
           onLimparErro?.(index, 'numero_processo')
         }}
       />
-      <button onClick={() => removeLinha(index)}>Remover Linha</button>
-      <button onClick={addLinha}>Adicionar Linha</button>
+      {linhas.length > 1 && (
+        <button
+          aria-label={`Remover bem ${index + 1}`}
+          onClick={() => removeLinha(index)}
+        >
+          Remover bem {index + 1}
+        </button>
+      )}
     </div>
   ),
+  isLinhaBemVazia: (linha: any) => {
+    return (
+      !linha?.numero_patrimonial?.trim() &&
+      !linha?.localizacao?.trim() &&
+      !linha?.numero_processo?.trim() &&
+      !linha?.numero_formato_antigo &&
+      !linha?.sem_numeracao
+    )
+  },
 }))
 
 function renderPage() {
@@ -89,6 +124,27 @@ function renderPage() {
       </Routes>
     </MemoryRouter>
   )
+}
+
+function renderGuardedPage() {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        ),
+        children: [
+          { path: '/bens-patrimoniais/novo', element: <BemCreatePage /> },
+          { path: '/bens-patrimoniais', element: <div>Lista</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/bens-patrimoniais/novo'] },
+  )
+
+  return render(<RouterProvider router={router} />)
 }
 
 function preencherCamposBase() {
@@ -109,6 +165,9 @@ function preencherCamposBase() {
   })
   fireEvent.change(screen.getByPlaceholderText('Localização'), {
     target: { value: 'Sala 1' },
+  })
+  fireEvent.change(screen.getByPlaceholderText('Número Patrimonial'), {
+    target: { value: '123.456789012-3' },
   })
   // UA é auto-selecionada pois o mock retorna apenas 1 UA
 }
@@ -315,7 +374,93 @@ describe('BemCreatePage', () => {
 
     expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
     expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Descrição é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Valor Unitário é obrigatório.')).toBeInTheDocument()
     expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
+  })
+
+  it('deve manter os demais erros ao corrigir somente um campo', async () => {
+    renderPage()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nome do Bem é obrigatório.')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'Notebook' },
+    })
+
+    expect(screen.queryByText('Nome do Bem é obrigatório.')).not.toBeInTheDocument()
+    expect(screen.getByText('Marca é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Modelo é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Descrição é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Valor Unitário é obrigatório.')).toBeInTheDocument()
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+  })
+
+  it('deve exibir simultaneamente erros de campos base e linhas retornados pela API', async () => {
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        nome: ['Nome inválido.'],
+        marca: ['Marca inválida.'],
+        linhas: {
+          '0': {
+            localizacao: ['Localização inválida.'],
+            numero_patrimonial: ['Número patrimonial inválido.'],
+          },
+        },
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nome inválido.')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Marca inválida.')).toBeInTheDocument()
+    expect(screen.getByTestId('erro-localizacao-0')).toHaveTextContent('Localização inválida.')
+    expect(screen.getByTestId('erro-linha-0')).toHaveTextContent('Número patrimonial inválido.')
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
+  })
+
+  it('deve ignorar erro de campo ausente e focar o próximo campo visível', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        is_gestor_patrimonio: true,
+        ua_ativa: { id: 10 },
+        opcoes_escopo: {
+          grupos: [{ uo: { id: 1, label: 'UO Teste' }, uas: mockUAs }],
+        },
+      },
+    } as any)
+    const axiosError = new AxiosError('Bad Request', '400', undefined, undefined, {
+      data: {
+        unidade_administrativa: ['Unidade inválida.'],
+        nome: ['Nome inválido.'],
+      },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {},
+      config: {} as any,
+    } as any)
+
+    vi.spyOn(bemServiceModule.bemService, 'createMulti').mockRejectedValue(axiosError)
+    renderPage()
+    preencherCamposBase()
+    fireEvent.click(screen.getByText('Salvar'))
+
+    expect(await screen.findByText('Nome inválido.')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Buscar Unidade Administrativa...')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveFocus()
   })
 
   it('deve exibir mensagem de erro inline para campo unidade_administrativa retornado pelo backend', async () => {
@@ -571,7 +716,7 @@ describe('BemCreatePage', () => {
     renderPage()
     preencherCamposBase()
 
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
 
     const camposProcesso = screen.getAllByPlaceholderText(
       'Número do Processo'
@@ -581,6 +726,9 @@ describe('BemCreatePage', () => {
 
     const camposLocalizacao = screen.getAllByPlaceholderText('Localização')
     fireEvent.change(camposLocalizacao[1], { target: { value: 'Sala 2' } })
+
+    const camposNumero = screen.getAllByPlaceholderText('Número Patrimonial')
+    fireEvent.change(camposNumero[1], { target: { value: '321.654987321-9' } })
 
     fireEvent.click(screen.getByText('Salvar'))
 
@@ -602,7 +750,7 @@ describe('BemCreatePage', () => {
     await user.hover(tooltipTrigger!)
 
     const tooltipMatches = await screen.findAllByText(
-      /Para adicionar mais bens, clique no botão \+ ao final da linha/
+      /Para adicionar mais bens, clique em Adicionar bem abaixo/
     )
     expect(tooltipMatches.length).toBeGreaterThan(0)
   })
@@ -656,27 +804,35 @@ describe('BemCreatePage', () => {
   // Linhas de bens
   // ------------------------------------------------------------------
 
-  it('deve adicionar nova linha ao clicar no botão', () => {
+  it('deve adicionar nova linha ao clicar no botão fixo', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    expect(screen.getByRole('button', { name: 'Adicionar bem' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
     expect(screen.getByTestId('linha-1')).toBeInTheDocument()
   })
 
-  it('deve remover linha quando há mais de uma', () => {
+  it('deve manter botão de adicionar sempre visível mesmo com várias linhas', () => {
     renderPage()
-    fireEvent.click(screen.getByText('Adicionar Linha'))
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
-
-    fireEvent.click(screen.getAllByText('Remover Linha')[0])
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(3)
+    expect(screen.getByRole('button', { name: 'Adicionar bem' })).toBeInTheDocument()
   })
 
-  it('não deve remover a última linha', () => {
+  it('deve remover linha vazia diretamente sem confirmação', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.queryByText('Deseja excluir esta linha?')).not.toBeInTheDocument()
+  })
+
+  it('não deve exibir botão de remover quando há apenas uma linha', () => {
     renderPage()
     expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
-
-    fireEvent.click(screen.getByText('Remover Linha'))
-    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.queryByRole('button', { name: /Remover bem/i })).not.toBeInTheDocument()
   })
 
   it('deve limpar erros das linhas ao editar qualquer linha', async () => {
@@ -698,7 +854,7 @@ describe('BemCreatePage', () => {
       expect(screen.getByTestId('erro-linha-0')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('Adicionar Linha'))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
 
     await waitFor(() => {
       expect(screen.queryByTestId('erro-linha-0')).not.toBeInTheDocument()
@@ -750,6 +906,32 @@ describe('BemCreatePage', () => {
   it('deve redirecionar ao clicar em Cancelar', async () => {
     renderPage()
     fireEvent.click(screen.getByText('Cancelar'))
+    expect(await screen.findByText('Lista')).toBeInTheDocument()
+  })
+
+  it('não pede confirmação quando somente a UA foi preenchida automaticamente', async () => {
+    renderGuardedPage()
+
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(await screen.findByText('Lista')).toBeInTheDocument()
+    expect(screen.queryByText('Sair sem salvar?')).not.toBeInTheDocument()
+  })
+
+  it('protege os dados preenchidos ao cancelar e permite descartá-los', async () => {
+    renderGuardedPage()
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'Cadeira giratória' },
+    })
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    expect(screen.getByText('Sair sem salvar?')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar preenchendo' }))
+    expect(screen.getByPlaceholderText('Nome do Bem')).toHaveValue('Cadeira giratória')
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar e sair' }))
     expect(await screen.findByText('Lista')).toBeInTheDocument()
   })
 
@@ -904,5 +1086,154 @@ describe('BemCreatePage', () => {
     expect(
       screen.getByPlaceholderText('Buscar Unidade Administrativa...'),
     ).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  // ------------------------------------------------------------------
+  // Cadastro múltiplo — adição contínua e remoção segura por linha
+  // ------------------------------------------------------------------
+
+  it('deve criar linhas com identificador único em cliques seguidos sem perda de dados', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(3)
+    expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
+  })
+
+  it('deve pedir confirmação ao remover linha preenchida', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+
+    expect(screen.getByText('Excluir linha')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Deseja excluir esta linha\? Os dados preenchidos serão perdidos/i)
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manter' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Excluir' })).toBeInTheDocument()
+    // Linha ainda presente até confirmar
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+  })
+
+  it('deve manter dados ao cancelar a confirmação de exclusão', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    expect(screen.getByText('Excluir linha')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manter' }))
+
+    expect(screen.queryByText('Excluir linha')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(2)
+    expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
+  })
+
+  it('deve remover apenas a linha escolhida e preservar valores das demais', () => {
+    renderPage()
+
+    fireEvent.change(screen.getByTestId('localizacao-0'), {
+      target: { value: 'Sala 1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar bem' }))
+
+    const campos = screen.getAllByPlaceholderText('Localização')
+    fireEvent.change(campos[1], { target: { value: 'Sala 2' } })
+
+    // Remove a primeira (preenchida) com confirmação
+    fireEvent.click(screen.getByRole('button', { name: 'Remover bem 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    expect(screen.getAllByTestId(/^linha-/).length).toBe(1)
+    expect(screen.getByDisplayValue('Sala 2')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Sala 1')).not.toBeInTheDocument()
+  })
+
+  it('deve bloquear envio quando texto acima do limite com mensagem no campo', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.change(screen.getByPlaceholderText('Nome do Bem'), {
+      target: { value: 'A'.repeat(256) },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Deve ter no máximo 255 caracteres.')
+      ).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
+    // permanece na tela sem erro técnico
+    expect(
+      screen.getByRole('heading', { name: /Adicionar Bem Patrimonial/i })
+    ).toBeInTheDocument()
+  })
+
+  it('deve aplicar máscara visível com ponto de milhar recusando letras', async () => {
+    renderPage()
+    fireEvent.change(screen.getByPlaceholderText('0,00'), {
+      target: { value: '12ab34' },
+    })
+    expect(screen.getByDisplayValue('1.234')).toBeInTheDocument()
+  })
+
+  it('deve formatar milhar ao digitar valor cheio', async () => {
+    renderPage()
+    fireEvent.change(screen.getByPlaceholderText('0,00'), {
+      target: { value: '1500,00' },
+    })
+    expect(screen.getByDisplayValue('1.500,00')).toBeInTheDocument()
+  })
+
+  it('deve completar centavos no blur', async () => {
+    renderPage()
+    const input = screen.getByPlaceholderText('0,00')
+    fireEvent.change(input, { target: { value: '1500' } })
+    expect(screen.getByDisplayValue('1.500')).toBeInTheDocument()
+    fireEvent.blur(input)
+    expect(screen.getByDisplayValue('1.500,00')).toBeInTheDocument()
+  })
+
+  it('deve sinalizar número patrimonial vazio com erro no campo', async () => {
+    const spy = vi.spyOn(bemServiceModule.bemService, 'createMulti')
+    renderPage()
+    preencherCamposBase()
+
+    fireEvent.change(screen.getByPlaceholderText('Número Patrimonial'), {
+      target: { value: '' },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Número patrimonial é obrigatório.')
+      ).toBeInTheDocument()
+    })
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('deve exibir contador de caracteres e dica de formato monetário', async () => {
+    renderPage()
+    expect(screen.getAllByText(/\d+\/255/).length).toBeGreaterThan(0)
+    expect(
+      screen.getByText('Formato 0,00 ou 0.000,00.')
+    ).toBeInTheDocument()
   })
 })

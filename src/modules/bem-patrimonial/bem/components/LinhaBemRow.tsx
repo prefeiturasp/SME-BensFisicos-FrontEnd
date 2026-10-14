@@ -9,9 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Trash2, Plus, Info } from 'lucide-react'
+import { Trash2, Info } from 'lucide-react'
 import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
 import { valorSelectFormato } from '../utils/formato-bem'
+import { BEM_LIMITS } from '../utils/bem-limits'
 
 export type LinhaBem = {
   numero_patrimonial: string
@@ -19,6 +20,16 @@ export type LinhaBem = {
   sem_numeracao: boolean
   localizacao: string
   numero_processo: string
+}
+
+export function isLinhaBemVazia(linha: LinhaBem): boolean {
+  return (
+    !linha.numero_patrimonial?.trim() &&
+    !linha.localizacao?.trim() &&
+    !linha.numero_processo?.trim() &&
+    !linha.numero_formato_antigo &&
+    !linha.sem_numeracao
+  )
 }
 
 export type CampoLinhaBem = keyof LinhaBem
@@ -29,10 +40,11 @@ export type LinhaBemRowProps = Readonly<{
   linhas: LinhaBem[]
   setLinhas: React.Dispatch<React.SetStateAction<LinhaBem[]>>
   removeLinha: (index: number) => void
-  addLinha: () => void
-  isLast: boolean
+  addLinha?: () => void
+  isLast?: boolean
   podeRemover?: boolean
   errors?: Record<string, string>
+  reserveErrorSpace?: boolean
   /**
    * Limpeza padronizada do erro inline: só o campo alterado é limpo, na
    * digitação — o mesmo comportamento de `shouldValidate` do react-hook-form
@@ -50,10 +62,9 @@ export function LinhaBemRow({
   linhas,
   setLinhas,
   removeLinha,
-  addLinha,
-  isLast,
   podeRemover = true,
   errors,
+  reserveErrorSpace = false,
   onLimparErro,
 }: LinhaBemRowProps) {
 
@@ -115,6 +126,7 @@ export function LinhaBemRow({
         label="Número Patrimonial"
         htmlFor={`numero_patrimonial_${index}`}
         error={errors?.numero_patrimonial}
+        reserveErrorSpace={reserveErrorSpace}
         required
       >
         <Input
@@ -123,6 +135,7 @@ export function LinhaBemRow({
           placeholder="000.000000000-0"
           value={linha.numero_patrimonial}
           disabled={numeroHook.disabled}
+          maxLength={BEM_LIMITS.numero_patrimonial}
           aria-invalid={!!errors?.numero_patrimonial}
           onChange={(e) =>
             atualizarCampo('numero_patrimonial', numeroHook.applyMask(e.target.value))
@@ -148,6 +161,7 @@ export function LinhaBemRow({
           </span>
         }
         htmlFor={`formato_${index}`}
+        reserveErrorSpace={reserveErrorSpace}
       >
         <Select value={valorFormatoSelect} onValueChange={handleFormatoChange}>
           <SelectTrigger id={`formato_${index}`} className={INPUT_CLASS}>
@@ -166,6 +180,7 @@ export function LinhaBemRow({
         label="Localização"
         htmlFor={`localizacao_${index}`}
         error={errors?.localizacao}
+        reserveErrorSpace={reserveErrorSpace}
         required
       >
         <Input
@@ -173,9 +188,13 @@ export function LinhaBemRow({
           className={INPUT_CLASS}
           placeholder="Insira a localização do bem"
           value={linha.localizacao}
+          maxLength={BEM_LIMITS.localizacao}
           aria-invalid={!!errors?.localizacao}
           onChange={(e) => atualizarCampo('localizacao', e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          {linha.localizacao.length}/{BEM_LIMITS.localizacao}
+        </p>
       </ValidatedField>
 
       {/* NÚMERO DO PROCESSO */}
@@ -183,40 +202,42 @@ export function LinhaBemRow({
         label="Número do Processo"
         htmlFor={`numero_processo_${index}`}
         error={errors?.numero_processo}
+        reserveErrorSpace={reserveErrorSpace}
       >
         <Input
           id={`numero_processo_${index}`}
           className={INPUT_CLASS}
           placeholder="Informe o número do processo"
           value={linha.numero_processo}
+          maxLength={BEM_LIMITS.numero_processo}
           aria-invalid={!!errors?.numero_processo}
           onChange={(e) => atualizarCampo('numero_processo', e.target.value)}
         />
+        <p className="text-xs text-gray-500">
+          {linha.numero_processo.length}/{BEM_LIMITS.numero_processo}
+        </p>
       </ValidatedField>
 
-      {/* AÇÕES */}
+      {/* AÇÕES — remoção individual por linha. A adição é fixa fora da linha. */}
       <div className="flex gap-2 pt-6">
         {podeRemover && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => removeLinha(index)}
-            aria-label="Remover bem"
-          >
-            <Trash2 size={18} />
-          </Button>
-        )}
-
-        {isLast && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addLinha}
-            aria-label="Adicionar bem"
-            className="border-[#00703C] text-[#00703C] hover:bg-[#00703C] hover:text-white h-10 w-10 p-0"
-          >
-            <Plus size={18} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeLinha(index)}
+                aria-label={`Remover bem ${index + 1}`}
+                title="Remover este bem da lista"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded border-[#2F7D57] bg-white text-[#2F7D57] transition-colors hover:bg-[#2F7D57] hover:text-white"
+              >
+                <Trash2 size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="max-w-70">
+              Remover este bem da lista
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

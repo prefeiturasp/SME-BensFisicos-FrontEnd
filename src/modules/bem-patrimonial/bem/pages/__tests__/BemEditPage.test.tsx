@@ -2,11 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+} from 'react-router-dom'
 import * as bemServiceModule from '../../services/bem.service'
 import BemEditPage from '../BemEditPage'
 import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(),
@@ -147,6 +155,27 @@ function renderPage() {
   )
 }
 
+function renderGuardedPage() {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        ),
+        children: [
+          { path: '/bens-patrimoniais/:id/editar', element: <BemEditPage /> },
+          { path: '/bens-patrimoniais/:id', element: <div>Detail Page</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/bens-patrimoniais/1/editar'] },
+  )
+
+  return render(<RouterProvider router={router} />)
+}
+
 describe('BemEditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -282,6 +311,26 @@ describe('BemEditPage', () => {
     expect(await screen.findByText('Detail Page')).toBeInTheDocument()
   })
 
+  it('protege uma edição não salva e preserva o campo ao continuar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    const nome = await screen.findByLabelText('Nome do Bem')
+    fireEvent.change(nome, { target: { value: 'Notebook atualizado' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar editando' }))
+    expect(nome).toHaveValue('Notebook atualizado')
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar alterações' }))
+    expect(await screen.findByText('Detail Page')).toBeInTheDocument()
+  })
+
   // ─── Submissão bem-sucedida ───────────────────────────────────────────────────
 
   it('deve salvar com sucesso ao alterar nome com justificativa', async () => {
@@ -388,6 +437,29 @@ describe('BemEditPage', () => {
     })
   })
 
+  it('mantém a proteção quando o salvamento falha', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue(
+      new Error('Erro customizado')
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    fireEvent.change(await screen.findByPlaceholderText('Observação'), {
+      target: { value: 'Alteração ainda não salva' },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
+    })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
+  })
+
   it('deve setar erro de validação no campo via response.data', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
       bemMock as any
@@ -395,7 +467,7 @@ describe('BemEditPage', () => {
     vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue({
       response: {
         data: {
-          nome: ['Campo obrigatório'],
+          nome: ['Campo obrigatório', 'Nome inválido'],
         },
       },
     })
@@ -407,7 +479,11 @@ describe('BemEditPage', () => {
 
     fireEvent.click(await screen.findByText('Salvar'))
 
-    expect(await screen.findByText('Campo obrigatório')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Campo obrigatório Nome inválido')
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
+    expect(screen.getByText('Campo obrigatório Nome inválido').parentElement).toHaveClass('min-h-5')
   })
 
   it('deve exibir erro de duplicidade do número patrimonial na atualização', async () => {
@@ -444,13 +520,53 @@ describe('BemEditPage', () => {
     ).toBeInTheDocument()
 
     expect(
-      screen.queryByText(
+      screen.getByText(
         'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
       )
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
   })
 
   // ─── Justificativa ────────────────────────────────────────────────────────────
+
+  it('deve exibir todos os campos obrigatórios e a justificativa no mesmo envio', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi.spyOn(bemServiceModule.bemService, 'update')
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+    renderPage()
+
+    for (const valor of [
+      'Notebook Dell',
+      'Notebook corporativo',
+      '5.000,00',
+      'Dell',
+      'Latitude',
+      'Sala 1',
+    ]) {
+      fireEvent.change(await screen.findByDisplayValue(valor), {
+        target: { value: '' },
+      })
+    }
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    for (const mensagem of [
+      'Nome do Bem é obrigatório.',
+      'Descrição é obrigatória.',
+      'Valor Unitário é obrigatório.',
+      'Marca é obrigatória.',
+      'Modelo é obrigatório.',
+      'Localização é obrigatória.',
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    ]) {
+      expect(await screen.findByText(mensagem)).toBeInTheDocument()
+    }
+
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
+    expect(updateSpy).not.toHaveBeenCalled()
+  })
 
   it('deve exigir justificativa ao alterar somente nome', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
@@ -513,6 +629,12 @@ describe('BemEditPage', () => {
         )
       ).toBeInTheDocument()
     })
+
+    expect(
+      screen.getByText(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+    ).toBeInTheDocument()
 
     expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
   })
@@ -661,10 +783,10 @@ describe('BemEditPage', () => {
     expect(updateSpy).not.toHaveBeenCalled()
 
     expect(
-      screen.queryByText(
+      screen.getByText(
         'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
       )
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
   })
 
   it('deve aceitar número patrimonial no formato correto sem erro', async () => {
@@ -1018,6 +1140,90 @@ describe('BemEditPage', () => {
 
       expect(
         screen.getByText('Atualize as informações do Bem cadastrado')
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('Padronização de limites e valor monetário', () => {
+    it('deve carregar valor inicial já formatado como no cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      expect(await screen.findByDisplayValue('5.000,00')).toBeInTheDocument()
+    })
+
+    it('deve usar a mesma máscara visível do cadastro recusando letras', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      const valorInput = (await screen.findByDisplayValue(
+        '5.000,00'
+      )) as HTMLInputElement
+      fireEvent.change(valorInput, { target: { value: '12ab34' } })
+      expect(valorInput.value).toBe('1.234')
+    })
+
+    it('deve enviar valor com ponto para a API aceitar', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('5.000,00')
+      fireEvent.change(await screen.findByDisplayValue('Sala 1'), {
+        target: { value: 'Sala 2' },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledWith(
+          bemMock.id,
+          expect.objectContaining({ valor_unitario: '5000.00' })
+        )
+      })
+    })
+
+    it('deve exibir a mesma mensagem de limite do cadastro e bloquear envio', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+        target: { value: 'A'.repeat(256) },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      expect(
+        await screen.findByText('Deve ter no máximo 255 caracteres.')
+      ).toBeInTheDocument()
+      expect(updateSpy).not.toHaveBeenCalled()
+    })
+
+    it('deve exibir dica de formato monetário igual ao cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+      expect(
+        screen.getByText('Formato 0,00 ou 0.000,00.')
       ).toBeInTheDocument()
     })
   })

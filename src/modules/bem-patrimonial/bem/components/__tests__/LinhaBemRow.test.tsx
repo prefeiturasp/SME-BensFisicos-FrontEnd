@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type React from 'react'
-import { LinhaBemRow } from '../LinhaBemRow'
+import { LinhaBemRow, isLinhaBemVazia } from '../LinhaBemRow'
 import type { LinhaBem } from '../LinhaBemRow'
 
 vi.mock('@/components/ui/select', () => ({
@@ -54,12 +54,10 @@ describe('LinhaBemRow', () => {
 
   let setLinhas: any
   let removeLinha: any
-  let addLinha: any
 
   beforeEach(() => {
     setLinhas = vi.fn()
     removeLinha = vi.fn()
-    addLinha = vi.fn()
     vi.clearAllMocks()
 
     vi.stubGlobal(
@@ -78,18 +76,23 @@ describe('LinhaBemRow', () => {
     )
   })
 
-  function renderComponent(customLinha?: Partial<LinhaBem>, isLast = true) {
+  function renderComponent(
+    customLinha?: Partial<LinhaBem>,
+    index = 0,
+    linhasOverride?: LinhaBem[],
+    podeRemover = true,
+  ) {
     const linha = { ...linhaBase, ...customLinha }
+    const linhas = linhasOverride ?? [linha]
 
     return render(
       <LinhaBemRow
         linha={linha}
-        index={0}
-        linhas={[linha]}
+        index={index}
+        linhas={linhas}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={isLast}
+        podeRemover={podeRemover}
       />
     )
   }
@@ -156,7 +159,7 @@ describe('LinhaBemRow', () => {
   it('deve chamar removeLinha ao clicar na lixeira', () => {
     renderComponent()
 
-    const removeButton = screen.getAllByRole('button')[0]
+    const removeButton = screen.getByRole('button', { name: /remover bem/i })
     fireEvent.click(removeButton)
 
     expect(removeLinha).toHaveBeenCalledWith(0)
@@ -170,35 +173,46 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
         podeRemover={false}
       />
     )
 
-    expect(screen.queryByLabelText('Remover bem')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /remover bem/i })).not.toBeInTheDocument()
   })
 
-  it('deve exibir botão de lixeira quando podeRemover for true (padrão)', () => {
+  it('deve exibir botão de remover por linha com rótulo acessível incluindo o número da linha', () => {
+    const duas = [linhaBase, { ...linhaBase }]
+    renderComponent(undefined, 1, duas)
+
+    expect(screen.getByRole('button', { name: 'Remover bem 2' })).toBeInTheDocument()
+  })
+
+  it('não deve renderizar botão de adicionar dentro da linha (ação fixa fora da lista)', () => {
+    renderComponent(undefined, 0)
+    expect(screen.queryByRole('button', { name: /adicionar bem/i })).not.toBeInTheDocument()
+
+    // Mesmo na última de várias linhas, a adição não aparece dentro da linha
+    const duas = [linhaBase, { ...linhaBase }]
+    const { unmount } = render(
+      <LinhaBemRow
+        linha={duas[1]}
+        index={1}
+        linhas={duas}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+      />
+    )
+    expect(screen.queryByRole('button', { name: /adicionar bem/i })).not.toBeInTheDocument()
+    unmount()
+  })
+
+  it('deve exibir texto de ajuda fiel à remoção na lixeira', () => {
     renderComponent()
-    expect(screen.getByLabelText('Remover bem')).toBeInTheDocument()
-  })
 
-  it('deve chamar addLinha se for última linha', () => {
-    renderComponent({}, true)
-
-    const buttons = screen.getAllByRole('button')
-    const addButton = buttons[1] // segundo botão é o +
-    fireEvent.click(addButton)
-
-    expect(addLinha).toHaveBeenCalled()
-  })
-
-  it('não deve mostrar botão + se não for última linha', () => {
-    renderComponent({}, false)
-
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBe(1) // só lixeira
+    const removeButton = screen.getByRole('button', { name: /remover bem/i })
+    expect(removeButton).toHaveAttribute('title', 'Remover este bem da lista')
+    expect(removeButton).toHaveAccessibleName(/remover bem/i)
   })
 
   it('deve exibir erro de numero_patrimonial quando errors é fornecido', () => {
@@ -209,8 +223,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{ numero_patrimonial: 'Número inválido' }}
       />
     )
@@ -232,8 +245,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{}}
       />
     )
@@ -250,8 +262,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{ localizacao: 'Localização é obrigatória.' }}
       />
     )
@@ -291,8 +302,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{ numero_processo: 'Processo inválido' }}
       />
     )
@@ -324,8 +334,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{ localizacao: 'Localização é obrigatória.' }}
       />
     )
@@ -352,8 +361,7 @@ describe('LinhaBemRow', () => {
         linhas={[linhaBase, linhaBase, linhaBase]}
         setLinhas={setLinhas}
         removeLinha={removeLinha}
-        addLinha={addLinha}
-        isLast={true}
+        podeRemover
         errors={{ localizacao: 'Localização é obrigatória.' }}
         onLimparErro={onLimparErro}
       />
@@ -364,6 +372,23 @@ describe('LinhaBemRow', () => {
     })
 
     expect(onLimparErro).toHaveBeenCalledWith(2, 'localizacao')
+  })
+
+  describe('isLinhaBemVazia', () => {
+    it('caminho válido: considera vazia quando nenhum campo foi digitado', () => {
+      expect(isLinhaBemVazia(linhaBase)).toBe(true)
+    })
+
+    it('caminho inválido: considera preenchida quando há localização', () => {
+      expect(isLinhaBemVazia({ ...linhaBase, localizacao: 'Sala 1' })).toBe(false)
+    })
+
+    it('considera preenchida quando há número patrimonial ou processo ou flags', () => {
+      expect(isLinhaBemVazia({ ...linhaBase, numero_patrimonial: '123' })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, numero_processo: 'PROC-1' })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, numero_formato_antigo: true })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, sem_numeracao: true })).toBe(false)
+    })
   })
 
   describe('label unificado Número do Processo', () => {
@@ -388,8 +413,7 @@ describe('LinhaBemRow', () => {
           linhas={[linhaBase]}
           setLinhas={setLinhas}
           removeLinha={removeLinha}
-          addLinha={addLinha}
-          isLast={true}
+          podeRemover
           errors={{ numero_processo: 'Informe o número do processo.' }}
         />
       )

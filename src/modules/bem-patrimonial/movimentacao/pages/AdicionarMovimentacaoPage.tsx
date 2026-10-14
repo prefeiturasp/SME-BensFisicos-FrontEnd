@@ -7,6 +7,7 @@ import { Network } from 'lucide-react'
 
 import { useAuth } from '@/auth/useAuth'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -47,6 +48,7 @@ import {
   MovimentacaoBensSelection,
   type SelecaoMovimentacao,
 } from '../components/MovimentacaoBensSelection'
+import { AJUDAS_MOVIMENTACAO, MovimentacaoHelp } from '../components/MovimentacaoHelp'
 
 type UaOption = { id: number; label: string }
 type UoOption = { id: number; label: string; tem_ponto_central: boolean }
@@ -118,6 +120,7 @@ function obterIdsBens(selecoes: SelecaoMovimentacao[]) {
 type NumeroPatrimonialAutocompleteProps = Readonly<{
   id: string
   label: string
+  ajuda: string
   value: string
   unidadeAdministrativaId: number | null
   onChange: (value: string) => void
@@ -152,6 +155,7 @@ function AutocompleteContent({ carregando, resultados, onSelect }: AutocompleteC
 function NumeroPatrimonialAutocomplete({
   id,
   label,
+  ajuda,
   value,
   unidadeAdministrativaId,
   onChange,
@@ -204,7 +208,10 @@ function NumeroPatrimonialAutocomplete({
 
   return (
     <div className='relative space-y-2' ref={containerRef}>
-      <label htmlFor={id} className='text-sm font-semibold text-gray-700'>{label}</label>
+      <div className='flex items-center gap-1'>
+        <label htmlFor={id} className='text-sm font-semibold text-gray-700'>{label}</label>
+        <MovimentacaoHelp label={`Ajuda sobre ${label}`} text={ajuda} />
+      </div>
       <Input
         id={id}
         value={value}
@@ -285,13 +292,16 @@ export default function AdicionarMovimentacaoPage() {
   const [selecoes, setSelecoes] = useState<SelecaoMovimentacao[]>([])
   const [confirmarSelecionarTodos, setConfirmarSelecionarTodos] = useState(false)
   const versaoBusca = useRef(0)
-  const modoBuscaAnterior = useRef<ModoBusca>('geral')
   const [buscando, setBuscando] = useState(false)
   const [adicionandoItens, setAdicionandoItens] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [uoOptions, setUoOptions] = useState<UoOption[]>([])
   const [unidadesAdministrativas, setUnidadesAdministrativas] = useState<UnidadeAdministrativa[]>(
     [],
+  )
+  const { navigateAfterSave } = useUnsavedChanges(
+    form.formState.isDirty || selecoes.length > 0,
+    'create',
   )
 
   useEffect(() => {
@@ -619,33 +629,34 @@ export default function AdicionarMovimentacaoPage() {
     }, [exibirErro, limparErrosDeItens, originUaId])
 
   const mudarModoBusca = (novoModo: ModoBusca) => {
-    const sairDaSelecaoDeTodos = tipoBusca === 'todos' && novoModo !== 'todos'
-    modoBuscaAnterior.current = tipoBusca
+    if (novoModo === 'todos') {
+      setConfirmarSelecionarTodos(true)
+      return
+    }
+    const sairDaSelecaoDeTodos = tipoBusca === 'todos'
     setTipoBusca(novoModo)
     limparErrosDeItens()
     limparResultadosBusca()
     if (sairDaSelecaoDeTodos) {
       setSelecoes([])
     }
-    if (novoModo !== 'todos') return
-    if (selecoes.length > 0) {
-      setConfirmarSelecionarTodos(true)
-      return
-    }
-    void handleSelecionarTodos()
   }
 
   const handleSave = form.handleSubmit(async (values) => {
+    let hasValidationError = false
+
     if (!originUaId) {
       form.setError('root.serverError', {
         message: 'Unidade Administrativa de origem não informada.',
       })
-      return
+      hasValidationError = true
     }
     if (destinoSemPontoCentral) {
       form.setError('unidade_orcamentaria_destino', { message: MENSAGEM_SEM_PONTO_CENTRAL })
-      return
+      hasValidationError = true
     }
+
+    if (hasValidationError) return
 
     const selectedUoNumericId = Number(values.unidade_orcamentaria_destino)
 
@@ -667,7 +678,7 @@ export default function AdicionarMovimentacaoPage() {
       toast.success(
         'Cadastro realizado com sucesso - A movimentação do bem foi cadastrada e enviada para aprovação.',
       )
-      navigate('/movimentacoes')
+      navigateAfterSave(() => navigate('/movimentacoes'))
     } catch (requestError: unknown) {
       const message =
         requestError instanceof Error ? requestError.message : 'Erro ao salvar movimentação.'
@@ -853,16 +864,16 @@ export default function AdicionarMovimentacaoPage() {
           )}
         />
         <div className='space-y-5'>
-          <fieldset className='flex flex-wrap gap-5' aria-label='Modo de busca de bens'>
-            {([['geral', 'Buscar Geral'], ['faixa', 'Buscar Faixa'], ['todos', 'Todos os bens da UA']] as const).map(([valor, label]) => (
+          <fieldset className='flex flex-wrap gap-5' aria-label='Modo de seleção de bens'>
+            {([['manual', 'Seleção manual'], ['todos', 'Todos os bens da UA']] as const).map(([valor, label]) => (
               <label key={valor} className='flex items-center gap-2 text-sm font-medium text-gray-700'>
                 <input
                   type='radio'
-                  name='modo-busca-bens'
+                  name='modo-selecao-bens'
                   value={valor}
-                  checked={tipoBusca === valor}
+                  checked={valor === 'manual' ? tipoBusca !== 'todos' : tipoBusca === 'todos'}
                   disabled={buscando || adicionandoItens}
-                  onChange={() => mudarModoBusca(valor)}
+                  onChange={() => mudarModoBusca(valor === 'manual' ? 'geral' : 'todos')}
                   className='accent-[#2F7D57]'
                 />
                 {label}
@@ -871,12 +882,39 @@ export default function AdicionarMovimentacaoPage() {
           </fieldset>
 
           {tipoBusca === 'todos' ? null : (
-            <div className={buscaGridClass}>
-              {tipoBusca === 'faixa' ? (
+            <div className='space-y-4'>
+              <div role='tablist' aria-label='Tipo de busca manual' className='flex flex-wrap gap-2 border-b border-gray-200'>
+                {([['geral', 'Busca geral'], ['faixa', 'Busca por faixa']] as const).map(([valor, label]) => (
+                  <button
+                    key={valor}
+                    type='button'
+                    role='tab'
+                    aria-selected={tipoBusca === valor}
+                    disabled={buscando || adicionandoItens}
+                    onClick={() => mudarModoBusca(valor)}
+                    className={`border-b-2 px-4 py-2 text-sm font-semibold ${tipoBusca === valor ? 'border-[#2F7D57] text-[#00703C]' : 'border-transparent text-gray-600 hover:text-[#00703C]'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className={buscaGridClass}>
+                {tipoBusca === 'faixa' ? (
                   <div className='grid gap-3 sm:grid-cols-2'>
+                    <div className='col-span-full flex flex-wrap gap-4 text-sm text-gray-600'>
+                      <span className='flex items-center gap-1'>
+                        Como buscar por faixa
+                        <MovimentacaoHelp label='Ajuda sobre busca por faixa' text={AJUDAS_MOVIMENTACAO.faixa} />
+                      </span>
+                      <span className='flex items-center gap-1'>
+                        Exemplos de faixa
+                        <MovimentacaoHelp label='Exemplos de faixa' text={AJUDAS_MOVIMENTACAO.sequencia} />
+                      </span>
+                    </div>
                     <NumeroPatrimonialAutocomplete
                       id='busca-np-de'
                       label='Número Patrimonial - De'
+                      ajuda={AJUDAS_MOVIMENTACAO.de}
                       value={buscaDe}
                       unidadeAdministrativaId={originUaId}
                       onChange={(value) => {
@@ -887,6 +925,7 @@ export default function AdicionarMovimentacaoPage() {
                     <NumeroPatrimonialAutocomplete
                       id='busca-np-ate'
                       label='Número Patrimonial - Até'
+                      ajuda={AJUDAS_MOVIMENTACAO.ate}
                       value={buscaAte}
                       unidadeAdministrativaId={originUaId}
                       onChange={(value) => {
@@ -895,7 +934,7 @@ export default function AdicionarMovimentacaoPage() {
                       }}
                     />
                 </div>
-              ) : (
+                ) : (
                 <div className='space-y-2'>
                   <label htmlFor='termo-busca-bem' className='text-sm font-semibold text-gray-700'>Buscar por nome, descrição, ID ou número patrimonial</label>
                   <Input
@@ -908,15 +947,16 @@ export default function AdicionarMovimentacaoPage() {
                     className={INPUT_CLASS}
                   />
                 </div>
-              )}
-              <Button
-                type='button'
-                onClick={() => void buscarBens()}
-                disabled={buscando || adicionandoItens}
-                className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
-              >
-                {buscando ? 'Buscando...' : 'Buscar'}
-              </Button>
+                )}
+                <Button
+                  type='button'
+                  onClick={() => void buscarBens()}
+                  disabled={buscando || adicionandoItens}
+                  className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
+                >
+                  {buscando ? 'Buscando...' : 'Buscar'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -929,6 +969,7 @@ export default function AdicionarMovimentacaoPage() {
             proximaPagina={proximaPagina}
             permiteImportarFaixa={tipoBusca === 'faixa'}
             permiteSelecionarResultados={tipoBusca === 'geral'}
+            modoTodos={tipoBusca === 'todos'}
             onAlternarBem={alternarBemBusca}
             onAlternarResultados={alternarResultadosBusca}
             onImportarFaixa={() => void importarFaixa()}
@@ -944,16 +985,20 @@ export default function AdicionarMovimentacaoPage() {
       <ConfirmDialog
         open={confirmarSelecionarTodos}
         title='Selecionar todos os bens da UA'
-        message='A lista de bens selecionados será substituída por todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?'
+        message={selecoes.length > 0
+          ? 'A lista de bens selecionados será substituída por todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?'
+          : 'Serão selecionados todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?'}
         confirmLabel='Continuar'
         loading={adicionandoItens}
         onConfirm={() => {
           setConfirmarSelecionarTodos(false)
+          setTipoBusca('todos')
+          limparErrosDeItens()
+          limparResultadosBusca()
           void handleSelecionarTodos()
         }}
         onClose={() => {
           setConfirmarSelecionarTodos(false)
-          setTipoBusca(modoBuscaAnterior.current)
         }}
       />
     </BemCadastroPageShell>
