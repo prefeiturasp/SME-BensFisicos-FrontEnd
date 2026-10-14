@@ -1,8 +1,10 @@
-import { Trash2 } from 'lucide-react'
+import { CircleAlert, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { MovimentacaoBemBusca } from '../types/movimentacao.types'
+import { AJUDAS_MOVIMENTACAO, MovimentacaoHelp } from './MovimentacaoHelp'
 
 export type SelecaoMovimentacao =
   | { id: string; tipo: 'individual'; bens: MovimentacaoBemBusca[] }
@@ -24,6 +26,7 @@ type Props = Readonly<{
   proximaPagina: number | null
   permiteImportarFaixa: boolean
   permiteSelecionarResultados: boolean
+  modoTodos: boolean
   onAlternarBem: (bem: MovimentacaoBemBusca) => void
   onAlternarResultados: () => void
   onImportarFaixa: () => void
@@ -68,6 +71,7 @@ export function MovimentacaoBensSelection({
   proximaPagina,
   permiteImportarFaixa,
   permiteSelecionarResultados,
+  modoTodos,
   onAlternarBem,
   onAlternarResultados,
   onImportarFaixa,
@@ -92,30 +96,38 @@ export function MovimentacaoBensSelection({
 
       <div className='space-y-3'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <p className='text-sm font-semibold text-gray-700'>Resultados da Busca ({totalResultados})</p>
+          <div className='flex items-center gap-2'>
+            <p className='text-sm font-semibold text-gray-700'>Resultados da Busca ({totalResultados})</p>
+            <MovimentacaoHelp label='Quem pode ser adicionado?' text={AJUDAS_MOVIMENTACAO.regras} />
+          </div>
           {permiteImportarFaixa && totalResultados > 0 ? (
-            <Button
-              type='button'
-              onClick={onImportarFaixa}
-              disabled={buscando}
-              className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
-            >
-              {buscando ? 'Importando...' : 'Importar Faixa'}
-            </Button>
+            <div className='flex items-center gap-2'>
+              <Button
+                type='button'
+                onClick={onImportarFaixa}
+                disabled={buscando}
+                className='h-10 bg-[#2F7D57] px-5 font-semibold text-white hover:bg-[#256947]'
+              >
+                {buscando ? 'Importando...' : 'Importar Faixa'}
+              </Button>
+              <MovimentacaoHelp label='Ajuda sobre importar faixa' text={AJUDAS_MOVIMENTACAO.importar} />
+            </div>
           ) : null}
         </div>
         <div className='overflow-x-auto rounded-md border border-gray-200'>
           <table className='w-full min-w-190 text-sm'>
             <thead className='border-b bg-[#F5F5F5] text-left text-gray-700'>
               <tr>
-                <th className='w-12 p-3'>
-                  <Checkbox
-                    aria-label='Selecionar todos os resultados'
-                    checked={algunsResultadosSelecionados ? 'indeterminate' : todosResultadosSelecionados}
-                    disabled={selecionaveis.length === 0}
-                    onCheckedChange={onAlternarResultados}
-                  />
-                </th>
+                {!modoTodos ? (
+                  <th className='w-12 p-3'>
+                    <Checkbox
+                      aria-label='Selecionar todos os resultados'
+                      checked={algunsResultadosSelecionados ? 'indeterminate' : todosResultadosSelecionados}
+                      disabled={selecionaveis.length === 0}
+                      onCheckedChange={onAlternarResultados}
+                    />
+                  </th>
+                ) : null}
                 <th className='p-3'>ID</th>
                 <th className='p-3'>Número Patrimonial</th>
                 <th className='p-3'>Nome</th>
@@ -129,20 +141,40 @@ export function MovimentacaoBensSelection({
                 const bloqueado = bloqueados.has(bem.id)
                 return (
                   <tr key={bem.id} className='border-b hover:bg-gray-50'>
-                    <td className='p-3'>
-                      <Checkbox
-                        aria-label={`Selecionar bem ID ${bem.id}`}
-                        checked={selecionados.has(bem.id)}
-                        disabled={!permiteSelecionarResultados || !bem.apto || bloqueado}
-                        onCheckedChange={() => onAlternarBem(bem)}
-                      />
-                    </td>
+                    {!modoTodos ? (
+                      <td className='p-3'>
+                        <Checkbox
+                          aria-label={`Selecionar bem ID ${bem.id}`}
+                          checked={selecionados.has(bem.id)}
+                          disabled={!permiteSelecionarResultados || !bem.apto || bloqueado}
+                          onCheckedChange={() => onAlternarBem(bem)}
+                        />
+                      </td>
+                    ) : null}
                     <td className='p-3'>{bem.id}</td>
                     <td className='p-3'>{bem.numero_patrimonial ?? 'Sem número patrimonial'}</td>
                     <td className='p-3'>{bem.nome}</td>
                     <td className='p-3'>{bem.descricao}</td>
                     <td className='p-3'>{bem.localizacao || '-'}</td>
-                    <td className='p-3'>{bem.motivo ?? 'Apto para movimentação'}</td>
+                    <td className='p-3'>
+                      <span className='inline-flex items-center gap-2'>
+                        {bloqueado && bem.apto && permiteSelecionarResultados
+                          ? 'Já incluído em uma faixa selecionada'
+                          : bem.motivo ?? 'Apto para movimentação'}
+                        {permiteSelecionarResultados && (!bem.apto || bloqueado) ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type='button' aria-label={`Motivo do bloqueio do bem ID ${bem.id}`} className='text-amber-700'>
+                                <CircleAlert className='size-4' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent sideOffset={8} className='max-w-xs'>
+                              {bloqueado && bem.apto ? 'Este bem já está incluído em uma faixa selecionada. Não é necessário selecioná-lo novamente.' : bem.motivo ?? 'Este bem não está apto para movimentação.'}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+                      </span>
+                    </td>
                   </tr>
                 )
               })}

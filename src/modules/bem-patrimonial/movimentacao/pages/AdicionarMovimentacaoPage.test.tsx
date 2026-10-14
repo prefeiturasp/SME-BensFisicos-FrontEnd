@@ -1,13 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAuth } from '@/auth/useAuth'
 import { toast } from 'sonner'
 import { unidadesAdministrativasService } from '@/modules/configuracoes/unidades-administrativas/services/unidades-administrativas.service'
 import { movimentacaoService } from '../services/movimentacao.service'
 import AdicionarMovimentacaoPage from './AdicionarMovimentacaoPage'
+import { MovimentacaoBensSelection } from '../components/MovimentacaoBensSelection'
 
 const navigate = vi.fn()
 
@@ -98,6 +100,16 @@ async function selecionarDestino() {
 }
 
 describe('AdicionarMovimentacaoPage', () => {
+  beforeAll(() => {
+    vi.stubGlobal('ResizeObserver', class {
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    })
+  })
+
+  afterAll(() => vi.unstubAllGlobals())
+
   beforeEach(() => {
     vi.clearAllMocks()
     configurarUsuario()
@@ -117,11 +129,12 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.create).mockResolvedValue({} as Awaited<ReturnType<typeof movimentacaoService.create>>)
   })
 
-  it('mostra os três modos, resultados e selecionados', async () => {
+  it('mostra duas formas de seleção e duas abas de busca manual', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument())
-    expect(screen.getByRole('radio', { name: 'Buscar Geral' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Buscar Faixa' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Seleção manual' })).toBeChecked()
+    expect(screen.getByRole('tab', { name: 'Busca geral' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Busca por faixa' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Todos os bens da UA' })).toBeInTheDocument()
     expect(screen.getAllByRole('table')).toHaveLength(2)
     expect(screen.getByText('Selecionados (0)')).toBeInTheDocument()
@@ -150,7 +163,7 @@ describe('AdicionarMovimentacaoPage', () => {
       { ...bemFaixa, descricao: 'Mesa', status: 'aprovado' },
     ])
     renderPage()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
 
     fireEvent.change(
       screen.getByLabelText('Número Patrimonial - De'),
@@ -193,7 +206,7 @@ describe('AdicionarMovimentacaoPage', () => {
     buscarGeral('cadeira')
     await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     expect(screen.getAllByRole('table')).toHaveLength(2)
     expect(screen.queryByRole('checkbox', { name: 'Selecionar bem ID 52' })).not.toBeInTheDocument()
     expect(screen.getByText('Selecionados (1)')).toBeInTheDocument()
@@ -203,7 +216,7 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bemFaixa, status: 'aprovado' }] })
     fireEvent.click(screen.getByRole('button', { name: 'Importar Faixa' }))
     await waitFor(() => expect(screen.getByText('Selecionados (2)')).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca geral' }))
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
     await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
       unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
@@ -213,7 +226,7 @@ describe('AdicionarMovimentacaoPage', () => {
 
   it('busca uma faixa e impede De maior que Até', async () => {
     renderPage()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000200' } })
     fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000100' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
@@ -227,15 +240,77 @@ describe('AdicionarMovimentacaoPage', () => {
     }))
   })
 
-  it('identifica bem impedido antes de selecionar', async () => {
+  it.each([
+    'Bloqueado por inventário',
+    'Este bem já possui uma movimentação pendente.',
+    'Este bem está com status Baixa Física e não pode ser movimentado.',
+  ])('explica o impedimento em texto e tooltip: %s', async (motivo) => {
+    const user = userEvent.setup()
     vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
       count: 1, pagina: 1, proxima_pagina: null,
-      itens: [{ ...bem, apto: false, motivo: 'Bloqueado por inventário' }],
+      itens: [{ ...bem, apto: false, motivo }],
     })
     renderPage()
     buscarGeral('cadeira')
-    expect(await screen.findByText('Bloqueado por inventário')).toBeInTheDocument()
+    expect(await screen.findByText(motivo)).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeDisabled()
+    await user.hover(screen.getByRole('button', { name: 'Motivo do bloqueio do bem ID 52' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(motivo)
+  })
+
+  it('explica a faixa junto aos campos e ao botão de importação', async () => {
+    const user = userEvent.setup()
+    vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
+      count: 1, pagina: 1, proxima_pagina: null, itens: [bemFaixa],
+    })
+    renderPage()
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
+    expect(screen.getByRole('button', { name: 'Ajuda sobre Número Patrimonial - De' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ajuda sobre Número Patrimonial - Até' })).toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: 'Ajuda sobre Número Patrimonial - Até' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Se Até não for preenchido, a busca procurará exatamente o número informado em De.')
+    await user.unhover(screen.getByRole('button', { name: 'Ajuda sobre Número Patrimonial - Até' }))
+    await user.hover(screen.getByRole('button', { name: 'Exemplos de faixa' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('123.342323423-2 até 123.342323423-3 busca dois bens')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('os dígitos finais precisam ser iguais')
+    await user.unhover(screen.getByRole('button', { name: 'Exemplos de faixa' }))
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
+    fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
+    await user.hover(await screen.findByRole('button', { name: 'Ajuda sobre importar faixa' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('nenhum bem dessa faixa será adicionado')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('até 500 bens')
+  })
+
+  it('explica a aprovação obrigatória e os demais impedimentos nos resultados', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.hover(screen.getByRole('button', { name: 'Quem pode ser adicionado?' }))
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('status Aprovado')
+    expect(tooltip).toHaveTextContent('sem bloqueio por inventário')
+    expect(tooltip).toHaveTextContent('sem outra movimentação pendente')
+    expect(tooltip).toHaveTextContent('Aparecer na busca não significa que o bem pode ser adicionado')
+  })
+
+  it('prioriza o impedimento atual de um bem já incluído em faixa', async () => {
+    const user = userEvent.setup()
+    const motivo = 'Este bem está bloqueado por inventário e não pode ser adicionado.'
+    render(
+      <MovimentacaoBensSelection
+        resultados={[{ ...bemFaixa, apto: false, motivo }]}
+        selecoes={[{ id: 'faixa', tipo: 'faixa', numeroDe: bemFaixa.numero_patrimonial, numeroAte: bemFaixa.numero_patrimonial, bens: [bemFaixa] }]}
+        buscaRealizada totalResultados={1} buscando={false} proximaPagina={null}
+        permiteImportarFaixa={false} permiteSelecionarResultados modoTodos={false}
+        onAlternarBem={vi.fn()} onAlternarResultados={vi.fn()} onImportarFaixa={vi.fn()}
+        onCarregarMais={vi.fn()} onRemoverSelecao={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(motivo)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 53' })).toBeDisabled()
+    await user.hover(screen.getByRole('button', { name: 'Motivo do bloqueio do bem ID 53' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(motivo)
   })
 
   it('informa ausência de resultados', async () => {
@@ -275,7 +350,7 @@ describe('AdicionarMovimentacaoPage', () => {
     buscarGeral('cadeira')
     await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' }))
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }))
     await waitFor(() => expect(movimentacaoService.create).toHaveBeenCalledWith({
       unidade_administrativa_origem: 10, unidade_orcamentaria_destino: 200,
@@ -365,22 +440,29 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Selecionar bem ID 52' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
     fireEvent.click(screen.getByTestId('confirm-dialog-cancel'))
-    expect(screen.getByRole('radio', { name: 'Buscar Geral' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Seleção manual' })).toBeChecked()
     expect(screen.getByText('Selecionados (1)')).toBeInTheDocument()
     expect(movimentacaoService.resolverItensLote).not.toHaveBeenCalled()
+    expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 52' })).toBeChecked()
+    expect(screen.getByLabelText('Buscar por nome, descrição, ID ou número patrimonial')).toHaveValue('cadeira')
   })
 
-  it('seleciona todos diretamente quando a lista ainda está vazia', async () => {
+  it('pede confirmação antes de selecionar todos mesmo com a lista vazia', async () => {
     vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bemTodos, status: 'aprovado' }] })
     renderPage()
     fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Selecionar todos os bens da UA' })).toBeInTheDocument()
+    expect(screen.getByText('Serão selecionados todos os bens aptos da Unidade Administrativa de origem. Deseja continuar?')).toBeInTheDocument()
+    expect(movimentacaoService.resolverItensLote).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
     await waitFor(() => expect(movimentacaoService.resolverItensLote).toHaveBeenCalledWith({
       unidade_administrativa_origem: 10, selecionar_todos: true,
     }))
     expect(
       screen.getByRole('button', { name: 'Remover seleção Todos os bens aptos da UA de origem' }),
     ).toBeDisabled()
+    expect(screen.queryByRole('checkbox', { name: 'Selecionar todos os resultados' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: `Selecionar bem ID ${bemTodos.id}` })).not.toBeInTheDocument()
   })
 
   it.each(['Buscar Geral', 'Buscar Faixa'])(
@@ -392,14 +474,30 @@ describe('AdicionarMovimentacaoPage', () => {
       renderPage()
 
       fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
       await screen.findByText('Todos os bens aptos da UA de origem')
 
-      fireEvent.click(screen.getByRole('radio', { name: modoDestino }))
+      fireEvent.click(screen.getByRole('radio', { name: 'Seleção manual' }))
+      if (modoDestino === 'Buscar Faixa') fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
 
       expect(screen.getByText('Selecionados (0)')).toBeInTheDocument()
       expect(screen.queryByText('Todos os bens aptos da UA de origem')).not.toBeInTheDocument()
     },
   )
+
+  it('cancela todos com lista vazia e mantém o filtro de faixa', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
+    fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    fireEvent.click(screen.getByTestId('confirm-dialog-cancel'))
+
+    expect(screen.getByRole('radio', { name: 'Seleção manual' })).toBeChecked()
+    expect(screen.getByRole('tab', { name: 'Busca por faixa' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Número Patrimonial - De')).toHaveValue('001.000000030-0')
+    expect(movimentacaoService.resolverItensLote).not.toHaveBeenCalled()
+  })
 
   it('resume a faixa com quantidade e bloqueia seus bens em nova busca', async () => {
     vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({
@@ -413,7 +511,7 @@ describe('AdicionarMovimentacaoPage', () => {
     })
     renderPage()
     await selecionarDestino()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
     fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000301' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
@@ -421,7 +519,7 @@ describe('AdicionarMovimentacaoPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Importar Faixa' }))
     expect(await screen.findByText('Selecionados (2)')).toBeInTheDocument()
     expect(screen.getByText('Mesa branca, Mesa lateral')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Geral' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca geral' }))
     buscarGeral('mesa')
     expect(await screen.findByRole('checkbox', { name: 'Selecionar bem ID 53' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'Selecionar bem ID 53' })).toBeChecked()
@@ -438,7 +536,7 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bemFaixa] })
     vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [{ ...bemFaixa, status: 'aprovado' }] })
     renderPage()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     const de = screen.getByLabelText('Número Patrimonial - De')
     fireEvent.change(de, { target: { value: '0010000000300' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
@@ -455,7 +553,7 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.buscarBens).mockResolvedValue({ count: 1, pagina: 1, proxima_pagina: null, itens: [bemFaixa] })
     vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(new Error('Bem bloqueado por inventário.'))
     renderPage()
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
     fireEvent.click(screen.getByRole('button', { name: /^buscar$/i }))
     fireEvent.click(await screen.findByRole('button', { name: 'Importar Faixa' }))
@@ -478,7 +576,7 @@ describe('AdicionarMovimentacaoPage', () => {
   it('aplica a máscara nos dois campos patrimoniais da faixa', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByRole('option', { name: '01.02 - UO Destino' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('radio', { name: 'Buscar Faixa' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Busca por faixa' }))
     fireEvent.change(screen.getByLabelText('Número Patrimonial - De'), { target: { value: '0010000000300' } })
     fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), { target: { value: '0010000000400' } })
     expect(screen.getByLabelText('Número Patrimonial - De')).toHaveValue('001.000000030-0')
@@ -524,6 +622,7 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.resolverItensLote).mockResolvedValue({ itens: [] })
     renderPage()
     fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
       'Nenhum bem aprovado foi encontrado na unidade administrativa de origem.',
     ))
@@ -534,6 +633,7 @@ describe('AdicionarMovimentacaoPage', () => {
     vi.mocked(movimentacaoService.resolverItensLote).mockRejectedValue(new Error('Falha ao carregar os bens.'))
     renderPage()
     fireEvent.click(screen.getByRole('radio', { name: 'Todos os bens da UA' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Falha ao carregar os bens.'))
   })
 
