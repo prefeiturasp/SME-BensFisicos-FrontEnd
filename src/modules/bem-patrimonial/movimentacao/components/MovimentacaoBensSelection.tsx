@@ -118,7 +118,7 @@ export function MovimentacaoBensSelection({
           <table className='w-full min-w-190 text-sm'>
             <thead className='border-b bg-[#F5F5F5] text-left text-gray-700'>
               <tr>
-                {!modoTodos ? (
+                {modoTodos ? null : (
                   <th className='w-12 p-3'>
                     <Checkbox
                       aria-label='Selecionar todos os resultados'
@@ -127,7 +127,7 @@ export function MovimentacaoBensSelection({
                       onCheckedChange={onAlternarResultados}
                     />
                   </th>
-                ) : null}
+                )}
                 <th className='p-3'>ID</th>
                 <th className='p-3'>Número Patrimonial</th>
                 <th className='p-3'>Nome</th>
@@ -141,7 +141,7 @@ export function MovimentacaoBensSelection({
                 const bloqueado = bloqueados.has(bem.id)
                 return (
                   <tr key={bem.id} className='border-b hover:bg-gray-50'>
-                    {!modoTodos ? (
+                    {modoTodos ? null : (
                       <td className='p-3'>
                         <Checkbox
                           aria-label={`Selecionar bem ID ${bem.id}`}
@@ -150,7 +150,7 @@ export function MovimentacaoBensSelection({
                           onCheckedChange={() => onAlternarBem(bem)}
                         />
                       </td>
-                    ) : null}
+                    )}
                     <td className='p-3'>{bem.id}</td>
                     <td className='p-3'>{bem.numero_patrimonial ?? 'Sem número patrimonial'}</td>
                     <td className='p-3'>{bem.nome}</td>
