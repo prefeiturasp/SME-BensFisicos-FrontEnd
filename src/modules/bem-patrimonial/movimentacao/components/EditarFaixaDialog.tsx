@@ -63,10 +63,15 @@ export function EditarFaixaDialog({
 
   const idsAtuais = new Set(faixa.bens.map((bem) => bem.id));
   const idsPrevios = new Set(previa?.map((bem) => bem.id));
-  const linhas =
+  const linhas = (
     previa === null
-      ? faixa.bens
-      : [...previa, ...faixa.bens.filter((bem) => !idsPrevios.has(bem.id))];
+      ? [...faixa.bens]
+      : [...previa, ...faixa.bens.filter((bem) => !idsPrevios.has(bem.id))]
+  ).sort((a, b) =>
+    (a.numero_patrimonial ?? '').localeCompare(b.numero_patrimonial ?? '', 'pt-BR', {
+      numeric: true,
+    }),
+  );
   const tituloPrevia = `Bens da faixa ${previa ? 'após aplicar' : 'atual'} (${(previa ?? faixa.bens).length})`;
 
   function situacao(id: number) {
@@ -141,9 +146,9 @@ export function EditarFaixaDialog({
               text={AJUDAS_MOVIMENTACAO.faixa}
             />
           </div>
-          <p role='status' className='text-sm font-semibold'>
+          <output className='block text-sm font-semibold'>
             {atualizando ? 'Atualizando prévia...' : tituloPrevia}
-          </p>
+          </output>
           {erroPrevia ? (
             <p role='alert' className='text-sm text-red-700'>
               {erroPrevia} A seleção atual permanece inalterada.

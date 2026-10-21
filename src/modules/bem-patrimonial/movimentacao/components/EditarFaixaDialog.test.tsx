@@ -59,12 +59,19 @@ describe('EditarFaixaDialog', () => {
     fireEvent.change(screen.getByLabelText('Número Patrimonial - Até'), {
       target: { value: monitor.numero_patrimonial },
     });
+    expect(screen.getByRole('status').tagName).toBe('OUTPUT');
     expect(screen.getByRole('status')).toHaveTextContent('Atualizando prévia');
     expect(await screen.findByText('Será removido')).toBeInTheDocument();
     expect(screen.getByText('Bens da faixa após aplicar (2)')).toBeInTheDocument();
     expect(screen.getByText('Novo').closest('tr')).toHaveClass('bg-green-50');
     expect(screen.getByText('Mantido').closest('tr')).toHaveClass('bg-white');
     expect(screen.getByText('Será removido').closest('tr')).toHaveClass('bg-red-50');
+    expect(
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent),
+    ).toEqual([cadeira.numero_patrimonial, mesa.numero_patrimonial, monitor.numero_patrimonial]);
     expect(
       within(screen.getByText('Será removido').closest('tr')!).getByText('Cadeira'),
     ).toBeInTheDocument();
