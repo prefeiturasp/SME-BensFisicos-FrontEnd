@@ -14,6 +14,7 @@ export interface ConfirmDialogProps {
   readonly cancelLabel?: string;
   readonly loadingLabel?: string;
   readonly loading?: boolean;
+  readonly size?: 'default' | 'wide';
   readonly errorMessage?: string | null;
   readonly variant?: ConfirmDialogVariant;
   readonly testId?: string;
@@ -53,6 +54,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancelar',
   loadingLabel,
   loading = false,
+  size = 'default',
   errorMessage = null,
   variant = 'primary',
   testId = 'confirm-dialog',
@@ -112,10 +114,10 @@ export function ConfirmDialog({
         onClick={handleClose}
       />
       <div
-        className='relative z-10 mx-4 w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl'
+        className={cn('relative z-10 mx-4 flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-lg bg-white shadow-xl', size === 'wide' ? 'max-w-4xl' : 'max-w-md')}
         data-testid={containerTestId}
       >
-        <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4'>
+        <div className='flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-6 py-4'>
           <h2 className='text-lg font-semibold text-gray-800'>{title}</h2>
           <button
             type='button'
@@ -128,13 +130,15 @@ export function ConfirmDialog({
           </button>
         </div>
 
-        <div className='space-y-4 px-6 py-5'>
+        <div className='min-h-0 flex-1 overflow-y-auto px-6 py-5' data-testid={`${containerTestId}-body`}>
           {typeof message === 'string' ? (
             <p className='text-sm text-gray-700'>{message}</p>
           ) : (
             message
           )}
+        </div>
 
+        <div className='shrink-0 space-y-4 border-t border-gray-200 px-6 py-4' data-testid={`${containerTestId}-footer`}>
           {errorMessage && (
             <div
               className='rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'
@@ -158,7 +162,7 @@ export function ConfirmDialog({
             </label>
           )}
 
-          <div className='flex items-center justify-end gap-3 pt-2'>
+          <div className='flex flex-wrap items-center justify-end gap-3'>
             <Button
               type='button'
               onClick={handleClose}
