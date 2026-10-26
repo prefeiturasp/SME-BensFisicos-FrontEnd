@@ -10,6 +10,7 @@ const BEM_STATUS_TONE: Record<string, StatusTone> = {
   nao_aprovado: 'danger',
   bloqueado: 'pending',
   baixa_fisica_aguardando_aprovacao: 'pending',
+  laudado_para_baixa: 'neutral',
   baixa_fisica: 'neutral',
   transferido: 'neutral',
 }

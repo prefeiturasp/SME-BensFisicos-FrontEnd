@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
     nao_aprovado: "Não aprovado",
     bloqueado: "Bloqueado para movimentação",
     baixa_fisica_aguardando_aprovacao: "Baixa Física - Aguardando aprovação",
+    laudado_para_baixa: "Laudado para Baixa",
     baixa_fisica: "Baixa Física",
 }
 
