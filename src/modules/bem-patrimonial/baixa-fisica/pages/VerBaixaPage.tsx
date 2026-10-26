@@ -43,6 +43,7 @@ import { getBaixaStatusTone } from "../utils/status"
 import { useAuth } from "@/auth/useAuth"
 import { AxiosError } from "axios"
 import { extractErrorMessage } from "@/lib/backend-form-errors"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 // ============================================================================
 // STYLES
@@ -279,7 +280,7 @@ function EditItemRow({
                 <button
                     type="button"
                     onClick={item ? onClear : onRemove}
-                    className="w-9 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                    className="w-9 h-10 flex items-center justify-center cursor-pointer text-gray-400 hover:text-red-500 transition-colors"
                     title="Remover"
                 >
                     <X size={14} />
@@ -287,7 +288,7 @@ function EditItemRow({
 
                 <button
                     type="button"
-                    className="w-9 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+                    className="w-9 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
                     <ChevronDown size={14} />
                 </button>
@@ -296,7 +297,7 @@ function EditItemRow({
                     <button
                         type="button"
                         onClick={onAdd}
-                        className="w-10 flex items-center justify-center text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white transition-colors"
+                        className="w-10 h-10 flex items-center justify-center cursor-pointer text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white transition-colors"
                         title="Adicionar item"
                     >
                         <Plus size={16} />
@@ -304,14 +305,22 @@ function EditItemRow({
                 )}
 
                 {isLast && (
-                    <button
-                        type="button"
-                        onClick={onRemove}
-                        className="w-10 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-colors"
-                        title="Excluir linha"
-                    >
-                        <Trash2 size={15} />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                onClick={onRemove}
+                                className="w-10 h-10 flex items-center justify-center cursor-pointer text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                title="Excluir linha"
+                                aria-label="Excluir linha"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6}>
+                            Excluir linha. O cadastro do bem não será apagado.
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
         </div>
@@ -477,18 +486,21 @@ export default function VerBaixaPage() {
 
     // ── Derivados ────────────────────────────────────────────────────────
 
-    // Somente baixas "Em elaboração" podem ser editadas...
     const isEmElaboracao = baixa?.status === STATUS_EM_ELABORACAO
-    // ...e apenas depois que o usuário aciona a ação "Editar".
-    const podeEditar = isEmElaboracao && modoEdicao
-    // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
-    const isValidando = baixa?.status === "solicitada"
     // Correção do número do processo — apenas Gestor (ou superuser) em baixa
     // Aceita sem Nota gerada (numero_nbbpm vazio).
     const isGestorPatrimonio = user?.is_gestor_patrimonio === true || user?.is_superuser === true
     const isAceita = baixa?.status === "aceita"
-    const semNbbpm = !baixa?.numero_nbbpm || baixa.numero_nbbpm.trim() === ""
+    const semNbbpm =
+        (!baixa?.numero_nbbpm || baixa.numero_nbbpm.trim() === "") &&
+        (baixa?.nbbpm_id == null)
     const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
+    // Operador em Aceita recebe 403 no backend — botão nem aparece.
+    const podeEditarAceita = isGestorPatrimonio && isAceita && semNbbpm
+    const podeEditar = (isEmElaboracao || podeEditarAceita) && modoEdicao
+    const podeExibirBotaoEditar = (isEmElaboracao || podeEditarAceita) && !modoEdicao
+    // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
+    const isValidando = baixa?.status === "solicitada"
     const { navigateAfterCommit } = useUnsavedChanges(
         hasChanges || checkedIds.size > 0,
         hasChanges ? "edit" : "selection",
@@ -601,7 +613,10 @@ export default function VerBaixaPage() {
 
         setSaving(true)
         try {
-            const updated = await baixaFisicaService.update(baixa.id, { itens })
+            // Em elaboração usa PUT; Aceita usa PATCH (único liberado pelo backend).
+            const updated = isAceita
+                ? await baixaFisicaService.partialUpdate(baixa.id, { itens })
+                : await baixaFisicaService.update(baixa.id, { itens })
             setBaixa(updated)
             setEditRows(mapItensParaLinhas(updated.itens, gerarRowId))
             setHasChanges(false)
@@ -611,12 +626,21 @@ export default function VerBaixaPage() {
             toast.success("Baixa Física atualizada com sucesso.")
         } catch (err) {
             console.error(err)
-            toast.error(
-                err instanceof Error ? err.message : "Erro ao salvar as alterações da Baixa Física."
-            )
+            toast.error(getMensagemErroEdicao(err))
         } finally {
             setSaving(false)
         }
+    }
+
+    function getMensagemErroEdicao(err: unknown): string {
+        if (err instanceof AxiosError) {
+            const mensagem = extractErrorMessage(err.response?.data)
+            if (mensagem) return mensagem
+            if (err.response?.status === 403) {
+                return "Você não tem permissão para editar esta baixa."
+            }
+        }
+        return err instanceof Error ? err.message : "Erro ao salvar as alterações da Baixa Física."
     }
 
     // ── Handlers — modo "Validar Baixa" ─────────────────────────────────
@@ -783,9 +807,7 @@ export default function VerBaixaPage() {
                     <Button type="button" onClick={() => navigate(-1)} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
                         <ArrowLeft size={18} />
                     </Button>
-                    {/* Em elaboração + modo visualização → ação "Editar".
-                        É ela que habilita a alteração dos campos. */}
-                    {isEmElaboracao && !modoEdicao && (
+                    {podeExibirBotaoEditar && (
                         <Button
                             type="button"
                             onClick={handleEntrarEmEdicao}
@@ -796,7 +818,6 @@ export default function VerBaixaPage() {
                         </Button>
                     )}
 
-                    {/* Em elaboração + modo edição → "Salvar Edição" e "Cancelar Edição" */}
                     {podeEditar && (
                         <>
                             <Button
@@ -1019,8 +1040,7 @@ export default function VerBaixaPage() {
                         Itens de Baixa Física
                     </p>
 
-                    {/* Aviso do modo visualização para baixas Em elaboração */}
-                    {isEmElaboracao && !modoEdicao && (
+                    {podeExibirBotaoEditar && (
                         <p className="text-xs text-gray-500">
                             As informações estão em modo de visualização. Acione
                             &quot;Editar&quot; para alterar os itens desta Baixa Física.
@@ -1073,7 +1093,6 @@ export default function VerBaixaPage() {
                         />
                     )}
 
-                    {/* Lista editável — Em elaboração com a ação "Editar" acionada */}
                     {podeEditar && (
                         <div className="space-y-2">
                             {editRows.length === 0 && (

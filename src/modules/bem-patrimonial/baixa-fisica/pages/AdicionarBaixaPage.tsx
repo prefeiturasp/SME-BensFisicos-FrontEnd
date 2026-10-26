@@ -13,6 +13,8 @@ import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DatePicker } from "@/components/ui/date-picker"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 import { AppBreadcrumb } from "@/components/AppBreadcrumb"
 import { bemService, type Bem } from "../../bem/services/bem.service"
@@ -48,8 +50,14 @@ const ACTION_BUTTON_CLASS = `
 `
 
 const ICON_BTN = `
-  h-10 w-10 flex items-center justify-center rounded border
+  h-10 w-10 flex items-center justify-center rounded border cursor-pointer
   border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white
+  transition-colors shrink-0
+`
+
+const ICON_BTN_DANGER = `
+  h-10 w-10 flex items-center justify-center rounded border cursor-pointer
+  border-red-600 text-red-600 hover:bg-red-600 hover:text-white
   transition-colors shrink-0
 `
 
@@ -172,7 +180,7 @@ function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onR
                             <button
                                 type="button"
                                 onClick={handleClear}
-                                className="text-gray-400 hover:text-gray-600 p-1"
+                                className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
                                 aria-label="Limpar bem selecionado"
                             >
                                 <X size={14} />
@@ -204,21 +212,68 @@ function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onR
             </div>
 
             {isLast ? (
-                <button type="button" onClick={onAdd} className={ICON_BTN} aria-label="Adicionar item">
+                <button type="button" onClick={onAdd} className={ICON_BTN} aria-label="Adicionar item" title="Adicionar item">
                     <Plus size={18} />
                 </button>
             ) : (
                 <div className="w-10 shrink-0" />
             )}
 
-            <button
-                type="button"
-                onClick={() => onRemove(row.rowId)}
-                className={ICON_BTN}
-                aria-label="Remover item"
-            >
-                <Trash2 size={16} />
-            </button>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        type="button"
+                        onClick={() => onRemove(row.rowId)}
+                        className={ICON_BTN_DANGER}
+                        aria-label="Remover item"
+                        title="Remover item"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                    Remover item. O cadastro do bem não será apagado.
+                </TooltipContent>
+            </Tooltip>
+        </div>
+    )
+}
+
+function BaixaCheckoutReview({ unidade, dataBaixa, rows }: { readonly unidade: string; readonly dataBaixa: Date | undefined; readonly rows: ItemRow[] }) {
+    const selecionados = rows.filter(r => r.bem)
+    return (
+        <div className="space-y-5">
+            <dl className="grid gap-4 rounded-md border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+                <div>
+                    <dt className="text-sm font-semibold">Unidade Administrativa</dt>
+                    <dd className="text-sm">{unidade || "-"}</dd>
+                </div>
+                <div>
+                    <dt className="text-sm font-semibold">Data da Baixa</dt>
+                    <dd className="text-sm">{dataBaixa ? format(dataBaixa, "dd/MM/yyyy") : "-"}</dd>
+                </div>
+            </dl>
+            <section className="space-y-3" aria-label="Bens selecionados">
+                <p className="text-sm font-semibold text-[#00703C]">Selecionados ({selecionados.length})</p>
+                <div className="overflow-x-auto rounded-md border border-gray-200">
+                    <table className="w-full min-w-150 text-sm">
+                        <thead className="border-b bg-[#F5F5F5] text-left text-gray-700">
+                            <tr>
+                                <th className="p-3">Número Patrimonial</th>
+                                <th className="p-3">Nome do Bem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {selecionados.map((row) => (
+                                <tr key={row.rowId} className="border-b last:border-0">
+                                    <td className="p-3 font-mono text-xs text-gray-600">{row.bem!.numero_patrimonial}</td>
+                                    <td className="p-3 text-sm text-gray-700">{row.bem!.nome}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     )
 }
@@ -247,6 +302,7 @@ export default function AdicionarBaixaPage() {
 
     const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
     const [submitting, setSubmitting] = useState(false)
+    const [revisaoAberta, setRevisaoAberta] = useState(false)
     const [bloqueioExistente, setBloqueioExistente] = useState<{ mensagem: string; ids: number[] } | null>(null)
 
     const form = useForm<AdicionarBaixaFormData>({
@@ -258,6 +314,7 @@ export default function AdicionarBaixaPage() {
     const unidade = form.watch("unidade")
     const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
     const unidadeId = unidade ? Number(unidade) : null
+    const [unidadeRotulo, setUnidadeRotulo] = useState("-")
     const { navigateAfterSave } = useUnsavedChanges(
         form.formState.isDirty || allSelectedIds.length > 0,
         "create",
@@ -283,11 +340,12 @@ export default function AdicionarBaixaPage() {
         })
     }, [sincronizarItens])
 
-    const handleUnidadeChange = (value: string) => {
+    const handleUnidadeChange = (value: string, rotulo?: string) => {
         form.setValue("unidade", value, {
             shouldDirty: true,
             shouldValidate: form.formState.isSubmitted,
         })
+        setUnidadeRotulo(value ? (rotulo ?? value) : "-")
         setBloqueioExistente(null)
         atualizarRows(() => [{ rowId: nextRowId++, bem: null }])
     }
@@ -326,7 +384,11 @@ export default function AdicionarBaixaPage() {
         atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
     }
 
-    const handleSolicitar = form.handleSubmit(async (values) => {
+    const handleSolicitar = form.handleSubmit(() => {
+        setRevisaoAberta(true)
+    })
+
+    const confirmarSolicitar = form.handleSubmit(async (values) => {
         setSubmitting(true)
         setBloqueioExistente(null)
         try {
@@ -338,11 +400,13 @@ export default function AdicionarBaixaPage() {
                 itens: values.itens.map(bemId => ({ bem: bemId })),
             })
             toast.success("Baixa Física cadastrada com sucesso.")
+            setRevisaoAberta(false)
             navigateAfterSave(() => navigate(-1))
         } catch (err: unknown) {
             const bloqueio = extrairBloqueioBaixaExistente(err)
             if (bloqueio) {
                 setBloqueioExistente(bloqueio)
+                setRevisaoAberta(false)
                 toast.error(bloqueio.mensagem)
                 return
             }
@@ -493,7 +557,7 @@ export default function AdicionarBaixaPage() {
                                     id="itens-baixa-fisica"
                                     className="text-sm font-semibold text-green-700"
                                 >
-                                    Itens de Baixa Física
+                                    Itens de Baixa Física ({allSelectedIds.length})
                                 </h2>
                             </FormLabel>
                             <FormMessage />
@@ -521,6 +585,18 @@ export default function AdicionarBaixaPage() {
                 </div>
 
             </Card>
+            <ConfirmDialog
+                open={revisaoAberta}
+                title="Revisar e solicitar baixa"
+                size="wide"
+                confirmLabel="Confirmar solicitação"
+                cancelLabel="Voltar para editar"
+                loadingLabel="Solicitando..."
+                loading={submitting}
+                onClose={() => setRevisaoAberta(false)}
+                onConfirm={() => void confirmarSolicitar()}
+                message={<BaixaCheckoutReview unidade={unidadeRotulo} dataBaixa={form.getValues("data_baixa")} rows={rows} />}
+            />
         </div>
         </Form>
     )
