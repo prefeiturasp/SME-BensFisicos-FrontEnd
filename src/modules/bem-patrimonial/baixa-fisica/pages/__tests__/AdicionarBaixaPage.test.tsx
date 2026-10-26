@@ -144,6 +144,18 @@ async function selectBem() {
     fireEvent.click(screen.getByText("Cadeira Escritório"))
 }
 
+async function abrirRevisao() {
+    fireEvent.click(screen.getByText("Solicitar"))
+    await waitFor(() => {
+        expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
+    })
+}
+
+async function confirmarSolicitacao() {
+    await abrirRevisao()
+    fireEvent.click(screen.getByText("Confirmar solicitação"))
+}
+
 // ===================== TESTS =====================
 
 describe("AdicionarBaixaPage", () => {
@@ -363,11 +375,7 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         await selectBem()
 
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         const now = new Date()
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
@@ -383,9 +391,7 @@ describe("AdicionarBaixaPage", () => {
     it("checkout exibe total, patrimonial e nome no padrão Movimentação", async () => {
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        const dialog = await screen.findByText("Revisar e solicitar baixa")
-        expect(dialog).toBeInTheDocument()
+        await abrirRevisao()
         expect(screen.getByText("Selecionados (1)")).toBeInTheDocument()
         expect(screen.getByText("Número Patrimonial")).toBeInTheDocument()
         expect(screen.getByText("Nome do Bem")).toBeInTheDocument()
@@ -401,11 +407,7 @@ describe("AdicionarBaixaPage", () => {
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
         fireEvent.change(input, { target: { value: "2025-01-01" } })
 
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith(
@@ -442,11 +444,7 @@ describe("AdicionarBaixaPage", () => {
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
         fireEvent.change(input, { target: { value: "" } })
 
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith({
@@ -463,11 +461,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith(-1)
@@ -479,11 +473,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Erro de servidor")
@@ -495,11 +485,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(screen.getAllByText("Solicitando...").length).toBeGreaterThanOrEqual(1)
@@ -630,10 +616,7 @@ describe("AdicionarBaixaPage", () => {
     it("checkout exibe codigo - sigla da UA selecionada no select", async () => {
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => {
-            expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
-        })
+        await abrirRevisao()
         expect(screen.getAllByText("001 - UA-01").length).toBeGreaterThanOrEqual(1)
     })
 })

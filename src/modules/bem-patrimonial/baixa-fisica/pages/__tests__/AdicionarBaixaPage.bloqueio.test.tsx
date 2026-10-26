@@ -91,6 +91,12 @@ async function selectBem() {
     fireEvent.click(screen.getByText("Cadeira Escritório"))
 }
 
+async function confirmarSolicitacao() {
+    fireEvent.click(screen.getByText("Solicitar"))
+    await waitFor(() => expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument())
+    fireEvent.click(screen.getByText("Confirmar solicitação"))
+}
+
 const MENSAGEM_BLOQUEIO =
     "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
 
@@ -109,9 +115,7 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue({ id: 70 } as never)
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument())
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => expect(baixaFisicaService.create).toHaveBeenCalled())
         expect(toast.success).toHaveBeenCalledWith("Baixa Física cadastrada com sucesso.")
@@ -129,9 +133,7 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
         )
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument())
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => expect(screen.getByTestId("bloqueio-baixa-existente")).toBeInTheDocument())
         expect(screen.getByText(mensagemCompleta)).toBeInTheDocument()
@@ -151,9 +153,7 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
         )
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument())
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => expect(screen.getByTestId("bloqueio-baixa-existente")).toBeInTheDocument())
         expect(toast.error).toHaveBeenCalledWith(MENSAGEM_BLOQUEIO)
@@ -165,9 +165,7 @@ describe("AdicionarBaixaPage — bloqueio baixa em aberto", () => {
         vi.mocked(baixaFisicaService.create).mockRejectedValue(axios400({ itens: ["Obrigatório"] }))
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
-        await waitFor(() => expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument())
-        fireEvent.click(screen.getByText("Confirmar solicitação"))
+        await confirmarSolicitacao()
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Request failed with status code 400"))
         expect(screen.queryByTestId("bloqueio-baixa-existente")).not.toBeInTheDocument()
