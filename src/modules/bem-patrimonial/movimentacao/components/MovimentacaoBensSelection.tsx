@@ -118,11 +118,20 @@ export function ResumoBensMovimentacao({ selecoes, onRemoverSelecao, onEditarFai
                         <Pencil className='size-5 text-[#00703C]' />
                       </Button>
                     ) : null}
-                    <Button type='button' variant='ghost' size='icon'
-                      aria-label={`Remover seleção ${identificacaoSelecao(selecao)}`}
-                      onClick={() => setRemocao(selecao)}>
-                      <Trash2 className='size-5 text-[#00703C]' />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button type='button' variant='ghost' size='icon'
+                          className='h-10 w-10 cursor-pointer'
+                          title={`Remover seleção ${identificacaoSelecao(selecao)}`}
+                          aria-label={`Remover seleção ${identificacaoSelecao(selecao)}`}
+                          onClick={() => setRemocao(selecao)}>
+                          <Trash2 className='size-5 text-red-600' />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side='top' sideOffset={6}>
+                        Remover da seleção. Os cadastros dos bens não serão apagados.
+                      </TooltipContent>
+                    </Tooltip>
                   </td>
                 ) : null}
               </tr>
