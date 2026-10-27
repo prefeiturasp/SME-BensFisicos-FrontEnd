@@ -99,6 +99,63 @@ function todosItensValidados(itens: BaixaFisicaItem[], checkedIds: Set<number>):
     return itens.length > 0 && itens.every((item) => checkedIds.has(item.id))
 }
 
+interface PermissaoBaixa {
+    readonly isEmElaboracao: boolean
+    readonly isAceita: boolean
+    readonly podeCorrigirProcesso: boolean
+    readonly podeEditarAceita: boolean
+    readonly podeEditar: boolean
+    readonly podeExibirBotaoEditar: boolean
+    readonly isValidando: boolean
+}
+
+function getPermissaoBaixa(
+    baixa: BaixaFisicaDetail | null,
+    user: { readonly is_gestor_patrimonio?: boolean; readonly is_superuser?: boolean } | null | undefined,
+    modoEdicao: boolean,
+): PermissaoBaixa {
+    const isEmElaboracao = baixa?.status === STATUS_EM_ELABORACAO
+    // Correção do número do processo — apenas Gestor (ou superuser) em baixa
+    // Aceita sem Nota gerada (numero_nbbpm vazio).
+    const isGestorPatrimonio = user?.is_gestor_patrimonio === true || user?.is_superuser === true
+    const isAceita = baixa?.status === "aceita"
+    const semNbbpm = isSemNbbpm(baixa?.numero_nbbpm, baixa?.nbbpm_id)
+    const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
+    // Operador em Aceita recebe 403 no backend — botão nem aparece.
+    const podeEditarAceita = isGestorPatrimonio && isAceita && semNbbpm
+    const podeEditar = (isEmElaboracao || podeEditarAceita) && modoEdicao
+    const podeExibirBotaoEditar = (isEmElaboracao || podeEditarAceita) && !modoEdicao
+    // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
+    const isValidando = baixa?.status === "solicitada"
+    return { isEmElaboracao, isAceita, podeCorrigirProcesso, podeEditarAceita, podeEditar, podeExibirBotaoEditar, isValidando }
+}
+
+interface EstadoValidacao {
+    readonly filtroLower: string
+    readonly itensFiltrados: BaixaFisicaItem[]
+    readonly todosValidados: boolean
+    readonly todosFiltradosValidados: boolean
+}
+
+function getEstadoValidacao(
+    baixa: BaixaFisicaDetail | null,
+    checkedIds: Set<number>,
+    filtroValidacao: string,
+): EstadoValidacao {
+    const filtroLower = filtroValidacao.trim().toLowerCase()
+    const itensFiltrados = filtrarItensValidacao(baixa?.itens ?? [], filtroLower)
+    const todosValidados = baixa !== null && todosItensValidados(baixa.itens, checkedIds)
+    const todosFiltradosValidados =
+        itensFiltrados.length > 0 && itensFiltrados.every((item) => checkedIds.has(item.id))
+    return { filtroLower, itensFiltrados, todosValidados, todosFiltradosValidados }
+}
+
+function getErrosEdicao(podeEditar: boolean, tentouSalvarSemItens: boolean, totalSelecionados: number): string[] {
+    return podeEditar && tentouSalvarSemItens && totalSelecionados === 0
+        ? ["Adicione ao menos um item."]
+        : []
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -513,19 +570,8 @@ export default function VerBaixaPage() {
 
     // ── Derivados ────────────────────────────────────────────────────────
 
-    const isEmElaboracao = baixa?.status === STATUS_EM_ELABORACAO
-    // Correção do número do processo — apenas Gestor (ou superuser) em baixa
-    // Aceita sem Nota gerada (numero_nbbpm vazio).
-    const isGestorPatrimonio = user?.is_gestor_patrimonio === true || user?.is_superuser === true
-    const isAceita = baixa?.status === "aceita"
-    const semNbbpm = isSemNbbpm(baixa?.numero_nbbpm, baixa?.nbbpm_id)
-    const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
-    // Operador em Aceita recebe 403 no backend — botão nem aparece.
-    const podeEditarAceita = isGestorPatrimonio && isAceita && semNbbpm
-    const podeEditar = (isEmElaboracao || podeEditarAceita) && modoEdicao
-    const podeExibirBotaoEditar = (isEmElaboracao || podeEditarAceita) && !modoEdicao
-    // Tela "Validar Baixa" — apenas para baixas com status "solicitada"
-    const isValidando = baixa?.status === "solicitada"
+    const { isAceita, podeCorrigirProcesso, podeEditar, podeExibirBotaoEditar, isValidando } =
+        getPermissaoBaixa(baixa, user, modoEdicao)
     const { navigateAfterCommit } = useUnsavedChanges(
         hasChanges || checkedIds.size > 0,
         hasChanges ? "edit" : "selection",
@@ -537,18 +583,10 @@ export default function VerBaixaPage() {
     // edição. Recalculado a cada render a partir de `editRows`, então some
     // sozinho assim que o usuário adiciona um item — sem exigir novo clique
     // em "Salvar Edição".
-    const errosEdicao =
-        podeEditar && tentouSalvarSemItens && allSelectedEditIds.length === 0
-            ? ["Adicione ao menos um item."]
-            : []
+    const errosEdicao = getErrosEdicao(podeEditar, tentouSalvarSemItens, allSelectedEditIds.length)
 
-    const filtroLower = filtroValidacao.trim().toLowerCase()
-    const itensFiltrados = filtrarItensValidacao(baixa?.itens ?? [], filtroLower)
-
-    const todosValidados = baixa !== null && todosItensValidados(baixa.itens, checkedIds)
-
-    const todosFiltradosValidados =
-        itensFiltrados.length > 0 && itensFiltrados.every((item) => checkedIds.has(item.id))
+    const { itensFiltrados, todosValidados, todosFiltradosValidados } =
+        getEstadoValidacao(baixa, checkedIds, filtroValidacao)
 
     // ── Handlers — modo edição ──────────────────────────────────────────
 
