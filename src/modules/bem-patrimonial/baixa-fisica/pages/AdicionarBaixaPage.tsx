@@ -438,7 +438,7 @@ export default function AdicionarBaixaPage() {
             <AppBreadcrumb
                 items={[
                     { label: "Bem Patrimonial" },
-                    { label: "Baixas Físicas" },
+                    { label: "Baixas Físicas", to: "/baixas-fisicas" },
                     { label: "Adicionar Baixa", isActive: true },
                 ]}
             />

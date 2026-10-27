@@ -103,7 +103,7 @@ export default function SolicitarCorrecaoPage() {
             <AppBreadcrumb
                 items={[
                     { label: "Bem Patrimonial" },
-                    { label: "Baixa Física de Bens Patrimoniais" },
+                    { label: "Baixa Física de Bens Patrimoniais", to: "/baixas-fisicas" },
                     { label: "Solicitar correção", isActive: true },
                 ]}
             />

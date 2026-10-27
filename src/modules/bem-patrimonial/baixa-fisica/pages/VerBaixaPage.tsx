@@ -795,7 +795,7 @@ export default function VerBaixaPage() {
             <AppBreadcrumb
                 items={[
                     { label: "Bem Patrimonial" },
-                    { label: "Baixa Física de Bens Patrimoniais" },
+                    { label: "Baixa Física de Bens Patrimoniais", to: "/baixas-fisicas" },
                     { label: tituloPagina, isActive: true },
                 ]}
             />
