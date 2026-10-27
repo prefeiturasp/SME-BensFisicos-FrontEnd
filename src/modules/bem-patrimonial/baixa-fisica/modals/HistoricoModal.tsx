@@ -83,6 +83,7 @@ function parseNbbpmJustificativa(justificativa: string): NbbpmDetalhes | null {
 function getGroupLabel(items: HistoricoEntry[]): string {
     const campos = new Set(items.map(i => i.campo))
     if (campos.has("nbbpm")) return "Nota gerada"
+    if (campos.has("itens")) return "Itens alterados"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Aceita")) return "Cadastro aceito"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Solicitada")) return "Solicitação enviada"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Recusada")) return "Cadastro recusado"
@@ -195,6 +196,15 @@ function HistoricoModal({ baixaId, onClose }: HistoricoModalProps) {
                             <div className="px-4 py-4 space-y-2">
                                 <p className="text-sm font-semibold text-gray-700 mb-2">Ações:</p>
                                 {selectedGroup.items.map(item => {
+                                    if (item.campo === "itens") {
+                                        const bem = item.valor_novo || item.valor_antigo || ""
+                                        const base = item.justificativa || (item.valor_novo ? "Bem adicionado à baixa" : "Bem removido da baixa")
+                                        return (
+                                            <p key={item.id} className="text-sm text-gray-600">
+                                                {bem ? `${base}: ${bem}` : base}
+                                            </p>
+                                        )
+                                    }
                                     if (item.campo === "nbbpm") {
                                         const numero = item.valor_novo ?? ""
                                         const justificativa = item.justificativa ?? ""
