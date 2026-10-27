@@ -321,6 +321,29 @@ describe('BemDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
    })
 
+   it('não deve exibir botão Editar se status for laudado_para_baixa mesmo sendo gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve')
+        .mockResolvedValue({
+        ...bemMock,
+        status: 'laudado_para_baixa',
+        } as any)
+
+    ;(useAuth as any).mockReturnValue({
+        user: {
+          is_gestor_patrimonio: true,
+          ua_ativa: null,
+          uo_ativa: null,
+          opcoes_escopo: userGestorComAcesso.opcoes_escopo,
+        },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled()
+   })
+
 
    it('não deve exibir Editar se user for undefined', async () => {
     vi.spyOn(bemServiceModule.bemService, 'retrieve')

@@ -236,7 +236,7 @@ export default function BemEditPage() {
   }, [id, form, navigate])
 
   const isGestor = user?.is_gestor_patrimonio
-  const isBaixaFisica = status === 'baixa_fisica'
+  const isBaixaFisica = status === 'baixa_fisica' || status === 'laudado_para_baixa'
   const podeEditarEscopo = bem ? userHasAccessToBemUa(user, bem) : false
   const podeEditar = !!isGestor && !isBaixaFisica && podeEditarEscopo
 

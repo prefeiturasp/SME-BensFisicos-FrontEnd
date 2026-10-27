@@ -46,6 +46,7 @@ vi.mock("../../service/baixas.service", () => ({
     baixaFisicaService: {
         retrieve: vi.fn(),
         update: vi.fn(),
+        partialUpdate: vi.fn(),
         aprovar: vi.fn(),
         corrigirProcesso: vi.fn(),
         baixarNbbpmPdf: vi.fn(),
@@ -54,8 +55,10 @@ vi.mock("../../service/baixas.service", () => ({
     },
 }))
 
+const mockUserState = vi.hoisted(() => ({ user: null as unknown as { is_gestor_patrimonio?: boolean; is_superuser?: boolean } | null }))
+
 vi.mock("@/auth/useAuth", () => ({
-    useAuth: () => ({ user: null }),
+    useAuth: () => ({ user: mockUserState.user }),
 }))
 
 vi.mock("../../../bem/services/bem.service", () => ({
@@ -191,6 +194,7 @@ describe("VerBaixaPage", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        mockUserState.user = null
         vi.mocked(bemService.list).mockResolvedValue({
             results: [makeBem()],
             count: 1,
@@ -1494,6 +1498,158 @@ describe("VerBaixaPage", () => {
             fireEvent.click(screen.getByText("Salvar Edição"))
             await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Falha ao salvar"))
             errorSpy.mockRestore()
+        })
+    })
+
+    describe("Aceita — edição gestor sem NBBPM", () => {
+        function makeAceitaSemNbbpm(overrides: Partial<BaixaFisicaDetail> = {}) {
+            return makeBaixaDetail({
+                status: "aceita",
+                status_display: "Aceita",
+                numero_nbbpm: null,
+                nbbpm_id: null,
+                itens: [makeBaixaItem(1, { numero_patrimonial: "PAT-001", nome: "Cadeira" })],
+                ...overrides,
+            })
+        }
+
+        it("exibe botão Editar para gestor em Aceita sem NBBPM", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm())
+            renderPage()
+            await waitFor(() => expect(screen.getByText("Editar")).toBeInTheDocument())
+        })
+
+        it("não exibe botão Editar para operador em Aceita", async () => {
+            mockUserState.user = null
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm())
+            renderPage()
+            await waitFor(() => screen.getByText(/Aceita/))
+            expect(screen.queryByText("Editar")).not.toBeInTheDocument()
+            expect(screen.queryByText("Salvar Edição")).not.toBeInTheDocument()
+        })
+
+        it("não exibe botão Editar para Aceita com NBBPM (bloqueio)", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeAceitaSemNbbpm({ numero_nbbpm: "001.0000001/2026", nbbpm_id: 7 })
+            )
+            renderPage()
+            await waitFor(() => screen.getByText(/Aceita/))
+            expect(screen.queryByText("Editar")).not.toBeInTheDocument()
+        })
+
+        it("não exibe botão Editar para Aceita com nbbpm_id mesmo sem numero_nbbpm", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(
+                makeAceitaSemNbbpm({ numero_nbbpm: null, nbbpm_id: 9 })
+            )
+            renderPage()
+            await waitFor(() => screen.getByText(/Aceita/))
+            expect(screen.queryByText("Editar")).not.toBeInTheDocument()
+        })
+
+        it("salvar Aceita usa PATCH (partialUpdate), toast sucesso e volta à leitura", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm({ itens: [] }))
+            vi.mocked(baixaFisicaService.partialUpdate).mockResolvedValue(
+                makeAceitaSemNbbpm({ itens: [makeBaixaItem(1)] })
+            )
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+            await waitFor(() => screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() => {
+                expect(baixaFisicaService.partialUpdate).toHaveBeenCalledWith(
+                    1,
+                    expect.objectContaining({ itens: [{ bem: 1 }] })
+                )
+                expect(baixaFisicaService.update).not.toHaveBeenCalled()
+                expect(toast.success).toHaveBeenCalledWith("Baixa Física atualizada com sucesso.")
+            })
+            await waitFor(() => expect(screen.getByText("Editar")).toBeInTheDocument())
+        })
+
+        it("remover item em Aceita bloqueia salvar vazio", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm())
+            vi.mocked(baixaFisicaService.partialUpdate).mockResolvedValue(
+                makeAceitaSemNbbpm({ itens: [] })
+            )
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByText(/PAT-001/))
+            fireEvent.click(screen.getByTitle("Remover"))
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() => expect(screen.getByText("Adicione ao menos um item.")).toBeInTheDocument())
+            expect(baixaFisicaService.partialUpdate).not.toHaveBeenCalled()
+        })
+
+        it("erro 400 com NBBPM exibe mensagem do backend e mantém edição", async () => {
+            const { AxiosError } = await import("axios")
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm({ itens: [] }))
+            const axiosErr = new AxiosError("Request failed", "400", undefined, undefined, {
+                status: 400,
+                data: { detail: "Esta baixa já possui NBBPM gerada e não pode ser editada." },
+            } as never)
+            vi.mocked(baixaFisicaService.partialUpdate).mockRejectedValue(axiosErr)
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+            await waitFor(() => screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+                "Esta baixa já possui NBBPM gerada e não pode ser editada."
+            ))
+            expect(screen.getByText("Salvar Edição")).toBeInTheDocument()
+            errorSpy.mockRestore()
+        })
+
+        it("erro 403 sem permissão exibe toast específico", async () => {
+            const { AxiosError } = await import("axios")
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm({ itens: [] }))
+            const axiosErr = new AxiosError("Forbidden", "403", undefined, undefined, {
+                status: 403,
+                data: {},
+            } as never)
+            vi.mocked(baixaFisicaService.partialUpdate).mockRejectedValue(axiosErr)
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByPlaceholderText("Selecione um bem"))
+            fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+            await waitFor(() => screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Cadeira Escritório"))
+            fireEvent.click(screen.getByText("Salvar Edição"))
+            await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+                "Você não tem permissão para editar esta baixa."
+            ))
+            errorSpy.mockRestore()
+        })
+
+        it("lixeira em modo edição Aceita usa padrão vermelho ampliado", async () => {
+            mockUserState.user = { is_gestor_patrimonio: true } as never
+            vi.mocked(baixaFisicaService.retrieve).mockResolvedValue(makeAceitaSemNbbpm({ itens: [] }))
+            renderPage()
+            await waitFor(() => screen.getByText("Editar"))
+            fireEvent.click(screen.getByText("Editar"))
+            await waitFor(() => screen.getByLabelText("Excluir linha"))
+            const trash = screen.getByLabelText("Excluir linha")
+            expect(trash.className).toMatch(/red-600/)
+            expect(trash.querySelector("svg")).toBeInTheDocument()
         })
     })
 })

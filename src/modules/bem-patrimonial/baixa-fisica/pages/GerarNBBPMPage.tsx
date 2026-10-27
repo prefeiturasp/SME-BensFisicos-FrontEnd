@@ -159,7 +159,7 @@ export default function GerarNBBPMPage() {
             <AppBreadcrumb
                 items={[
                     { label: "Bem Patrimonial" },
-                    { label: "Baixa Física de Bens Patrimoniais" },
+                    { label: "Baixa Física de Bens Patrimoniais", to: "/baixas-fisicas" },
                     { label: "Gerar NBBPM", isActive: true },
                 ]}
             />

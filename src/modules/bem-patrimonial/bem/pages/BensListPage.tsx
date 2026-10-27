@@ -272,6 +272,7 @@ export default function BensListPage() {
                 <SelectItem value='aprovado'>Aprovado</SelectItem>
                 <SelectItem value='nao_aprovado'>Não aprovado</SelectItem>
                 <SelectItem value='baixa_fisica'>Baixa Física</SelectItem>
+                <SelectItem value='laudado_para_baixa'>Laudado para Baixa</SelectItem>
                 <SelectItem value='transferido'>Transferidos</SelectItem>
               </SelectContent>
             </Select>

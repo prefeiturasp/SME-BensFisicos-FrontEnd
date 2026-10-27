@@ -23,10 +23,10 @@ export interface ValidationErrors {
 export function validateBem(data: BemFormData): ValidationErrors {
   const errors: ValidationErrors = {}
 
-  // 🔒 BLOQUEIO BAIXA FÍSICA
-  if (data.status === 'baixa_fisica') {
+  // Bloqueio Baixa Fisica + Laudado (status final)
+  if (data.status === 'baixa_fisica' || data.status === 'laudado_para_baixa') {
     errors._global =
-      'Este bem está com status "Baixa Física" e não pode ser editado.'
+      'Este bem está com status "Baixa Física / Laudado para Baixa" e não pode ser editado.'
     return errors
   }
 
