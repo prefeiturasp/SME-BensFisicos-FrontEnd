@@ -104,8 +104,10 @@ export default function BemDetailPage() {
   let motivoBloqueioEdicao = 'Edição bloqueada: seu perfil não tem acesso à Unidade Administrativa deste bem.'
   if (!user?.is_gestor_patrimonio) {
     motivoBloqueioEdicao = 'Somente Gestor de Patrimônio pode editar este bem.'
-  } else if (bem.status === 'baixa_fisica' || bem.status === 'laudado_para_baixa') {
-    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status de baixa física.'
+  } else if (bem.status === 'laudado_para_baixa') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status Laudado para Baixa.'
+  } else if (bem.status === 'baixa_fisica') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status Baixa Física.'
   }
 
   return (
