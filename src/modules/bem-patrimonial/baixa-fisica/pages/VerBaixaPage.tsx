@@ -72,6 +72,33 @@ function getMensagemErroCorrigirProcesso(err: unknown): string {
     return "Erro ao corrigir número do processo."
 }
 
+function getMensagemErroEdicao(err: unknown): string {
+    if (err instanceof AxiosError) {
+        const mensagem = extractErrorMessage(err.response?.data)
+        if (mensagem) return mensagem
+        if (err.response?.status === 403) {
+            return "Você não tem permissão para editar esta baixa."
+        }
+    }
+    return err instanceof Error ? err.message : "Erro ao salvar as alterações da Baixa Física."
+}
+
+function isSemNbbpm(numeroNbbpm: string | null | undefined, nbbpmId: number | null | undefined): boolean {
+    return (!numeroNbbpm || numeroNbbpm.trim() === "") && (nbbpmId == null)
+}
+
+function filtrarItensValidacao(itens: BaixaFisicaItem[], filtroLower: string): BaixaFisicaItem[] {
+    if (!filtroLower) return itens
+    return itens.filter((item) =>
+        item.bem.numero_patrimonial.toLowerCase().includes(filtroLower) ||
+        item.bem.nome.toLowerCase().includes(filtroLower)
+    )
+}
+
+function todosItensValidados(itens: BaixaFisicaItem[], checkedIds: Set<number>): boolean {
+    return itens.length > 0 && itens.every((item) => checkedIds.has(item.id))
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -491,9 +518,7 @@ export default function VerBaixaPage() {
     // Aceita sem Nota gerada (numero_nbbpm vazio).
     const isGestorPatrimonio = user?.is_gestor_patrimonio === true || user?.is_superuser === true
     const isAceita = baixa?.status === "aceita"
-    const semNbbpm =
-        (!baixa?.numero_nbbpm || baixa.numero_nbbpm.trim() === "") &&
-        (baixa?.nbbpm_id == null)
+    const semNbbpm = isSemNbbpm(baixa?.numero_nbbpm, baixa?.nbbpm_id)
     const podeCorrigirProcesso = isGestorPatrimonio && isAceita && semNbbpm
     // Operador em Aceita recebe 403 no backend — botão nem aparece.
     const podeEditarAceita = isGestorPatrimonio && isAceita && semNbbpm
@@ -518,18 +543,9 @@ export default function VerBaixaPage() {
             : []
 
     const filtroLower = filtroValidacao.trim().toLowerCase()
-    const itensFiltrados = (baixa?.itens ?? []).filter((item) => {
-        if (!filtroLower) return true
-        return (
-            item.bem.numero_patrimonial.toLowerCase().includes(filtroLower) ||
-            item.bem.nome.toLowerCase().includes(filtroLower)
-        )
-    })
+    const itensFiltrados = filtrarItensValidacao(baixa?.itens ?? [], filtroLower)
 
-    const todosValidados =
-        baixa !== null &&
-        baixa.itens.length > 0 &&
-        baixa.itens.every((item) => checkedIds.has(item.id))
+    const todosValidados = baixa !== null && todosItensValidados(baixa.itens, checkedIds)
 
     const todosFiltradosValidados =
         itensFiltrados.length > 0 && itensFiltrados.every((item) => checkedIds.has(item.id))
@@ -630,17 +646,6 @@ export default function VerBaixaPage() {
         } finally {
             setSaving(false)
         }
-    }
-
-    function getMensagemErroEdicao(err: unknown): string {
-        if (err instanceof AxiosError) {
-            const mensagem = extractErrorMessage(err.response?.data)
-            if (mensagem) return mensagem
-            if (err.response?.status === 403) {
-                return "Você não tem permissão para editar esta baixa."
-            }
-        }
-        return err instanceof Error ? err.message : "Erro ao salvar as alterações da Baixa Física."
     }
 
     // ── Handlers — modo "Validar Baixa" ─────────────────────────────────
