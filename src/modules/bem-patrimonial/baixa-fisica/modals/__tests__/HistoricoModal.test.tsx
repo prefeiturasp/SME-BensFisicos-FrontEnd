@@ -348,4 +348,69 @@ describe("HistoricoModal", () => {
         })
         expect(screen.getAllByText(/001\.0000001\/2026/).length).toBe(1)
     })
+
+    it("exibe bem adicionado com identificacao patrimonial", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 20,
+                campo: "itens",
+                valor_antigo: "",
+                valor_novo: "PAT-001 - Cadeira",
+                justificativa: "Bem adicionado à baixa",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("Bem adicionado à baixa: PAT-001 - Cadeira")).toBeInTheDocument()
+        })
+        expect(screen.getByText("Itens alterados")).toBeInTheDocument()
+    })
+
+    it("exibe bem removido com identificacao patrimonial", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 21,
+                campo: "itens",
+                valor_antigo: "PAT-002 - Mesa",
+                valor_novo: "",
+                justificativa: "Bem removido da baixa",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("Bem removido da baixa: PAT-002 - Mesa")).toBeInTheDocument()
+        })
+    })
+
+    it("usa texto padrao quando justificativa de item é nula", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 22,
+                campo: "itens",
+                valor_antigo: "",
+                valor_novo: "PAT-003 - Armario",
+                justificativa: null,
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("Bem adicionado à baixa: PAT-003 - Armario")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe base sem bem quando valores de item são vazios", async () => {
+        vi.mocked(baixaFisicaService.historico).mockResolvedValue([
+            makeEntry({
+                id: 23,
+                campo: "itens",
+                valor_antigo: "",
+                valor_novo: "",
+                justificativa: "Bem removido da baixa",
+            }),
+        ])
+        renderModal()
+        await waitFor(() => {
+            expect(screen.getByText("Bem removido da baixa")).toBeInTheDocument()
+        })
+    })
 })
