@@ -20,6 +20,19 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => mockNavigate }
 })
 
+vi.mock("../../components/UnidadeAdministrativaSelect", () => ({
+    UnidadeAdministrativaSelect: ({ onChange, value }: { onChange: (v: string, rotulo?: string) => void; value: string }) => (
+        <select
+            data-testid="unidade-select"
+            value={value}
+            onChange={e => onChange(e.target.value, e.target.selectedOptions[0]?.text)}
+        >
+            <option value="">Selecione</option>
+            <option value="1">001 - UA-01</option>
+        </select>
+    ),
+}))
+
 vi.mock("sonner", () => ({
     toast: {
         success: vi.fn(),
@@ -38,19 +51,6 @@ vi.mock("../../../bem/services/bem.service", () => ({
     bemService: {
         list: vi.fn(),
     },
-}))
-
-vi.mock("../../components/UnidadeAdministrativaSelect", () => ({
-    UnidadeAdministrativaSelect: ({ onChange, value }: { onChange: (v: string) => void; value: string }) => (
-        <select
-            data-testid="unidade-select"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-        >
-            <option value="">Selecione</option>
-            <option value="1">UA-01</option>
-        </select>
-    ),
 }))
 
 vi.mock("@/components/AppBreadcrumb", () => ({
@@ -142,6 +142,18 @@ async function selectBem() {
     fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
     await waitFor(() => screen.getByText("Cadeira Escritório"))
     fireEvent.click(screen.getByText("Cadeira Escritório"))
+}
+
+async function abrirRevisao() {
+    fireEvent.click(screen.getByText("Solicitar"))
+    await waitFor(() => {
+        expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
+    })
+}
+
+async function confirmarSolicitacao() {
+    await abrirRevisao()
+    fireEvent.click(screen.getByText("Confirmar solicitação"))
 }
 
 // ===================== TESTS =====================
@@ -308,7 +320,7 @@ describe("AdicionarBaixaPage", () => {
         await waitFor(() => screen.getByText("Cadeira Escritório"))
         fireEvent.click(screen.getByText("Cadeira Escritório"))
         await waitFor(() => {
-            expect(screen.getByText("Cadeira Escritório")).toBeInTheDocument()
+            expect(screen.getAllByText("Cadeira Escritório").length).toBeGreaterThanOrEqual(1)
             expect(screen.queryByPlaceholderText("Selecione um bem")).not.toBeInTheDocument()
         })
     })
@@ -363,7 +375,7 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
         await selectBem()
 
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         const now = new Date()
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
@@ -376,6 +388,16 @@ describe("AdicionarBaixaPage", () => {
         })
     })
 
+    it("checkout exibe total, patrimonial e nome no padrão Movimentação", async () => {
+        renderPage()
+        await selectBem()
+        await abrirRevisao()
+        expect(screen.getByText("Selecionados (1)")).toBeInTheDocument()
+        expect(screen.getByText("Número Patrimonial")).toBeInTheDocument()
+        expect(screen.getByText("Nome do Bem")).toBeInTheDocument()
+        expect(screen.getAllByText("PAT-001").length).toBeGreaterThanOrEqual(1)
+    })
+
     it("permite data_baixa retroativa e envia no payload", async () => {
         vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
 
@@ -385,7 +407,7 @@ describe("AdicionarBaixaPage", () => {
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
         fireEvent.change(input, { target: { value: "2025-01-01" } })
 
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith(
@@ -422,7 +444,7 @@ describe("AdicionarBaixaPage", () => {
         const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
         fireEvent.change(input, { target: { value: "" } })
 
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(baixaFisicaService.create).toHaveBeenCalledWith({
@@ -439,7 +461,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith(-1)
@@ -451,7 +473,7 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith("Erro de servidor")
@@ -463,10 +485,10 @@ describe("AdicionarBaixaPage", () => {
 
         renderPage()
         await selectBem()
-        fireEvent.click(screen.getByText("Solicitar"))
+        await confirmarSolicitacao()
 
         await waitFor(() => {
-            expect(screen.getByText("Solicitando...")).toBeInTheDocument()
+            expect(screen.getAllByText("Solicitando...").length).toBeGreaterThanOrEqual(1)
         })
     })
 
@@ -504,7 +526,7 @@ describe("AdicionarBaixaPage", () => {
     it("troca de unidade administrativa reseta os itens", async () => {
         renderPage()
         await selectBem()
-        await waitFor(() => screen.getByText("Cadeira Escritório"))
+        await waitFor(() => expect(screen.getAllByText("Cadeira Escritório").length).toBeGreaterThanOrEqual(1))
 
         // Troca a UA — deve resetar os itens
         fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "" } })
@@ -518,7 +540,7 @@ describe("AdicionarBaixaPage", () => {
     it("renderiza 'Itens de Baixa Física' como título de seção", () => {
         renderPage()
 
-        const titulo = screen.getByRole("heading", { name: "Itens de Baixa Física" })
+        const titulo = screen.getByRole("heading", { name: /Itens de Baixa Física/ })
         expect(titulo.tagName).toBe("H2")
     })
 
@@ -526,5 +548,75 @@ describe("AdicionarBaixaPage", () => {
         renderPage()
 
         expect(screen.getAllByText("Data da Baixa")).toHaveLength(1)
+    })
+
+    it("lixeira usa padrão vermelho ampliado com tooltip (Adicionar)", async () => {
+        renderPage()
+        await selectUA()
+        const trash = screen.getByLabelText("Remover item")
+        expect(trash.className).toMatch(/red-600/)
+        expect(trash.className).toMatch(/h-10/)
+        expect(trash.querySelector("svg")).toBeInTheDocument()
+        expect(trash.getAttribute("title")).toBe("Remover item")
+    })
+
+    it("exibe total no título após selecionar", async () => {
+        renderPage()
+        expect(screen.getByRole("heading", { name: "Itens de Baixa Física (0)" })).toBeInTheDocument()
+        await selectBem()
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+    })
+
+    it("atualiza total de imediato ao adicionar e remover", async () => {
+        vi.mocked(bemService.list).mockResolvedValue(
+            makeBemListResponse([
+                makeBem({ id: 1, numero_patrimonial: "PAT-001", nome: "Cadeira" }),
+                makeBem({ id: 2, numero_patrimonial: "PAT-002", nome: "Mesa" }),
+            ])
+        )
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => screen.getByText("Cadeira"))
+        fireEvent.click(screen.getByText("Cadeira"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByLabelText("Adicionar item"))
+        const inputs = screen.getAllByPlaceholderText("Selecione um bem")
+        fireEvent.focus(inputs[0])
+        await waitFor(() => screen.getByText("Mesa"))
+        fireEvent.click(screen.getByText("Mesa"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (2)" })).toBeInTheDocument()
+        })
+
+        const removes = screen.getAllByLabelText("Remover item")
+        fireEvent.click(removes[0])
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+    })
+
+    it("total volta a zero quando nenhum bem selecionado", async () => {
+        renderPage()
+        await selectBem()
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+        fireEvent.click(screen.getByLabelText("Limpar bem selecionado"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (0)" })).toBeInTheDocument()
+        })
+    })
+
+    it("checkout exibe codigo - sigla da UA selecionada no select", async () => {
+        renderPage()
+        await selectBem()
+        await abrirRevisao()
+        expect(screen.getAllByText("001 - UA-01").length).toBeGreaterThanOrEqual(1)
     })
 })

@@ -11,10 +11,24 @@ describe('validateBem', () => {
     })
 
     expect(result._global).toBe(
-      'Este bem está com status "Baixa Física" e não pode ser editado.'
+      'Este bem está com status "Baixa Física / Laudado para Baixa" e não pode ser editado.'
     )
 
     // garante que não valida outros campos quando bloqueado
+    expect(Object.keys(result)).toHaveLength(1)
+  })
+
+  it('deve bloquear edição quando status for laudado_para_baixa', () => {
+    const result = validateBem({
+      status: 'laudado_para_baixa',
+      nome: 'Mesa',
+      numero_patrimonial: '123',
+      localizacao: 'Sala 1',
+    })
+
+    expect(result._global).toBe(
+      'Este bem está com status "Baixa Física / Laudado para Baixa" e não pode ser editado.'
+    )
     expect(Object.keys(result)).toHaveLength(1)
   })
 

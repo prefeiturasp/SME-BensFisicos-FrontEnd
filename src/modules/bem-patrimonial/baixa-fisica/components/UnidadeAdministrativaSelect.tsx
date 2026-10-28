@@ -17,7 +17,7 @@ interface UnidadeAdministrativa {
 interface UnidadeAdministrativaSelectProps {
     readonly id?: string
     readonly value: string
-    readonly onChange: (value: string) => void
+    readonly onChange: (value: string, rotulo?: string) => void
     readonly placeholder?: string
     readonly className?: string
     readonly includeAll?: boolean
@@ -102,7 +102,16 @@ export function UnidadeAdministrativaSelect({
     const unidades = scopedToUser ? unidadesEscopo : todasUnidades
 
     const handleChange = (val: string) => {
-        onChange(val === "__all__" ? "" : val)
+        if (val === "__all__" || val === "__none__") {
+            onChange("")
+            return
+        }
+        const selecionada = unidades.find(u => String(u.id) === val)
+        if (selecionada) {
+            onChange(val, `${selecionada.codigo} - ${selecionada.sigla}`)
+            return
+        }
+        onChange(val)
     }
 
     const selectValue = value || (includeAll ? "__all__" : "__none__")

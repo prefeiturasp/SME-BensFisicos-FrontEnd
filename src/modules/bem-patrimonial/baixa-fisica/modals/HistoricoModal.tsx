@@ -83,6 +83,7 @@ function parseNbbpmJustificativa(justificativa: string): NbbpmDetalhes | null {
 function getGroupLabel(items: HistoricoEntry[]): string {
     const campos = new Set(items.map(i => i.campo))
     if (campos.has("nbbpm")) return "Nota gerada"
+    if (campos.has("itens")) return "Itens alterados"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Aceita")) return "Cadastro aceito"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Solicitada")) return "Solicitação enviada"
     if (campos.has("status") && items.some(i => i.campo === "status" && i.valor_novo === "Recusada")) return "Cadastro recusado"
@@ -98,6 +99,79 @@ function getGroupLabel(items: HistoricoEntry[]): string {
 interface HistoricoModalProps {
     readonly baixaId: number
     readonly onClose: () => void
+}
+
+function renderItemItens(item: HistoricoEntry) {
+    const bem = item.valor_novo || item.valor_antigo || ""
+    const base = item.justificativa || (item.valor_novo ? "Bem adicionado à baixa" : "Bem removido da baixa")
+    return (
+        <p key={item.id} className="text-sm text-gray-600">
+            {bem ? `${base}: ${bem}` : base}
+        </p>
+    )
+}
+
+function renderNbbpmDetalhado(item: HistoricoEntry, numero: string, detalhes: NbbpmDetalhes) {
+    const linhas: Array<[string, string]> = [
+        ["NBBPM", detalhes.numero || numero],
+        ["Gerada por", detalhes.geradaPor],
+        ["Data", detalhes.data],
+        ["UO", detalhes.uo],
+        ...(detalhes.ua ? [["UA", detalhes.ua] as [string, string]] : []),
+        ["Processo", detalhes.processo],
+        ["Responsável", detalhes.responsavel],
+    ]
+    return (
+        <div key={item.id} className="rounded-md bg-gray-50 border border-gray-100 p-3 space-y-1.5">
+            {linhas.map(([rotulo, valor]) => (
+                <p key={rotulo} className="text-sm leading-snug">
+                    <span className="font-semibold text-gray-700">{rotulo}: </span>
+                    <span className="text-gray-600">{valor}</span>
+                </p>
+            ))}
+        </div>
+    )
+}
+
+function renderItemNbbpm(item: HistoricoEntry) {
+    const numero = item.valor_novo ?? ""
+    const justificativa = item.justificativa ?? ""
+    const detalhes = justificativa ? parseNbbpmJustificativa(justificativa) : null
+    if (detalhes) return renderNbbpmDetalhado(item, numero, detalhes)
+    if (justificativa && numero && justificativa.includes(numero)) {
+        return (
+            <p key={item.id} className="text-sm text-gray-600">
+                {justificativa}
+            </p>
+        )
+    }
+    return (
+        <div key={item.id} className="space-y-1">
+            <p className="text-sm text-gray-600">
+                NBBPM {numero}
+            </p>
+            {justificativa && (
+                <p className="text-sm text-gray-600">
+                    {justificativa}
+                </p>
+            )}
+        </div>
+    )
+}
+
+function renderItemGenerico(item: HistoricoEntry) {
+    const text = item.justificativa ?? `Campo "${item.campo}": ${item.valor_antigo ?? "vazio"} → ${item.valor_novo ?? "vazio"}`
+    return (
+        <p key={item.id} className="text-sm text-gray-600">
+            {text}
+        </p>
+    )
+}
+
+function renderHistoricoItem(item: HistoricoEntry) {
+    if (item.campo === "itens") return renderItemItens(item)
+    if (item.campo === "nbbpm") return renderItemNbbpm(item)
+    return renderItemGenerico(item)
 }
 
 function HistoricoModal({ baixaId, onClose }: HistoricoModalProps) {
@@ -194,59 +268,7 @@ function HistoricoModal({ baixaId, onClose }: HistoricoModalProps) {
 
                             <div className="px-4 py-4 space-y-2">
                                 <p className="text-sm font-semibold text-gray-700 mb-2">Ações:</p>
-                                {selectedGroup.items.map(item => {
-                                    if (item.campo === "nbbpm") {
-                                        const numero = item.valor_novo ?? ""
-                                        const justificativa = item.justificativa ?? ""
-                                        const detalhes = justificativa ? parseNbbpmJustificativa(justificativa) : null
-                                        if (detalhes) {
-                                            const linhas: Array<[string, string]> = [
-                                                ["NBBPM", detalhes.numero || numero],
-                                                ["Gerada por", detalhes.geradaPor],
-                                                ["Data", detalhes.data],
-                                                ["UO", detalhes.uo],
-                                                ...(detalhes.ua ? [["UA", detalhes.ua] as [string, string]] : []),
-                                                ["Processo", detalhes.processo],
-                                                ["Responsável", detalhes.responsavel],
-                                            ]
-                                            return (
-                                                <div key={item.id} className="rounded-md bg-gray-50 border border-gray-100 p-3 space-y-1.5">
-                                                    {linhas.map(([rotulo, valor]) => (
-                                                        <p key={rotulo} className="text-sm leading-snug">
-                                                            <span className="font-semibold text-gray-700">{rotulo}: </span>
-                                                            <span className="text-gray-600">{valor}</span>
-                                                        </p>
-                                                    ))}
-                                                </div>
-                                            )
-                                        }
-                                        if (justificativa && numero && justificativa.includes(numero)) {
-                                            return (
-                                                <p key={item.id} className="text-sm text-gray-600">
-                                                    {justificativa}
-                                                </p>
-                                            )
-                                        }
-                                        return (
-                                            <div key={item.id} className="space-y-1">
-                                                <p className="text-sm text-gray-600">
-                                                    NBBPM {numero}
-                                                </p>
-                                                {justificativa && (
-                                                    <p className="text-sm text-gray-600">
-                                                        {justificativa}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )
-                                    }
-                                    const text = item.justificativa ?? `Campo "${item.campo}": ${item.valor_antigo ?? "vazio"} → ${item.valor_novo ?? "vazio"}`
-                                    return (
-                                        <p key={item.id} className="text-sm text-gray-600">
-                                            {text}
-                                        </p>
-                                    )
-                                })}
+                                {selectedGroup.items.map(renderHistoricoItem)}
                             </div>
                         </div>
                     )}
