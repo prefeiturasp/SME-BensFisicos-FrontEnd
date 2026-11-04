@@ -1,0 +1,1230 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+} from 'react-router-dom'
+import * as bemServiceModule from '../../services/bem.service'
+import BemEditPage from '../BemEditPage'
+import { useAuth } from '@/auth/useAuth'
+import { toast } from 'sonner'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
+
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+vi.mock('../../hooks/useNumeroPatrimonial', () => ({
+  useNumeroPatrimonial: ({
+    formatoAntigoInicial,
+    semNumeracaoInicial,
+  }: {
+    formatoAntigoInicial: boolean
+    semNumeracaoInicial: boolean
+  }) => {
+    const [formatoAntigo, setFormatoAntigo] = useState(
+      formatoAntigoInicial ?? false
+    )
+    const [semNumeracao, setSemNumeracao] = useState(
+      semNumeracaoInicial ?? false
+    )
+
+    return {
+      formatoAntigo,
+      semNumeracao,
+      disabled: semNumeracao && !formatoAntigo,
+      applyMask: (v: string) => v,
+      ativarFormatoAntigo: () => {
+        setFormatoAntigo(true)
+        setSemNumeracao(false)
+      },
+      desativarFormatoAntigo: () => setFormatoAntigo(false),
+      handleSemNumeracaoChange: (checked: boolean) => {
+        if (checked) setFormatoAntigo(false)
+        setSemNumeracao(checked)
+      },
+    }
+  },
+}))
+
+const bemMock = {
+  id: 1,
+  nome: 'Notebook Dell',
+  descricao: 'Notebook corporativo',
+  numero_patrimonial: '123',
+  numero_formato_antigo: false,
+  sem_numeracao: false,
+  valor_unitario: 5000,
+  marca: 'Dell',
+  modelo: 'Latitude',
+  localizacao: 'Sala 1',
+  numero_processo: 'PROC-01',
+  numero_processo_baixa: null,
+  status: 'ativo',
+  status_display: 'Ativo',
+  unidade_administrativa_codigo: '001',
+  unidade_administrativa_nome: 'Escola Central',
+  unidade_orcamentaria_nome: 'Financeiro',
+}
+
+const bemBaixaFisicaMock = {
+  ...bemMock,
+  status: 'baixa_fisica',
+  status_display: 'Baixa Física',
+}
+
+const bemSemNumeracaoMock = {
+  ...bemMock,
+  numero_patrimonial: null,
+  sem_numeracao: true,
+}
+
+const bemFormatoAntigoMock = {
+  ...bemMock,
+  numero_patrimonial: 'ANTIGO-123',
+  numero_formato_antigo: true,
+}
+
+const bemUoAtivaMock = {
+  ...bemMock,
+  unidade_orcamentaria_nome: '01.16.10 - GABINETE DO SECRETARIO',
+}
+
+const userGestorAutorizado = {
+  is_gestor_patrimonio: true,
+  ua_ativa: null,
+  uo_ativa: null,
+  opcoes_escopo: {
+    grupos: [
+      {
+        uo: {
+          id: 10,
+          codigo: '01.16.10',
+          nome: 'Financeiro',
+          label: '01.16.10 - Financeiro',
+          selecionavel: true,
+          unidade_administrativa_id: null,
+          unidade_orcamentaria_id: 10,
+        },
+        uas: [
+          {
+            id: 1,
+            codigo: '001',
+            nome: 'Escola Central',
+            label: '001 - Escola Central',
+            unidade_administrativa_id: 1,
+            unidade_orcamentaria_id: 10,
+          },
+        ],
+      },
+    ],
+  },
+}
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/bens-patrimoniais/1/editar']}>
+      <Routes>
+        <Route
+          path="/bens-patrimoniais/:id/editar"
+          element={<BemEditPage />}
+        />
+        <Route
+          path="/bens-patrimoniais/:id"
+          element={<div>Detail Page</div>}
+        />
+        <Route
+          path="/bens-patrimoniais"
+          element={<div>Lista</div>}
+        />
+      </Routes>
+    </MemoryRouter>
+  )
+}
+
+function renderGuardedPage() {
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <UnsavedChangesProvider>
+            <Outlet />
+          </UnsavedChangesProvider>
+        ),
+        children: [
+          { path: '/bens-patrimoniais/:id/editar', element: <BemEditPage /> },
+          { path: '/bens-patrimoniais/:id', element: <div>Detail Page</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/bens-patrimoniais/1/editar'] },
+  )
+
+  return render(<RouterProvider router={router} />)
+}
+
+describe('BemEditPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
+  })
+
+  // ─── Carregamento ────────────────────────────────────────────────────────────
+
+  it('deve mostrar loader inicialmente', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({ user: {} })
+
+    renderPage()
+
+    expect(document.querySelector('.animate-spin')).toBeInTheDocument()
+  })
+
+  it('deve carregar dados no formulário', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    expect(await screen.findByDisplayValue('Notebook Dell')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Sala 1')).toBeInTheDocument()
+    expect(screen.getByText('Status:')).toBeInTheDocument()
+    expect(screen.getByTestId('bem-status-ativo')).toHaveTextContent('Ativo')
+  })
+
+  it('deve permitir edição quando gestor tem acesso à UA do bem', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemUoAtivaMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    expect(await screen.findByDisplayValue('Notebook Dell')).toBeInTheDocument()
+    expect(screen.getByText('Salvar')).toBeInTheDocument()
+  })
+
+  it('deve redirecionar para lista se falhar ao carregar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockRejectedValue(
+      new Error('Erro')
+    )
+    ;(useAuth as any).mockReturnValue({ user: {} })
+
+    renderPage()
+
+    expect(await screen.findByText('Lista')).toBeInTheDocument()
+    expect(toast.error).toHaveBeenCalledWith('Erro ao carregar bem')
+  })
+
+  // ─── Permissões ──────────────────────────────────────────────────────────────
+
+  it('não deve permitir edição se não for gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: { is_gestor_patrimonio: false },
+    })
+
+    renderPage()
+
+    const input = await screen.findByDisplayValue('Notebook Dell')
+    expect(input).toBeDisabled()
+  })
+
+  it('não deve exibir botão Salvar se não for gestor', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: { is_gestor_patrimonio: false },
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+    expect(screen.queryByText('Salvar')).not.toBeInTheDocument()
+  })
+
+  it('não deve permitir edição se status for baixa_fisica', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemBaixaFisicaMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    const input = await screen.findByDisplayValue('Notebook Dell')
+    expect(input).toBeDisabled()
+    expect(screen.queryByText('Salvar')).not.toBeInTheDocument()
+  })
+
+  // ─── Navegação ───────────────────────────────────────────────────────────────
+
+  it('deve navegar para detail ao clicar em Cancelar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({ user: {} })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByText('Cancelar'))
+
+    expect(await screen.findByText('Detail Page')).toBeInTheDocument()
+  })
+
+  it('protege uma edição não salva e preserva o campo ao continuar', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    const nome = await screen.findByLabelText('Nome do Bem')
+    fireEvent.change(nome, { target: { value: 'Notebook atualizado' } })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar editando' }))
+    expect(nome).toHaveValue('Notebook atualizado')
+
+    fireEvent.click(screen.getByText('Cancelar'))
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar alterações' }))
+    expect(await screen.findByText('Detail Page')).toBeInTheDocument()
+  })
+
+  // ─── Submissão bem-sucedida ───────────────────────────────────────────────────
+
+  it('deve salvar com sucesso ao alterar nome com justificativa', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockResolvedValue({
+      ...bemMock,
+    } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Justificativa para a alteração'),
+      { target: { value: 'Justificativa de teste' } }
+    )
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Bem atualizado com sucesso')
+    })
+
+    expect(await screen.findByText('Detail Page')).toBeInTheDocument()
+  })
+
+  it('deve salvar sem justificativa quando não há alteração de nome ou número', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    // Altera só localizacao (não aciona justificativa obrigatória)
+    fireEvent.change(await screen.findByDisplayValue('Sala 1'), {
+      target: { value: 'Sala 2' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled()
+    })
+
+    expect(toast.success).toHaveBeenCalledWith('Bem atualizado com sucesso')
+  })
+
+  it('deve passar justificativa vazia quando campo não está habilitado', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        bemMock.id,
+        expect.objectContaining({ justificativa: '' })
+      )
+    })
+  })
+
+  // ─── Erros de submissão ───────────────────────────────────────────────────────
+
+  it('deve mostrar erro ao salvar sem response.data', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue(
+      new Error('Erro customizado')
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
+    })
+  })
+
+  it('mantém a proteção quando o salvamento falha', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue(
+      new Error('Erro customizado')
+    )
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+    renderGuardedPage()
+
+    fireEvent.change(await screen.findByPlaceholderText('Observação'), {
+      target: { value: 'Alteração ainda não salva' },
+    })
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Erro ao salvar')
+    })
+    fireEvent.click(screen.getByText('Cancelar'))
+
+    expect(screen.getByText('Descartar alterações?')).toBeInTheDocument()
+  })
+
+  it('deve setar erro de validação no campo via response.data', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockRejectedValue({
+      response: {
+        data: {
+          nome: ['Campo obrigatório', 'Nome inválido'],
+        },
+      },
+    })
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByText('Salvar'))
+
+    expect(
+      await screen.findByText('Campo obrigatório Nome inválido')
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
+    expect(screen.getByText('Campo obrigatório Nome inválido').parentElement).toHaveClass('min-h-5')
+  })
+
+  it('deve exibir erro de duplicidade do número patrimonial na atualização', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockRejectedValue({
+        response: {
+          data: {
+            numero_patrimonial: ['Número patrimonial já cadastrado.'],
+          },
+        },
+      })
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('123'), {
+      target: { value: '999.999999999-9' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled()
+    })
+
+    expect(
+      await screen.findByText('Número patrimonial já cadastrado.')
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByText(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  // ─── Justificativa ────────────────────────────────────────────────────────────
+
+  it('deve exibir todos os campos obrigatórios e a justificativa no mesmo envio', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi.spyOn(bemServiceModule.bemService, 'update')
+    ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+    renderPage()
+
+    for (const valor of [
+      'Notebook Dell',
+      'Notebook corporativo',
+      '5.000,00',
+      'Dell',
+      'Latitude',
+      'Sala 1',
+    ]) {
+      fireEvent.change(await screen.findByDisplayValue(valor), {
+        target: { value: '' },
+      })
+    }
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    for (const mensagem of [
+      'Nome do Bem é obrigatório.',
+      'Descrição é obrigatória.',
+      'Valor Unitário é obrigatório.',
+      'Marca é obrigatória.',
+      'Modelo é obrigatório.',
+      'Localização é obrigatória.',
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    ]) {
+      expect(await screen.findByText(mensagem)).toBeInTheDocument()
+    }
+
+    expect(screen.getByLabelText('Nome do Bem')).toHaveFocus()
+    expect(updateSpy).not.toHaveBeenCalled()
+  })
+
+  it('deve exigir justificativa ao alterar somente nome', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockResolvedValue({
+      ...bemMock,
+    } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+        )
+      ).toBeInTheDocument()
+    })
+
+    expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
+  })
+
+  it('deve exibir numero invalido e justificativa pendente na mesma submissao', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockResolvedValue({
+      ...bemMock,
+    } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    // Altera o nome (exige justificativa) e deixa o numero em formato invalido.
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+    fireEvent.change(screen.getByDisplayValue('123'), {
+      target: { value: '999' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    // Os dois erros aparecem juntos, e nao um de cada vez.
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Número patrimonial inválido. Use o formato 000.000000000-0.'
+        )
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.getByText(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+    ).toBeInTheDocument()
+
+    expect(bemServiceModule.bemService.update).not.toHaveBeenCalled()
+  })
+
+  it('deve exibir asterisco vermelho na label justificativa ao alterar nome', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+
+    expect(screen.getByText('*')).toBeInTheDocument()
+  })
+
+  it('campo justificativa deve estar desabilitado quando nome e número não foram alterados', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    const justificativaField = screen.getByPlaceholderText(
+      'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
+    )
+    expect(justificativaField).toBeDisabled()
+  })
+
+  it('campo justificativa deve ser habilitado ao alterar nome', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Outro Nome' },
+    })
+
+    const justificativaField = screen.getByPlaceholderText(
+      'Justificativa para a alteração'
+    )
+    expect(justificativaField).not.toBeDisabled()
+  })
+
+  it('campo justificativa deve ser habilitado ao alterar número patrimonial', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('123'), {
+      target: { value: '999.999999999-9' },
+    })
+
+    const justificativaField = screen.getByPlaceholderText(
+      'Justificativa para a alteração'
+    )
+    expect(justificativaField).not.toBeDisabled()
+  })
+
+  it('deve limpar erro da justificativa ao preencher o campo', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    vi.spyOn(bemServiceModule.bemService, 'update').mockResolvedValue({
+      ...bemMock,
+    } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+      target: { value: 'Novo Nome' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+        )
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Justificativa para a alteração'),
+      { target: { value: 'Preenchendo agora' } }
+    )
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Bem atualizado com sucesso')
+    })
+  })
+
+  // ─── Número patrimonial ───────────────────────────────────────────────────────
+
+  it('deve validar formato inválido do número patrimonial antes da justificativa', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('123'), {
+      target: { value: 'NUMERO-INVALIDO' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    expect(
+      await screen.findByText(
+        'Número patrimonial inválido. Use o formato 000.000000000-0.'
+      )
+    ).toBeInTheDocument()
+
+    expect(updateSpy).not.toHaveBeenCalled()
+
+    expect(
+      screen.getByText(
+        'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('deve aceitar número patrimonial no formato correto sem erro', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    fireEvent.change(await screen.findByDisplayValue('123'), {
+      target: { value: '999.999999999-9' },
+    })
+
+    fireEvent.click(screen.getByText('Salvar'))
+
+    // Número válido → vai para API sem erro de formato
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled()
+    })
+
+    expect(
+      screen.queryByText(
+        'Número patrimonial inválido. Use o formato 000.000000000-0.'
+      )
+    ).not.toBeInTheDocument()
+  })
+
+  it('deve aceitar sem_numeracao=true sem validar formato', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemSemNumeracaoMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemSemNumeracaoMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled()
+    })
+
+    expect(
+      screen.queryByText(
+        'Número patrimonial inválido. Use o formato 000.000000000-0.'
+      )
+    ).not.toBeInTheDocument()
+  })
+
+  it('deve aceitar numero_formato_antigo=true sem validar formato', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemFormatoAntigoMock as any
+    )
+    const updateSpy = vi
+      .spyOn(bemServiceModule.bemService, 'update')
+      .mockResolvedValue({ ...bemFormatoAntigoMock } as any)
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+    fireEvent.click(screen.getByText('Salvar'))
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled()
+    })
+
+    expect(
+      screen.queryByText(
+        'Número patrimonial inválido. Use o formato 000.000000000-0.'
+      )
+    ).not.toBeInTheDocument()
+  })
+
+  // ─── Unidade Administrativa ───────────────────────────────────────────────────
+
+  it('deve exibir unidade administrativa corretamente e desabilitada', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    const unidadeInput = await screen.findByDisplayValue(
+      '001 - Escola Central'
+    )
+    expect(unidadeInput).toBeInTheDocument()
+    expect(unidadeInput).toBeDisabled()
+  })
+
+  // ─── numero_processo (campo único) ────────────────────────────────────────────
+
+  it('exibe um único campo Número do Processo ligado a numero_processo', async () => {
+    vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+      bemMock as any
+    )
+    ;(useAuth as any).mockReturnValue({
+      user: userGestorAutorizado,
+    })
+
+    renderPage()
+
+    await screen.findByDisplayValue('Notebook Dell')
+
+    expect(screen.getAllByText('Número do Processo')).toHaveLength(1)
+    expect(
+      screen.queryByText('Número do Processo de Incorporação')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Número do Processo de Baixa')
+    ).not.toBeInTheDocument()
+    // O valor do backend (numero_processo) continua exibido no campo único
+    expect(screen.getByDisplayValue('PROC-01')).toBeInTheDocument()
+  })
+
+  describe('Breadcrumb', () => {
+    it('deve renderizar o breadcrumb no topo da página de edição', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
+      expect(screen.getByText('Início')).toBeInTheDocument()
+      expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument()
+      expect(screen.getByText('Bens Patrimoniais')).toBeInTheDocument()
+      expect(
+        screen.getByText('Editar Cadastro do Bem Patrimonial')
+      ).toBeInTheDocument()
+    })
+
+    it('o item "Bens Patrimoniais" do breadcrumb deve linkar para a listagem', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const link = screen.getByRole('link', { name: 'Bens Patrimoniais' })
+      expect(link).toHaveAttribute('href', '/bens-patrimoniais')
+    })
+
+    it('o item ativo do breadcrumb deve ser "Editar Cadastro do Bem Patrimonial"', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const activeItem = screen
+        .getByText('Editar Cadastro do Bem Patrimonial')
+        .closest('span')
+      expect(activeItem).toHaveAttribute('aria-current', 'page')
+    })
+  })
+
+  describe('Select de Formato (mutuamente exclusivo)', () => {
+    it('deve exibir "Selecione" quando nenhuma opção de formato estiver marcada', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('')
+    })
+
+    it('deve exibir "Formato Anterior" selecionado quando numero_formato_antigo=true', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemFormatoAntigoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('formato_anterior')
+    })
+
+    it('deve exibir "Sem Número Patrimonial" selecionado quando sem_numeracao=true', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemSemNumeracaoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('sem_numeracao')
+    })
+
+    it('ao selecionar "Formato Anterior", libera o campo Número Patrimonial pra digitação livre', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      fireEvent.change(select, { target: { value: 'formato_anterior' } })
+
+      expect(select.value).toBe('formato_anterior')
+
+      const numeroInput = screen.getByLabelText(
+        'Número Patrimonial'
+      ) as HTMLInputElement
+      expect(numeroInput.disabled).toBe(false)
+
+      fireEvent.change(numeroInput, { target: { value: 'ABC-livre-123' } })
+      expect(numeroInput.value).toBe('ABC-livre-123')
+    })
+
+    it('ao selecionar "Sem Número Patrimonial", desabilita o campo Número Patrimonial', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      fireEvent.change(select, { target: { value: 'sem_numeracao' } })
+
+      expect(select.value).toBe('sem_numeracao')
+
+      await waitFor(() => {
+        const numeroInput = screen.getByLabelText(
+          'Número Patrimonial'
+        ) as HTMLInputElement
+        expect(numeroInput.disabled).toBe(true)
+      })
+    })
+
+    it('as opções são mutuamente exclusivas: trocar de "Formato Anterior" para "Sem Número Patrimonial" desmarca a primeira', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemFormatoAntigoMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const select = screen.getByLabelText('Formato') as HTMLSelectElement
+      expect(select.value).toBe('formato_anterior')
+
+      fireEvent.change(select, { target: { value: 'sem_numeracao' } })
+
+      expect(select.value).toBe('sem_numeracao')
+
+      await waitFor(() => {
+        const numeroInput = screen.getByLabelText(
+          'Número Patrimonial'
+        ) as HTMLInputElement
+        expect(numeroInput.disabled).toBe(true)
+      })
+    })
+
+    it('deve exibir o tooltip informativo ao passar o mouse no ícone ao lado de Formato', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const formatoLabel = screen.getByText('Formato')
+      const tooltipTrigger = formatoLabel.parentElement?.querySelector('svg')
+      expect(tooltipTrigger).toBeInTheDocument()
+
+      await user.hover(tooltipTrigger!)
+
+      const tooltipMatches = await screen.findAllByText(
+        /Se marcado.*Formato anterior.*não valida o formato do número/s
+      )
+      expect(tooltipMatches.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Padronização visual (título e inputs)', () => {
+    it('o título "Editar Bem Patrimonial" deve usar a mesma classe de fonte do título de visualização', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const titulo = screen.getByRole('heading', {
+        name: 'Editar Bem Patrimonial',
+      })
+      expect(titulo.className).toContain('text-xl')
+      expect(titulo.className).not.toContain('text-2xl')
+    })
+
+    it('o input Nome do Bem deve ter a mesma altura/estilo usado na visualização (h-11, rounded-xs)', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      const nomeInput = screen.getByDisplayValue('Notebook Dell')
+      expect(nomeInput.className).toContain('h-11')
+      expect(nomeInput.className).toContain('rounded-xs')
+    })
+
+    it('deve exibir "Atualize as informações do Bem cadastrado" com "Bem" capitalizado', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+
+      expect(
+        screen.getByText('Atualize as informações do Bem cadastrado')
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('Padronização de limites e valor monetário', () => {
+    it('deve carregar valor inicial já formatado como no cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      expect(await screen.findByDisplayValue('5.000,00')).toBeInTheDocument()
+    })
+
+    it('deve usar a mesma máscara visível do cadastro recusando letras', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      const valorInput = (await screen.findByDisplayValue(
+        '5.000,00'
+      )) as HTMLInputElement
+      fireEvent.change(valorInput, { target: { value: '12ab34' } })
+      expect(valorInput.value).toBe('1.234')
+    })
+
+    it('deve enviar valor com ponto para a API aceitar', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('5.000,00')
+      fireEvent.change(await screen.findByDisplayValue('Sala 1'), {
+        target: { value: 'Sala 2' },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledWith(
+          bemMock.id,
+          expect.objectContaining({ valor_unitario: '5000.00' })
+        )
+      })
+    })
+
+    it('deve exibir a mesma mensagem de limite do cadastro e bloquear envio', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      const updateSpy = vi
+        .spyOn(bemServiceModule.bemService, 'update')
+        .mockResolvedValue({ ...bemMock } as any)
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      fireEvent.change(await screen.findByDisplayValue('Notebook Dell'), {
+        target: { value: 'A'.repeat(256) },
+      })
+      fireEvent.click(screen.getByText('Salvar'))
+
+      expect(
+        await screen.findByText('Deve ter no máximo 255 caracteres.')
+      ).toBeInTheDocument()
+      expect(updateSpy).not.toHaveBeenCalled()
+    })
+
+    it('deve exibir dica de formato monetário igual ao cadastro', async () => {
+      vi.spyOn(bemServiceModule.bemService, 'retrieve').mockResolvedValue(
+        bemMock as any
+      )
+      ;(useAuth as any).mockReturnValue({ user: userGestorAutorizado })
+
+      renderPage()
+      await screen.findByDisplayValue('Notebook Dell')
+      expect(
+        screen.getByText('Formato 0,00 ou 0.000,00.')
+      ).toBeInTheDocument()
+    })
+  })
+})

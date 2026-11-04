@@ -1,0 +1,622 @@
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
+import { vi, describe, it, expect, beforeEach } from "vitest"
+import { toast } from "sonner"
+import AdicionarBaixaPage from "../AdicionarBaixaPage"
+import { isDataFutura } from "../../utils/datas"
+import { baixaFisicaService } from "../../service/baixas.service"
+import { bemService } from "../../../bem/services/bem.service"
+import type { Bem } from "../../../bem/services/bem.service"
+
+// ===================== MOCKS =====================
+
+const mockNavigate = vi.fn()
+const useUnsavedChangesMock = vi.hoisted(() => vi.fn(() => ({
+    navigateAfterSave: (action: () => void) => action(),
+})))
+
+vi.mock("react-router-dom", async () => {
+    const actual = await vi.importActual("react-router-dom")
+    return { ...actual, useNavigate: () => mockNavigate }
+})
+
+vi.mock("../../components/UnidadeAdministrativaSelect", () => ({
+    UnidadeAdministrativaSelect: ({ onChange, value }: { onChange: (v: string, rotulo?: string) => void; value: string }) => (
+        <select
+            data-testid="unidade-select"
+            value={value}
+            onChange={e => onChange(e.target.value, e.target.selectedOptions[0]?.text)}
+        >
+            <option value="">Selecione</option>
+            <option value="1">001 - UA-01</option>
+        </select>
+    ),
+}))
+
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+    },
+}))
+
+vi.mock("../../service/baixas.service", () => ({
+    baixaFisicaService: {
+        create: vi.fn(),
+    },
+}))
+
+vi.mock("../../../bem/services/bem.service", () => ({
+    bemService: {
+        list: vi.fn(),
+    },
+}))
+
+vi.mock("@/components/AppBreadcrumb", () => ({
+    AppBreadcrumb: () => <nav data-testid="breadcrumb" />,
+}))
+
+vi.mock("@/components/unsaved-changes/useUnsavedChanges", () => ({
+    useUnsavedChanges: useUnsavedChangesMock,
+}))
+
+vi.mock("@/components/ui/date-picker", () => ({
+    DatePicker: ({
+        value,
+        onChange,
+        ariaLabel,
+        id,
+    }: {
+        value?: Date
+        onChange: (d: Date | undefined) => void
+        ariaLabel?: string
+        id?: string
+        placeholder?: string
+        disabled?: unknown
+    }) => {
+        const toLocalISODate = (d: Date) =>
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+        const today = toLocalISODate(new Date())
+        return (
+            <input
+                data-testid="data-baixa-picker"
+                id={id}
+                aria-label={ariaLabel}
+                max={today}
+                value={value ? toLocalISODate(value) : ""}
+                onChange={(e) => {
+                    const v = (e.target as HTMLInputElement).value
+                    if (!v) onChange(undefined)
+                    else {
+                        const [y, m, day] = v.split("-").map(Number)
+                        onChange(new Date(y, m - 1, day))
+                    }
+                }}
+                type="date"
+            />
+        )
+    },
+}))
+
+// ===================== FACTORIES =====================
+
+function makeBem(overrides: Partial<Bem> = {}): Bem {
+    return {
+        id: 1,
+        status: "aprovado",
+        status_display: "Aprovado",
+        nome: "Cadeira Escritório",
+        descricao: "Cadeira ergonômica",
+        numero_patrimonial: "PAT-001",
+        numero_formato_antigo: false,
+        sem_numeracao: false,
+        localizacao: "Sala 01",
+        unidade_administrativa_codigo: "001",
+        unidade_administrativa_nome: "Unidade 01",
+        unidade_orcamentaria_nome: "UO-01",
+        ...overrides,
+    }
+}
+
+function makeBemListResponse(results: Bem[]) {
+    return { results, count: results.length, next: null, previous: null }
+}
+
+// ===================== HELPERS =====================
+
+function renderPage() {
+    return render(
+        <MemoryRouter>
+            <AdicionarBaixaPage />
+        </MemoryRouter>
+    )
+}
+
+async function selectUA() {
+    fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
+}
+
+async function selectBem() {
+    await selectUA()
+    fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+    await waitFor(() => screen.getByText("Cadeira Escritório"))
+    fireEvent.click(screen.getByText("Cadeira Escritório"))
+}
+
+async function abrirRevisao() {
+    fireEvent.click(screen.getByText("Solicitar"))
+    await waitFor(() => {
+        expect(screen.getByText("Revisar e solicitar baixa")).toBeInTheDocument()
+    })
+}
+
+async function confirmarSolicitacao() {
+    await abrirRevisao()
+    fireEvent.click(screen.getByText("Confirmar solicitação"))
+}
+
+// ===================== TESTS =====================
+
+describe("AdicionarBaixaPage", () => {
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.mocked(bemService.list).mockResolvedValue(makeBemListResponse([makeBem()]))
+    })
+
+    // --- Renderização ---
+
+    it("renderiza o título da página", () => {
+        renderPage()
+        expect(screen.getByText("Adicionar Baixa Física de Bem Patrimonial")).toBeInTheDocument()
+    })
+
+    it("renderiza o campo de unidade administrativa", () => {
+        renderPage()
+        expect(screen.getByTestId("unidade-select")).toBeInTheDocument()
+    })
+
+    it("renderiza linha inicial de bem vazia após selecionar UA", async () => {
+        renderPage()
+        await selectUA()
+        expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+    })
+
+    it("considera o formulário alterado ao selecionar somente a unidade", async () => {
+        renderPage()
+
+        expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(false, "create")
+
+        await selectUA()
+
+        await waitFor(() => {
+            expect(useUnsavedChangesMock).toHaveBeenLastCalledWith(true, "create")
+        })
+    })
+
+    it("renderiza botões Solicitar e Cancelar", () => {
+        renderPage()
+        expect(screen.getByText("Solicitar")).toBeInTheDocument()
+        expect(screen.getByText("Cancelar")).toBeInTheDocument()
+    })
+
+    it("não renderiza campo de número do processo", () => {
+        renderPage()
+        expect(screen.queryByPlaceholderText("Digite o número do processo")).not.toBeInTheDocument()
+    })
+
+    it("renderiza campo de Data da Baixa com max hoje", () => {
+        renderPage()
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        const now = new Date()
+        const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+        expect(input).toBeInTheDocument()
+        expect(input.type).toBe("date")
+        expect(input.max).toBe(todayLocal)
+        expect(input.value).toBe(todayLocal)
+    })
+
+    // --- Validações ---
+
+    it("exibe erro se tentar solicitar sem unidade", async () => {
+        renderPage()
+        fireEvent.click(screen.getByText("Solicitar"))
+        await waitFor(() => {
+            // A mensagem aparece tanto inline (FormMessage) quanto consolidada no banner.
+            expect(
+                screen.getAllByText("Selecione a unidade administrativa.").length
+            ).toBeGreaterThan(0)
+        })
+    })
+
+    it("exibe erro se tentar solicitar sem itens", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.click(screen.getByText("Solicitar"))
+        await waitFor(() => {
+            expect(
+                screen.getAllByText("Adicione ao menos um item.").length
+            ).toBeGreaterThan(0)
+        })
+    })
+
+    it("exibe todos os campos pendentes numa unica submissao, consolidados no banner", async () => {
+        renderPage()
+
+        // Nenhum campo preenchido: unidade e itens estao ambos pendentes.
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        const banner = await screen.findByTestId("banner-erros-validacao")
+
+        // O banner consolida as duas pendencias simultaneamente, e nao apenas
+        // apos corrigir a primeira.
+        expect(within(banner).getByText("Selecione a unidade administrativa.")).toBeInTheDocument()
+        expect(within(banner).getByText("Adicione ao menos um item.")).toBeInTheDocument()
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
+    it("remove o banner de pendencias assim que os campos sao corrigidos", async () => {
+        renderPage()
+
+        fireEvent.click(screen.getByText("Solicitar"))
+        await screen.findByTestId("banner-erros-validacao")
+
+        await selectBem()
+
+        await waitFor(() => {
+            expect(screen.queryByTestId("banner-erros-validacao")).not.toBeInTheDocument()
+        })
+    })
+
+    // --- Dropdown de bem ---
+
+    it("abre dropdown ao focar no input de bem", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => {
+            expect(bemService.list).toHaveBeenCalledWith({
+                search: "",
+                status: "aprovado",
+                unidade_administrativa: 1,
+            })
+        })
+    })
+
+    it("exibe resultados no dropdown", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => {
+            expect(screen.getByText("Cadeira Escritório")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe 'Buscando...' enquanto carrega", async () => {
+        vi.mocked(bemService.list).mockReturnValue(new Promise(() => {}))
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => {
+            expect(screen.getByText("Buscando...")).toBeInTheDocument()
+        })
+    })
+
+    it("exibe 'Nenhum bem encontrado.' quando lista vazia", async () => {
+        vi.mocked(bemService.list).mockResolvedValue(makeBemListResponse([]))
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => {
+            expect(screen.getByText("Nenhum bem encontrado.")).toBeInTheDocument()
+        })
+    })
+
+    it("seleciona bem ao clicar no dropdown", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => screen.getByText("Cadeira Escritório"))
+        fireEvent.click(screen.getByText("Cadeira Escritório"))
+        await waitFor(() => {
+            expect(screen.getAllByText("Cadeira Escritório").length).toBeGreaterThanOrEqual(1)
+            expect(screen.queryByPlaceholderText("Selecione um bem")).not.toBeInTheDocument()
+        })
+    })
+
+    it("limpa bem selecionado ao clicar no X", async () => {
+        renderPage()
+        await selectBem()
+        await waitFor(() => screen.getByLabelText("Limpar bem selecionado"))
+        fireEvent.click(screen.getByLabelText("Limpar bem selecionado"))
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
+    })
+
+    // --- Linhas de itens ---
+
+    it("adiciona nova linha ao clicar em Adicionar item", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.click(screen.getByLabelText("Adicionar item"))
+        await waitFor(() => {
+            expect(screen.getAllByPlaceholderText("Selecione um bem")).toHaveLength(2)
+        })
+    })
+
+    it("remove linha ao clicar em Remover item", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.click(screen.getByLabelText("Adicionar item"))
+        await waitFor(() => screen.getAllByPlaceholderText("Selecione um bem"))
+        const removeButtons = screen.getAllByLabelText("Remover item")
+        fireEvent.click(removeButtons[0])
+        await waitFor(() => {
+            expect(screen.getAllByPlaceholderText("Selecione um bem")).toHaveLength(1)
+        })
+    })
+
+    it("ao remover a única linha, reseta com linha vazia", async () => {
+        renderPage()
+        await selectUA()
+        fireEvent.click(screen.getByLabelText("Remover item"))
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
+    })
+
+    // --- Submit ---
+
+    it("chama baixaFisicaService.create com dados corretos (sem processo, com data_baixa)", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        await confirmarSolicitacao()
+
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith({
+                unidade_administrativa_origem: 1,
+                data_baixa: today,
+                itens: [{ bem: 1 }],
+            })
+        })
+    })
+
+    it("checkout exibe total, patrimonial e nome no padrão Movimentação", async () => {
+        renderPage()
+        await selectBem()
+        await abrirRevisao()
+        expect(screen.getByText("Selecionados (1)")).toBeInTheDocument()
+        expect(screen.getByText("Número Patrimonial")).toBeInTheDocument()
+        expect(screen.getByText("Nome do Bem")).toBeInTheDocument()
+        expect(screen.getAllByText("PAT-001").length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("permite data_baixa retroativa e envia no payload", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "2025-01-01" } })
+
+        await confirmarSolicitacao()
+
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ data_baixa: "2025-01-01" })
+            )
+        })
+    })
+
+    it("bloqueia data_baixa futura", async () => {
+        renderPage()
+        await selectBem()
+
+        const t = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        const tomorrow = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: tomorrow } })
+
+        fireEvent.click(screen.getByText("Solicitar"))
+
+        await waitFor(() => {
+            expect(
+                screen.getAllByText("Data da Baixa não pode ser futura.").length
+            ).toBeGreaterThan(0)
+        })
+        expect(baixaFisicaService.create).not.toHaveBeenCalled()
+    })
+
+    it("não envia data_baixa quando campo é limpo (fica NULL)", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+
+        const input = screen.getByLabelText("Data da Baixa") as HTMLInputElement
+        fireEvent.change(input, { target: { value: "" } })
+
+        await confirmarSolicitacao()
+
+        await waitFor(() => {
+            expect(baixaFisicaService.create).toHaveBeenCalledWith({
+                unidade_administrativa_origem: 1,
+                itens: [{ bem: 1 }],
+            })
+            const payload = vi.mocked(baixaFisicaService.create).mock.calls[0][0] as unknown as Record<string, unknown>
+            expect(payload).not.toHaveProperty("data_baixa")
+        })
+    })
+
+    it("navega para trás após solicitar com sucesso", async () => {
+        vi.mocked(baixaFisicaService.create).mockResolvedValue(undefined as never)
+
+        renderPage()
+        await selectBem()
+        await confirmarSolicitacao()
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith(-1)
+        })
+    })
+
+    it("exibe erro ao falhar no create", async () => {
+        vi.mocked(baixaFisicaService.create).mockRejectedValue(new Error("Erro de servidor"))
+
+        renderPage()
+        await selectBem()
+        await confirmarSolicitacao()
+
+        await waitFor(() => {
+            expect(toast.error).toHaveBeenCalledWith("Erro de servidor")
+        })
+    })
+
+    it("exibe 'Solicitando...' durante o submit", async () => {
+        vi.mocked(baixaFisicaService.create).mockReturnValue(new Promise(() => {}))
+
+        renderPage()
+        await selectBem()
+        await confirmarSolicitacao()
+
+        await waitFor(() => {
+            expect(screen.getAllByText("Solicitando...").length).toBeGreaterThanOrEqual(1)
+        })
+    })
+
+    it("navega para trás ao clicar em Cancelar", () => {
+        renderPage()
+        fireEvent.click(screen.getByText("Cancelar"))
+        expect(mockNavigate).toHaveBeenCalledWith(-1)
+    })
+
+    it("placeholder muda quando nenhuma unidade está selecionada", () => {
+        renderPage()
+        expect(
+            screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
+        ).toBeInTheDocument()
+    })
+
+    it("input de bem fica desabilitado sem unidade selecionada", () => {
+        renderPage()
+        const input = screen.getByPlaceholderText("Selecione uma unidade administrativa primeiro")
+        expect(input).toBeDisabled()
+    })
+
+    it("isDataFutura bloqueia amanhã e libera hoje e ontem", () => {
+        const base = new Date()
+        base.setHours(0, 0, 0, 0)
+        const amanha = new Date(base)
+        amanha.setDate(base.getDate() + 1)
+        const ontem = new Date(base)
+        ontem.setDate(base.getDate() - 1)
+        expect(isDataFutura(amanha)).toBe(true)
+        expect(isDataFutura(base)).toBe(false)
+        expect(isDataFutura(ontem)).toBe(false)
+    })
+
+    it("troca de unidade administrativa reseta os itens", async () => {
+        renderPage()
+        await selectBem()
+        await waitFor(() => expect(screen.getAllByText("Cadeira Escritório").length).toBeGreaterThanOrEqual(1))
+
+        // Troca a UA — deve resetar os itens
+        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "" } })
+        fireEvent.change(screen.getByTestId("unidade-select"), { target: { value: "1" } })
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText("Selecione um bem")).toBeInTheDocument()
+        })
+    })
+
+    it("renderiza 'Itens de Baixa Física' como título de seção", () => {
+        renderPage()
+
+        const titulo = screen.getByRole("heading", { name: /Itens de Baixa Física/ })
+        expect(titulo.tagName).toBe("H2")
+    })
+
+    it("não duplica o rótulo da Data da Baixa", () => {
+        renderPage()
+
+        expect(screen.getAllByText("Data da Baixa")).toHaveLength(1)
+    })
+
+    it("lixeira usa padrão vermelho ampliado com tooltip (Adicionar)", async () => {
+        renderPage()
+        await selectUA()
+        const trash = screen.getByLabelText("Remover item")
+        expect(trash.className).toMatch(/red-600/)
+        expect(trash.className).toMatch(/h-10/)
+        expect(trash.querySelector("svg")).toBeInTheDocument()
+        expect(trash.getAttribute("title")).toBe("Remover item")
+    })
+
+    it("exibe total no título após selecionar", async () => {
+        renderPage()
+        expect(screen.getByRole("heading", { name: "Itens de Baixa Física (0)" })).toBeInTheDocument()
+        await selectBem()
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+    })
+
+    it("atualiza total de imediato ao adicionar e remover", async () => {
+        vi.mocked(bemService.list).mockResolvedValue(
+            makeBemListResponse([
+                makeBem({ id: 1, numero_patrimonial: "PAT-001", nome: "Cadeira" }),
+                makeBem({ id: 2, numero_patrimonial: "PAT-002", nome: "Mesa" }),
+            ])
+        )
+        renderPage()
+        await selectUA()
+        fireEvent.focus(screen.getByPlaceholderText("Selecione um bem"))
+        await waitFor(() => screen.getByText("Cadeira"))
+        fireEvent.click(screen.getByText("Cadeira"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByLabelText("Adicionar item"))
+        const inputs = screen.getAllByPlaceholderText("Selecione um bem")
+        fireEvent.focus(inputs[0])
+        await waitFor(() => screen.getByText("Mesa"))
+        fireEvent.click(screen.getByText("Mesa"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (2)" })).toBeInTheDocument()
+        })
+
+        const removes = screen.getAllByLabelText("Remover item")
+        fireEvent.click(removes[0])
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+    })
+
+    it("total volta a zero quando nenhum bem selecionado", async () => {
+        renderPage()
+        await selectBem()
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (1)" })).toBeInTheDocument()
+        })
+        fireEvent.click(screen.getByLabelText("Limpar bem selecionado"))
+        await waitFor(() => {
+            expect(screen.getByRole("heading", { name: "Itens de Baixa Física (0)" })).toBeInTheDocument()
+        })
+    })
+
+    it("checkout exibe codigo - sigla da UA selecionada no select", async () => {
+        renderPage()
+        await selectBem()
+        await abrirRevisao()
+        expect(screen.getAllByText("001 - UA-01").length).toBeGreaterThanOrEqual(1)
+    })
+})

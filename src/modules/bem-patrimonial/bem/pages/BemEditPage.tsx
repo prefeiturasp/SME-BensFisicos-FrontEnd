@@ -1,0 +1,600 @@
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Loader2, Info, Network } from 'lucide-react'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/backend-form-errors'
+import { useForm } from 'react-hook-form'
+
+import { bemService, type Bem } from '../services/bem.service'
+import { valorSelectFormato } from '../utils/formato-bem'
+import { BEM_LIMITS, erroLimiteMaximo } from '../utils/bem-limits'
+import {
+  DICA_VALOR_UNITARIO,
+  VALOR_UNITARIO_TAMANHO_MAX,
+  formatarValorInput,
+  maskValorUnitario,
+  serializarValorUnitario,
+  validarValorUnitario,
+} from '../utils/valor-monetario'
+import { useAuth } from '@/auth/useAuth'
+import { useNumeroPatrimonial } from '../hooks/useNumeroPatrimonial'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
+import { getBemStatusTone } from '../utils/status'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
+
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { Input } from '@/components/ui/input'
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from '@/components/ui/form'
+
+// Mesmas classes usadas em BemDetailPage — mantém o tamanho de fonte do
+// título e dos inputs idêntico entre visualização e edição.
+const INPUT_CLASS =
+  'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700'
+const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
+
+function ReservedFormMessage() {
+  return (
+    <div className="min-h-5">
+      <FormMessage />
+    </div>
+  )
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  nome: 'Nome do Bem',
+  descricao: 'Descrição do Bem',
+  valor_unitario: 'Valor Unitário',
+  marca: 'Marca',
+  modelo: 'Modelo',
+  localizacao: 'Localização',
+  numero_processo: 'Número do Processo',
+}
+
+const CAMPOS_OBRIGATORIOS_EDICAO: Array<{
+  campo: keyof Bem
+  mensagem: string
+}> = [
+  { campo: 'nome', mensagem: 'Nome do Bem é obrigatório.' },
+  { campo: 'descricao', mensagem: 'Descrição é obrigatória.' },
+  { campo: 'valor_unitario', mensagem: 'Valor Unitário é obrigatório.' },
+  { campo: 'marca', mensagem: 'Marca é obrigatória.' },
+  { campo: 'modelo', mensagem: 'Modelo é obrigatório.' },
+  { campo: 'localizacao', mensagem: 'Localização é obrigatória.' },
+]
+
+const NUMERO_PATRIMONIAL_REGEX = /^\d{3}\.\d{9}-\d$/
+
+type CampoTextoBem =
+  | 'nome'
+  | 'descricao'
+  | 'marca'
+  | 'modelo'
+  | 'localizacao'
+  | 'numero_processo'
+  | 'observacao'
+
+const CAMPOS_COM_LIMITE: Array<{ campo: CampoTextoBem; limite: number }> = [
+  { campo: 'nome', limite: BEM_LIMITS.nome },
+  { campo: 'descricao', limite: BEM_LIMITS.descricao },
+  { campo: 'marca', limite: BEM_LIMITS.marca },
+  { campo: 'modelo', limite: BEM_LIMITS.modelo },
+  { campo: 'localizacao', limite: BEM_LIMITS.localizacao },
+  { campo: 'numero_processo', limite: BEM_LIMITS.numero_processo },
+  { campo: 'observacao', limite: BEM_LIMITS.observacao },
+]
+
+function limiteDoCampo(fieldName: string): number | undefined {
+  return CAMPOS_COM_LIMITE.find(item => item.campo === fieldName)?.limite
+}
+
+function isNumeroPatrimonialValido(values: Bem): boolean {
+  if (values.sem_numeracao) return true
+  if (values.numero_formato_antigo) return true
+
+  const numero = values.numero_patrimonial ?? ''
+
+  return NUMERO_PATRIMONIAL_REGEX.test(numero)
+}
+
+function isCampoVazio(valor: unknown): boolean {
+  if (valor === null || valor === undefined) return true
+  if (typeof valor === 'string') return valor.trim() === ''
+  return false
+}
+
+function validarBaseEdicao(
+  values: Bem,
+  registrarErro: (campo: any, message: string) => void,
+): boolean {
+  let pendente = false
+
+  CAMPOS_OBRIGATORIOS_EDICAO.forEach(({ campo, mensagem }) => {
+    if (isCampoVazio(values[campo])) {
+      registrarErro(campo, mensagem)
+      pendente = true
+    }
+  })
+
+  for (const { campo, limite } of CAMPOS_COM_LIMITE) {
+    const erro = erroLimiteMaximo(values[campo], limite)
+    if (erro) {
+      registrarErro(campo, erro)
+      pendente = true
+    }
+  }
+
+  const erroValor = validarValorUnitario(values.valor_unitario)
+  if (erroValor) {
+    registrarErro('valor_unitario', erroValor)
+    pendente = true
+  }
+
+  return pendente
+}
+
+function validarEdicaoAntesEnvio(
+  values: Bem,
+  originalNumeroPatrimonial: string,
+  justificativaObrigatoria: boolean,
+  justificativa: string,
+  registrarErro: (campo: keyof Bem, message: string) => void,
+): boolean {
+  const houveAlteracaoNumero =
+    (values.numero_patrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+  let temPendencia = validarBaseEdicao(values, registrarErro)
+
+  if (houveAlteracaoNumero && !isNumeroPatrimonialValido(values)) {
+    registrarErro(
+      'numero_patrimonial',
+      'Número patrimonial inválido. Use o formato 000.000000000-0.',
+    )
+    temPendencia = true
+  }
+
+  if (justificativaObrigatoria && !justificativa.trim()) {
+    registrarErro(
+      'justificativa' as keyof Bem,
+      'Justificativa é obrigatória quando Nome ou Número Patrimonial são alterados.',
+    )
+
+    // Permite que o backend apresente duplicidade junto da justificativa pendente.
+    if (!houveAlteracaoNumero) temPendencia = true
+  }
+
+  return temPendencia
+}
+
+export default function BemEditPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [loading, setLoading] = useState(true)
+  const [bem, setBem] = useState<Bem | null>(null)
+
+  const [originalNome, setOriginalNome] = useState('')
+  const [originalNumeroPatrimonial, setOriginalNumeroPatrimonial] = useState('')
+
+  const form = useForm<Bem>({
+    defaultValues: { justificativa: '' } as Bem,
+  })
+  const { navigateAfterSave } = useUnsavedChanges(form.formState.isDirty, 'edit')
+
+  const status = form.watch('status')
+  const numeroPatrimonial = form.watch('numero_patrimonial')
+  const formatoAntigo = form.watch('numero_formato_antigo')
+  const semNumeracao = form.watch('sem_numeracao')
+  const nomeAtual = form.watch('nome')
+  const justificativa = (form.watch('justificativa' as any) as string) ?? ''
+
+  const numeroHook = useNumeroPatrimonial({
+    valor: numeroPatrimonial ?? '',
+    formatoAntigoInicial: formatoAntigo ?? false,
+    semNumeracaoInicial: semNumeracao ?? false,
+  })
+
+  const nomeAlterado = !!originalNome && nomeAtual !== originalNome
+  const numeroAlterado =
+    (numeroPatrimonial ?? '') !== (originalNumeroPatrimonial ?? '')
+
+  const justificativaHabilitada = nomeAlterado || numeroAlterado
+  const justificativaObrigatoria = justificativaHabilitada
+
+  useEffect(() => {
+    async function fetchBem() {
+      try {
+        const data = await bemService.retrieve(Number(id))
+
+        setBem(data)
+        form.reset({
+          ...data,
+          valor_unitario: formatarValorInput(data.valor_unitario),
+          justificativa: '',
+        })
+        setOriginalNome(data.nome ?? '')
+        setOriginalNumeroPatrimonial(data.numero_patrimonial ?? '')
+      } catch {
+        toast.error('Erro ao carregar bem')
+        navigate('/bens-patrimoniais')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBem()
+  }, [id, form, navigate])
+
+  const isGestor = user?.is_gestor_patrimonio
+  const isBaixaFisica = status === 'baixa_fisica' || status === 'laudado_para_baixa'
+  const podeEditarEscopo = bem ? userHasAccessToBemUa(user, bem) : false
+  const podeEditar = !!isGestor && !isBaixaFisica && podeEditarEscopo
+
+  useEffect(() => {
+    if (!loading && bem && !podeEditar) {
+      navigate(`/bens-patrimoniais/${bem.id}`, { replace: true })
+    }
+  }, [loading, bem, podeEditar, navigate])
+
+  if (loading) {
+    return (
+      <div className="p-10 text-center">
+        <Loader2 className="animate-spin mx-auto" />
+      </div>
+    )
+  }
+
+  if (!bem) return null
+
+  const onSubmit = async (values: Bem) => {
+    let primeiroCampoInvalido: keyof Bem | null = null
+    const registrarErro = (campo: keyof Bem, message: string) => {
+      form.setError(campo, { message })
+      primeiroCampoInvalido ??= campo
+    }
+    const temPendencia = validarEdicaoAntesEnvio(
+      values,
+      originalNumeroPatrimonial,
+      justificativaObrigatoria,
+      justificativa,
+      registrarErro,
+    )
+
+    if (temPendencia) {
+      if (primeiroCampoInvalido) form.setFocus(primeiroCampoInvalido)
+      return
+    }
+
+    try {
+      await bemService.update(values.id, {
+        ...values,
+        valor_unitario: serializarValorUnitario(values.valor_unitario),
+        justificativa: justificativaHabilitada ? justificativa : '',
+      } as any)
+
+      toast.success('Bem atualizado com sucesso')
+      navigateAfterSave(() => navigate(`/bens-patrimoniais/${values.id}`))
+    } catch (error: any) {
+      if (error.response?.data) {
+        let primeiroErroBackend: keyof Bem | null = null
+        Object.entries(error.response.data).forEach(([field, message]) => {
+          const fieldMessage = extractErrorMessage(message)
+          if (fieldMessage) {
+            const fieldName = field as keyof Bem
+            form.setError(fieldName, { message: fieldMessage })
+            primeiroErroBackend ??= fieldName
+          }
+        })
+        if (primeiroErroBackend) form.setFocus(primeiroErroBackend)
+      } else {
+        toast.error('Erro ao salvar')
+      }
+    }
+  }
+
+  return (
+    <div className="p-8 space-y-6">
+      <AppBreadcrumb
+        items={[
+          { label: 'Bem Patrimonial', icon: Network },
+          { label: 'Bens Patrimoniais', icon: Network, to: '/bens-patrimoniais' },
+          { label: 'Editar Cadastro do Bem Patrimonial', isActive: true },
+        ]}
+      />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className={TITLE_CLASS}>
+            Editar Bem Patrimonial
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Atualize as informações do Bem cadastrado
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 px-6 bg-white border border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white font-semibold rounded-md transition-colors"
+            onClick={() => navigate(`/bens-patrimoniais/${bem.id}`)}
+          >
+            Cancelar
+          </Button>
+
+          {podeEditar && (
+            <Button
+              type="submit"
+              form="bem-edit-form"
+              disabled={form.formState.isSubmitting}
+              className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <Card className="p-6">
+        <Form {...form}>
+          <form id="bem-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div className="flex justify-end items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700">Status:</span>
+              <StatusBadge
+                tone={getBemStatusTone(bem.status)}
+                label={bem.status_display}
+                testId={`bem-status-${bem.status}`}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-8 items-start">
+              <div className="space-y-1">
+                <label
+                  htmlFor="unidade_administrativa"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Unidade Administrativa
+                </label>
+                <Input
+                  id="unidade_administrativa"
+                  value={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
+                  disabled
+                  className={INPUT_CLASS}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="numero_patrimonial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número Patrimonial</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ''}
+                        disabled={!podeEditar || numeroHook.disabled}
+                        className={INPUT_CLASS}
+                        onChange={(e) => {
+                          const masked = numeroHook.applyMask(e.target.value)
+                          field.onChange(masked)
+                        }}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-gray-500">
+                      Formato padrão: 000.000000000-0
+                    </p>
+                    <ReservedFormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormItem>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel htmlFor="formato">Formato</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info size={14} className="text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6} className="max-w-70">
+                      Se marcado “Formato anterior”, não valida o formato do número (valor
+                      livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+                      automaticamente.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <FormControl>
+                  <select
+                    id="formato"
+                    value={valorSelectFormato(formatoAntigo, semNumeracao)}
+                    onChange={(e) => {
+                      const valor = e.target.value
+
+                      if (valor === 'formato_anterior') {
+                        form.setValue('numero_formato_antigo', true, { shouldDirty: true })
+                        form.setValue('sem_numeracao', false, { shouldDirty: true })
+                        numeroHook.ativarFormatoAntigo()
+                      } else if (valor === 'sem_numeracao') {
+                        form.setValue('numero_formato_antigo', false, { shouldDirty: true })
+                        form.setValue('sem_numeracao', true, { shouldDirty: true })
+                        numeroHook.handleSemNumeracaoChange(true)
+                      } else {
+                        form.setValue('numero_formato_antigo', false, { shouldDirty: true })
+                        form.setValue('sem_numeracao', false, { shouldDirty: true })
+                        numeroHook.desativarFormatoAntigo()
+                        numeroHook.handleSemNumeracaoChange(false)
+                      }
+                    }}
+                    disabled={!podeEditar}
+                    className={INPUT_CLASS}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="formato_anterior">Formato Anterior</option>
+                    <option value="sem_numeracao">Sem Número Patrimonial</option>
+                  </select>
+                </FormControl>
+              </FormItem>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6">
+              {[
+                'nome',
+                'descricao',
+                'valor_unitario',
+                'marca',
+                'modelo',
+                'localizacao',
+                'numero_processo',
+              ].map((fieldName) => (
+                <FormField
+                  key={fieldName}
+                  control={form.control}
+                  name={fieldName as any}
+                  render={({ field }) => {
+                    const limite = limiteDoCampo(fieldName)
+                    const valorAtual = String(field.value ?? '')
+                    return (
+                      <FormItem
+                        className={fieldName === 'descricao' ? 'col-span-3' : ''}
+                      >
+                        <FormLabel>{FIELD_LABELS[fieldName]}</FormLabel>
+                        <FormControl>
+                          {fieldName === 'descricao' ? (
+                            <textarea
+                              {...field}
+                              value={field.value ?? ''}
+                              disabled={!podeEditar}
+                              maxLength={BEM_LIMITS.descricao}
+                              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35"
+                            />
+                          ) : (
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              disabled={!podeEditar}
+                              className={INPUT_CLASS}
+                              maxLength={
+                                fieldName === 'valor_unitario'
+                                  ? VALOR_UNITARIO_TAMANHO_MAX
+                                  : limite
+                              }
+                              inputMode={
+                                fieldName === 'valor_unitario'
+                                  ? 'decimal'
+                                  : undefined
+                              }
+                              onChange={(e) => {
+                                if (fieldName === 'valor_unitario') {
+                                  field.onChange(
+                                    maskValorUnitario(e.target.value)
+                                  )
+                                } else {
+                                  field.onChange(e.target.value)
+                                }
+                              }}
+                              onBlur={(e) => {
+                                field.onBlur()
+                                if (fieldName === 'valor_unitario') {
+                                  const formatado = formatarValorInput(
+                                    e.target.value
+                                  )
+                                  if (formatado && formatado !== e.target.value) {
+                                    field.onChange(formatado)
+                                  }
+                                }
+                              }}
+                            />
+                          )}
+                        </FormControl>
+                        {fieldName === 'valor_unitario' ? (
+                          <p className="text-xs text-gray-500">
+                            {DICA_VALOR_UNITARIO}
+                          </p>
+                        ) : (
+                          limite && (
+                            <p className="text-xs text-gray-500">
+                              {valorAtual.length}/{limite}
+                            </p>
+                          )
+                        )}
+                        <ReservedFormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              ))}
+            </div>
+
+            <FormField
+              control={form.control}
+              name={'observacao' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Observação</FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      value={field.value ?? ''}
+                      disabled={!podeEditar}
+                      placeholder="Observação"
+                      maxLength={BEM_LIMITS.observacao}
+                      className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </FormControl>
+                  <p className="text-xs text-gray-500">
+                    {String(field.value ?? '').length}/{BEM_LIMITS.observacao}
+                  </p>
+                  <ReservedFormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* JUSTIFICATIVA */}
+            <FormField
+              control={form.control}
+              name={'justificativa' as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Justificativa
+                    {justificativaObrigatoria && (
+                      <span className="text-red-500"> *</span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      disabled={!podeEditar || !justificativaHabilitada}
+                      placeholder={
+                        justificativaHabilitada
+                          ? 'Justificativa para a alteração'
+                          : 'Habilitado ao alterar Nome do Bem ou Número Patrimonial'
+                      }
+                      className={`w-full border rounded-xs px-4 py-3 text-sm min-h-25 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        form.formState.errors.justificativa
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                  </FormControl>
+                  <ReservedFormMessage />
+                </FormItem>
+              )}
+            />
+
+          </form>
+        </Form>
+      </Card>
+    </div>
+  )
+}

@@ -1,0 +1,603 @@
+import { useState, useEffect, useRef, useCallback } from "react"
+import { useNavigate, Link } from "react-router-dom"
+import { useForm } from "react-hook-form"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, Trash2, X, ChevronDown } from "lucide-react"
+import { toast } from "sonner"
+import { AxiosError } from "axios"
+import { extractErrorMessage } from "@/lib/backend-form-errors"
+
+import { format } from "date-fns"
+
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { DatePicker } from "@/components/ui/date-picker"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
+
+import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { bemService, type Bem } from "../../bem/services/bem.service"
+import { isDataFutura } from "../utils/datas"
+import { baixaFisicaService } from "../service/baixas.service"
+import { UnidadeAdministrativaSelect } from "../components/UnidadeAdministrativaSelect"
+import { BannerErrosValidacao } from "../components/BannerErrosValidacao"
+import type { ItemRow } from '../types/baixas-fisicas.types'
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import {
+    adicionarBaixaSchema,
+    type AdicionarBaixaFormData,
+} from "../validators/baixa-form.schema"
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
+const INPUT_CLASS =
+    "h-11 w-full rounded-xs border border-gray-300 px-4 text-sm text-gray-700 bg-white"
+
+const ACTION_BUTTON_CLASS = `
+  h-10 px-6 bg-white border border-[#2F7D57]
+  text-[#2F7D57] hover:bg-[#2F7D57]
+  hover:text-white font-semibold rounded-md transition-colors
+`
+
+const ICON_BTN = `
+  h-10 w-10 flex items-center justify-center rounded border cursor-pointer
+  border-[#2F7D57] text-[#2F7D57] hover:bg-[#2F7D57] hover:text-white
+  transition-colors shrink-0
+`
+
+const ICON_BTN_DANGER = `
+  h-10 w-10 flex items-center justify-center rounded border cursor-pointer
+  border-red-600 text-red-600 hover:bg-red-600 hover:text-white
+  transition-colors shrink-0
+`
+
+// ============================================================================
+// BEM SELECTOR ROW
+// ============================================================================
+
+interface BemSelectorRowProps {
+    readonly row: ItemRow
+    readonly allSelectedIds: number[]
+    readonly unidadeId: number | null
+    readonly onSelect: (rowId: number, bem: Bem) => void
+    readonly onClear: (rowId: number) => void
+    readonly onRemove: (rowId: number) => void
+    readonly onAdd: () => void
+    readonly isLast: boolean
+}
+
+function BemSelectorRow({ row, allSelectedIds, unidadeId, onSelect, onClear, onRemove, onAdd, isLast }: BemSelectorRowProps) {
+    const [open, setOpen] = useState(false)
+    const [inputValue, setInputValue] = useState("")
+    const [results, setResults] = useState<Bem[]>([])
+    const [loading, setLoading] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const search = useCallback(async (query: string) => {
+        if (!unidadeId) return
+        setLoading(true)
+        try {
+            const res = await bemService.list({
+                search: query,
+                status: "aprovado",
+                unidade_administrativa: unidadeId,
+            })
+            setResults(res.results)
+        } finally {
+            setLoading(false)
+        }
+    }, [unidadeId])
+
+    const handleFocus = () => {
+        if (row.bem || !unidadeId) return
+        setOpen(true)
+        if (results.length === 0) search("")
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value
+        setInputValue(val)
+        setOpen(true)
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => search(val), 300)
+    }
+
+    const handleSelect = (bem: Bem) => {
+        onSelect(row.rowId, bem)
+        setInputValue("")
+        setOpen(false)
+    }
+
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onClear(row.rowId)
+        setInputValue("")
+        setResults([])
+    }
+
+    const renderDropdownContent = () => {
+        if (loading) {
+            return <li className="px-3 py-2 text-sm text-gray-400">Buscando...</li>
+        }
+        if (results.length === 0) {
+            return <li className="px-3 py-2 text-sm text-gray-400">Nenhum bem encontrado.</li>
+        }
+        return results.map((bem) => {
+            const alreadyAdded = allSelectedIds.includes(bem.id)
+            return (
+                <li key={bem.id} className="border-b border-gray-100 last:border-0">
+                    <button
+                        type="button"
+                        disabled={alreadyAdded}
+                        onClick={() => handleSelect(bem)}
+                        className={`w-full text-left px-3 py-2 text-sm ${
+                            alreadyAdded
+                                ? "text-gray-300 cursor-not-allowed bg-gray-50"
+                                : "hover:bg-[#2F7D57] hover:text-white cursor-pointer"
+                        }`}
+                    >
+                        <span className="font-mono mr-2">{bem.numero_patrimonial}</span>
+                        {bem.nome}
+                    </button>
+                </li>
+            )
+        })
+    }
+
+    const isDisabled = !unidadeId
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex-1 relative" ref={ref}>
+                {row.bem ? (
+                    <div className="h-11 w-full rounded-xs border border-gray-300 px-3 bg-white flex items-center justify-between">
+                        <span className="text-sm text-gray-700 truncate">
+                            <span className="font-mono mr-2 text-gray-500">{row.bem.numero_patrimonial}</span>
+                            {row.bem.nome}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                            <button
+                                type="button"
+                                onClick={handleClear}
+                                className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                                aria-label="Limpar bem selecionado"
+                            >
+                                <X size={14} />
+                            </button>
+                            <ChevronDown size={14} className="text-gray-400" />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="relative">
+                        <input
+                            id={`bem-input-${row.rowId}`}
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onFocus={handleFocus}
+                            placeholder={isDisabled ? "Selecione uma unidade administrativa primeiro" : "Selecione um bem"}
+                            disabled={isDisabled}
+                            className={`${INPUT_CLASS} pr-8 ${isDisabled ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""}`}
+                            aria-label="Buscar bem patrimonial"
+                        />
+                        <ChevronDown size={14} className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
+
+                        {open && !isDisabled && (
+                            <ul className="absolute top-full left-0 right-0 mt-0 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-56 overflow-auto">
+                                {renderDropdownContent()}
+                            </ul>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {isLast ? (
+                <button type="button" onClick={onAdd} className={ICON_BTN} aria-label="Adicionar item" title="Adicionar item">
+                    <Plus size={18} />
+                </button>
+            ) : (
+                <div className="w-10 shrink-0" />
+            )}
+
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        type="button"
+                        onClick={() => onRemove(row.rowId)}
+                        className={ICON_BTN_DANGER}
+                        aria-label="Remover item"
+                        title="Remover item"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                    Remover item. O cadastro do bem não será apagado.
+                </TooltipContent>
+            </Tooltip>
+        </div>
+    )
+}
+
+function BaixaCheckoutReview({ unidade, dataBaixa, rows }: { readonly unidade: string; readonly dataBaixa: Date | undefined; readonly rows: ItemRow[] }) {
+    const selecionados = rows.filter(r => r.bem)
+    return (
+        <div className="space-y-5">
+            <dl className="grid gap-4 rounded-md border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
+                <div>
+                    <dt className="text-sm font-semibold">Unidade Administrativa</dt>
+                    <dd className="text-sm">{unidade || "-"}</dd>
+                </div>
+                <div>
+                    <dt className="text-sm font-semibold">Data da Baixa</dt>
+                    <dd className="text-sm">{dataBaixa ? format(dataBaixa, "dd/MM/yyyy") : "-"}</dd>
+                </div>
+            </dl>
+            <section className="space-y-3" aria-label="Bens selecionados">
+                <p className="text-sm font-semibold text-[#00703C]">Selecionados ({selecionados.length})</p>
+                <div className="overflow-x-auto rounded-md border border-gray-200">
+                    <table className="w-full min-w-150 text-sm">
+                        <thead className="border-b bg-[#F5F5F5] text-left text-gray-700">
+                            <tr>
+                                <th className="p-3">Número Patrimonial</th>
+                                <th className="p-3">Nome do Bem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {selecionados.map((row) => (
+                                <tr key={row.rowId} className="border-b last:border-0">
+                                    <td className="p-3 font-mono text-xs text-gray-600">{row.bem!.numero_patrimonial}</td>
+                                    <td className="p-3 text-sm text-gray-700">{row.bem!.nome}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    )
+}
+
+// ============================================================================
+// PAGE
+// ============================================================================
+
+let nextRowId = 1
+
+/** Extrai o bloqueio de baixa em aberto do 400, ou null para outros erros. */
+function extrairBloqueioBaixaExistente(err: unknown): { mensagem: string; ids: number[] } | null {
+    if (!(err instanceof AxiosError) || err.response?.status !== 400) return null
+    const rawIds = err.response.data?.baixas_existentes
+    if (!Array.isArray(rawIds) || rawIds.length === 0) return null
+    const ids = [...new Set(rawIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))]
+    if (ids.length === 0) return null
+    const campo = err.response.data?.unidade_administrativa_origem
+    const mensagemBackend = extractErrorMessage(campo) ?? ""
+    const mensagem = mensagemBackend || "Já existe baixa em aberto para esta unidade. Conclua ou recuse a baixa existente antes de criar uma nova."
+    return { mensagem, ids }
+}
+
+export default function AdicionarBaixaPage() {
+    const navigate = useNavigate()
+
+    const [rows, setRows] = useState<ItemRow[]>([{ rowId: nextRowId++, bem: null }])
+    const [submitting, setSubmitting] = useState(false)
+    const [revisaoAberta, setRevisaoAberta] = useState(false)
+    const [bloqueioExistente, setBloqueioExistente] = useState<{ mensagem: string; ids: number[] } | null>(null)
+
+    const form = useForm<AdicionarBaixaFormData>({
+        resolver: zodResolver(adicionarBaixaSchema),
+        mode: "onSubmit",
+        defaultValues: { unidade: "", itens: [], data_baixa: new Date() },
+    })
+
+    const unidade = form.watch("unidade")
+    const allSelectedIds = rows.filter(r => r.bem).map(r => r.bem!.id)
+    const unidadeId = unidade ? Number(unidade) : null
+    const [unidadeRotulo, setUnidadeRotulo] = useState("-")
+    const { navigateAfterSave } = useUnsavedChanges(
+        form.formState.isDirty || allSelectedIds.length > 0,
+        "create",
+    )
+
+    /**
+     * As linhas de item vivem em estado local (a UI de busca é própria), mas os
+     * ids selecionados são espelhados no formulário para que o zod valide
+     * unidade e itens no mesmo passe e ambos os erros apareçam juntos.
+     */
+    const sincronizarItens = useCallback((linhas: ItemRow[]) => {
+        const ids = linhas.filter(r => r.bem).map(r => r.bem!.id)
+        form.setValue("itens", ids, {
+            shouldValidate: form.formState.isSubmitted,
+        })
+    }, [form])
+
+    const atualizarRows = useCallback((atualizar: (prev: ItemRow[]) => ItemRow[]) => {
+        setRows(prev => {
+            const proximas = atualizar(prev)
+            sincronizarItens(proximas)
+            return proximas
+        })
+    }, [sincronizarItens])
+
+    const handleUnidadeChange = (value: string, rotulo?: string) => {
+        form.setValue("unidade", value, {
+            shouldDirty: true,
+            shouldValidate: form.formState.isSubmitted,
+        })
+        setUnidadeRotulo(value ? (rotulo ?? value) : "-")
+        setBloqueioExistente(null)
+        atualizarRows(() => [{ rowId: nextRowId++, bem: null }])
+    }
+
+    const handleSelect = (rowId: number, bem: Bem) => {
+        atualizarRows(prev =>
+            prev.map(r =>
+                r.rowId === rowId
+                    ? {
+                          ...r,
+                          bem: {
+                              id: bem.id,
+                              numero_patrimonial: bem.numero_patrimonial ?? "",
+                              nome: bem.nome,
+                              descricao: bem.descricao,
+                              status: bem.status,
+                          },
+                      }
+                    : r
+            )
+        )
+    }
+
+    const handleClear = (rowId: number) => {
+        atualizarRows(prev => prev.map(r => r.rowId === rowId ? { ...r, bem: null } : r))
+    }
+
+    const handleRemove = (rowId: number) => {
+        atualizarRows(prev => {
+            if (prev.length === 1) return [{ rowId: nextRowId++, bem: null }]
+            return prev.filter(r => r.rowId !== rowId)
+        })
+    }
+
+    const handleAddRow = () => {
+        atualizarRows(prev => [...prev, { rowId: nextRowId++, bem: null }])
+    }
+
+    const handleSolicitar = form.handleSubmit(() => {
+        setRevisaoAberta(true)
+    })
+
+    const confirmarSolicitar = form.handleSubmit(async (values) => {
+        setSubmitting(true)
+        setBloqueioExistente(null)
+        try {
+            await baixaFisicaService.create({
+                unidade_administrativa_origem: Number(values.unidade),
+                ...(values.data_baixa
+                    ? { data_baixa: format(values.data_baixa, "yyyy-MM-dd") }
+                    : {}),
+                itens: values.itens.map(bemId => ({ bem: bemId })),
+            })
+            toast.success("Baixa Física cadastrada com sucesso.")
+            setRevisaoAberta(false)
+            navigateAfterSave(() => navigate(-1))
+        } catch (err: unknown) {
+            const bloqueio = extrairBloqueioBaixaExistente(err)
+            if (bloqueio) {
+                setBloqueioExistente(bloqueio)
+                setRevisaoAberta(false)
+                toast.error(bloqueio.mensagem)
+                return
+            }
+            const message = err instanceof Error ? err.message : "Erro ao solicitar."
+            toast.error(message)
+        } finally {
+            setSubmitting(false)
+        }
+    })
+
+    /**
+     * Consolida, num único lugar, as pendências que impedem a continuidade
+     * do processo. O zod valida unidade, itens e data num mesmo passe (ver
+     * `adicionarBaixaSchema`), então as três mensagens já chegam juntas aqui
+     * assim que o usuário tenta solicitar — e somem conforme cada campo é
+     * corrigido, sem precisar de uma nova tentativa de envio.
+     */
+    const erros = form.formState.errors
+    const mensagensErro = [
+        erros.unidade?.message,
+        erros.itens?.message,
+        erros.data_baixa?.message,
+    ].filter(Boolean) as string[]
+
+    return (
+        <Form {...form}>
+        <div className="p-8 space-y-4">
+
+            <AppBreadcrumb
+                items={[
+                    { label: "Bem Patrimonial" },
+                    { label: "Baixas Físicas", to: "/baixas-fisicas" },
+                    { label: "Adicionar Baixa", isActive: true },
+                ]}
+            />
+
+            {/* HEADER */}
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-gray-700">
+                    Adicionar Baixa Física de Bem Patrimonial
+                </h1>
+
+                <div className="flex items-center gap-3">
+                    <Button onClick={() => navigate(-1)} className={ACTION_BUTTON_CLASS}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleSolicitar}
+                        disabled={submitting}
+                        className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {submitting ? "Solicitando..." : "Solicitar"}
+                    </Button>
+                </div>
+            </div>
+
+            <BannerErrosValidacao mensagens={mensagensErro} />
+
+            {bloqueioExistente && (
+                <div
+                    role="alert"
+                    data-testid="bloqueio-baixa-existente"
+                    className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-2 space-y-1"
+                >
+                    <p>{bloqueioExistente.mensagem}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {bloqueioExistente.ids.map((id) => (
+                            <Link
+                                key={id}
+                                to={`/baixas-fisicas/${id}`}
+                                className="text-sm text-[#00703C] underline hover:text-[#005a30]"
+                            >
+                                Abrir Baixa #{id}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <Card className="p-6 space-y-6">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="unidade"
+                        render={() => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="unidade-select"
+                                >
+                                    Unidade Administrativa *
+                                </FormLabel>
+                                <FormControl>
+                                    {/* scopedToUser=true filtra pelo escopo do operador logado */}
+                                    <UnidadeAdministrativaSelect
+                                        id="unidade-select"
+                                        value={unidade}
+                                        onChange={handleUnidadeChange}
+                                        scopedToUser={true}
+                                        className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm text-gray-700 bg-white data-[size=default]:h-11"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="data_baixa"
+                        render={({ field, fieldState }) => (
+                            <FormItem className="flex flex-col gap-2">
+                                <FormLabel
+                                    className="text-sm font-semibold text-gray-700"
+                                    htmlFor="data-baixa"
+                                >
+                                    Data da Baixa
+                                </FormLabel>
+                                <FormControl>
+                                    <DatePicker
+                                        id="data-baixa"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Selecione a data"
+                                        ariaLabel="Data da Baixa"
+                                        className="h-11 w-full rounded-xs border border-gray-300 px-3 text-sm"
+                                        disabled={isDataFutura}
+                                        invalid={fieldState.invalid}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                {/* ITENS */}
+                <FormField
+                    control={form.control}
+                    name="itens"
+                    render={() => (
+                        <FormItem className="space-y-2">
+                            {/* Título de seção: não rotula um campo único, por isso
+                                é renderizado como h2 via asChild. */}
+                            <FormLabel asChild>
+                                <h2
+                                    id="itens-baixa-fisica"
+                                    className="text-sm font-semibold text-green-700"
+                                >
+                                    Itens de Baixa Física ({allSelectedIds.length})
+                                </h2>
+                            </FormLabel>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="space-y-2">
+
+                    <div className="space-y-2">
+                        {rows.map((row, index) => (
+                            <BemSelectorRow
+                                key={row.rowId}
+                                row={row}
+                                allSelectedIds={allSelectedIds}
+                                unidadeId={unidadeId}
+                                onSelect={handleSelect}
+                                onClear={handleClear}
+                                onRemove={handleRemove}
+                                onAdd={handleAddRow}
+                                isLast={index === rows.length - 1}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+            </Card>
+            <ConfirmDialog
+                open={revisaoAberta}
+                title="Revisar e solicitar baixa"
+                size="wide"
+                confirmLabel="Confirmar solicitação"
+                cancelLabel="Voltar para editar"
+                loadingLabel="Solicitando..."
+                loading={submitting}
+                onClose={() => setRevisaoAberta(false)}
+                onConfirm={() => void confirmarSolicitar()}
+                message={<BaixaCheckoutReview unidade={unidadeRotulo} dataBaixa={form.getValues("data_baixa")} rows={rows} />}
+            />
+        </div>
+        </Form>
+    )
+}

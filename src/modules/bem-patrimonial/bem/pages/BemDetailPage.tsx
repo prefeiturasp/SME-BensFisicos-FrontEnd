@@ -1,0 +1,428 @@
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Loader2, ArrowLeft, Network, Pencil, Trash2, Info } from 'lucide-react'
+import { toast } from 'sonner'
+import { bemService, type Bem } from '../services/bem.service'
+import { valorSelectFormato } from '../utils/formato-bem'
+import { formatarValorBRL } from '../utils/valor-monetario'
+import { useAuth } from '@/auth/useAuth'
+import HistoricoModal from '../modals/HistoricoModal'
+import ExcluirBemModal from '../components/ExcluirBemModal'
+import { AppBreadcrumb } from '@/components/AppBreadcrumb'
+import { userHasAccessToBemUa } from '../utils/bemAccess'
+import { CriadoPorValue } from '@/components/CriadoPorValue'
+import { formatUsuarioLabel } from '@/lib/usuario-label'
+import { StatusBadge } from '@/components/status/StatusBadge'
+import { getBemStatusTone } from '../utils/status'
+
+export const FIELD_CLASS =
+  'h-11 w-full border border-gray-300 rounded-xs px-4 text-sm text-gray-700 bg-gray-100'
+export const TITLE_CLASS = 'text-xl font-bold tracking-tight text-gray-700'
+const ACTION_BUTTON_CLASS = `
+  h-10
+  px-6
+  bg-white
+  border border-[#2F7D57]
+  text-[#2F7D57]
+  hover:bg-[#2F7D57]
+  hover:text-white
+  font-semibold
+  rounded-md
+  transition-colors
+`
+
+function formatarCriadoEm(dateString: string | null | undefined): string | null {
+  if (!dateString) return null
+
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return null
+
+  const dataFormatada = date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo',
+  })
+  const horaFormatada = date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  })
+
+  return `${dataFormatada}, às ${horaFormatada}`
+}
+
+export default function BemDetailPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [bem, setBem] = useState<Bem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [openHistorico, setOpenHistorico] = useState(false)
+  const [openExcluir, setOpenExcluir] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    fetchBem()
+  }, [id])
+
+  const fetchBem = async () => {
+    try {
+      const data = await bemService.retrieve(Number(id))
+      setBem(data)
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao carregar bem')
+      navigate('/bens-patrimoniais')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-10 text-center">
+        <Loader2 data-testid="loader" className="animate-spin mx-auto" />
+      </div>
+    )
+  }
+
+  if (!bem) return null
+
+  const podeEditarEscopo = userHasAccessToBemUa(user, bem)
+
+  const podeEditar =
+    !!user?.is_gestor_patrimonio &&
+    bem.status !== 'baixa_fisica' &&
+    bem.status !== 'laudado_para_baixa' &&
+    podeEditarEscopo
+
+  let motivoBloqueioEdicao = 'Edição bloqueada: seu perfil não tem acesso à Unidade Administrativa deste bem.'
+  if (!user?.is_gestor_patrimonio) {
+    motivoBloqueioEdicao = 'Somente Gestor de Patrimônio pode editar este bem.'
+  } else if (bem.status === 'laudado_para_baixa') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status Laudado para Baixa.'
+  } else if (bem.status === 'baixa_fisica') {
+    motivoBloqueioEdicao = 'Este bem não pode ser editado por estar com status Baixa Física.'
+  }
+
+  return (
+  <div className="p-8 space-y-6">
+    <AppBreadcrumb
+      items={[
+        { label: 'Bem Patrimonial', icon: Network },
+        { label: 'Bens Patrimoniais', icon: Network, to: '/bens-patrimoniais' },
+        { label: 'Visualizar Cadastro do Bem Patrimonial', isActive: true },
+      ]}
+    />
+
+    {/* HEADER */}
+    <div className="flex justify-between items-center">
+      <h1 className={TITLE_CLASS}>
+        Visualizar Cadastro do Bem Patrimonial
+      </h1>
+
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => navigate('/bens-patrimoniais')}
+          className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`}
+          aria-label="Voltar"
+        >
+          <ArrowLeft size={18} />
+        </Button>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                disabled={!podeEditar}
+                onClick={() => navigate(`/bens-patrimoniais/${bem.id}/editar`)}
+                className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Pencil size={16} />
+                Editar
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!podeEditar && (
+            <TooltipContent side="bottom" sideOffset={6}>
+              {motivoBloqueioEdicao}
+            </TooltipContent>
+          )}
+        </Tooltip>
+
+        {bem.status === 'aguardando_aprovacao' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  variant="outline"
+                  disabled={!podeEditar}
+                  onClick={() => setOpenExcluir(true)}
+                  className={`${ACTION_BUTTON_CLASS} flex items-center gap-2 px-6 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <Trash2 size={16} />
+                  Apagar
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!podeEditar && (
+              <TooltipContent side="bottom" sideOffset={6}>
+                {motivoBloqueioEdicao}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
+
+        <Button
+          variant="outline"
+          onClick={() => setOpenHistorico(true)}
+          className={`${ACTION_BUTTON_CLASS} px-6`}
+        >
+          Histórico
+        </Button>
+
+        <HistoricoModal
+          bemId={bem.id}
+          open={openHistorico}
+          onClose={() => setOpenHistorico(false)}
+        />
+
+        {openExcluir && (
+          <ExcluirBemModal
+            bem={bem}
+            deleting={deleting}
+            onClose={() => setOpenExcluir(false)}
+            onConfirm={async () => {
+              setDeleting(true)
+              try {
+                await bemService.delete(bem.id)
+                toast.success('Bem excluído com sucesso')
+                navigate('/bens-patrimoniais')
+              } catch (error) {
+                console.error(error)
+                toast.error('Erro ao excluir bem')
+              } finally {
+                setDeleting(false)
+                setOpenExcluir(false)
+              }
+            }}
+          />
+        )}
+
+      </div>
+    </div>
+
+      <Card className="p-6 space-y-0">
+        {/* STATUS */}
+        <div className="flex justify-end items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">Status:</span>
+          <StatusBadge
+            tone={getBemStatusTone(bem.status)}
+            label={bem.status_display}
+            testId={`bem-status-${bem.status}`}
+          />
+        </div>
+
+        {/* PRIMEIRA LINHA */}
+        <div className="grid grid-cols-3 gap-8 items-start">
+
+          {/* UNIDADE */}
+          <div>
+            <label htmlFor="unidade_administrativa" className="text-sm font-semibold text-gray-700">
+              Unidade Administrativa
+            </label>
+            <input
+              id="unidade_administrativa"
+              value={`${bem.unidade_administrativa_codigo} - ${bem.unidade_administrativa_nome}`}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* NÚMERO */}
+          <div>
+            <label htmlFor="numero_patrimonial" className="text-sm font-semibold text-gray-700">
+              Número Patrimonial
+            </label>
+            <input
+              id="numero_patrimonial"
+              value={bem.numero_patrimonial ?? ''}
+              disabled
+              className={FIELD_CLASS}
+            />
+            <p className="text-xs text-gray-500">
+              Formato padrão: 000.000000000-0
+            </p>
+          </div>
+
+          {/* FORMATO (select) */}
+          <div>
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="formato" className="text-sm font-semibold text-gray-700">
+                Formato
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info size={14} className="text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6} className="max-w-70">
+                  Se marcado “Formato anterior”, não valida o formato do número (valor
+                  livre). Já se marcado “Sem número patrimonial”, o sistema atribui NP
+                  automaticamente.
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <select
+              id="formato"
+              value={valorSelectFormato(
+                bem.numero_formato_antigo,
+                bem.sem_numeracao
+              )}
+              disabled
+              className={FIELD_CLASS}
+            >
+              <option value="">-</option>
+              <option value="formato_anterior">Formato Anterior</option>
+              <option value="sem_numeracao">Sem Número Patrimonial</option>
+            </select>
+          </div>
+
+        </div>
+
+        {/* RESTANTE DOS CAMPOS */}
+        <div className="grid grid-cols-3 gap-8">
+
+          {/* NOME */}
+          <div className="col-span-3">
+            <label htmlFor="nome" className="text-sm font-semibold text-gray-700">
+              Nome do Bem
+            </label>
+            <input
+              id="nome"
+              value={bem.nome}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* DESCRIÇÃO */}
+          <div className="col-span-3">
+            <label htmlFor="descricao" className="text-sm font-semibold text-gray-700">
+              Descrição do Bem
+            </label>
+            <textarea
+              id="descricao"
+              value={bem.descricao ?? ''}
+              disabled
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
+            />
+          </div>
+
+          {/* VALOR */}
+          <div>
+            <label htmlFor="valor_unitario" className="text-sm font-semibold text-gray-700">
+              Valor Unitário
+            </label>
+            <input
+              id="valor_unitario"
+              value={formatarValorBRL(bem.valor_unitario)}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* MARCA */}
+          <div>
+            <label htmlFor="marca" className="text-sm font-semibold text-gray-700">
+              Marca
+            </label>
+            <input
+              id="marca"
+              value={bem.marca ?? ''}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* MODELO */}
+          <div>
+            <label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
+              Modelo
+            </label>
+            <input
+              id="modelo"
+              value={bem.modelo ?? ''}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* LOCALIZAÇÃO */}
+          <div>
+            <label htmlFor="localizacao" className="text-sm font-semibold text-gray-700">
+              Localização
+            </label>
+            <input
+              id="localizacao"
+              value={bem.localizacao ?? ''}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* PROCESSO */}
+          <div>
+            <label htmlFor="numero_processo" className="text-sm font-semibold text-gray-700">
+              Número do Processo
+            </label>
+            <input
+              id="numero_processo"
+              value={bem.numero_processo ?? ''}
+              disabled
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          {/* OBSERVAÇÃO */}
+          <div className="col-span-3">
+            <label htmlFor="observacao" className="text-sm font-semibold text-gray-700">
+              Observação
+            </label>
+            <textarea
+              id="observacao"
+              value={bem.observacao ?? ''}
+              disabled
+              className="w-full border border-gray-300 rounded-xs px-4 py-3 text-sm min-h-35 bg-gray-100"
+            />
+          </div>
+
+        </div>
+
+        {/* METADADOS */}
+        <div
+          className="border-t pt-6 text-xs text-gray-500 space-y-1"
+          data-testid="bem-auditoria"
+        >
+          <div data-testid="bem-criado-por">
+            <span className="font-semibold">Criado por: </span>
+            <CriadoPorValue
+              label={formatUsuarioLabel(bem.criado_por_nome, bem.criado_por_rf)}
+              data-testid="bem-criado-por-value"
+            />
+          </div>
+          <div data-testid="bem-criado-em">
+            <span className="font-semibold">Criado em: </span>
+            {formatarCriadoEm(bem.criado_em) ?? 'Data de criação não disponível'}
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}

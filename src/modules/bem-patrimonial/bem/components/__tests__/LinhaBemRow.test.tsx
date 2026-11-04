@@ -1,0 +1,441 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import type React from 'react'
+import { LinhaBemRow, isLinhaBemVazia } from '../LinhaBemRow'
+import type { LinhaBem } from '../LinhaBemRow'
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode
+    value: string
+    onValueChange: (value: string) => void
+  }) => (
+    <select
+      aria-label="Formato"
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+    >
+      <option value="">Selecione</option>
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
+    <option value={value}>{children}</option>
+  ),
+}))
+
+// Mock do hook
+vi.mock('../../hooks/useNumeroPatrimonial', () => ({
+  useNumeroPatrimonial: () => ({
+    disabled: false,
+    applyMask: (value: string) => `masked-${value}`,
+    ativarFormatoAntigo: vi.fn(),
+    desativarFormatoAntigo: vi.fn(),
+    handleSemNumeracaoChange: vi.fn(),
+  }),
+}))
+
+describe('LinhaBemRow', () => {
+  const linhaBase: LinhaBem = {
+    numero_patrimonial: '',
+    numero_formato_antigo: false,
+    sem_numeracao: false,
+    localizacao: '',
+    numero_processo: '',
+  }
+
+  let setLinhas: any
+  let removeLinha: any
+
+  beforeEach(() => {
+    setLinhas = vi.fn()
+    removeLinha = vi.fn()
+    vi.clearAllMocks()
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        observe() {
+          // Não é necessário observar de fato em ambiente de teste (jsdom)
+        }
+        unobserve() {
+          // Não é necessário desobservar de fato em ambiente de teste (jsdom)
+        }
+        disconnect() {
+          // Não é necessário desconectar de fato em ambiente de teste (jsdom)
+        }
+      },
+    )
+  })
+
+  function renderComponent(
+    customLinha?: Partial<LinhaBem>,
+    index = 0,
+    linhasOverride?: LinhaBem[],
+    podeRemover = true,
+  ) {
+    const linha = { ...linhaBase, ...customLinha }
+    const linhas = linhasOverride ?? [linha]
+
+    return render(
+      <LinhaBemRow
+        linha={linha}
+        index={index}
+        linhas={linhas}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover={podeRemover}
+      />
+    )
+  }
+
+  it('deve renderizar campos corretamente', () => {
+    renderComponent()
+
+    expect(
+      screen.getByPlaceholderText('000.000000000-0')
+    ).toBeInTheDocument()
+
+    expect(
+      screen.getByPlaceholderText('Insira a localização do bem')
+    ).toBeInTheDocument()
+  })
+
+  it('deve aplicar máscara ao alterar número patrimonial', () => {
+    renderComponent()
+
+    fireEvent.change(
+      screen.getByPlaceholderText('000.000000000-0'),
+      { target: { value: '123' } }
+    )
+
+    expect(setLinhas).toHaveBeenCalled()
+  })
+
+  it('deve marcar formato anterior', () => {
+    renderComponent()
+
+    const select = screen.getByLabelText('Formato')
+    fireEvent.change(select, { target: { value: 'formato_anterior' } })
+
+    expect(setLinhas).toHaveBeenCalled()
+  })
+
+  it('deve marcar sem número e limpar campos', () => {
+    renderComponent({
+      numero_patrimonial: '123',
+      numero_formato_antigo: true,
+    })
+
+    const select = screen.getByLabelText('Formato')
+    fireEvent.change(select, { target: { value: 'sem_numeracao' } })
+
+    expect(setLinhas).toHaveBeenCalled()
+    const newLinhas = setLinhas.mock.calls[0][0]
+    expect(newLinhas[0].sem_numeracao).toBe(true)
+    expect(newLinhas[0].numero_formato_antigo).toBe(false)
+    expect(newLinhas[0].numero_patrimonial).toBe('')
+  })
+
+  it('deve atualizar localização', () => {
+    renderComponent()
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Insira a localização do bem'),
+      { target: { value: 'Sala 1' } }
+    )
+
+    expect(setLinhas).toHaveBeenCalled()
+  })
+
+  it('deve chamar removeLinha ao clicar na lixeira', () => {
+    renderComponent()
+
+    const removeButton = screen.getByRole('button', { name: /remover bem/i })
+    fireEvent.click(removeButton)
+
+    expect(removeLinha).toHaveBeenCalledWith(0)
+  })
+
+  it('não deve exibir botão de lixeira quando podeRemover for false (única linha)', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover={false}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /remover bem/i })).not.toBeInTheDocument()
+  })
+
+  it('deve exibir botão de remover por linha com rótulo acessível incluindo o número da linha', () => {
+    const duas = [linhaBase, { ...linhaBase }]
+    renderComponent(undefined, 1, duas)
+
+    expect(screen.getByRole('button', { name: 'Remover bem 2' })).toBeInTheDocument()
+  })
+
+  it('não deve renderizar botão de adicionar dentro da linha (ação fixa fora da lista)', () => {
+    renderComponent(undefined, 0)
+    expect(screen.queryByRole('button', { name: /adicionar bem/i })).not.toBeInTheDocument()
+
+    // Mesmo na última de várias linhas, a adição não aparece dentro da linha
+    const duas = [linhaBase, { ...linhaBase }]
+    const { unmount } = render(
+      <LinhaBemRow
+        linha={duas[1]}
+        index={1}
+        linhas={duas}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+      />
+    )
+    expect(screen.queryByRole('button', { name: /adicionar bem/i })).not.toBeInTheDocument()
+    unmount()
+  })
+
+  it('deve exibir texto de ajuda fiel à remoção na lixeira', () => {
+    renderComponent()
+
+    const removeButton = screen.getByRole('button', { name: /remover bem/i })
+    expect(removeButton).toHaveAttribute('title', 'Remover este bem da lista')
+    expect(removeButton).toHaveAccessibleName(/remover bem/i)
+  })
+
+  it('deve exibir erro de numero_patrimonial quando errors é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{ numero_patrimonial: 'Número inválido' }}
+      />
+    )
+
+    expect(screen.getByText('Número inválido')).toBeInTheDocument()
+  })
+
+  it('não deve exibir mensagem de erro quando errors é undefined', () => {
+    renderComponent()
+
+    expect(screen.queryByText('Número inválido')).not.toBeInTheDocument()
+  })
+
+  it('não deve exibir mensagem de erro quando errors está vazio', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{}}
+      />
+    )
+
+    expect(screen.queryByText('Número inválido')).not.toBeInTheDocument()
+    expect(screen.queryByText('Localização é obrigatória.')).not.toBeInTheDocument()
+  })
+
+  it('deve exibir erro de localizacao quando errors.localizacao é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+      />
+    )
+
+    expect(screen.getByText('Localização é obrigatória.')).toBeInTheDocument()
+  })
+
+  it('deve exibir asterisco obrigatório nos labels de Número Patrimonial e Localização', () => {
+    renderComponent()
+    expect(screen.getAllByText('*')).toHaveLength(2)
+  })
+
+  it('deve renderizar o campo Número do Processo', () => {
+    renderComponent()
+
+    expect(
+      screen.getByPlaceholderText('Informe o número do processo')
+    ).toBeInTheDocument()
+  })
+
+  it('deve atualizar numero_processo ao digitar', () => {
+    renderComponent()
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Informe o número do processo'),
+      { target: { value: 'PROC-01' } }
+    )
+
+    expect(setLinhas).toHaveBeenCalled()
+  })
+
+  it('deve exibir erro de numero_processo quando errors.numero_processo é fornecido', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{ numero_processo: 'Processo inválido' }}
+      />
+    )
+
+    expect(screen.getByText('Processo inválido')).toBeInTheDocument()
+  })
+
+  it('deve exibir o tooltip informativo no campo Formato ao passar o mouse', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+
+    const formatoLabel = screen.getByText('Formato')
+    const tooltipTrigger = formatoLabel.parentElement?.querySelector('svg')
+    expect(tooltipTrigger).toBeInTheDocument()
+
+    await user.hover(tooltipTrigger!)
+
+    const tooltipMatches = await screen.findAllByText(
+      /Se marcado.*Formato anterior.*não valida o formato do número/s
+    )
+    expect(tooltipMatches.length).toBeGreaterThan(0)
+  })
+
+  it('deve pintar rótulo e borda no padrão inline quando a localização é inválida', () => {
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={0}
+        linhas={[linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+      />
+    )
+
+    const input = screen.getByPlaceholderText('Insira a localização do bem')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    const mensagem = screen.getByRole('alert')
+    expect(mensagem).toHaveTextContent('Localização é obrigatória.')
+    expect(mensagem).toHaveClass('text-destructive')
+
+    const label = screen.getByText('Localização')
+    expect(label).toHaveAttribute('data-error', 'true')
+    expect(label.className).toContain('text-destructive')
+  })
+
+  it('deve limpar somente o erro do campo alterado', () => {
+    const onLimparErro = vi.fn()
+
+    render(
+      <LinhaBemRow
+        linha={linhaBase}
+        index={2}
+        linhas={[linhaBase, linhaBase, linhaBase]}
+        setLinhas={setLinhas}
+        removeLinha={removeLinha}
+        podeRemover
+        errors={{ localizacao: 'Localização é obrigatória.' }}
+        onLimparErro={onLimparErro}
+      />
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Insira a localização do bem'), {
+      target: { value: 'Sala 10' },
+    })
+
+    expect(onLimparErro).toHaveBeenCalledWith(2, 'localizacao')
+  })
+
+  describe('isLinhaBemVazia', () => {
+    it('caminho válido: considera vazia quando nenhum campo foi digitado', () => {
+      expect(isLinhaBemVazia(linhaBase)).toBe(true)
+    })
+
+    it('caminho inválido: considera preenchida quando há localização', () => {
+      expect(isLinhaBemVazia({ ...linhaBase, localizacao: 'Sala 1' })).toBe(false)
+    })
+
+    it('considera preenchida quando há número patrimonial ou processo ou flags', () => {
+      expect(isLinhaBemVazia({ ...linhaBase, numero_patrimonial: '123' })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, numero_processo: 'PROC-1' })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, numero_formato_antigo: true })).toBe(false)
+      expect(isLinhaBemVazia({ ...linhaBase, sem_numeracao: true })).toBe(false)
+    })
+  })
+
+  describe('label unificado Número do Processo', () => {
+    it('caminho válido: renderiza label unificado e envia campo numero_processo', () => {
+      renderComponent({ numero_processo: '' })
+
+      expect(screen.getByText('Número do Processo')).toBeInTheDocument()
+
+      const input = screen.getByPlaceholderText('Informe o número do processo')
+      fireEvent.change(input, { target: { value: 'PROC-2024-001' } })
+
+      expect(setLinhas).toHaveBeenCalled()
+      const newLinhas = setLinhas.mock.calls[0][0]
+      expect(newLinhas[0].numero_processo).toBe('PROC-2024-001')
+    })
+
+    it('caminho inválido: exibe mensagem de erro ligada ao campo numero_processo', () => {
+      render(
+        <LinhaBemRow
+          linha={linhaBase}
+          index={0}
+          linhas={[linhaBase]}
+          setLinhas={setLinhas}
+          removeLinha={removeLinha}
+          podeRemover
+          errors={{ numero_processo: 'Informe o número do processo.' }}
+        />
+      )
+
+      expect(screen.getByText('Número do Processo')).toBeInTheDocument()
+      expect(
+        screen.getByText('Informe o número do processo.')
+      ).toBeInTheDocument()
+    })
+
+    it('regressão: labels antigos não aparecem mais', () => {
+      renderComponent()
+
+      expect(
+        screen.queryByText('Número do Processo de Incorporação')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Número do Processo de Baixa')
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText('Insira o nº do processo de incorporação')
+      ).not.toBeInTheDocument()
+    })
+  })
+})

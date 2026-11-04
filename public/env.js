@@ -1,0 +1,3 @@
+globalThis.__APP_CONFIG__ = {
+  VITE_API_URL: "__VITE_API_URL__"
+}

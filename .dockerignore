@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.local
+.env.example
+.vscode
+.github
+Dockerfile
+.dockerignore
+README.md
+LICENSE
+coverage
+npm-debug.log
+yarn-error.log

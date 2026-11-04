@@ -1,0 +1,605 @@
+import { useState, useEffect, useCallback } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import {
+    baixaFisicaService,
+} from "../service/baixas.service"
+import type { BaixaFisica, BaixaFisicaListParams } from "../types/baixas-fisicas.types"
+import { AppBreadcrumb } from "@/components/AppBreadcrumb"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { ArrowLeft, ArrowUpDown, Eye, FileText, Plus, Search } from "lucide-react"
+import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { format } from "date-fns"
+import { DateRangePicker, type DateRange } from "@/components/ui/DateRangePicker"
+import { useUnidadesPagination } from "@/hooks/useUnidadesPagination"
+import { StatusBadge } from "@/components/status/StatusBadge"
+import { getBaixaStatusTone } from "../utils/status"
+import { useUnsavedChanges } from "@/components/unsaved-changes/useUnsavedChanges"
+
+// ===================== CONSTANTES =====================
+
+const ACTION_BUTTON_CLASS = `
+h-10 px-6 bg-white border border-[#2F7D57]
+text-[#2F7D57] hover:bg-[#2F7D57]
+hover:text-white font-semibold rounded-md transition-colors
+`
+
+// Status "aguardando_envio" é exibido como "Em elaboração" na UI
+const STATUS_EM_ELABORACAO = "aguardando_envio"
+
+// Ícone padrão das ações de listagem do sistema (mesmo tamanho/cor usados
+// em Bens, Movimentações, Transferências e Conciliações)
+const ACTION_ICON_CLASS = "size-[22px] text-[#00703C]"
+
+const INPUT_SEARCH_CLASS =
+    "h-10 w-full border border-gray-300 rounded-xs pl-9 pr-3 text-sm text-gray-700 bg-white"
+
+const ACTIVE_PAGE_CLASS = "border-[#00703C] bg-[#00703C] text-white hover:bg-[#00703C]"
+
+// ===================== HELPERS =====================
+
+function formatDateTimeBR(dateString: string): string {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return ""
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, "0")
+    const minutes = String(date.getMinutes()).padStart(2, "0")
+    return `${day}/${month}/${year} - ${hours}:${minutes}`
+}
+
+/**
+ * Uma Baixa aceita que já gerou NBBPM não pode gerar outra, então também não
+ * entra na seleção em lote.
+ */
+function possuiNbbpm(baixa: BaixaFisica): boolean {
+    return baixa.numero_nbbpm != null && baixa.numero_nbbpm !== ""
+}
+
+// ===================== COMPONENTS =====================
+
+// ===================== PAGE =====================
+
+export default function BaixasListPage() {
+    const [baixas, setBaixas] = useState<BaixaFisica[]>([])
+    const [loading, setLoading] = useState(true)
+    const [count, setCount] = useState(0)
+    const [page, setPage] = useState(1)
+    const [selectedIds, setSelectedIds] = useState<number[]>([])
+    const { navigateAfterCommit } = useUnsavedChanges(selectedIds.length > 0, "selection")
+    const [actionLoading, setActionLoading] = useState(false)
+
+    const [searchInput, setSearchInput] = useState("")
+    const [statusInput, setStatusInput] = useState("")
+    const [dateRangeInput, setDateRangeInput] = useState<DateRange | undefined>()
+    const [dateTypeAprovadas, setDateTypeAprovadas] = useState(false)
+    const [dateTypeSolicitadas, setDateTypeSolicitadas] = useState(false)
+
+    const [appliedFilters, setAppliedFilters] = useState<BaixaFisicaListParams>({
+        ordering: "-data_criacao",
+    })
+
+    const { pages, totalPages } = useUnidadesPagination({
+        page,
+        totalItems: count,
+        pageSize: 10,
+    })
+    const navigate = useNavigate()
+
+    const fetchBaixas = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await baixaFisicaService.list({ ...appliedFilters, page })
+            setBaixas(res.results)
+            setCount(res.count)
+        } finally {
+            setLoading(false)
+        }
+    }, [page, appliedFilters])
+
+    useEffect(() => {
+        fetchBaixas()
+    }, [fetchBaixas])
+
+    // ===================== SELECTION =====================
+
+    // Status "aguardando_envio" agora é chamado "Em elaboração" na UI
+    const emElaboracaoIds = baixas
+        .filter(b => b.status === STATUS_EM_ELABORACAO)
+        .map(b => b.id)
+
+    const solicitadaIds = baixas
+        .filter(b => b.status === "solicitada")
+        .map(b => b.id)
+
+    // Baixas com status Aprovado (ACEITA) selecionáveis para a geração da
+    // NBBPM em lote. Mantém todas as aceitas aqui para que seleção stale
+    // (feita antes da NBBPM aparecer) ainda mostre o botão e caia na trava
+    // de toast do handleGerarNbbpm. O bloqueio upfront é feito no checkbox
+    // via isSelectable/jaTemNbbpm. Só entram na seleção de "Selecionar
+    // todas" quando não há nenhuma baixa em elaboração/solicitada na página.
+    const aceitaIds = new Set(
+        baixas.filter(b => b.status === "aceita").map(b => b.id)
+    )
+
+    const allSelectableIds = [...emElaboracaoIds, ...solicitadaIds]
+
+    const allSelected =
+        allSelectableIds.length > 0 &&
+        allSelectableIds.every(id => selectedIds.includes(id))
+
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            setSelectedIds([])
+        } else {
+            // Seleciona todas em elaboração, mas apenas a primeira solicitada
+            const primeiraSolicitada = solicitadaIds.length > 0 ? [solicitadaIds[0]] : []
+            setSelectedIds([...emElaboracaoIds, ...primeiraSolicitada])
+        }
+    }
+
+    const toggleSelect = (id: number) => {
+        const b = baixas.find(x => x.id === id)
+        const isSolicitada = b?.status === "solicitada"
+
+        setSelectedIds(prev => {
+            if (prev.includes(id)) return prev.filter(x => x !== id)
+            // Baixas "solicitada" só permitem 1 selecionada por vez
+            if (isSolicitada) {
+                const semSolicitadas = prev.filter(x => !solicitadaIds.includes(x))
+                return [...semSolicitadas, id]
+            }
+            return [...prev, id]
+        })
+    }
+
+    const selectedEmElaboracao = selectedIds.filter(id => emElaboracaoIds.includes(id))
+    const selectedSolicitadas = selectedIds.filter(id => solicitadaIds.includes(id))
+    const selectedAceitas = selectedIds.filter(id => aceitaIds.has(id))
+
+    // ===================== HANDLERS =====================
+
+    const handleSearch = () => {
+        setPage(1)
+        setSelectedIds([])
+
+        const dateFrom = dateRangeInput?.from ? format(dateRangeInput.from, "yyyy-MM-dd") : undefined
+        const dateTo = dateRangeInput?.to ? format(dateRangeInput.to, "yyyy-MM-dd") : undefined
+
+        setAppliedFilters({
+            ordering: appliedFilters.ordering,
+            search: searchInput.trim() || undefined,
+            status: statusInput || undefined,
+            data_aprovacao__gte: dateTypeAprovadas ? dateFrom : undefined,
+            data_aprovacao__lte: dateTypeAprovadas ? dateTo : undefined,
+            data_criacao__gte: !dateTypeAprovadas || dateTypeSolicitadas ? dateFrom : undefined,
+            data_criacao__lte: !dateTypeAprovadas || dateTypeSolicitadas ? dateTo : undefined,
+        })
+    }
+
+    const handleOrdering = (field: string) => {
+        const current = appliedFilters.ordering ?? ""
+        const next = current === field ? `-${field}` : field
+        setAppliedFilters(prev => ({ ...prev, ordering: next }))
+    }
+
+    const handleExportarExcel = async () => {
+        try {
+            const blob = await baixaFisicaService.exportarExcel({
+                unidade_administrativa_origem: appliedFilters.unidade_administrativa_origem,
+                status: appliedFilters.status,
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = "baixas-fisicas.xlsx"
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch {
+            toast.error("Erro ao exportar Excel.")
+        }
+    }
+
+    // Chama o endpoint /solicitar/ para baixas "Em elaboração" — fluxo do
+    // solicitante, sem alteração.
+    const handleSolicitar = async () => {
+        if (selectedEmElaboracao.length === 0) return
+        setActionLoading(true)
+        try {
+            await Promise.all(selectedEmElaboracao.map(id => baixaFisicaService.enviarSolicitacao(id)))
+            setSelectedIds([])
+            toast.success(
+                selectedEmElaboracao.length > 1
+                    ? "Baixas Físicas solicitadas com sucesso."
+                    : "Baixa Física solicitada com sucesso."
+            )
+            fetchBaixas()
+        } catch {
+            toast.error("Erro ao solicitar baixas.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    // "Aprovar"/"Recusar" são atalhos: levam à tela "Validar Baixa" da
+    // primeira (e única, na prática) baixa selecionada, onde a revisão
+    // item a item é obrigatória antes de qualquer decisão.
+    const handleIrParaValidacao = () => {
+        const [primeiraSelecionada] = selectedSolicitadas
+        if (!primeiraSelecionada) return
+        navigateAfterCommit(() => navigate(`/baixas-fisicas/${primeiraSelecionada}`))
+    }
+
+    // NOVO — leva para a tela de cadastro das informações básicas da
+    // NBBPM consolidada, passando as Baixas Aprovadas selecionadas.
+    // Trava de processo único: só navega quando todas as Baixas aceitas
+    // selecionadas têm o mesmo numero_processo_baixa (já vem no list).
+    // Trava de NBBPM existente: Baixas que já possuem NBBPM não entram.
+    const handleGerarNbbpm = () => {
+        if (selectedAceitas.length === 0) return
+        const selecionadas = baixas.filter(b => selectedAceitas.includes(b.id))
+        if (selecionadas.some(possuiNbbpm)) {
+            toast.error("Uma ou mais Baixas selecionadas já possuem NBBPM e não podem gerar uma nova NBBPM.")
+            return
+        }
+        const processos = new Set(selecionadas.map(b => (b.numero_processo_baixa ?? "").trim()))
+        if (processos.size > 1) {
+            toast.error("As Baixas selecionadas possuem Números de Processo divergentes. A NBBPM só pode ser gerada com Baixas do mesmo Número de Processo.")
+            return
+        }
+        const processoUnico = [...processos][0] ?? ""
+        navigateAfterCommit(() => navigate("/baixas-fisicas/gerar-nbbpm", {
+            state: { baixaIds: selectedAceitas, processo: processoUnico },
+        }))
+    }
+
+    const renderTableBody = () => {
+        if (loading) {
+            return (
+                <tr>
+                    <td colSpan={7} className="text-center py-10 text-gray-500">
+                        Carregando...
+                    </td>
+                </tr>
+            )
+        }
+        if (baixas.length === 0) {
+            return (
+                <tr>
+                    <td colSpan={7} className="text-center py-10 text-gray-400">
+                        Nenhum resultado encontrado.
+                    </td>
+                </tr>
+            )
+        }
+        return baixas.map((b) => {
+            const jaTemNbbpm = b.status === "aceita" && possuiNbbpm(b)
+            const isSelectable =
+                b.status === "solicitada" ||
+                b.status === STATUS_EM_ELABORACAO ||
+                (b.status === "aceita" && !jaTemNbbpm)
+            const isChecked = selectedIds.includes(b.id)
+            return (
+                <tr
+                    key={b.id}
+                    className={`border-b hover:bg-gray-50 ${isChecked ? "bg-green-50" : ""}`}
+                >
+                    <td className="p-3">
+                        {isSelectable ? (
+                            <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSelect(b.id)}
+                                className="accent-[#00703C] cursor-pointer"
+                            />
+                        ) : (
+                            <input
+                                type="checkbox"
+                                disabled
+                                title={jaTemNbbpm ? "Baixa já possui NBBPM" : undefined}
+                                className="opacity-30 cursor-not-allowed"
+                            />
+                        )}
+                    </td>
+                    <td className="p-3 text-sm text-gray-700">
+                        {b.unidade_administrativa_origem.sigla}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.numero_nbbpm ? (
+                            <Link
+                                to={b.nbbpm_id ? `/nbbpm/${b.nbbpm_id}` : `/baixas-fisicas/${b.id}`}
+                                className="text-[#00703C] underline hover:text-[#005a30] cursor-pointer"
+                                aria-label={`Ver NBBPM ${b.numero_nbbpm} da Baixa ${b.id}`}
+                            >
+                                {b.numero_nbbpm}
+                            </Link>
+                        ) : (
+                            "-"
+                        )}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {b.criado_por.nome_completo}
+                    </td>
+                    <td className="p-3 text-sm text-gray-500">
+                        {formatDateTimeBR(b.data_criacao)}
+                    </td>
+                    <td className="p-3">
+                        <StatusBadge
+                          tone={getBaixaStatusTone(b.status)}
+                          label={b.status_display}
+                          testId={`baixa-status-${b.status}`}
+                        />
+                    </td>
+                    <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        asChild
+                                        size="icon"
+                                        variant="ghost"
+                                        aria-label={`Visualizar Baixa Física ${b.id}`}
+                                    >
+                                        <Link to={`/baixas-fisicas/${b.id}`}>
+                                            <Eye className={ACTION_ICON_CLASS} />
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>
+                                    Visualizar as informações da Baixa Física.
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
+                    </td>
+                </tr>
+            )
+        })
+    }
+
+    // ===================== RENDER =====================
+
+    return (
+        <div className="p-8 space-y-4">
+            <AppBreadcrumb
+                items={[
+                    { label: "Bem Patrimonial" },
+                    { label: "Baixa Física de Bens Patrimoniais", isActive: true },
+                ]}
+            />
+
+            {/* HEADER */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <h1 className="text-xl font-bold tracking-tight text-gray-700">
+                    Baixa Física de Bens Patrimoniais
+                </h1>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Button onClick={() => navigate("/home")} className={`${ACTION_BUTTON_CLASS} h-10 w-10 p-0`} aria-label="Voltar">
+                        <ArrowLeft size={18} />
+                    </Button>
+
+                    <Button type="button" className={ACTION_BUTTON_CLASS} onClick={handleExportarExcel}>
+                        <FileText size={16} />
+                        Relatório
+                    </Button>
+
+                    {/* "Solicitar" — baixas "Em elaboração" selecionadas (fluxo do
+                        solicitante, em lote, sem alteração) */}
+                    {selectedEmElaboracao.length > 0 && (
+                        <Button
+                            onClick={handleSolicitar}
+                            disabled={actionLoading}
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
+                        >
+                            Solicitar ({selectedEmElaboracao.length})
+                        </Button>
+                    )}
+
+                    {/* "Aprovar"/"Recusar" — atalho para a tela "Validar Baixa".
+                        Como o destino é uma única baixa, ambos os botões levam
+                        ao mesmo lugar: a primeira baixa "solicitada" selecionada. */}
+                    {selectedSolicitadas.length > 0 && (
+                        <>
+                            <Button
+                                onClick={handleIrParaValidacao}
+                                className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
+                                title="Abrir a tela de validação para aprovar"
+                            >
+                                Aprovar
+                            </Button>
+                            <Button
+                                onClick={handleIrParaValidacao}
+                                className="h-10 px-6 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors"
+                                title="Abrir a tela de validação para recusar/solicitar correção"
+                            >
+                                Recusar
+                            </Button>
+                        </>
+                    )}
+
+                    {/* "Gerar NBBPM": disponível quando há Baixas com status
+                        Aprovado selecionadas. Leva à tela de cadastro das
+                        informações básicas da NBBPM consolidada. */}
+                    {selectedAceitas.length > 0 && (
+                        <Button
+                            onClick={handleGerarNbbpm}
+                            className="h-10 px-6 bg-[#2F7D57] text-white font-semibold rounded-md transition-colors hover:bg-[#256947]"
+                        >
+                            Gerar NBBPM ({selectedAceitas.length})
+                        </Button>
+                    )}
+
+                    <Button className={ACTION_BUTTON_CLASS} onClick={() => navigate("/baixas-fisicas/novo")}>
+                        <Plus size={16} />
+                        Adicionar Baixa
+                    </Button>
+                </div>
+            </div>
+
+            {/* CARD */}
+            <Card className="space-y-6 p-6">
+
+                {/* FILTROS */}
+                <div className="flex flex-col md:flex-row gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                        <label htmlFor="search-bem" className="text-sm font-semibold text-gray-700">
+                            Buscar por Número/Nome do Bem ou NBBPM
+                        </label>
+                        <div className="relative mt-1">
+                            <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+                            <input
+                                id="search-bem"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                className={INPUT_SEARCH_CLASS}
+                                placeholder="Nº patrimonial, nome do item, NBBPM"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 min-w-[200px]">
+                        <label htmlFor="status-select" className="text-sm font-semibold text-gray-700">
+                            Filtrar por status
+                        </label>
+                        <div className="relative mt-1">
+                            <select
+                                id="status-select"
+                                value={statusInput}
+                                onChange={(e) => setStatusInput(e.target.value)}
+                                className="h-10 w-full border border-gray-300 rounded-xs px-3 text-sm text-gray-700 bg-white"
+                            >
+                                <option value="">Todos</option>
+                                <option value="aceita">Aceita</option>
+                                <option value="recusada">Recusada</option>
+                                <option value="solicitada">Solicitada</option>
+                                {/* Valor da API continua "aguardando_envio"; label atualizado */}
+                                <option value="aguardando_envio">Em elaboração</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label htmlFor="date-range-picker" className="text-sm font-semibold text-gray-700">
+                            Filtro por período
+                        </label>
+                        <div className="mt-1">
+                            <DateRangePicker
+                                id="date-range-picker"
+                                value={dateRangeInput}
+                                onChange={setDateRangeInput}
+                                dateTypeAprovadas={dateTypeAprovadas}
+                                dateTypeSolicitadas={dateTypeSolicitadas}
+                                onDateTypeAprovadasChange={setDateTypeAprovadas}
+                                onDateTypeSolicitadasChange={setDateTypeSolicitadas}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-end">
+                        <Button
+                            onClick={handleSearch}
+                            className="h-10 px-6 bg-[#00703C] text-white hover:bg-[#005a30]"
+                        >
+                            Filtrar
+                        </Button>
+                    </div>
+                </div>
+
+                {/* LABEL */}
+                <p className="text-sm font-semibold text-[#00703C]">
+                    Baixas Físicas Cadastradas
+                </p>
+
+                {/* TABELA */}
+                <div className="overflow-x-auto rounded-md border border-gray-200">
+                    <table className="w-full text-sm">
+                        <thead className="bg-[#F5F5F5] border-b">
+                            <tr className="text-left text-gray-600 font-semibold">
+                                <th className="p-3 w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        onChange={toggleSelectAll}
+                                        disabled={allSelectableIds.length === 0}
+                                        className="accent-[#00703C] cursor-pointer"
+                                    />
+                                </th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("unidade_administrativa_origem__sigla")}>
+                                    <div className="flex gap-2 items-center">
+                                        Unidade Administrativa <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3">NBBPM</th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("criado_por__nome_completo")}>
+                                    <div className="flex gap-2 items-center">
+                                        Usuário que solicitou a Baixa <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3 cursor-pointer" onClick={() => handleOrdering("data_criacao")}>
+                                    <div className="flex gap-2 items-center">
+                                        Atualização <ArrowUpDown size={14} />
+                                    </div>
+                                </th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {renderTableBody()}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* PAGINAÇÃO - padrão do sistema */}
+                <div className="flex justify-center">
+                    <div className="flex items-center gap-1">
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            aria-label="Página anterior"
+                        >
+                            ‹
+                        </Button>
+
+                        {pages.map((item) =>
+                            item.type === "ellipsis" ? (
+                                <span key={item.id} className="px-2 text-gray-500">
+                                    ...
+                                </span>
+                            ) : (
+                                <Button
+                                    key={item.id}
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setPage(item.value)}
+                                    className={page === item.value ? ACTIVE_PAGE_CLASS : ""}
+                                >
+                                    {item.value}
+                                </Button>
+                            ),
+                        )}
+
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage((p) => p + 1)}
+                            aria-label="Próxima página"
+                        >
+                            ›
+                        </Button>
+                    </div>
+                </div>
+
+            </Card>
+        </div>
+    )
+}
