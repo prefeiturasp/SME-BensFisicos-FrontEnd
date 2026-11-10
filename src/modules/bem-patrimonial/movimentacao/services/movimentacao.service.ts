@@ -10,6 +10,7 @@ import type {
   MovimentacaoBemPatrimonialDetail,
   MovimentacaoBemPatrimonialListItem,
   MovimentacaoBemPatrimonialListParams,
+  MovimentacaoHistoricoGrupo,
   MovimentacaoUoCadastroOption,
   PaginatedResponse,
 } from '../types/movimentacao.types'
@@ -156,6 +157,15 @@ export const movimentacaoService = {
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao cancelar movimentação')
+    }
+  },
+
+  async historico(id: number): Promise<MovimentacaoHistoricoGrupo[]> {
+    try {
+      const { data } = await api.get(`/movimentacoes/${id}/historico/`)
+      return data
+    } catch (error) {
+      handleApiError(error, 'Erro ao carregar histórico da movimentação')
     }
   },
 }
