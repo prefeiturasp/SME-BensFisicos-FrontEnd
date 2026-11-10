@@ -38,6 +38,7 @@ vi.mock('../services/movimentacao.service', () => ({
     retrieve: vi.fn(),
     cancelar: vi.fn(),
     baixarDocumentoCimbpm: vi.fn(),
+    historico: vi.fn(),
   },
 }))
 
@@ -156,6 +157,21 @@ describe('MovimentacaoDetailPage', () => {
     vi.mocked(movimentacaoService.retrieve).mockResolvedValue(makeMovimentacao())
     vi.mocked(movimentacaoService.cancelar).mockResolvedValue(makeMovimentacao())
     vi.mocked(movimentacaoService.baixarDocumentoCimbpm).mockResolvedValue(new Blob(['pdf']))
+    vi.mocked(movimentacaoService.historico).mockResolvedValue([
+      {
+        alterado_em: '2026-06-11T12:00:00Z',
+        alterado_por: 7,
+        alterado_por_nome: 'Gestor Exemplo',
+        acoes: [
+          {
+            campo: 'status',
+            valor_antigo: 'Enviada',
+            valor_novo: 'Aceita',
+            justificativa: 'Movimentação aprovada',
+          },
+        ],
+      },
+    ])
   })
 
   it('deve mostrar loader enquanto carrega', () => {
@@ -192,7 +208,7 @@ describe('MovimentacaoDetailPage', () => {
     expect(screen.getByText('0001 Notebook')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /editar/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeEnabled()
-    expect(screen.getByRole('link', { name: /histórico/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /histórico/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument()
     expect(movimentacaoService.retrieve).toHaveBeenCalledWith(1)
   })
@@ -204,7 +220,7 @@ describe('MovimentacaoDetailPage', () => {
 
     const voltar = screen.getByRole('button', { name: /voltar/i })
     const cancelar = screen.getByRole('button', { name: /cancelar/i })
-    const historico = screen.getByRole('link', { name: /histórico/i })
+    const historico = screen.getByRole('button', { name: /histórico/i })
     const editar = screen.getByRole('button', { name: /editar/i })
 
     expect(voltar.compareDocumentPosition(cancelar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -330,5 +346,29 @@ describe('MovimentacaoDetailPage', () => {
     expect(screen.getByText('Número CIMBPM não gerado')).toBeInTheDocument()
     expect(screen.getByText('Nenhum item encontrado.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeEnabled()
+  })
+
+  it('deve abrir o modal de histórico ao clicar no botão', async () => {
+    renderPage()
+
+    await screen.findByText('Visualizar Movimentação de Bem Patrimonial')
+    fireEvent.click(screen.getByRole('button', { name: /histórico/i }))
+
+    expect(await screen.findByTestId('movimentacao-historico-modal')).toBeInTheDocument()
+    expect(movimentacaoService.historico).toHaveBeenCalledWith(1)
+  })
+
+  it('deve fechar o modal de histórico', async () => {
+    renderPage()
+
+    await screen.findByText('Visualizar Movimentação de Bem Patrimonial')
+    fireEvent.click(screen.getByRole('button', { name: /histórico/i }))
+
+    expect(await screen.findByTestId('movimentacao-historico-modal')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /fechar histórico/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('movimentacao-historico-modal')).not.toBeInTheDocument()
+    })
   })
 })
