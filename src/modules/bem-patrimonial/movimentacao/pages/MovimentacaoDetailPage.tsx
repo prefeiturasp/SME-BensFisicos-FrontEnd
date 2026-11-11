@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { BemDetailField, BemItemRow } from '@/modules/bem-patrimonial/components/BemDetailParts'
 import { movimentacaoService } from '../services/movimentacao.service'
+import { MovimentacaoHistoricoModal } from '../components/MovimentacaoHistoricoModal'
 import type { MovimentacaoBemPatrimonialDetail } from '../types/movimentacao.types'
 import { StatusBadge } from '@/components/status/StatusBadge'
 import { getMovimentacaoStatusTone } from '../utils/status'
@@ -26,21 +27,6 @@ const ACTION_BUTTON_CLASS = `
   text-[#2F7D57] hover:bg-[#2F7D57]
   hover:text-white font-semibold rounded-md transition-colors
 `
-
-function formatDateTimeBR(dateString: string | null | undefined) {
-  if (!dateString) return '-'
-
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) return '-'
-
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function resolveUoLabel(
   unidade: MovimentacaoBemPatrimonialDetail['unidade_orcamentaria_origem'],
@@ -90,6 +76,7 @@ export default function MovimentacaoDetailPage() {
   )
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showHistorico, setShowHistorico] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -136,6 +123,7 @@ export default function MovimentacaoDetailPage() {
   const responsavelValue = resolveUsuario(resolveResponsavelValue(movimentacao))
 
   async function handleAbrirDocumentoCimbpm() {
+    if (!movimentacao) return
     try {
       const blob = await movimentacaoService.baixarDocumentoCimbpm(movimentacao.id)
       const url = URL.createObjectURL(blob)
@@ -158,7 +146,7 @@ export default function MovimentacaoDetailPage() {
   }
 
   async function handleCancelar() {
-    if (!canCancelMovimentacao || actionLoading) return
+    if (!movimentacao || !canCancelMovimentacao || actionLoading) return
 
     setActionLoading(true)
     try {
@@ -211,11 +199,13 @@ export default function MovimentacaoDetailPage() {
           </Button>
 
           {movimentacao.url_historico ? (
-            <Button asChild className={ACTION_BUTTON_CLASS}>
-              <a href={movimentacao.url_historico} target='_blank' rel='noreferrer'>
-                <History size={16} />
-                Histórico
-              </a>
+            <Button
+              type='button'
+              className={ACTION_BUTTON_CLASS}
+              onClick={() => setShowHistorico(true)}
+            >
+              <History size={16} />
+              Histórico
             </Button>
           ) : (
             <Button
@@ -334,6 +324,12 @@ export default function MovimentacaoDetailPage() {
           </div>
         </div>
       </Card>
+      {showHistorico && (
+        <MovimentacaoHistoricoModal
+          movimentacaoId={movimentacao.id}
+          onClose={() => setShowHistorico(false)}
+        />
+      )}
     </div>
   )
 }
