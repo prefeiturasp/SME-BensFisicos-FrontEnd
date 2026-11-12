@@ -68,7 +68,8 @@ describe('ConciliacaoHistoricoModal', () => {
     });
 
     expect(await screen.findByTestId('conciliacao-historico-modal')).toBeInTheDocument();
-    expect(screen.getByText('Conciliação criada')).toBeInTheDocument();
+    expect(await screen.findAllByText('Conciliação criada')).not.toHaveLength(0);
+    expect(screen.queryByText('Conciliação criada via API')).not.toBeInTheDocument();
     expect(screen.getAllByText(/Usuário:\s*Maria José/).length).toBeGreaterThan(0);
   });
 
@@ -157,5 +158,29 @@ describe('ConciliacaoHistoricoModal', () => {
     });
 
     expect(onCloseMock).toHaveBeenCalled();
+  });
+
+  it('limpa sufixo legado via API da justificativa', async () => {
+    vi.mocked(conciliacoesService.historico).mockResolvedValueOnce([
+      {
+        alterado_em: '2026-03-10T15:24:00Z',
+        alterado_por: 1,
+        alterado_por_nome: 'Maria José',
+        acoes: [
+          {
+            campo: 'acao',
+            valor_antigo: '',
+            valor_novo: 'criado',
+            justificativa: 'Conciliação criada via API',
+          },
+        ],
+      },
+    ]);
+
+    renderModal(1);
+
+    expect(await screen.findByTestId('conciliacao-historico-modal')).toBeInTheDocument();
+    expect(await screen.findAllByText('Conciliação criada')).not.toHaveLength(0);
+    expect(screen.queryByText('Conciliação criada via API')).not.toBeInTheDocument();
   });
 });
