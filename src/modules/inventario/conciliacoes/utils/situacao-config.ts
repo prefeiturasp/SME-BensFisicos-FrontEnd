@@ -105,7 +105,7 @@ export function isBemLaudadoParaBaixa(status: string | null | undefined): boolea
 }
 
 export function deveExibirSeloLaudado(
-  situacao: ConciliacaoItemSituacao | string | null | undefined,
+  situacao: string | null | undefined,
   bemStatus: string | null | undefined,
   conciliacaoAberta?: boolean,
 ): boolean {

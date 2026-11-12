@@ -37,17 +37,20 @@ function formatAcao(acao: ConciliacaoHistoricoAcao): string {
 
 const SUFIXOS_JUSTIFICATIVA_LEGADOS = ['via API', 'via Django admin'];
 
+function terminaComSufixoLegado(resultado: string, sufixo: string): boolean {
+  if (resultado.length <= sufixo.length) return false;
+  if (resultado.slice(-sufixo.length).toLowerCase() !== sufixo.toLowerCase()) return false;
+  const anterior = resultado[resultado.length - sufixo.length - 1];
+  return anterior === undefined || anterior.trim() === '';
+}
+
 function limparJustificativa(texto: string | null | undefined): string {
   if (!texto) return '';
   let resultado = texto.trimEnd();
   while (true) {
     let removido = false;
     for (const sufixo of SUFIXOS_JUSTIFICATIVA_LEGADOS) {
-      if (resultado.length <= sufixo.length) continue;
-      const trecho = resultado.slice(-sufixo.length);
-      if (trecho.toLowerCase() !== sufixo.toLowerCase()) continue;
-      const anterior = resultado[resultado.length - sufixo.length - 1];
-      if (anterior !== undefined && anterior.trim() !== '') continue;
+      if (!terminaComSufixoLegado(resultado, sufixo)) continue;
       resultado = resultado.slice(0, -sufixo.length).trimEnd();
       removido = true;
     }
