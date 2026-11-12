@@ -1,4 +1,5 @@
 import type { ConciliacaoItemSituacao } from '../types/conciliacoes.types';
+import { LAUDADO_PARA_BAIXA_BEM_STATUS } from '../types/conciliacoes.types';
 
 export interface SituacaoVisualConfig {
   label: string;
@@ -81,6 +82,33 @@ export const SITUACAO_VISUAL_CONFIG: Record<ConciliacaoItemSituacao, SituacaoVis
   },
 };
 
+export const LAUDADO_PARA_BAIXA_LABEL = 'Laudado para Baixa';
+
+export const LAUDADO_PARA_BAIXA_VISUAL_CONFIG: SituacaoVisualConfig = {
+  label: LAUDADO_PARA_BAIXA_LABEL,
+  badgeClassName: 'bg-orange-50 text-orange-700 border border-orange-200',
+  dotClassName: 'bg-orange-500',
+  messageClassName: 'text-orange-800',
+  messageBorderClassName: 'border-orange-300 bg-orange-50',
+  optionContainerClassName: 'border-gray-200',
+  optionSelectedClassName: 'border-orange-500 bg-orange-50',
+  optionHoverClassName: 'hover:border-orange-300',
+  optionTextSelectedClassName: 'text-orange-800',
+};
+
 export function getSituacaoVisualConfig(situacao: ConciliacaoItemSituacao): SituacaoVisualConfig {
   return SITUACAO_VISUAL_CONFIG[situacao];
+}
+
+export function isBemLaudadoParaBaixa(status: string | null | undefined): boolean {
+  return status === LAUDADO_PARA_BAIXA_BEM_STATUS;
+}
+
+export function deveExibirSeloLaudado(
+  situacao: ConciliacaoItemSituacao | string | null | undefined,
+  bemStatus: string | null | undefined,
+  conciliacaoAberta?: boolean,
+): boolean {
+  if (conciliacaoAberta !== true) return false;
+  return situacao === 'em_processo_de_baixa_fisica' && isBemLaudadoParaBaixa(bemStatus);
 }
