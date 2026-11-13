@@ -37,8 +37,8 @@ describe('ConciliacaoItensFilters', () => {
   it('renderiza labels, placeholders e filtro de situacao', () => {
     render(<ConciliacaoItensFilters {...baseProps} />);
 
-    expect(screen.getByText('Filtrar por Número Patrimonial')).toBeInTheDocument();
-    expect(screen.getByText('Filtrar por Nome do bem')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Número Patrimonial')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Nome do Bem')).toBeInTheDocument();
     expect(screen.getByText('Filtrar por Situação')).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText('Digite o Número Patrimonial'),
