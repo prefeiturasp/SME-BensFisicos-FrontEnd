@@ -84,7 +84,13 @@ export type ConciliacaoItemSituacao =
   | 'em_processo_de_baixa_fisica'
   | 'baixa_fisica';
 
-export type ConciliacaoItemSituacaoFilter = ('todos' | ConciliacaoItemSituacao)[];
+export const LAUDADO_PARA_BAIXA_BEM_STATUS = 'laudado_para_baixa' as const;
+
+export type ConciliacaoItemSituacaoFilter = (
+  | 'todos'
+  | ConciliacaoItemSituacao
+  | typeof LAUDADO_PARA_BAIXA_BEM_STATUS
+)[];
 
 export type ConciliacaoItemSortableField =
   | 'id'
@@ -102,6 +108,7 @@ export interface ConciliacaoItemBem {
   modelo: string;
   valor_unitario: string;
   status: string;
+  status_display?: string;
   localizacao: string;
   bloqueado_conciliacao: boolean;
 }

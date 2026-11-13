@@ -93,6 +93,26 @@ describe('ConciliacaoItensFilters', () => {
     expect(screen.getByRole('checkbox', { name: 'Divergente' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Em processo de baixa' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Baixa Física' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Laudado para Baixa' })).toBeInTheDocument();
+  });
+
+  it('filtra por laudado para baixa distinto do processo comum', () => {
+    const onSituacaoChange = vi.fn();
+
+    render(<ConciliacaoItensFilters {...baseProps} onSituacaoChange={onSituacaoChange} />);
+
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Laudado para Baixa' }));
+
+    expect(onSituacaoChange).toHaveBeenCalledWith(['laudado_para_baixa']);
+  });
+
+  it('exibe rotulo de laudado quando selecionado', () => {
+    render(<ConciliacaoItensFilters {...baseProps} situacao={['laudado_para_baixa']} />);
+
+    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveTextContent(
+      'Laudado para Baixa',
+    );
   });
 
   it('marca multiplas situacoes e reflete todas as selecoes no estado', () => {

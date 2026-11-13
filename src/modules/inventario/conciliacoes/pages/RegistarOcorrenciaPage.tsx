@@ -22,7 +22,11 @@ import {
   handleOcorrenciaBadRequestError,
   OCORRENCIA_ERROR_TOAST_TITLE,
 } from '../utils/form-error-handler';
-import { SECTION_QUADRANTE_CLASS, SECTION_TITLE_CLASS, WARNING_ALERT_CLASS } from '../utils/form-styles';
+import {
+  SECTION_QUADRANTE_CLASS,
+  SECTION_TITLE_CLASS,
+  WARNING_ALERT_CLASS,
+} from '../utils/form-styles';
 import { getErrorMessage } from '@/lib/unidades-list-page';
 import {
   ocorrenciaFormSchema,
@@ -66,9 +70,7 @@ function renderOcorrenciaContent(
 
   if (opcoes.length === 0) {
     return (
-      <Card className='p-4 text-sm text-gray-500'>
-        Nenhuma situação disponível para este item.
-      </Card>
+      <Card className='p-4 text-sm text-gray-500'>Nenhuma situação disponível para este item.</Card>
     );
   }
 
@@ -108,10 +110,7 @@ function RegistarOcorrenciaContent() {
   const conciliacaoId = Number(params.id);
   const itemId = Number(params.itemId);
   const hasValidId =
-    Number.isInteger(conciliacaoId) &&
-    conciliacaoId > 0 &&
-    Number.isInteger(itemId) &&
-    itemId > 0;
+    Number.isInteger(conciliacaoId) && conciliacaoId > 0 && Number.isInteger(itemId) && itemId > 0;
 
   const itemQuery = useConciliacaoItem(
     hasValidId ? conciliacaoId : null,
@@ -171,9 +170,7 @@ function RegistarOcorrenciaContent() {
   const isFormComplete = useMemo(() => {
     if (!watchedSituacao) return false;
     if (watchedSituacao === 'divergente') {
-      return Boolean(
-        watchedDivergencia && watchedDivergencia.trim().length > 0,
-      );
+      return Boolean(watchedDivergencia && watchedDivergencia.trim().length > 0);
     }
     return true;
   }, [watchedDivergencia, watchedSituacao]);
@@ -268,9 +265,7 @@ function RegistarOcorrenciaContent() {
         <OcorrenciaBreadcrumb conciliacaoId={0} itemId={0} />
 
         <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-          <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-            Registrar Ocorrência
-          </h1>
+          <h1 className='text-xl font-bold tracking-tight text-gray-700'>Registrar Ocorrência</h1>
           <Button
             type='button'
             onClick={() => navigate('/conciliacoes')}
@@ -289,10 +284,7 @@ function RegistarOcorrenciaContent() {
 
   if (itemQuery.isLoading || opcoesQuery.isLoading) {
     return (
-      <div
-        className='flex items-center justify-center p-8'
-        data-testid='registrar-ocorrencia-page'
-      >
+      <div className='flex items-center justify-center p-8' data-testid='registrar-ocorrencia-page'>
         <span className='text-sm text-gray-500'>Carregando dados do bem...</span>
       </div>
     );
@@ -308,9 +300,7 @@ function RegistarOcorrenciaContent() {
         <OcorrenciaBreadcrumb conciliacaoId={conciliacaoId} itemId={itemId} />
 
         <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-          <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-            Registrar Ocorrência
-          </h1>
+          <h1 className='text-xl font-bold tracking-tight text-gray-700'>Registrar Ocorrência</h1>
           <Button
             type='button'
             onClick={() => navigate(`/conciliacoes/${conciliacaoId}`)}
@@ -338,9 +328,7 @@ function RegistarOcorrenciaContent() {
       <OcorrenciaBreadcrumb conciliacaoId={conciliacaoId} itemId={itemId} />
 
       <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-        <h1 className='text-xl font-bold tracking-tight text-gray-700'>
-          Registrar Ocorrência
-        </h1>
+        <h1 className='text-xl font-bold tracking-tight text-gray-700'>Registrar Ocorrência</h1>
 
         <div className='flex flex-wrap items-center justify-end gap-3'>
           <Button
@@ -374,7 +362,6 @@ function RegistarOcorrenciaContent() {
           >
             {upsertMutation.isPending ? 'Salvando...' : 'Salvar'}
           </Button>
-
         </div>
       </div>
 
@@ -386,6 +373,7 @@ function RegistarOcorrenciaContent() {
           observacao={item.observacao}
           divergencia={item.divergencia}
           bem={item.bem}
+          conciliacaoEstaAberta={item.conciliacao_esta_aberto}
         />
       </Card>
 

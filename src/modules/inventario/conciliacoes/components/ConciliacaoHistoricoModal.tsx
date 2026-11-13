@@ -25,13 +25,38 @@ function getGroupLabel(items: ConciliacaoHistoricoGrupo['acoes']): string {
 }
 
 function formatAcao(acao: ConciliacaoHistoricoAcao): string {
-  if (acao.justificativa?.trim()) {
-    return acao.justificativa;
+  const justificativa = limparJustificativa(acao.justificativa);
+  if (justificativa) {
+    return justificativa;
   }
 
   const antigo = acao.valor_antigo?.trim() || 'vazio';
   const novo = acao.valor_novo?.trim() || 'vazio';
   return `Campo "${acao.campo}": ${antigo} → ${novo}`;
+}
+
+const SUFIXOS_JUSTIFICATIVA_LEGADOS = ['via API', 'via Django admin'];
+
+function terminaComSufixoLegado(resultado: string, sufixo: string): boolean {
+  if (resultado.length <= sufixo.length) return false;
+  if (resultado.slice(-sufixo.length).toLowerCase() !== sufixo.toLowerCase()) return false;
+  const anterior = resultado[resultado.length - sufixo.length - 1];
+  return anterior === undefined || anterior.trim() === '';
+}
+
+function limparJustificativa(texto: string | null | undefined): string {
+  if (!texto) return '';
+  let resultado = texto.trimEnd();
+  while (true) {
+    let removido = false;
+    for (const sufixo of SUFIXOS_JUSTIFICATIVA_LEGADOS) {
+      if (!terminaComSufixoLegado(resultado, sufixo)) continue;
+      resultado = resultado.slice(0, -sufixo.length).trimEnd();
+      removido = true;
+    }
+    if (!removido) break;
+  }
+  return resultado;
 }
 
 interface ConciliacaoHistoricoModalProps {
@@ -57,9 +82,7 @@ export function ConciliacaoHistoricoModal({
       } catch (error_) {
         if (cancelled) return;
         const message =
-          error_ instanceof Error
-            ? error_.message
-            : 'Erro ao carregar o histórico da conciliação.';
+          error_ instanceof Error ? error_.message : 'Erro ao carregar o histórico da conciliação.';
         setError(message);
         setEntries([]);
       }

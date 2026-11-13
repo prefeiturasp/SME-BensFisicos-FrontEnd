@@ -1,11 +1,10 @@
 import { CampoReadonly } from './CampoReadonly';
 import { ConciliacaoItemSituacaoBadge } from './ConciliacaoItemSituacaoBadge';
+import { ConciliacaoLaudadoBadge } from './ConciliacaoLaudadoBadge';
 import { FieldLabelWithTooltip } from './FieldLabelWithTooltip';
 import { cn } from '@/lib/utils';
-import type {
-  ConciliacaoItemBem,
-  ConciliacaoItemSituacao,
-} from '../types/conciliacoes.types';
+import { deveExibirSeloLaudado } from '../utils/situacao-config';
+import type { ConciliacaoItemBem, ConciliacaoItemSituacao } from '../types/conciliacoes.types';
 import {
   LABEL_CLASS,
   LABEL_WITH_TOOLTIP_ROW_CLASS,
@@ -17,8 +16,7 @@ import {
 const READONLY_DIVERGENCIA_HELPER_TEXT =
   'Detalhe da divergência registrada para o item no inventário atual.';
 
-const READONLY_OBSERVACAO_HELPER_TEXT =
-  'Observação registrada para o item no inventário atual.';
+const READONLY_OBSERVACAO_HELPER_TEXT = 'Observação registrada para o item no inventário atual.';
 
 const READONLY_BADGE_FIELD_CLASS =
   'flex min-h-[2.75rem] items-center rounded-xs border border-gray-300 bg-[#F5F5F5] px-4 py-2';
@@ -30,12 +28,18 @@ interface DadosBemProps {
   observacao?: string;
   divergencia?: string;
   bem?: ConciliacaoItemBem | null;
+  conciliacaoEstaAberta?: boolean;
 }
 
 function SituacaoReadonlyField({
   situacao,
   bem,
-}: Readonly<{ situacao: ConciliacaoItemSituacao; bem?: ConciliacaoItemBem | null }>) {
+  conciliacaoEstaAberta = false,
+}: Readonly<{
+  situacao: ConciliacaoItemSituacao;
+  bem?: ConciliacaoItemBem | null;
+  conciliacaoEstaAberta?: boolean;
+}>) {
   return (
     <div className='space-y-1'>
       <div className={LABEL_WITH_TOOLTIP_ROW_CLASS}>
@@ -49,7 +53,12 @@ function SituacaoReadonlyField({
         data-testid='dados-bem-situacao-wrapper'
         data-bem-status={bem?.status ?? ''}
       >
-        <ConciliacaoItemSituacaoBadge situacao={situacao} />
+        <span className='inline-flex flex-col items-start gap-1.5'>
+          <ConciliacaoItemSituacaoBadge situacao={situacao} />
+          {deveExibirSeloLaudado(situacao, bem?.status, conciliacaoEstaAberta) && (
+            <ConciliacaoLaudadoBadge />
+          )}
+        </span>
       </div>
     </div>
   );
@@ -62,6 +71,7 @@ export function DadosBem({
   observacao = '',
   divergencia = '',
   bem,
+  conciliacaoEstaAberta = false,
 }: Readonly<DadosBemProps>) {
   const isDivergente = situacao === 'divergente';
   const temDivergencia = divergencia.trim().length > 0;
@@ -79,9 +89,7 @@ export function DadosBem({
   const secondaryHelper = useDivergencia
     ? READONLY_DIVERGENCIA_HELPER_TEXT
     : READONLY_OBSERVACAO_HELPER_TEXT;
-  const secondaryTestId = useDivergencia
-    ? 'dados-bem-divergencia'
-    : 'dados-bem-observacao';
+  const secondaryTestId = useDivergencia ? 'dados-bem-divergencia' : 'dados-bem-observacao';
 
   return (
     <section
@@ -98,15 +106,15 @@ export function DadosBem({
           value={numeroPatrimonial}
         />
 
-        <CampoReadonly
-          id='dados-bem-nome'
-          label='Nome do bem'
-          value={nome}
-        />
+        <CampoReadonly id='dados-bem-nome' label='Nome do bem' value={nome} />
       </div>
 
       <div className='grid grid-cols-1 items-start gap-x-8 gap-y-5 md:grid-cols-2'>
-        <SituacaoReadonlyField situacao={situacao} bem={bem} />
+        <SituacaoReadonlyField
+          situacao={situacao}
+          bem={bem}
+          conciliacaoEstaAberta={conciliacaoEstaAberta}
+        />
 
         <div className='space-y-1'>
           <FieldLabelWithTooltip
