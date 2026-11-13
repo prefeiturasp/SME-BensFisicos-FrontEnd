@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -7,6 +7,8 @@ import BensListPage from '../BensListPage'
 import { useBensList } from '../../hooks/useBensList'
 import { usePagination } from '../../hooks/usePagination'
 import { useAuth } from '@/auth/useAuth'
+import { downloadBlobFile } from '@/lib/unidades-list-page'
+import { toast } from 'sonner'
 
 const navigateMock = vi.fn()
 
@@ -18,6 +20,8 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../hooks/useBensList')
 vi.mock('../../hooks/usePagination')
 vi.mock('@/auth/useAuth')
+vi.mock('@/lib/unidades-list-page', () => ({ downloadBlobFile: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 // Radix Select não abre em jsdom sem stubs de pointer capture.
 // Como os hooks já estão mockados, trocamos por um <select> nativo.
@@ -85,6 +89,8 @@ const baseMock = {
   page: 1,
   count: 1,
   loading: false,
+  buscaPendente: false,
+  baixarRelatorio: vi.fn(),
   searchInput: '',
   statusFilter: 'todos',
   unidadesAdministrativas: [],
@@ -314,10 +320,34 @@ describe('BensListPage', () => {
     expect(navigateMock).toHaveBeenCalledWith('/home')
   })
 
-  it('exibe o botão de relatório sem disparar navegação', () => {
+  it('baixa o PDF ao clicar em Relatório', async () => {
+    const pdf = new Blob(['%PDF-'], { type: 'application/pdf' })
+    baseMock.baixarRelatorio.mockResolvedValueOnce(pdf)
     renderWithProviders()
-    fireEvent.click(screen.getByText('Relatório'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Relatório' }))
+
+    await waitFor(() => expect(downloadBlobFile).toHaveBeenCalledWith(pdf, 'relatorio-bens-patrimoniais.pdf'))
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('aguarda os filtros da busca antes de habilitar o relatório', () => {
+    mockPage({ buscaPendente: true })
+    renderWithProviders()
+    expect(screen.getByRole('button', { name: 'Relatório' })).toBeDisabled()
+  })
+
+  it('avisa quando o relatório falha e permite tentar de novo', async () => {
+    baseMock.baixarRelatorio.mockRejectedValueOnce(new Error('Falha'))
+    renderWithProviders()
+    const botao = screen.getByRole('button', { name: 'Relatório' })
+
+    fireEvent.click(botao)
+
+    expect(botao).toBeDisabled()
+    await waitFor(() => expect(botao).toBeEnabled())
+    expect(toast.error).toHaveBeenCalledWith('Não foi possível gerar o relatório de bens.')
+    expect(downloadBlobFile).not.toHaveBeenCalled()
   })
 
   // ===============================

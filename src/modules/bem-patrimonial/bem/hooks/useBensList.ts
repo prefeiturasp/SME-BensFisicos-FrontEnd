@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { bemService, type Bem } from '../services/bem.service'
+import { bemService, type Bem, type BemListParams } from '../services/bem.service'
 
 interface EscopoGrupoHook {
   uo: { id: number | string }
@@ -109,26 +109,29 @@ export function useBensList({
     return () => clearTimeout(timeout)
   }, [searchInput])
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-
+  const filtrosDaLista = useCallback((): BemListParams => {
     // Otimização: UOs totalmente marcadas viram id de UO; as demais UAs vão
     // individualmente. Lista vazia = "Todas as UAs" (escopo padrão do backend).
     const { unidadesOrcamentarias, unidadesAdministrativas: uasAvulsas } =
       consolidarSelecao(unidadesAdministrativas, grupos)
 
+    return {
+      search,
+      status: statusFilter === 'todos' ? undefined : statusFilter,
+      unidade_administrativa: uasAvulsas.length > 0 ? uasAvulsas : undefined,
+      unidade_orcamentaria:
+        unidadesOrcamentarias.length > 0 ? unidadesOrcamentarias : undefined,
+      busca_geral_uos: buscaGeralUos || undefined,
+      bens_baixados: bensBaixados || undefined,
+      ordering,
+    }
+  }, [search, statusFilter, unidadesAdministrativas, grupos, bensBaixados, buscaGeralUos, ordering])
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+
     try {
-      const data = await bemService.list({
-        page,
-        search,
-        status: statusFilter === 'todos' ? undefined : statusFilter,
-        unidade_administrativa: uasAvulsas.length > 0 ? uasAvulsas : undefined,
-        unidade_orcamentaria:
-          unidadesOrcamentarias.length > 0 ? unidadesOrcamentarias : undefined,
-        busca_geral_uos: buscaGeralUos || undefined,
-        bens_baixados: bensBaixados || undefined,
-        ordering,
-      })
+      const data = await bemService.list({ page, ...filtrosDaLista() })
 
       setBens(data.results)
       setCount(data.count)
@@ -137,7 +140,7 @@ export function useBensList({
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, unidadesAdministrativas, grupos, bensBaixados, buscaGeralUos, ordering])
+  }, [page, filtrosDaLista])
 
   useEffect(() => {
     fetchData()
@@ -192,6 +195,8 @@ export function useBensList({
     page,
     count,
     loading,
+    buscaPendente: searchInput !== search,
+    baixarRelatorio: () => bemService.baixarRelatorio(filtrosDaLista()),
     searchInput,
     statusFilter,
     unidadesAdministrativas,

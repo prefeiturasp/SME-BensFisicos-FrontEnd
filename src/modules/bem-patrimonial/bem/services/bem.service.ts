@@ -94,42 +94,46 @@ function normalizarUnidades(
   return Array.from(new Set(ids))
 }
 
+function montarQueryBens(params: BemListParams): URLSearchParams {
+  const query = new URLSearchParams()
+
+  if (params.search?.trim()) query.append('search', params.search.trim())
+  if (params.status && params.status !== 'todos') query.append('status', params.status)
+
+  const uas = normalizarUnidades(params.unidade_administrativa)
+  if (uas.length > 0) query.append('unidade_administrativa', uas.join(','))
+
+  const uos = normalizarUnidades(params.unidade_orcamentaria)
+  if (uos.length > 0) query.append('unidade_orcamentaria', uos.join(','))
+
+  if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
+  if (params.bens_baixados) query.append('bens_baixados', String(params.bens_baixados))
+  if (params.ordering) query.append('ordering', params.ordering)
+
+  return query
+}
+
 export const bemService = {
   list: async (params: BemListParams = {}): Promise<PaginatedResponse<Bem>> => {
     try {
       const query = new URLSearchParams()
-
       if (params.page) query.append('page', String(params.page))
       if (params.pageSize) query.append('page_size', String(params.pageSize))
-
-      if (params.search?.trim()) query.append('search', params.search.trim())
-
-      if (params.status && params.status !== 'todos') query.append('status', params.status)
-
-      const unidadesAdministrativas = normalizarUnidades(
-        params.unidade_administrativa,
-      )
-      if (unidadesAdministrativas.length > 0)
-        query.append('unidade_administrativa', unidadesAdministrativas.join(','))
-
-      const unidadesOrcamentarias = normalizarUnidades(
-        params.unidade_orcamentaria,
-      )
-      if (unidadesOrcamentarias.length > 0)
-        query.append('unidade_orcamentaria', unidadesOrcamentarias.join(','))
-
-      if (params.busca_geral_uos) query.append('busca_geral_uos', String(params.busca_geral_uos))
-
-      if (params.bens_baixados)
-        query.append('bens_baixados', String(params.bens_baixados))
-
-      if (params.ordering) query.append('ordering', params.ordering)
+      montarQueryBens(params).forEach((value, key) => query.append(key, value))
 
       const { data } = await api.get(`/bens/?${query.toString()}`)
       return data
     } catch (error) {
       handleApiError(error, 'Erro ao listar bens')
     }
+  },
+
+  baixarRelatorio: async (filtros: BemListParams): Promise<Blob> => {
+    const query = montarQueryBens(filtros)
+    const { data } = await api.get<Blob>(`/bens/relatorio/?${query.toString()}`, {
+      responseType: 'blob',
+    })
+    return data
   },
 
   retrieve: async (id: number): Promise<Bem> => {
