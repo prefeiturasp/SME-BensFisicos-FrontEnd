@@ -199,7 +199,7 @@ export default function BensListPage() {
             <label
               htmlFor='search-bem'
               className='text-sm font-semibold text-gray-700'>
-              Pesquisa por Nome ou Número
+              Pesquisa por Número ou Nome
             </label>
             <input
               type='text'

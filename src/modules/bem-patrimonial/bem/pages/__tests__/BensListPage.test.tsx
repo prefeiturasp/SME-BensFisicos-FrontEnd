@@ -140,7 +140,7 @@ describe('BensListPage', () => {
     expect(screen.getByText('Notebook')).toBeInTheDocument()
 
     const card = screen
-      .getByText('Pesquisa por Nome ou Número')
+      .getByText('Pesquisa por Número ou Nome')
       .closest<HTMLElement>('[data-slot="card"]')
     const table = screen.getByRole('table')
 

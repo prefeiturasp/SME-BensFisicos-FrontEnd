@@ -220,7 +220,7 @@ function NbbpmListContent() {
                 type='text'
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder='Digite o Nº da NBBPM, processo ou UA'
+                placeholder='Digite o Nº da NBBPM, processo ou unidade administrativa'
                 className={INPUT_CLASS}
               />
             </div>

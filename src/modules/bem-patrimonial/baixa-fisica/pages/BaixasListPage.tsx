@@ -445,7 +445,7 @@ export default function BaixasListPage() {
                 <div className="flex flex-col md:flex-row gap-4 flex-wrap">
                     <div className="flex-1 min-w-[200px]">
                         <label htmlFor="search-bem" className="text-sm font-semibold text-gray-700">
-                            Pesquisa por Nome, Número ou NBBPM
+                            Pesquisa por Número, Nome ou NBBPM
                         </label>
                         <div className="relative mt-1">
                             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
