@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Eye, Network, ArrowLeft, FileText, ArrowUpDown, Info, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
@@ -24,6 +25,7 @@ import { useBensList } from '../hooks/useBensList'
 import { usePagination } from '../hooks/usePagination'
 import { getBemStatusTone } from '../utils/status'
 import { useUnsavedChanges } from '@/components/unsaved-changes/useUnsavedChanges'
+import { downloadBlobFile } from '@/lib/unidades-list-page'
 
 const PAGE_SIZE = 10
 
@@ -48,6 +50,7 @@ const ORDERING_MAP: Record<string, string> = {
 export default function BensListPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false)
   const persistKey = `bens-list:${user?.id ?? 'anon'}`
 
   const grupos = useMemo(
@@ -61,6 +64,8 @@ export default function BensListPage() {
     page,
     count,
     loading,
+    buscaPendente,
+    baixarRelatorio,
     searchInput,
     statusFilter,
     unidadesAdministrativas,
@@ -116,6 +121,18 @@ export default function BensListPage() {
     navigate('/bens-patrimoniais/importar')
   }
 
+  const handleRelatorio = async () => {
+    setGerandoRelatorio(true)
+    try {
+      const pdf = await baixarRelatorio()
+      downloadBlobFile(pdf, 'relatorio-bens-patrimoniais.pdf')
+    } catch {
+      toast.error('Não foi possível gerar o relatório de bens.')
+    } finally {
+      setGerandoRelatorio(false)
+    }
+  }
+
   return (
     <div className='p-8 space-y-4'>
       <AppBreadcrumb
@@ -141,7 +158,13 @@ export default function BensListPage() {
             <ArrowLeft size={18} />
           </Button>
 
-          <Button type='button' className={ACTION_BUTTON_CLASS} disabled>
+          <Button
+            type='button'
+            className={ACTION_BUTTON_CLASS}
+            onClick={() => void handleRelatorio()}
+            disabled={loading || buscaPendente || gerandoRelatorio}
+            aria-busy={gerandoRelatorio}
+          >
             <FileText size={16} />
             Relatório
           </Button>
