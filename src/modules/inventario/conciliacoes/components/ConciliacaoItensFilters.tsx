@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import type {
-  ConciliacaoItemSituacao,
-  ConciliacaoItemSituacaoFilter,
-} from '../types/conciliacoes.types';
+import type { ConciliacaoItemSituacaoFilter } from '../types/conciliacoes.types';
+import { LAUDADO_PARA_BAIXA_BEM_STATUS } from '../types/conciliacoes.types';
+import { LAUDADO_PARA_BAIXA_LABEL } from '../utils/situacao-config';
 
 interface Props {
   numeroPatrimonial: string;
@@ -26,22 +25,26 @@ const LABEL_CLASS = 'space-y-2 text-sm font-semibold text-gray-700';
 const SELECT_TRIGGER_CLASS =
   '!h-10 !py-0 w-full rounded-xs border border-gray-300 bg-white px-3 text-sm text-gray-700';
 
-const SITUACAO_LABELS: Record<ConciliacaoItemSituacao, string> = {
+type SituacaoFilterValue = Exclude<ConciliacaoItemSituacaoFilter[number], 'todos'>;
+
+const SITUACAO_LABELS: Record<SituacaoFilterValue, string> = {
   encontrado_sem_divergencia: 'Encontrado sem divergência',
   encontrado: 'Encontrado',
   nao_encontrado: 'Não encontrado',
   divergente: 'Divergente',
   em_processo_de_baixa_fisica: 'Em processo de baixa',
   baixa_fisica: 'Baixa Física',
+  [LAUDADO_PARA_BAIXA_BEM_STATUS]: LAUDADO_PARA_BAIXA_LABEL,
 };
 
-const SITUACAO_ORDER: ReadonlyArray<ConciliacaoItemSituacao> = [
+const SITUACAO_ORDER: ReadonlyArray<SituacaoFilterValue> = [
   'encontrado_sem_divergencia',
   'encontrado',
   'nao_encontrado',
   'divergente',
   'em_processo_de_baixa_fisica',
   'baixa_fisica',
+  LAUDADO_PARA_BAIXA_BEM_STATUS,
 ];
 
 function SituacaoMultiSelect({
@@ -69,17 +72,16 @@ function SituacaoMultiSelect({
     if (value.length === 0) return 'Todas';
 
     const labels = value
-      .map((situacao) => SITUACAO_LABELS[situacao as ConciliacaoItemSituacao])
+      .filter((situacao): situacao is SituacaoFilterValue => situacao !== 'todos')
+      .map((situacao) => SITUACAO_LABELS[situacao])
       .filter(Boolean);
 
     return labels.length > 0 ? labels.join(', ') : 'Todas';
   }, [value]);
 
-  const toggleSituacao = (situacao: string) => {
+  const toggleSituacao = (situacao: SituacaoFilterValue) => {
     onChange(
-      value.includes(situacao as ConciliacaoItemSituacao)
-        ? value.filter((item) => item !== situacao)
-        : [...value, situacao as ConciliacaoItemSituacao],
+      value.includes(situacao) ? value.filter((item) => item !== situacao) : [...value, situacao],
     );
   };
 
@@ -103,17 +105,15 @@ function SituacaoMultiSelect({
         <div className='absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-xl'>
           <div className='p-1'>
             {SITUACAO_ORDER.map((situacao) => {
-              const checked = value.includes(situacao);
+              type FilterValue = ConciliacaoItemSituacaoFilter[number];
+              const checked = value.includes(situacao as FilterValue);
 
               return (
                 <label
                   key={situacao}
                   className='flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm font-normal text-gray-700 hover:bg-gray-50'
                 >
-                  <Checkbox
-                    checked={checked}
-                    onCheckedChange={() => toggleSituacao(situacao)}
-                  />
+                  <Checkbox checked={checked} onCheckedChange={() => toggleSituacao(situacao)} />
                   <span>{SITUACAO_LABELS[situacao]}</span>
                 </label>
               );
@@ -136,7 +136,7 @@ export function ConciliacaoItensFilters({
   return (
     <div className='grid grid-cols-1 gap-5 lg:grid-cols-3 mb-10'>
       <label className={LABEL_CLASS}>
-        <span>Filtrar por Número Patrimonial</span>
+        <span>Pesquisa por Número Patrimonial</span>
         <div className='relative w-full'>
           <Search
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
@@ -154,7 +154,7 @@ export function ConciliacaoItensFilters({
       </label>
 
       <label className={LABEL_CLASS}>
-        <span>Filtrar por Nome do bem</span>
+        <span>Pesquisa por Nome do Bem</span>
         <div className='relative w-full'>
           <Search
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'

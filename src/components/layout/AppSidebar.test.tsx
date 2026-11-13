@@ -94,8 +94,8 @@ describe('AppSidebar', () => {
 
     it('deve renderizar os grupos principais de menu', () => {
       renderSidebar();
-      expect(screen.getByText('Bem Patrimonial')).toBeInTheDocument();
-      expect(screen.getByText('Inventário')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Bens Patrimoniais/i })).toBeInTheDocument();
+      expect(screen.getByText('Inventários')).toBeInTheDocument();
       expect(screen.getByText('Unidades Orçamentárias')).toBeInTheDocument();
       expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
       expect(screen.getByText('Usuários')).toBeInTheDocument();
@@ -205,18 +205,18 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Inventário'));
+      await user.click(screen.getByText('Inventários'));
 
       expect(
         screen.queryByRole('link', { name: 'Parâmetros de Conciliação Anual' }),
       ).not.toBeInTheDocument();
     });
 
-    it('exibe o atalho de NBBPMs dentro de Bem Patrimonial para quem tem acesso', async () => {
+    it('exibe o atalho de NBBPMs dentro de Bens Patrimoniais para quem tem acesso', async () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(screen.getByRole('button', { name: /Bens Patrimoniais/i }));
 
       await waitFor(() => {
         const link = screen.getByRole('link', { name: 'Notas de Baixa de Bens Patrimoniais' });
@@ -254,7 +254,7 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(screen.getByRole('button', { name: /Bens Patrimoniais/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('link', { name: 'Bens Patrimoniais' })).toBeVisible();
@@ -268,28 +268,28 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      const subItem = screen.queryByText(/^Bens Patrimoniais$/);
+      const subItem = screen.queryByRole('link', { name: 'Bens Patrimoniais' });
       if (subItem) {
         expect(subItem).not.toBeVisible();
       } else {
         expect(subItem).not.toBeInTheDocument();
       }
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(screen.getByRole('button', { name: /Bens Patrimoniais/i }));
 
       await waitFor(() => {
         const link = screen.getByRole('link', { name: 'Bens Patrimoniais' });
         expect(link).toBeVisible();
       });
 
-      expect(screen.getByRole('link', { name: 'Movimentações de Bem Patrimonial' })).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Movimentações de Bens Patrimoniais' })).toBeVisible();
     });
 
-    it('exibe o atalho de Transferências dentro de Bem Patrimonial', async () => {
+    it('exibe o atalho de Transferências dentro de Bens Patrimoniais', async () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(screen.getByRole('button', { name: /Bens Patrimoniais/i }));
 
       await waitFor(() => {
         expect(
@@ -326,7 +326,7 @@ describe('AppSidebar', () => {
         </SidebarProvider>,
       );
 
-      await user.click(screen.getByText(/^Inventário$/));
+      await user.click(screen.getByText(/^Inventários$/));
       const link = screen.getByRole('link', { name: 'Gerenciamento de Conciliações' });
       await user.click(link);
 
@@ -355,7 +355,7 @@ describe('AppSidebar', () => {
         .map((item) => item.textContent?.trim())
         .filter(Boolean);
 
-      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventários'));
       const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
       const usuariosIndex = menuItems.indexOf('Usuários');
 
@@ -453,7 +453,7 @@ describe('AppSidebar', () => {
         .map((item) => item.textContent?.trim())
         .filter(Boolean);
 
-      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventários'));
       const orcamentariasIndex = menuItems.indexOf('Unidades Orçamentárias');
       const administrativasIndex = menuItems.indexOf('Unidades Administrativas');
 
@@ -467,8 +467,7 @@ describe('AppSidebar', () => {
     it('menus expansíveis devem ter controle aria-expanded correto', async () => {
       renderSidebar();
 
-      const menuText = screen.getByText('Bem Patrimonial');
-      const triggerButton = menuText.closest('button');
+      const triggerButton = screen.getByRole('button', { name: /Bens Patrimoniais/i });
 
       expect(triggerButton).toHaveAttribute('aria-expanded', 'false');
 
@@ -498,7 +497,7 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(screen.getByRole('button', { name: /Bens Patrimoniais/i }));
 
       await waitFor(() => {
         const link = screen.getByRole('link', { name: 'Bens Patrimoniais' });
@@ -552,7 +551,7 @@ describe('AppSidebar', () => {
       const menuButtons = screen.getAllByRole('button');
       const bemPatrimonialButton = menuButtons.find((btn) => {
         const span = btn.querySelector('span');
-        return span?.textContent === 'Bem Patrimonial';
+        return span?.textContent === 'Bens Patrimoniais';
       });
 
       if (bemPatrimonialButton) {
@@ -583,10 +582,10 @@ describe('AppSidebar', () => {
     it('deve renderizar ícones para cada item de menu principal', () => {
       renderSidebar();
 
-      const bemPatrimonialSection = screen.getByText('Bem Patrimonial').closest('button');
+      const bemPatrimonialSection = screen.getByRole('button', { name: /Bens Patrimoniais/i });
       expect(bemPatrimonialSection?.querySelector('svg')).toBeInTheDocument();
 
-      const inventarioSection = screen.getByText('Inventário').closest('button');
+      const inventarioSection = screen.getByText('Inventários').closest('button');
       expect(inventarioSection?.querySelector('svg')).toBeInTheDocument();
 
       const usuariosLink = screen.getByRole('link', { name: 'Usuários' });
@@ -597,12 +596,12 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      const bemPatrimonial = screen.getByText('Bem Patrimonial').closest('button');
+      const bemPatrimonial = screen.getByRole('button', { name: /Bens Patrimoniais/i });
       const chevron = bemPatrimonial?.querySelector('svg[class*="transition-transform"]');
 
       expect(chevron).toBeInTheDocument();
 
-      await user.click(screen.getByText('Bem Patrimonial'));
+      await user.click(bemPatrimonial);
 
       await waitFor(() => {
         expect(chevron?.parentElement).toHaveAttribute('data-state', 'open');

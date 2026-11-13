@@ -95,4 +95,75 @@ describe('DadosBem', () => {
 
     expect(screen.getByTestId('dados-bem-observacao')).toHaveTextContent('-');
   });
+
+  it('exibe selo de laudado quando bem e laudado', () => {
+    render(
+      <DadosBem
+        numeroPatrimonial={bem.numero_patrimonial}
+        nome={bem.nome}
+        situacao='em_processo_de_baixa_fisica'
+        bem={{ ...bem, status: 'laudado_para_baixa' }}
+        conciliacaoEstaAberta
+      />,
+    );
+
+    expect(screen.getByTestId('item-laudado-para-baixa')).toHaveTextContent('Laudado para Baixa');
+  });
+
+  it('nao exibe selo de laudado para bem comum', () => {
+    render(
+      <DadosBem
+        numeroPatrimonial={bem.numero_patrimonial}
+        nome={bem.nome}
+        situacao='em_processo_de_baixa_fisica'
+        bem={{ ...bem, status: 'aprovado' }}
+      />,
+    );
+
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('nao exibe selo de laudado quando situacao e encontrado mesmo com bem laudado', () => {
+    render(
+      <DadosBem
+        numeroPatrimonial={bem.numero_patrimonial}
+        nome={bem.nome}
+        situacao='encontrado_sem_divergencia'
+        bem={{ ...bem, status: 'laudado_para_baixa' }}
+      />,
+    );
+
+    expect(screen.getByTestId('item-situacao-encontrado_sem_divergencia')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('nao exibe selo laudado em aberta quando situacao e encontrado mesmo com bem laudado', () => {
+    render(
+      <DadosBem
+        numeroPatrimonial={bem.numero_patrimonial}
+        nome={bem.nome}
+        situacao='encontrado'
+        bem={{ ...bem, status: 'laudado_para_baixa' }}
+        conciliacaoEstaAberta
+      />,
+    );
+
+    expect(screen.getByTestId('item-situacao-encontrado')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('esconde selo laudado em fechada', () => {
+    render(
+      <DadosBem
+        numeroPatrimonial={bem.numero_patrimonial}
+        nome={bem.nome}
+        situacao='em_processo_de_baixa_fisica'
+        bem={{ ...bem, status: 'laudado_para_baixa' }}
+        conciliacaoEstaAberta={false}
+      />,
+    );
+
+    expect(screen.getByTestId('item-situacao-em_processo_de_baixa_fisica')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
 });

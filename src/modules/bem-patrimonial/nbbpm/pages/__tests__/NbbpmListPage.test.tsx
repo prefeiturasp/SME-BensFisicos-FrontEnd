@@ -327,7 +327,7 @@ describe('NbbpmListPage', () => {
       await screen.findByText('001.0000001/2026');
 
       await user.type(
-        screen.getByLabelText('Buscar por NBBPM, Nº do Processo ou Unidade Administrativa'),
+        screen.getByLabelText('Pesquisa por NBBPM, Processo ou Unidade'),
         '  6016  ',
       );
 

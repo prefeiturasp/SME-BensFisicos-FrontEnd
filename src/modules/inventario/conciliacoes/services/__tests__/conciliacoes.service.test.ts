@@ -387,6 +387,38 @@ describe('conciliacoesService.listItens', () => {
     });
   });
 
+  it('envia laudado via situacao para OR com demais situacoes', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await conciliacoesService.listItens(1, {
+      situacao: ['laudado_para_baixa'],
+    });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/1/itens/', {
+      params: {
+        situacao: 'laudado_para_baixa',
+      },
+    });
+  });
+
+  it('combina laudado com demais situacoes em OR via situacao', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: { count: 0, next: null, previous: null, results: [] },
+    });
+
+    await conciliacoesService.listItens(1, {
+      situacao: ['divergente', 'laudado_para_baixa'],
+    });
+
+    expect(mockedGet).toHaveBeenCalledWith('/inventario/conciliacoes/1/itens/', {
+      params: {
+        situacao: 'divergente,laudado_para_baixa',
+      },
+    });
+  });
+
   it('envia apenas o termo de busca preenchido como search', async () => {
     mockedGet.mockResolvedValueOnce({
       data: { count: 0, next: null, previous: null, results: [] },

@@ -366,13 +366,13 @@ export default function TransferenciasListPage() {
               htmlFor='transferencias-filtro-nome-bem'
               className='flex min-h-[2.75rem] items-end leading-tight'
             >
-              Filtrar por Nome do Bem
+              Pesquisa por Nome do Bem
             </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
                 id='transferencias-filtro-nome-bem'
-                aria-label='Filtrar por Nome do Bem'
+                aria-label='Pesquisa por Nome do Bem'
                 type='text'
                 value={nomeBemInput}
                 onChange={(event) => setNomeBemInput(event.target.value)}
@@ -387,13 +387,13 @@ export default function TransferenciasListPage() {
               htmlFor='transferencias-filtro-ntbpm'
               className='flex min-h-[2.75rem] items-end leading-tight'
             >
-              Filtrar por NTBPM
+              Pesquisa por NTBPM
             </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
                 id='transferencias-filtro-ntbpm'
-                aria-label='Filtrar por NTBPM'
+                aria-label='Pesquisa por NTBPM'
                 type='text'
                 value={numeroNtbpmInput}
                 onChange={(event) => setNumeroNtbpmInput(event.target.value)}
@@ -408,13 +408,13 @@ export default function TransferenciasListPage() {
               htmlFor='transferencias-filtro-numero-processo'
               className='flex min-h-[2.75rem] items-end leading-tight'
             >
-              Filtrar por Número do Processo
+              Pesquisa por Número do Processo
             </label>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <Input
                 id='transferencias-filtro-numero-processo'
-                aria-label='Filtrar por Número do Processo'
+                aria-label='Pesquisa por Número do Processo'
                 type='text'
                 value={numeroProcessoInput}
                 onChange={(event) => setNumeroProcessoInput(event.target.value)}
