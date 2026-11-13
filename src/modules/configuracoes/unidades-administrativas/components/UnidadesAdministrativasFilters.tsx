@@ -31,7 +31,7 @@ export function UnidadesAdministrativasFilters({
   return (
     <div className='grid grid-cols-1 gap-4 lg:grid-cols-3 items-center'>
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Código</span>
+        <span>Pesquisa por Código</span>
         <div className='relative'>
           <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
           <input
@@ -45,7 +45,7 @@ export function UnidadesAdministrativasFilters({
       </label>
 
       <label className='space-y-2 text-sm font-semibold text-gray-700'>
-        <span>Filtrar por Nome ou Sigla</span>
+        <span>Pesquisa por Nome ou Sigla</span>
         <div className='relative'>
           <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
           <input

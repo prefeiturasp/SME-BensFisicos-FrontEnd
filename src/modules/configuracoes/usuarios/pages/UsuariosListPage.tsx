@@ -189,13 +189,13 @@ export default function UsuariosListPage() {
         <div className='grid grid-cols-1 gap-6 md:grid-cols-5  md:items-end'>
           <div className='flex flex-col gap-2'>
             <label className='text-sm font-semibold text-gray-700'>
-              <span>Filtrar por Nome do Usuário</span>
+              <span>Pesquisa por Nome ou RF do Usuário</span>
               <input
                 type='text'
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className={INPUT_SEARCH_CLASS}
-                placeholder='Digite o nome do usuário'
+                placeholder='Digite o nome ou RF do usuário'
               />
             </label>
           </div>

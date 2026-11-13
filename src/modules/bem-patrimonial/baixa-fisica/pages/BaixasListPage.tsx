@@ -445,7 +445,7 @@ export default function BaixasListPage() {
                 <div className="flex flex-col md:flex-row gap-4 flex-wrap">
                     <div className="flex-1 min-w-[200px]">
                         <label htmlFor="search-bem" className="text-sm font-semibold text-gray-700">
-                            Buscar por Número/Nome do Bem ou NBBPM
+                            Pesquisa por Nome, Número ou NBBPM
                         </label>
                         <div className="relative mt-1">
                             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
@@ -455,14 +455,14 @@ export default function BaixasListPage() {
                                 onChange={(e) => setSearchInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                                 className={INPUT_SEARCH_CLASS}
-                                placeholder="Nº patrimonial, nome do item, NBBPM"
+                                placeholder="Digite o Nº patrimonial, nome ou NBBPM"
                             />
                         </div>
                     </div>
 
                     <div className="flex-1 min-w-[200px]">
                         <label htmlFor="status-select" className="text-sm font-semibold text-gray-700">
-                            Filtrar por status
+                            Filtrar por Status
                         </label>
                         <div className="relative mt-1">
                             <select
@@ -483,7 +483,7 @@ export default function BaixasListPage() {
 
                     <div>
                         <label htmlFor="date-range-picker" className="text-sm font-semibold text-gray-700">
-                            Filtro por período
+                            Filtro por Período
                         </label>
                         <div className="mt-1">
                             <DateRangePicker

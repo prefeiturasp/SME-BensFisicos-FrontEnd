@@ -199,14 +199,14 @@ export default function BensListPage() {
             <label
               htmlFor='search-bem'
               className='text-sm font-semibold text-gray-700'>
-              Filtrar por Número ou Nome do Bem
+              Pesquisa por Nome ou Número
             </label>
             <input
               type='text'
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               className={INPUT_SEARCH_CLASS}
-              placeholder='Digite Número ou Nome'
+              placeholder='Digite o número ou nome'
             />
           </div>
 
