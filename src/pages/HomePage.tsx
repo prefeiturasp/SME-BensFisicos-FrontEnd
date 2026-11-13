@@ -1,9 +1,7 @@
-import { Boxes, Network, ListEnd, ListOrdered } from 'lucide-react';
+import { Boxes, Network, ListEnd } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ShortcutCard } from '@/components/ShortcutCard';
 import { AppBreadcrumb } from '@/components/AppBreadcrumb';
-import { useAuth } from '@/auth/useAuth';
-import { canAccessParametrosConciliacao } from '@/modules/inventario/parametros-conciliacao-anual/utils/permissions';
 
 interface DashboardItem {
   title: string;
@@ -19,7 +17,7 @@ const dashboardItems: DashboardItem[] = [
     href: '/bens-patrimoniais',
   },
   {
-    title: 'Movimentações de Bem Patrimonial',
+    title: 'Movimentações de Bens Patrimoniais',
     icon: Network,
     href: '/movimentacoes',
   },
@@ -28,24 +26,10 @@ const dashboardItems: DashboardItem[] = [
     icon: ListEnd,
     href: '/baixas-fisicas',
   },
-  {
-    title: 'Gerenciamento de Conciliações',
-    icon: ListOrdered,
-    href: '/conciliacoes',
-  },
-  {
-    title: 'Parâmetros de Conciliação Anual',
-    icon: ListOrdered,
-    href: '/parametros-conciliacao-anual',
-  },
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const canAccessParametros = canAccessParametrosConciliacao(user);
-  const visibleDashboardItems = dashboardItems.filter(
-    (item) => item.href !== '/parametros-conciliacao-anual' || canAccessParametros,
-  );
+  const visibleDashboardItems = dashboardItems;
 
   return (
     <div className='mx-auto'>
