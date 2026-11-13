@@ -95,7 +95,7 @@ describe('AppSidebar', () => {
     it('deve renderizar os grupos principais de menu', () => {
       renderSidebar();
       expect(screen.getByRole('button', { name: /Bens Patrimoniais/i })).toBeInTheDocument();
-      expect(screen.getByText('Inventário')).toBeInTheDocument();
+      expect(screen.getByText('Inventários')).toBeInTheDocument();
       expect(screen.getByText('Unidades Orçamentárias')).toBeInTheDocument();
       expect(screen.getByText('Unidades Administrativas')).toBeInTheDocument();
       expect(screen.getByText('Usuários')).toBeInTheDocument();
@@ -205,7 +205,7 @@ describe('AppSidebar', () => {
       const user = userEvent.setup();
       renderSidebar();
 
-      await user.click(screen.getByText('Inventário'));
+      await user.click(screen.getByText('Inventários'));
 
       expect(
         screen.queryByRole('link', { name: 'Parâmetros de Conciliação Anual' }),
@@ -326,7 +326,7 @@ describe('AppSidebar', () => {
         </SidebarProvider>,
       );
 
-      await user.click(screen.getByText(/^Inventário$/));
+      await user.click(screen.getByText(/^Inventários$/));
       const link = screen.getByRole('link', { name: 'Gerenciamento de Conciliações' });
       await user.click(link);
 
@@ -355,7 +355,7 @@ describe('AppSidebar', () => {
         .map((item) => item.textContent?.trim())
         .filter(Boolean);
 
-      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventários'));
       const unidadesIndex = menuItems.indexOf('Unidades Administrativas');
       const usuariosIndex = menuItems.indexOf('Usuários');
 
@@ -453,7 +453,7 @@ describe('AppSidebar', () => {
         .map((item) => item.textContent?.trim())
         .filter(Boolean);
 
-      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventário'));
+      const inventarioIndex = menuItems.findIndex((text) => text?.startsWith('Inventários'));
       const orcamentariasIndex = menuItems.indexOf('Unidades Orçamentárias');
       const administrativasIndex = menuItems.indexOf('Unidades Administrativas');
 
@@ -585,7 +585,7 @@ describe('AppSidebar', () => {
       const bemPatrimonialSection = screen.getByRole('button', { name: /Bens Patrimoniais/i });
       expect(bemPatrimonialSection?.querySelector('svg')).toBeInTheDocument();
 
-      const inventarioSection = screen.getByText('Inventário').closest('button');
+      const inventarioSection = screen.getByText('Inventários').closest('button');
       expect(inventarioSection?.querySelector('svg')).toBeInTheDocument();
 
       const usuariosLink = screen.getByRole('link', { name: 'Usuários' });

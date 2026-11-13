@@ -61,7 +61,7 @@ const menuItems = [
   },
   {
     type: 'group' as const,
-    title: 'Inventário',
+    title: 'Inventários',
     icon: ListOrdered,
     items: [
       {
