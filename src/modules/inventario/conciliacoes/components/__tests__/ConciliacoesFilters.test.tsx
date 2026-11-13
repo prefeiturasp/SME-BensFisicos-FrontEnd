@@ -59,7 +59,7 @@ describe('ConciliacoesFilters', () => {
   it('renderiza os campos com labels e placeholders esperados', () => {
     render(<ConciliacoesFilters {...baseProps} />);
 
-    expect(screen.getByText('Buscar Conciliação')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Conciliação')).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText('Digite o número ou a unidade administrativa'),
     ).toBeInTheDocument();

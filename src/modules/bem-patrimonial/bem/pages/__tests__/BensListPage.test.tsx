@@ -146,7 +146,7 @@ describe('BensListPage', () => {
     expect(screen.getByText('Notebook')).toBeInTheDocument()
 
     const card = screen
-      .getByText('Filtrar por Número ou Nome do Bem')
+      .getByText('Pesquisa por Número ou Nome')
       .closest<HTMLElement>('[data-slot="card"]')
     const table = screen.getByRole('table')
 
@@ -360,7 +360,7 @@ describe('BensListPage', () => {
     renderWithProviders()
 
     fireEvent.change(
-      screen.getByPlaceholderText('Digite Número ou Nome'),
+      screen.getByPlaceholderText('Digite o número ou nome'),
       { target: { value: 'abc' } }
     )
 

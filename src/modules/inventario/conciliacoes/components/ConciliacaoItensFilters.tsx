@@ -136,7 +136,7 @@ export function ConciliacaoItensFilters({
   return (
     <div className='grid grid-cols-1 gap-5 lg:grid-cols-3 mb-10'>
       <label className={LABEL_CLASS}>
-        <span>Filtrar por Número Patrimonial</span>
+        <span>Pesquisa por Número Patrimonial</span>
         <div className='relative w-full'>
           <Search
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'
@@ -154,7 +154,7 @@ export function ConciliacaoItensFilters({
       </label>
 
       <label className={LABEL_CLASS}>
-        <span>Filtrar por Nome do bem</span>
+        <span>Pesquisa por Nome do Bem</span>
         <div className='relative w-full'>
           <Search
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'

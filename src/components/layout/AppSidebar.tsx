@@ -33,7 +33,7 @@ import { canAccessNbbpm } from '@/modules/bem-patrimonial/nbbpm/utils/permission
 const menuItems = [
   {
     type: 'group' as const,
-    title: 'Bem Patrimonial',
+    title: 'Bens Patrimoniais',
     icon: Boxes,
     isActive: true,
     items: [
@@ -42,16 +42,16 @@ const menuItems = [
         url: '/bens-patrimoniais',
       },
       {
-        title: 'Movimentações de Bem Patrimonial',
+        title: 'Movimentações de Bens Patrimoniais',
         url: '/movimentacoes',
-      },
-      {
-        title: 'Transferência de Bens Patrimoniais',
-        url: '/transferencias',
       },
       {
         title: 'Baixas Físicas de Bens Patrimoniais',
         url: '/baixas-fisicas',
+      },
+      {
+        title: 'Transferência de Bens Patrimoniais',
+        url: '/transferencias',
       },
       {
         title: 'Notas de Baixa de Bens Patrimoniais',
@@ -61,7 +61,7 @@ const menuItems = [
   },
   {
     type: 'group' as const,
-    title: 'Inventário',
+    title: 'Inventários',
     icon: ListOrdered,
     items: [
       {

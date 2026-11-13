@@ -149,7 +149,7 @@ export function Header() {
                 <Input
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
-                  placeholder='Buscar unidade'
+                  placeholder='Digite a unidade'
                   className='h-8 text-xs md:text-sm'
                 />
               </div>
