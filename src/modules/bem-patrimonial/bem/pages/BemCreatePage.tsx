@@ -376,14 +376,14 @@ export default function BemCreatePage() {
     const errors: LinhaErrors = {}
     linhas.forEach((linha, index) => {
       const errosLinha: Record<string, string> = {}
-      if (!linha.localizacao?.trim()) {
-        errosLinha.localizacao = 'Localização é obrigatória.'
-      } else {
+      if (linha.localizacao?.trim()) {
         const erro = erroLimiteMaximo(
           linha.localizacao,
           BEM_LIMITS.localizacao
         )
         if (erro) errosLinha.localizacao = erro
+      } else {
+        errosLinha.localizacao = 'Localização é obrigatória.'
       }
       if (!linha.sem_numeracao && !linha.numero_patrimonial?.trim()) {
         errosLinha.numero_patrimonial = 'Número patrimonial é obrigatório.'

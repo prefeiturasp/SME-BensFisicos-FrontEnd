@@ -176,7 +176,7 @@ describe("BaixasListPage", () => {
             expect(screen.getByTestId("breadcrumb")).toBeInTheDocument()
 
             const card = screen
-                .getByText("Buscar por Número/Nome do Bem ou NBBPM")
+                .getByText("Pesquisa por Número, Nome ou NBBPM")
                 .closest<HTMLElement>('[data-slot="card"]')
             const table = screen.getByRole("table")
 
@@ -679,10 +679,10 @@ describe("BaixasListPage", () => {
                 expect(screen.getByText("Nenhum resultado encontrado.")).toBeInTheDocument()
             })
 
-            fireEvent.change(screen.getByLabelText("Buscar por Número/Nome do Bem ou NBBPM"), {
+            fireEvent.change(screen.getByLabelText("Pesquisa por Número, Nome ou NBBPM"), {
                 target: { value: "PAT-001" },
             })
-            fireEvent.change(screen.getByLabelText("Filtrar por status"), {
+            fireEvent.change(screen.getByLabelText("Filtrar por Status"), {
                 target: { value: "solicitada" },
             })
             fireEvent.click(screen.getByText("Filtrar"))

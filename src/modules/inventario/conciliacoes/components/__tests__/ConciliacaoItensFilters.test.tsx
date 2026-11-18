@@ -37,8 +37,8 @@ describe('ConciliacaoItensFilters', () => {
   it('renderiza labels, placeholders e filtro de situacao', () => {
     render(<ConciliacaoItensFilters {...baseProps} />);
 
-    expect(screen.getByText('Filtrar por Número Patrimonial')).toBeInTheDocument();
-    expect(screen.getByText('Filtrar por Nome do bem')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Número Patrimonial')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Nome do Bem')).toBeInTheDocument();
     expect(screen.getByText('Filtrar por Situação')).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText('Digite o Número Patrimonial'),
@@ -93,6 +93,26 @@ describe('ConciliacaoItensFilters', () => {
     expect(screen.getByRole('checkbox', { name: 'Divergente' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Em processo de baixa' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Baixa Física' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Laudado para Baixa' })).toBeInTheDocument();
+  });
+
+  it('filtra por laudado para baixa distinto do processo comum', () => {
+    const onSituacaoChange = vi.fn();
+
+    render(<ConciliacaoItensFilters {...baseProps} onSituacaoChange={onSituacaoChange} />);
+
+    fireEvent.click(screen.getByTestId('conciliacao-itens-situacao-select'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Laudado para Baixa' }));
+
+    expect(onSituacaoChange).toHaveBeenCalledWith(['laudado_para_baixa']);
+  });
+
+  it('exibe rotulo de laudado quando selecionado', () => {
+    render(<ConciliacaoItensFilters {...baseProps} situacao={['laudado_para_baixa']} />);
+
+    expect(screen.getByTestId('conciliacao-itens-situacao-select')).toHaveTextContent(
+      'Laudado para Baixa',
+    );
   });
 
   it('marca multiplas situacoes e reflete todas as selecoes no estado', () => {

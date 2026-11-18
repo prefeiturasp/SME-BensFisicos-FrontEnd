@@ -643,14 +643,14 @@ export default function MovimentacoesListPage() {
       <Card className='space-y-6 p-6'>
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-5'>
           <label className='space-y-2 text-sm font-semibold text-gray-700 xl:col-span-1'>
-            <span>Pesquisa Geral</span>
+            <span>Pesquisa por CIMBPM ou Nome</span>
             <div className='relative'>
               <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400' />
               <input
                 type='text'
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder='Pesquise por termo específico'
+                placeholder='Digite o CIMBPM ou nome do bem'
                 className='h-10 w-full rounded-xs border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-700 outline-none transition focus:border-[#2F7D57]'
               />
             </div>

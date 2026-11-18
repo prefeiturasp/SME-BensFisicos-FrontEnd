@@ -6,6 +6,7 @@ import { bemService } from '../../services/bem.service'
 vi.mock('../../services/bem.service', () => ({
   bemService: {
     list: vi.fn(),
+    baixarRelatorio: vi.fn(),
     aprovar: vi.fn(),
     reprovar: vi.fn(),
   },
@@ -50,6 +51,24 @@ describe('useBensList', () => {
   })
 
   // ── busca inicial ──────────────────────────────────────────────────────
+
+  it('exporta com os filtros da consulta atual, sem a página', async () => {
+    const { result } = renderHook(() => useBensList({ pageSize: 10 }))
+
+    act(() => {
+      result.current.setUnidadesAdministrativas(['2', '5'])
+      result.current.setStatusFilter('aprovado')
+      result.current.setOrdering('-nome')
+      result.current.setPage(2)
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const { page, ...filtros } = listMock.mock.lastCall![0]!
+    expect(page).toBe(2)
+    expect(filtros).toMatchObject({ unidade_administrativa: ['2', '5'], status: 'aprovado', ordering: '-nome' })
+    await result.current.baixarRelatorio()
+    expect(bemService.baixarRelatorio).toHaveBeenCalledWith(filtros)
+  })
 
   it('busca bens ao montar', async () => {
     const { result } = renderHook(() => useBensList({ pageSize: 10 }))

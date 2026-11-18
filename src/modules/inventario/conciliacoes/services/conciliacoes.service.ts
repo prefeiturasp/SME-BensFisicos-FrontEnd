@@ -118,10 +118,9 @@ export const conciliacoesService = {
     params?: ConciliacaoItensListParams,
   ): Promise<PaginatedConciliacaoItens> {
     try {
-      const { data } = await api.get<PaginatedConciliacaoItens>(
-        `${BASE_PATH}/${id}/itens/`,
-        { params: buildItensListParams(params) },
-      );
+      const { data } = await api.get<PaginatedConciliacaoItens>(`${BASE_PATH}/${id}/itens/`, {
+        params: buildItensListParams(params),
+      });
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao listar itens da conciliação.');
@@ -130,9 +129,7 @@ export const conciliacoesService = {
 
   async historico(id: number): Promise<ConciliacaoHistoricoGrupo[]> {
     try {
-      const { data } = await api.get<ConciliacaoHistoricoGrupo[]>(
-        `${BASE_PATH}/${id}/historico/`,
-      );
+      const { data } = await api.get<ConciliacaoHistoricoGrupo[]>(`${BASE_PATH}/${id}/historico/`);
       return data;
     } catch (error) {
       handleApiError(error, 'Erro ao buscar histórico da conciliação.');
@@ -159,10 +156,7 @@ export const conciliacoesService = {
     }
   },
 
-  async retrieveItem(
-    conciliacaoId: number,
-    itemId: number,
-  ): Promise<ConciliacaoItemDetail> {
+  async retrieveItem(conciliacaoId: number, itemId: number): Promise<ConciliacaoItemDetail> {
     try {
       const { data } = await api.get<ConciliacaoItemDetail>(
         `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/`,
@@ -203,10 +197,7 @@ export const conciliacoesService = {
     }
   },
 
-  async removerOcorrencia(
-    conciliacaoId: number,
-    itemId: number,
-  ): Promise<ConciliacaoItemDetail> {
+  async removerOcorrencia(conciliacaoId: number, itemId: number): Promise<ConciliacaoItemDetail> {
     try {
       const { data } = await api.post<ConciliacaoItemDetail>(
         `${BASE_PATH}/${conciliacaoId}/itens/${itemId}/ocorrencias/remover/`,

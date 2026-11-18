@@ -288,7 +288,10 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             expect(
-                screen.getByPlaceholderText("Digite o nome do usuário")
+                screen.getByText("Pesquisa por Nome ou RF do Usuário")
+            ).toBeInTheDocument()
+            expect(
+                screen.getByPlaceholderText("Digite o nome ou RF do usuário")
             ).toBeInTheDocument()
             expect(
                 screen.getByText("Filtrar por Unidade Administrativa")
@@ -553,7 +556,7 @@ describe("UsuariosListPage", () => {
         it("chama setSearchInput ao digitar no campo", () => {
             renderComponent()
 
-            const input = screen.getByPlaceholderText("Digite o nome do usuário")
+            const input = screen.getByPlaceholderText("Digite o nome ou RF do usuário")
             fireEvent.change(input, { target: { value: "joao" } })
 
             expect(setSearchInputMock).toHaveBeenCalledTimes(1)
@@ -565,7 +568,7 @@ describe("UsuariosListPage", () => {
             renderComponent()
 
             expect(
-                screen.getByPlaceholderText("Digite o nome do usuário")
+                screen.getByPlaceholderText("Digite o nome ou RF do usuário")
             ).toHaveValue("teste")
         })
     })

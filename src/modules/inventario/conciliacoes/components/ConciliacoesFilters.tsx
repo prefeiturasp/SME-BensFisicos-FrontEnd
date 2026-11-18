@@ -67,7 +67,7 @@ export function ConciliacoesFilters({
   return (
     <div className='grid grid-cols-1 gap-5 px-3 pt-2 lg:grid-cols-4'>
       <label className={LABEL_CLASS}>
-        <span>Buscar Conciliação</span>
+        <span>Pesquisa por Conciliação</span>
         <div className='relative w-full'>
           <Search
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'

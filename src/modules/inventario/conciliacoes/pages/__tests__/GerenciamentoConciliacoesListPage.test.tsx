@@ -167,7 +167,7 @@ describe('GerenciamentoConciliacoesListPage', () => {
     );
 
     expect(screen.getAllByText('Gerenciamento de Conciliações').length).toBeGreaterThan(0);
-    expect(screen.getByText('Buscar Conciliação')).toBeInTheDocument();
+    expect(screen.getByText('Pesquisa por Conciliação')).toBeInTheDocument();
     expect(screen.getByText('Filtrar por Tipo')).toBeInTheDocument();
     expect(screen.getByText('Filtrar por Status')).toBeInTheDocument();
     expect(screen.getByText('001.0002/2026/005')).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('GerenciamentoConciliacoesListPage', () => {
     expect(screen.getByText('Até 27/02/2026')).toBeInTheDocument();
 
     const card = screen
-      .getByText('Buscar Conciliação')
+      .getByText('Pesquisa por Conciliação')
       .closest<HTMLElement>('[data-slot="card"]');
     const table = screen.getByRole('table');
 

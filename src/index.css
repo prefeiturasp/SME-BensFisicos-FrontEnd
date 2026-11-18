@@ -159,3 +159,22 @@ input[type='password'] {
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 20px;
 }
+
+/* Padrão de placeholders mais claro em todo o sistema */
+input,
+textarea,
+select {
+  font-weight: 400;
+}
+
+[data-slot='select-trigger'],
+[data-slot='select-value'] {
+  font-weight: 400;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+  font-weight: 400;
+}

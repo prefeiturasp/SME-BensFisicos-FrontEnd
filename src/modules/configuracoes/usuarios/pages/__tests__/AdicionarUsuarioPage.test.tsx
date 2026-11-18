@@ -199,7 +199,7 @@ async function fillForm(
 
 // Abre o dropdown de Unidades Administrativas (a lista fica oculta até o campo receber foco)
 function openUaDropdown() {
-    fireEvent.focus(screen.getByPlaceholderText("Pesquise por código ou UA"))
+    fireEvent.focus(screen.getByPlaceholderText("Digite o código ou UA"))
 }
 
 //  Testes 

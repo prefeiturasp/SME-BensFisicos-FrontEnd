@@ -17,10 +17,8 @@ vi.mock('@/auth/useAuth', () => ({
 describe('HomePage', () => {
   const expectedCards = [
     { title: 'Bens Patrimoniais', href: '/bens-patrimoniais' },
-    { title: 'Movimentações de Bem Patrimonial', href: '/movimentacoes' },
+    { title: 'Movimentações de Bens Patrimoniais', href: '/movimentacoes' },
     { title: 'Baixas Físicas de Bens Patrimoniais', href: '/baixas-fisicas' },
-    { title: 'Gerenciamento de Conciliações', href: '/conciliacoes' },
-    { title: 'Parâmetros de Conciliação Anual', href: '/parametros-conciliacao-anual' },
   ];
 
   const renderComponent = () => {
@@ -89,6 +87,13 @@ describe('HomePage', () => {
         });
         expect(link).toHaveAttribute('href', card.href);
       });
+    });
+
+    it('não deve exibir atalhos de conciliações na tela inicial', () => {
+      renderComponent();
+
+      expect(screen.queryByText('Gerenciamento de Conciliações')).not.toBeInTheDocument();
+      expect(screen.queryByText('Parâmetros de Conciliação Anual')).not.toBeInTheDocument();
     });
 
     it('deve ocultar o atalho de parametros para operador', () => {

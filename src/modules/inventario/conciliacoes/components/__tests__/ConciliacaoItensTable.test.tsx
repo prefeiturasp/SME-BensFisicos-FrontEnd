@@ -51,9 +51,7 @@ describe('ConciliacaoItensTable', () => {
 
     rerender(<ConciliacaoItensTable {...baseProps} loading={false} />);
 
-    expect(
-      screen.getByText(/Nenhum item encontrado para esta conciliação/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Nenhum item encontrado para esta conciliação/i)).toBeInTheDocument();
   });
 
   it('renderiza os dados formatados do item', () => {
@@ -95,24 +93,12 @@ describe('ConciliacaoItensTable', () => {
   it('exibe botao de visualizar item (placeholder) sem disparar onView', () => {
     const onPageChange = vi.fn();
 
-    render(
-      <ConciliacaoItensTable
-        {...baseProps}
-        itens={[baseItem]}
-        onPageChange={onPageChange}
-      />,
-    );
+    render(<ConciliacaoItensTable {...baseProps} itens={[baseItem]} onPageChange={onPageChange} />);
 
     const actionButton = screen.getByTestId('conciliacao-item-action-42');
     expect(actionButton).toBeInTheDocument();
-    expect(actionButton).toHaveAttribute(
-      'aria-label',
-      'Visualizar item 001.052485928-0',
-    );
-    expect(actionButton.querySelector('svg')).toHaveClass(
-      'size-[22px]',
-      'text-[#00703C]',
-    );
+    expect(actionButton).toHaveAttribute('aria-label', 'Visualizar item 001.052485928-0');
+    expect(actionButton.querySelector('svg')).toHaveClass('size-[22px]', 'text-[#00703C]');
 
     fireEvent.click(actionButton);
 
@@ -131,13 +117,7 @@ describe('ConciliacaoItensTable', () => {
   it('dispara onSelectItem ao clicar no botao de acao quando informado', () => {
     const onSelectItem = vi.fn();
 
-    render(
-      <ConciliacaoItensTable
-        {...baseProps}
-        itens={[baseItem]}
-        onSelectItem={onSelectItem}
-      />,
-    );
+    render(<ConciliacaoItensTable {...baseProps} itens={[baseItem]} onSelectItem={onSelectItem} />);
 
     fireEvent.click(screen.getByTestId('conciliacao-item-action-42'));
 
@@ -148,13 +128,7 @@ describe('ConciliacaoItensTable', () => {
   it('dispara onSort ao clicar em colunas ordenaveis', () => {
     const onSort = vi.fn();
 
-    render(
-      <ConciliacaoItensTable
-        {...baseProps}
-        itens={[baseItem]}
-        onSort={onSort}
-      />,
-    );
+    render(<ConciliacaoItensTable {...baseProps} itens={[baseItem]} onSort={onSort} />);
 
     fireEvent.click(screen.getByRole('button', { name: /Número Patrimonial/i }));
     fireEvent.click(screen.getByRole('button', { name: /Nome do bem/i }));
@@ -204,5 +178,82 @@ describe('ConciliacaoItensTable', () => {
     expect(screen.getByTestId('item-situacao-nao_encontrado')).toBeInTheDocument();
     expect(screen.getByTestId('conciliacao-item-action-1')).toBeInTheDocument();
     expect(screen.getByTestId('conciliacao-item-action-2')).toBeInTheDocument();
+  });
+
+  it('exibe selo de laudado distinto do processo de baixa comum', () => {
+    const itemLaudado: ConciliacaoItem = {
+      ...baseItem,
+      id: 200,
+      situacao: 'em_processo_de_baixa_fisica',
+      bem: { ...baseItem.bem, status: 'laudado_para_baixa', nome: 'BEM LAUDADO' },
+    };
+    const itemComum: ConciliacaoItem = {
+      ...baseItem,
+      id: 201,
+      situacao: 'em_processo_de_baixa_fisica',
+      bem: { ...baseItem.bem, status: 'aprovado', nome: 'BEM COMUM' },
+    };
+
+    render(<ConciliacaoItensTable {...baseProps} itens={[itemLaudado, itemComum]} />);
+
+    expect(screen.getByTestId('item-laudado-para-baixa')).toHaveTextContent('Laudado para Baixa');
+    expect(screen.getAllByTestId('item-situacao-em_processo_de_baixa_fisica')).toHaveLength(2);
+  });
+
+  it('nao exibe selo de laudado para bem em processo comum', () => {
+    const itemComum: ConciliacaoItem = {
+      ...baseItem,
+      situacao: 'em_processo_de_baixa_fisica',
+      bem: { ...baseItem.bem, status: 'aprovado' },
+    };
+
+    render(<ConciliacaoItensTable {...baseProps} itens={[itemComum]} />);
+
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('nao exibe selo de laudado quando situacao e encontrado mesmo com bem laudado', () => {
+    const itemFechado: ConciliacaoItem = {
+      ...baseItem,
+      id: 300,
+      conciliacao_status: 'fechado',
+      situacao: 'encontrado_sem_divergencia',
+      bem: { ...baseItem.bem, status: 'laudado_para_baixa', nome: 'BEM FECHADO' },
+    };
+
+    render(<ConciliacaoItensTable {...baseProps} itens={[itemFechado]} />);
+
+    expect(screen.getByTestId('item-situacao-encontrado_sem_divergencia')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('nao exibe selo laudado em aberta quando situacao e encontrado mesmo com bem laudado', () => {
+    const itemAbertoEncontrado: ConciliacaoItem = {
+      ...baseItem,
+      id: 302,
+      conciliacao_status: 'em_aberto',
+      situacao: 'encontrado_sem_divergencia',
+      bem: { ...baseItem.bem, status: 'laudado_para_baixa', nome: 'BEM ABERTO ENCONTRADO' },
+    };
+
+    render(<ConciliacaoItensTable {...baseProps} itens={[itemAbertoEncontrado]} />);
+
+    expect(screen.getByTestId('item-situacao-encontrado_sem_divergencia')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
+  });
+
+  it('esconde selo laudado em fechada mesmo em processo', () => {
+    const itemFechadoProcesso: ConciliacaoItem = {
+      ...baseItem,
+      id: 301,
+      conciliacao_status: 'fechado',
+      situacao: 'em_processo_de_baixa_fisica',
+      bem: { ...baseItem.bem, status: 'laudado_para_baixa' },
+    };
+
+    render(<ConciliacaoItensTable {...baseProps} itens={[itemFechadoProcesso]} />);
+
+    expect(screen.getByTestId('item-situacao-em_processo_de_baixa_fisica')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-laudado-para-baixa')).not.toBeInTheDocument();
   });
 });

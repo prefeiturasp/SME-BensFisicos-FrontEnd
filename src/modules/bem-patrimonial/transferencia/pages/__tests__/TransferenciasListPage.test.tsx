@@ -194,7 +194,7 @@ describe('TransferenciasListPage', () => {
     expect(screen.getByRole('button', { name: /Adicionar/i })).toBeInTheDocument()
 
     const card = screen
-      .getByText('Filtrar por Nome do Bem')
+      .getByText('Pesquisa por Nome do Bem')
       .closest<HTMLElement>('[data-slot="card"]')
     const table = screen.getByRole('table')
 

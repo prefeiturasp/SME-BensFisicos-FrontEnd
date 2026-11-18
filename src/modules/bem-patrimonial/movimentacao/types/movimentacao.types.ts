@@ -138,6 +138,20 @@ export interface MovimentacaoBemPatrimonialCreatePayload {
   selecionar_todos?: boolean
 }
 
+export interface MovimentacaoHistoricoAcao {
+  campo: string
+  valor_antigo: string | null
+  valor_novo: string | null
+  justificativa: string | null
+}
+
+export interface MovimentacaoHistoricoGrupo {
+  alterado_em: string
+  alterado_por: number | null
+  alterado_por_nome: string | null
+  acoes: MovimentacaoHistoricoAcao[]
+}
+
 export interface MovimentacaoBemPatrimonialListParams {
   page?: number
   pageSize?: number

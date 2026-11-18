@@ -314,7 +314,7 @@ describe('MovimentacoesListPage', () => {
     expect(screen.getByRole('button', { name: /cancelar/i })).toBeDisabled()
 
     const card = screen
-      .getByText('Pesquisa Geral')
+      .getByText('Pesquisa por CIMBPM ou Nome')
       .closest<HTMLElement>('[data-slot="card"]')
     const table = screen.getByRole('table')
 
@@ -618,7 +618,7 @@ describe('MovimentacoesListPage', () => {
     renderPage()
 
     await screen.findByText('Enviada')
-    fireEvent.change(screen.getByPlaceholderText('Pesquise por termo específico'), {
+    fireEvent.change(screen.getByPlaceholderText('Digite o CIMBPM ou nome do bem'), {
       target: { value: 'cimbpm' },
     })
 

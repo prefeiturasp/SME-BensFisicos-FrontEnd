@@ -211,7 +211,7 @@ function NbbpmListContent() {
         <div className='flex flex-col md:flex-row gap-4 flex-wrap'>
           <div className='flex-1 min-w-[200px]'>
             <label htmlFor='nbbpm-filtro-busca' className='text-sm font-semibold text-gray-700'>
-              Buscar por NBBPM, Nº do Processo ou Unidade Administrativa
+              Pesquisa por NBBPM, Processo ou Unidade
             </label>
             <div className='relative mt-1 w-1/3'>
               <Search size={16} className='absolute left-3 top-3 text-gray-400' />
@@ -220,7 +220,7 @@ function NbbpmListContent() {
                 type='text'
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder='Nº da NBBPM, nº do processo ou UA'
+                placeholder='Digite o Nº da NBBPM, processo ou unidade administrativa'
                 className={INPUT_CLASS}
               />
             </div>

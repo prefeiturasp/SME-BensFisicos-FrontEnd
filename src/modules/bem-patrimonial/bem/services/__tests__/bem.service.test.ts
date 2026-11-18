@@ -61,6 +61,33 @@ describe('bem.service', () => {
     expect(result.results[0].id).toBe(1);
   });
 
+  it('baixa o relatório com os mesmos filtros da lista, sem paginação', async () => {
+    const params = {
+      page: 2,
+      pageSize: 10,
+      search: '  Mesa de reunião  ',
+      status: 'baixa_fisica',
+      unidade_administrativa: [1, 2],
+      unidade_orcamentaria: [3],
+      busca_geral_uos: true,
+      bens_baixados: true,
+      ordering: '-nome',
+    };
+    const pdf = new Blob(['%PDF-'], { type: 'application/pdf' });
+    mock.onGet(/\/bens\/\?/).reply(200, { count: 0, results: [] });
+    mock.onGet(/\/bens\/relatorio\/\?/).reply(200, pdf);
+
+    await bemService.list(params);
+    expect(await bemService.baixarRelatorio(params)).toBe(pdf);
+
+    const [lista, relatorio] = mock.history.get;
+    const filtros = new URLSearchParams(lista.url?.split('?')[1]);
+    filtros.delete('page');
+    filtros.delete('page_size');
+    expect(relatorio.url).toBe(`/bens/relatorio/?${filtros.toString()}`);
+    expect(relatorio.responseType).toBe('blob');
+  });
+
   it('não deve enviar status quando for "todos"', async () => {
     mock.onGet(/\/bens\/\?/).reply((config) => {
       expect(config.url).not.toContain('status=');

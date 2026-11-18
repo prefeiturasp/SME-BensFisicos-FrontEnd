@@ -37,11 +37,11 @@ describe('EscopoFilterDropdown', () => {
     const trigger = screen.getByRole('button', { name: /Todas as UAs/i })
     fireEvent.click(trigger)
 
-    expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Digite a unidade')).toBeInTheDocument()
 
     fireEvent.click(trigger)
     expect(
-      screen.queryByPlaceholderText('Buscar unidade'),
+      screen.queryByPlaceholderText('Digite a unidade'),
     ).not.toBeInTheDocument()
   })
 
@@ -50,7 +50,7 @@ describe('EscopoFilterDropdown', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
-    const input = screen.getByPlaceholderText('Buscar unidade')
+    const input = screen.getByPlaceholderText('Digite a unidade')
     fireEvent.change(input, { target: { value: 'A1' } })
 
     expect(screen.getByText('Escola A1')).toBeInTheDocument()
@@ -62,7 +62,7 @@ describe('EscopoFilterDropdown', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar unidade'), {
+    fireEvent.change(screen.getByPlaceholderText('Digite a unidade'), {
       target: { value: 'inexistente' },
     })
 
@@ -88,7 +88,7 @@ describe('EscopoFilterDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
 
     const painel = screen
-      .getByPlaceholderText('Buscar unidade')
+      .getByPlaceholderText('Digite a unidade')
       .closest('div')!.parentElement!
 
     fireEvent.click(within(painel).getByText('Escola A1'))
@@ -103,7 +103,7 @@ describe('EscopoFilterDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
 
     const dropdown = screen
-      .getByPlaceholderText('Buscar unidade')
+      .getByPlaceholderText('Digite a unidade')
       .closest('div')!.parentElement!
 
     fireEvent.click(within(dropdown).getByText('Secretaria A'))
@@ -119,7 +119,7 @@ describe('EscopoFilterDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
 
     const painel = screen
-      .getByPlaceholderText('Buscar unidade')
+      .getByPlaceholderText('Digite a unidade')
       .closest('div')!.parentElement!
 
     fireEvent.click(within(painel).getByText('Todas as UAs'))
@@ -146,12 +146,12 @@ describe('EscopoFilterDropdown', () => {
     renderComponent()
 
     fireEvent.click(screen.getByRole('button', { name: /Todas as UAs/i }))
-    expect(screen.getByPlaceholderText('Buscar unidade')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Digite a unidade')).toBeInTheDocument()
 
     fireEvent.mouseDown(document)
 
     expect(
-      screen.queryByPlaceholderText('Buscar unidade'),
+      screen.queryByPlaceholderText('Digite a unidade'),
     ).not.toBeInTheDocument()
   })
 
@@ -161,7 +161,7 @@ describe('EscopoFilterDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Escola A1' }))
 
     const painel = screen
-      .getByPlaceholderText('Buscar unidade')
+      .getByPlaceholderText('Digite a unidade')
       .closest('div')!.parentElement!
 
     const label = within(painel).getByText('Escola A1').closest('label')!

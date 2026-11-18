@@ -5,17 +5,12 @@ import {
   type UnidadesListTableHeader,
 } from '@/components/UnidadesListTable';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { UnidadesPaginationItem } from '@/hooks/useUnidadesPagination';
 import { ConciliacaoItemSituacaoBadge } from './ConciliacaoItemSituacaoBadge';
-import type {
-  ConciliacaoItem,
-  ConciliacaoItemSortableField,
-} from '../types/conciliacoes.types';
+import { ConciliacaoLaudadoBadge } from './ConciliacaoLaudadoBadge';
+import { deveExibirSeloLaudado } from '../utils/situacao-config';
+import type { ConciliacaoItem, ConciliacaoItemSortableField } from '../types/conciliacoes.types';
 
 export type { ConciliacaoItemSortableField } from '../types/conciliacoes.types';
 
@@ -70,7 +65,14 @@ export function ConciliacaoItensTable({
     {
       key: 'situacao',
       render: (item: ConciliacaoItem) => (
-        <ConciliacaoItemSituacaoBadge situacao={item.situacao} />
+        <span className='inline-flex flex-col items-start gap-1.5'>
+          <ConciliacaoItemSituacaoBadge situacao={item.situacao} />
+          {deveExibirSeloLaudado(
+            item.situacao,
+            item.bem?.status,
+            item.conciliacao_status === 'em_aberto',
+          ) && <ConciliacaoLaudadoBadge />}
+        </span>
       ),
     },
     {
@@ -125,8 +127,8 @@ export function ConciliacaoItensTable({
               </Button>
             </TooltipTrigger>
             <TooltipContent side='top' sideOffset={6} className='max-w-70'>
-              Ao clicar no ícone, é possível visualizar as informações do Bem e
-              realizar o registro de ocorrências.
+              Ao clicar no ícone, é possível visualizar as informações do Bem e realizar o registro
+              de ocorrências.
             </TooltipContent>
           </Tooltip>
         )}

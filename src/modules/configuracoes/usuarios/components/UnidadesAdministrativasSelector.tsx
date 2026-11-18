@@ -81,7 +81,7 @@ export function UnidadesAdministrativasSelector({
             value={filtroUa}
             onChange={(e) => onFiltroChange(e.target.value)}
             onFocus={abrir}
-            placeholder="Pesquise por código ou UA"
+            placeholder="Digite o código ou UA"
             className={`flex-1 min-w-[8rem] border-0 outline-none bg-transparent text-gray-700 ${disabled ? "cursor-not-allowed" : ""}`}
             disabled={disabled}
           />

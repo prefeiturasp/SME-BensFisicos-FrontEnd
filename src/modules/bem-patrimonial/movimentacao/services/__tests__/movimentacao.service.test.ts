@@ -242,6 +242,31 @@ describe('movimentacaoService', () => {
     expect(result).toEqual({ id: 9, status: 'cancelada' })
   })
 
+  it('deve buscar o histórico da movimentação em linha do tempo', async () => {
+    const grupos = [
+      {
+        alterado_em: '2026-06-11T12:00:00Z',
+        alterado_por: 7,
+        alterado_por_nome: 'Gestor Exemplo',
+        acoes: [{ campo: 'status', valor_antigo: 'Enviada', valor_novo: 'Aceita', justificativa: 'aprovada' }],
+      },
+    ]
+    vi.mocked(api.get).mockResolvedValue({ data: grupos })
+
+    const result = await movimentacaoService.historico(9)
+
+    expect(api.get).toHaveBeenCalledWith('/movimentacoes/9/historico/')
+    expect(result).toEqual(grupos)
+  })
+
+  it('deve tratar erro ao buscar histórico da movimentação', async () => {
+    vi.mocked(api.get).mockRejectedValue(makeAxiosError(500, {}))
+
+    await expect(movimentacaoService.historico(9)).rejects.toThrow(
+      'Erro ao carregar histórico da movimentação',
+    )
+  })
+
   it('deve tratar erro ao listar opções de cadastro', async () => {
     vi.mocked(api.get).mockRejectedValue(
       makeAxiosError(400, { detail: 'Falha ao carregar opções' }),
